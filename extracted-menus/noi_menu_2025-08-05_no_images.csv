@@ -1,0 +1,52 @@
+menuID,menuName,menuDisplayName,menuDescription,categoryID,categoryName,categoryDisplayName,categoryDescription,dishID,dishName,dishPrice,dishType,dishDescription,displayName,printName,tags
+,Menu,,,,Chef Recommendations,,,,Bun Cha Hanoi,25.00,standard,"Hanoi style grilled pork with vermicelli noodles, herbs and dipping sauce.",,,
+,Menu,,,,Chef Recommendations,,,,Braised Lamb Shank Fusion,27.00,standard,Slow cooked lamb shank infused with Asian spices. Comes with rice,,,
+,Menu,,,,Chef Recommendations,,,,Hong Kong Style Seafood Medley,28.00,standard,Stir fried seafood in a sauce.,,,
+,Menu,,,,Chef Recommendations,,,,Steamed Fish Fillet with Special Sauce,27.00,standard,"Steamed fish fillet with soy sauce, ginger, and garlic for a delicate, aromatic flavor. Comes with rice",,,
+,Menu,,,,Chef Recommendations,,,,Charsiu Pork Noodles,28.00,standard,"Egg noodles with char siu pork and pok choy, tossed in savory char siu sauce.",,,
+,Menu,,,,Chef Recommendations,,,,Honey Lemon Chicken,26.00,standard,Batter chicken pieces tossed with honey lemon sauce. Comes with rice,,,
+,Menu,,,,Chef Recommendations,,,,Fiery Beef Salad,25.00,standard,Sliced beef with chilli lime dressing and mixed greens. Comes with rice,,,
+,Menu,,,,Chef Recommendations,,,,Tom Kha Delight,23.00,standard,Coconut milk soup with a hint of chilli and herbs. Comes with rice,,,
+,Menu,,,,Featured items,,,,Pad Thai,23.00,standard,"Stir-fried rice noodles with shrimp, eggs, and bean sprouts, topped with peanuts and tangy tamarind sauce.",,,
+,Menu,,,,Featured items,,,,Green Curry,23.00,standard,"Thai green curry with coconut milk, basil and vegetables. Comes with rice",,,
+,Menu,,,,Featured items,,,,Panang Curry,23.00,standard,"Simmered curry with coconut milk and Panang curry paste, offering a rich, nutty, and creamy flavor. Comes with rice",,,
+,Menu,,,,Featured items,,,,Crispy Chicken with Cashew Nuts,23.00,standard,"Battered chicken stir-fried with roasted cashew nuts, served with jasmine rice for a satisfying crunch.",,,
+,Menu,,,,Featured items,,,,Honey Lemon Chicken,26.00,standard,Batter chicken pieces tossed with honey lemon sauce. Comes with rice,,,
+,Menu,,,,Featured items,,,,Black Pepper Blaze,23.00,standard,Spicy stir fried with cracked black pepper. Served with jasmine rice. Comes with rice,,,
+,Menu,,,,Featured items,,,,Red Curry,23.00,standard,"Creamy coconut milk and red curry paste blend for a rich, aromatic dish. Comes with rice",,,
+,Menu,,,,Featured items,,,,Fiery Beef Salad,25.00,standard,Sliced beef with chilli lime dressing and mixed greens. Comes with rice,,,
+,Menu,,,,Featured items,,,,Tom Kha Delight,23.00,standard,Coconut milk soup with a hint of chilli and herbs. Comes with rice,,,
+,Menu,,,,Stir Fry,,,,Sweet and Sour Fusion,23.00,standard,"Stir-fried pineapple in a sweet and sour sauce, served with jasmine rice for a delightful fusion experience.",,,
+,Menu,,,,Stir Fry,,,,Ginger Garlic Delight,23.00,standard,Stir fried with vegetables in stir fried sauce. Served with jasmine rice.,,,
+,Menu,,,,Stir Fry,,,,Crispy Chicken with Cashew Nuts,23.00,standard,"Battered chicken stir-fried with roasted cashew nuts, served with jasmine rice for a satisfying crunch.",,,Contains Nuts
+,Menu,,,,Stir Fry,,,,Peanut Satay Stir Fry,23.00,standard,Peanut sauce stir fried with vegetables served with jasmine rice. Comes with rice,,,Popular
+,Menu,,,,Stir Fry,,,,Lemongrass Infusion,23.00,standard,Lemongrass stir fried with herb and vegetables. Served with jasmine rice. Comes with rice,,,
+,Menu,,,,Stir Fry,,,,Black Pepper Blaze,23.00,standard,Spicy stir fried with cracked black pepper. Served with jasmine rice. Comes with rice,,,Spicy
+,Menu,,,,Entrées,,,,Pork Crispy Spring Rolls,15.00,standard,"Crispy fried pork spring rolls, served with tangy tamarin sauce for a delightful crunch.",,,Spicy
+,Menu,,,,Entrées,,,,Fresh Rice Paper Rolls,15.00,standard,"Rolled rice paper with vermicelli noodles, served fresh with a side of sauce.",,,
+,Menu,,,,Entrées,,,,Fried Chicken Wings,15.00,standard,Tossed in Noi sauce. No GF,,,
+,Menu,,,,Entrées,,,,Crispy Wontons,15.00,standard,"Fried wonton wrappers filled with seasoned pork, served with a savory dipping sauce.",,,
+,Menu,,,,Entrées,,,,Salt and Pepper Squid,15.00,standard,"Fried squid seasoned with salt and black pepper, enhanced by chili, garlic, and fresh herbs.",,,Spicy
+,Menu,,,,Entrées,,,,Satay Skewers,15.00,standard,Grilled chicken skewer with peanut sauce and coconut cream.,,,Contains Nuts
+,Menu,,,,Entrées,,,,Signature Mixed Platter,20.00,standard,"Two pork spring rolls, two vegetarian spring rolls, two wontons and two chicken wings. No GF",,,
+,Menu,,,,Entrées,,,,Vegetarian Crispy Spring Rolls,15.00,standard,"Fried vegan rolls with vermicelli noodles, served with sweet chili sauce for a crispy delight.",,,Spicy
+,Menu,,,,Salads and Vegetable Stir Fry,,,,Asian Noodle Salad,25.00,standard,"Vermicelli noodles, vegetables and a dressing.",,,
+,Menu,,,,Salads and Vegetable Stir Fry,,,,Vietnamese Chicken Salad,25.00,standard,"Mixed with herbs, crunchy peanuts and fish sauce dressing.",,,Contains Nuts
+,Menu,,,,Salads and Vegetable Stir Fry,,,,Fiery Beef Salad,25.00,standard,Sliced beef with chilli lime dressing and mixed greens. Comes with rice,,,Popular
+,Menu,,,,Salads and Vegetable Stir Fry,,,,Zesty Seafood Salad,28.00,standard,Seafood tossed with citrusy Asian flavours. Comes with rice,,,
+,Menu,,,,Salads and Vegetable Stir Fry,,,,Green Vegetable Stir Fried with Tofu (V),22.00,standard,Vegetables stir fried with soybean sauce. Comes with rice,,,
+,Menu,,,,"Rice, Noodles and Soup",,,,Char Siu Fried Rice,25.00,standard,"Wok-fried rice with char siu pork and egg, delivering a savory and satisfying meal.",,,Popular
+,Menu,,,,"Rice, Noodles and Soup",,,,Stir Fried Egg Noodles,23.00,standard,Asian style noodles with vegetables and meat.,,,
+,Menu,,,,"Rice, Noodles and Soup",,,,Pad Thai,23.00,standard,"Stir-fried rice noodles with shrimp, eggs, and bean sprouts, topped with peanuts and tangy tamarind sauce.",,,Contains Nuts
+,Menu,,,,"Rice, Noodles and Soup",,,,Satay Fusion Noodles,23.00,standard,Egg noodles coated in a creamy satay sauce.,,,Contains Nuts
+,Menu,,,,"Rice, Noodles and Soup",,,,Tom Yum,23.00,standard,Spicy and sour broth with lemongrass and coriander. Comes with rice,,,Spicy
+,Menu,,,,"Rice, Noodles and Soup",,,,Tom Kha Delight,23.00,standard,Coconut milk soup with a hint of chilli and herbs. Comes with rice,,,Spicy
+,Menu,,,,"Rice, Noodles and Soup",,,,Laksa,23.00,standard,Spicy coconut curry noodle soup with an umami broth.,,,Spicy
+,Menu,,,,Drinks,,,,Coke 330ml,3.50,standard,Classic cola beverage.,,,Popular
+,Menu,,,,Drinks,,,,Lemonade 330ml,3.50,standard,Refreshing citrus drink.,,,
+,Menu,,,,Curry,,,,Green Curry,23.00,standard,"Thai green curry with coconut milk, basil and vegetables. Comes with rice",,,
+,Menu,,,,Curry,,,,Red Curry,23.00,standard,"Creamy coconut milk and red curry paste blend for a rich, aromatic dish. Comes with rice",,,
+,Menu,,,,Curry,,,,Massaman Curry,23.00,standard,"Mildly spiced curry with potatoes, peanuts and a hint of sweetness. Comes with rice",,,"Contains Nuts, Mild"
+,Menu,,,,Curry,,,,Panang Curry,23.00,standard,"Simmered curry with coconut milk and Panang curry paste, offering a rich, nutty, and creamy flavor. Comes with rice",,,
+,Menu,,,,Side,,,,Rice,4.00,standard,,,,
+,Menu,,,,Side,,,,Roti,6.00,standard,,,,Popular

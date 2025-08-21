@@ -1,0 +1,149 @@
+{
+  "restaurant": "Test Restaurant",
+  "city": "Auckland",
+  "searchQuery": "Test Restaurant Auckland Restaurant Logo site:instagram.com OR site:facebook.com",
+  "searchTimestamp": "2025-08-10T03:45:36.058Z",
+  "imageCount": 20,
+  "images": [
+    {
+      "index": 0,
+      "alt": "",
+      "dimensions": "46x46",
+      "hasAlt": false,
+      "nearbyText": "Filters and topicsFrench cafeNew brewBrew cafeBrew barQuiz nightMalaysian restaurantCafe barIndian r"
+    },
+    {
+      "index": 1,
+      "alt": "",
+      "dimensions": "46x46",
+      "hasAlt": false,
+      "nearbyText": "Filters and topicsFrench cafeNew brewBrew cafeBrew barQuiz nightMalaysian restaurantCafe barIndian r"
+    },
+    {
+      "index": 2,
+      "alt": "",
+      "dimensions": "46x82",
+      "hasAlt": false,
+      "nearbyText": "Filters and topicsFrench cafeNew brewBrew cafeBrew barQuiz nightMalaysian restaurantCafe barIndian r"
+    },
+    {
+      "index": 3,
+      "alt": "",
+      "dimensions": "46x82",
+      "hasAlt": false,
+      "nearbyText": "Filters and topicsFrench cafeNew brewBrew cafeBrew barQuiz nightMalaysian restaurantCafe barIndian r"
+    },
+    {
+      "index": 4,
+      "alt": "",
+      "dimensions": "52x46",
+      "hasAlt": false,
+      "nearbyText": "Filters and topicsFrench cafeNew brewBrew cafeBrew barQuiz nightMalaysian restaurantCafe barIndian r"
+    },
+    {
+      "index": 5,
+      "alt": "",
+      "dimensions": "46x46",
+      "hasAlt": false,
+      "nearbyText": "Filters and topicsFrench cafeNew brewBrew cafeBrew barQuiz nightMalaysian restaurantCafe barIndian r"
+    },
+    {
+      "index": 6,
+      "alt": "",
+      "dimensions": "46x46",
+      "hasAlt": false,
+      "nearbyText": "Filters and topicsFrench cafeNew brewBrew cafeBrew barQuiz nightMalaysian restaurantCafe barIndian r"
+    },
+    {
+      "index": 7,
+      "alt": "",
+      "dimensions": "46x46",
+      "hasAlt": false,
+      "nearbyText": "Filters and topicsFrench cafeNew brewBrew cafeBrew barQuiz nightMalaysian restaurantCafe barIndian r"
+    },
+    {
+      "index": 8,
+      "alt": "New Brew Bar & Restaurant",
+      "dimensions": "224x225",
+      "hasAlt": true,
+      "nearbyText": "FacebookNew Brew Bar & RestaurantFacebookIt's QUIZ NIGHT TONIGHT!!! A night of ...FacebookLunch Dinn"
+    },
+    {
+      "index": 9,
+      "alt": "",
+      "dimensions": "16x16",
+      "hasAlt": false,
+      "nearbyText": "FacebookNew Brew Bar & RestaurantFacebookIt's QUIZ NIGHT TONIGHT!!! A night of ...FacebookLunch Dinn"
+    },
+    {
+      "index": 10,
+      "alt": "It's QUIZ NIGHT TONIGHT!!! A night of ...",
+      "dimensions": "239x211",
+      "hasAlt": true,
+      "nearbyText": "FacebookNew Brew Bar & RestaurantFacebookIt's QUIZ NIGHT TONIGHT!!! A night of ...FacebookLunch Dinn"
+    },
+    {
+      "index": 11,
+      "alt": "",
+      "dimensions": "16x16",
+      "hasAlt": false,
+      "nearbyText": "FacebookNew Brew Bar & RestaurantFacebookIt's QUIZ NIGHT TONIGHT!!! A night of ...FacebookLunch Dinn"
+    },
+    {
+      "index": 12,
+      "alt": "Lunch Dinner",
+      "dimensions": "225x225",
+      "hasAlt": true,
+      "nearbyText": "FacebookNew Brew Bar & RestaurantFacebookIt's QUIZ NIGHT TONIGHT!!! A night of ...FacebookLunch Dinn"
+    },
+    {
+      "index": 13,
+      "alt": "",
+      "dimensions": "16x16",
+      "hasAlt": false,
+      "nearbyText": "FacebookNew Brew Bar & RestaurantFacebookIt's QUIZ NIGHT TONIGHT!!! A night of ...FacebookLunch Dinn"
+    },
+    {
+      "index": 14,
+      "alt": "Let's ketchup",
+      "dimensions": "225x225",
+      "hasAlt": true,
+      "nearbyText": "FacebookNew Brew Bar & RestaurantFacebookIt's QUIZ NIGHT TONIGHT!!! A night of ...FacebookLunch Dinn"
+    },
+    {
+      "index": 15,
+      "alt": "",
+      "dimensions": "16x16",
+      "hasAlt": false,
+      "nearbyText": "FacebookNew Brew Bar & RestaurantFacebookIt's QUIZ NIGHT TONIGHT!!! A night of ...FacebookLunch Dinn"
+    },
+    {
+      "index": 16,
+      "alt": "Wattle Downs Café, Bar & Restaurant",
+      "dimensions": "225x225",
+      "hasAlt": true,
+      "nearbyText": "FacebookNew Brew Bar & RestaurantFacebookIt's QUIZ NIGHT TONIGHT!!! A night of ...FacebookLunch Dinn"
+    },
+    {
+      "index": 17,
+      "alt": "",
+      "dimensions": "16x16",
+      "hasAlt": false,
+      "nearbyText": "FacebookNew Brew Bar & RestaurantFacebookIt's QUIZ NIGHT TONIGHT!!! A night of ...FacebookLunch Dinn"
+    },
+    {
+      "index": 18,
+      "alt": "The Landing Restaurant & Bar | Auckland",
+      "dimensions": "225x225",
+      "hasAlt": true,
+      "nearbyText": "FacebookNew Brew Bar & RestaurantFacebookIt's QUIZ NIGHT TONIGHT!!! A night of ...FacebookLunch Dinn"
+    },
+    {
+      "index": 19,
+      "alt": "",
+      "dimensions": "16x16",
+      "hasAlt": false,
+      "nearbyText": "FacebookNew Brew Bar & RestaurantFacebookIt's QUIZ NIGHT TONIGHT!!! A night of ...FacebookLunch Dinn"
+    }
+  ]
+}

@@ -1,0 +1,369 @@
+{
+  "restaurant": "Unknown Restaurant",
+  "downloadDate": "2025-08-05T22:47:22.931Z",
+  "stats": {
+    "total": 51,
+    "downloaded": 33,
+    "failed": 0,
+    "noImage": 18
+  },
+  "items": [
+    {
+      "dishName": "Bun Cha Hanoi",
+      "categoryName": "Chef Recommendations",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/1075f54f3e70be1431630ada4cbb53fe/f6ed6c5de35d1173b172de4e86e58b14.jpeg",
+      "localPath": "chef_recommendations/bun_cha_hanoi.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Braised Lamb Shank Fusion",
+      "categoryName": "Chef Recommendations",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/c878b3fa08157157657bd939ed3dcad9/9fa36496085334271badf67befaca896.jpeg",
+      "localPath": "chef_recommendations/braised_lamb_shank_fusion.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Hong Kong Style Seafood Medley",
+      "categoryName": "Chef Recommendations",
+      "originalUrl": "https://cn-geo1.uber.com/static/mobile-content/eats/placeholder_images/placeholder_image_restaurants_300x300.png",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Steamed Fish Fillet with Special Sauce",
+      "categoryName": "Chef Recommendations",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/e00562885b64ba87bade5c3fcffcc709/c9e79c0d8f2d295f2bcab4261c94db97.jpeg",
+      "localPath": "chef_recommendations/steamed_fish_fillet_with_special_sauce.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Charsiu Pork Noodles",
+      "categoryName": "Chef Recommendations",
+      "originalUrl": "https://cn-geo1.uber.com/static/mobile-content/eats/placeholder_images/placeholder_image_restaurants_300x300.png",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Honey Lemon Chicken",
+      "categoryName": "Chef Recommendations",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/efe3d5f7508d1063f6dd2112e71d129c/86f7023152840167b8ad9f8dbbecdaef.jpeg",
+      "localPath": "chef_recommendations/honey_lemon_chicken.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Fiery Beef Salad",
+      "categoryName": "Chef Recommendations",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/fbe21300be7794b2b0727b12c9319c9a/904e05bdb98625ab0d9d37b7d61ce817.jpeg",
+      "localPath": "chef_recommendations/fiery_beef_salad.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Tom Kha Delight",
+      "categoryName": "Chef Recommendations",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/8915b9dda4b27db48ec6b9786f7b1bcf/663f633515f497f6fddbf660ae3f6306.jpeg",
+      "localPath": "chef_recommendations/tom_kha_delight.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Pad Thai",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/98a9985e5f7c156f6b78ab79d29ad95b/bc9c318a9c96996e2d990faf2b0c65f6.jpeg",
+      "localPath": "featured_items/pad_thai.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Green Curry",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/b3ee0056caebd0dda19b6de84330103d/bc9c318a9c96996e2d990faf2b0c65f6.jpeg",
+      "localPath": "featured_items/green_curry.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Panang Curry",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/27da18d5159e3f6cb300ef33d59bb431/bc9c318a9c96996e2d990faf2b0c65f6.jpeg",
+      "localPath": "featured_items/panang_curry.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Crispy Chicken with Cashew Nuts",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/9fea264102eb1ed8007d369b1ed8f477/bc9c318a9c96996e2d990faf2b0c65f6.jpeg",
+      "localPath": "featured_items/crispy_chicken_with_cashew_nuts.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Honey Lemon Chicken",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/d516a17bfcdab64a824d800c8ea66d5b/bc9c318a9c96996e2d990faf2b0c65f6.jpeg",
+      "localPath": "featured_items/honey_lemon_chicken.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Black Pepper Blaze",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/844191ed3a32079e8a506b8a2d3e4198/bc9c318a9c96996e2d990faf2b0c65f6.jpeg",
+      "localPath": "featured_items/black_pepper_blaze.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Red Curry",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/382bf4c479ff0c752caab47198fa882f/bc9c318a9c96996e2d990faf2b0c65f6.jpeg",
+      "localPath": "featured_items/red_curry.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Fiery Beef Salad",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/3cd99080c7c806e02b1f9d394bfad6a0/bc9c318a9c96996e2d990faf2b0c65f6.jpeg",
+      "localPath": "featured_items/fiery_beef_salad.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Tom Kha Delight",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/58a62d6355a00e1269f551775931034e/bc9c318a9c96996e2d990faf2b0c65f6.jpeg",
+      "localPath": "featured_items/tom_kha_delight.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Sweet and Sour Fusion",
+      "categoryName": "Stir Fry",
+      "originalUrl": "https://cn-geo1.uber.com/static/mobile-content/eats/placeholder_images/placeholder_image_restaurants_300x300.png",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Ginger Garlic Delight",
+      "categoryName": "Stir Fry",
+      "originalUrl": "https://cn-geo1.uber.com/static/mobile-content/eats/placeholder_images/placeholder_image_restaurants_300x300.png",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Crispy Chicken with Cashew Nuts",
+      "categoryName": "Stir Fry",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/9fea264102eb1ed8007d369b1ed8f477/bc9c318a9c96996e2d990faf2b0c65f6.jpeg",
+      "localPath": "stir_fry/crispy_chicken_with_cashew_nuts.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Peanut Satay Stir Fry",
+      "categoryName": "Stir Fry",
+      "originalUrl": "https://cn-geo1.uber.com/static/mobile-content/eats/placeholder_images/placeholder_image_restaurants_300x300.png",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Lemongrass Infusion",
+      "categoryName": "Stir Fry",
+      "originalUrl": "https://cn-geo1.uber.com/static/mobile-content/eats/placeholder_images/placeholder_image_restaurants_300x300.png",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Black Pepper Blaze",
+      "categoryName": "Stir Fry",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/844191ed3a32079e8a506b8a2d3e4198/bc9c318a9c96996e2d990faf2b0c65f6.jpeg",
+      "localPath": "stir_fry/black_pepper_blaze.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Pork Crispy Spring Rolls",
+      "categoryName": "Entrées",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/ee883a9eaa007059bec416bd127264b4/bc9c318a9c96996e2d990faf2b0c65f6.jpeg",
+      "localPath": "entr_es/pork_crispy_spring_rolls.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Fresh Rice Paper Rolls",
+      "categoryName": "Entrées",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/1d4bfc852962f91bcd9666529fd9c681/bc9c318a9c96996e2d990faf2b0c65f6.jpeg",
+      "localPath": "entr_es/fresh_rice_paper_rolls.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Fried Chicken Wings",
+      "categoryName": "Entrées",
+      "originalUrl": "https://cn-geo1.uber.com/static/mobile-content/eats/placeholder_images/placeholder_image_restaurants_300x300.png",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Crispy Wontons",
+      "categoryName": "Entrées",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/6eabbaa9c9d8ea6d6a0916fa8c6f1773/bc9c318a9c96996e2d990faf2b0c65f6.jpeg",
+      "localPath": "entr_es/crispy_wontons.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Salt and Pepper Squid",
+      "categoryName": "Entrées",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/df042decf8c7d04dc75d3fa05427c0a1/bc9c318a9c96996e2d990faf2b0c65f6.jpeg",
+      "localPath": "entr_es/salt_and_pepper_squid.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Satay Skewers",
+      "categoryName": "Entrées",
+      "originalUrl": "https://cn-geo1.uber.com/static/mobile-content/eats/placeholder_images/placeholder_image_restaurants_300x300.png",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Signature Mixed Platter",
+      "categoryName": "Entrées",
+      "originalUrl": "https://cn-geo1.uber.com/static/mobile-content/eats/placeholder_images/placeholder_image_restaurants_300x300.png",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Vegetarian Crispy Spring Rolls",
+      "categoryName": "Entrées",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/32b931d6564c38a64a01c9f369e7ab96/bc9c318a9c96996e2d990faf2b0c65f6.jpeg",
+      "localPath": "entr_es/vegetarian_crispy_spring_rolls.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Asian Noodle Salad",
+      "categoryName": "Salads and Vegetable Stir Fry",
+      "originalUrl": "https://cn-geo1.uber.com/static/mobile-content/eats/placeholder_images/placeholder_image_restaurants_300x300.png",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Vietnamese Chicken Salad",
+      "categoryName": "Salads and Vegetable Stir Fry",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/2c8763b3c62db668a8571e32aed27436/bc9c318a9c96996e2d990faf2b0c65f6.jpeg",
+      "localPath": "salads_and_vegetable_stir_fry/vietnamese_chicken_salad.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Fiery Beef Salad",
+      "categoryName": "Salads and Vegetable Stir Fry",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/3cd99080c7c806e02b1f9d394bfad6a0/bc9c318a9c96996e2d990faf2b0c65f6.jpeg",
+      "localPath": "salads_and_vegetable_stir_fry/fiery_beef_salad.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Zesty Seafood Salad",
+      "categoryName": "Salads and Vegetable Stir Fry",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/ebbe7bdc0360a90406f370c94b69e47e/bc9c318a9c96996e2d990faf2b0c65f6.jpeg",
+      "localPath": "salads_and_vegetable_stir_fry/zesty_seafood_salad.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Green Vegetable Stir Fried with Tofu (V)",
+      "categoryName": "Salads and Vegetable Stir Fry",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/57e477dde0c1db2bdc386ea125916523/bc9c318a9c96996e2d990faf2b0c65f6.jpeg",
+      "localPath": "salads_and_vegetable_stir_fry/green_vegetable_stir_fried_with_tofu_v_.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Char Siu Fried Rice",
+      "categoryName": "Rice, Noodles and Soup",
+      "originalUrl": "https://cn-geo1.uber.com/static/mobile-content/eats/placeholder_images/placeholder_image_restaurants_300x300.png",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Stir Fried Egg Noodles",
+      "categoryName": "Rice, Noodles and Soup",
+      "originalUrl": "https://cn-geo1.uber.com/static/mobile-content/eats/placeholder_images/placeholder_image_restaurants_300x300.png",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Pad Thai",
+      "categoryName": "Rice, Noodles and Soup",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/6bb577b81f43cff8d4edc064671ade32/19c94b2829bad4978bd57b81f18abd28.jpeg",
+      "localPath": "rice_noodles_and_soup/pad_thai.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Satay Fusion Noodles",
+      "categoryName": "Rice, Noodles and Soup",
+      "originalUrl": "https://cn-geo1.uber.com/static/mobile-content/eats/placeholder_images/placeholder_image_restaurants_300x300.png",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Tom Yum",
+      "categoryName": "Rice, Noodles and Soup",
+      "originalUrl": "https://cn-geo1.uber.com/static/mobile-content/eats/placeholder_images/placeholder_image_restaurants_300x300.png",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Tom Kha Delight",
+      "categoryName": "Rice, Noodles and Soup",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/8915b9dda4b27db48ec6b9786f7b1bcf/663f633515f497f6fddbf660ae3f6306.jpeg",
+      "localPath": "rice_noodles_and_soup/tom_kha_delight.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Laksa",
+      "categoryName": "Rice, Noodles and Soup",
+      "originalUrl": "https://cn-geo1.uber.com/static/mobile-content/eats/placeholder_images/placeholder_image_restaurants_300x300.png",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Coke 330ml",
+      "categoryName": "Drinks",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/de0d54c19ccfeaaefa49bf68792a2354/bc9c318a9c96996e2d990faf2b0c65f6.jpeg",
+      "localPath": "drinks/coke_330ml.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Lemonade 330ml",
+      "categoryName": "Drinks",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/11b4f5e7e6820314dd1d3b3e71161a6c/bc9c318a9c96996e2d990faf2b0c65f6.jpeg",
+      "localPath": "drinks/lemonade_330ml.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Green Curry",
+      "categoryName": "Curry",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/b3ee0056caebd0dda19b6de84330103d/bc9c318a9c96996e2d990faf2b0c65f6.jpeg",
+      "localPath": "curry/green_curry.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Red Curry",
+      "categoryName": "Curry",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/382bf4c479ff0c752caab47198fa882f/bc9c318a9c96996e2d990faf2b0c65f6.jpeg",
+      "localPath": "curry/red_curry.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Massaman Curry",
+      "categoryName": "Curry",
+      "originalUrl": "https://cn-geo1.uber.com/static/mobile-content/eats/placeholder_images/placeholder_image_restaurants_300x300.png",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Panang Curry",
+      "categoryName": "Curry",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/27da18d5159e3f6cb300ef33d59bb431/bc9c318a9c96996e2d990faf2b0c65f6.jpeg",
+      "localPath": "curry/panang_curry.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Rice",
+      "categoryName": "Side",
+      "originalUrl": "https://cn-geo1.uber.com/static/mobile-content/eats/placeholder_images/placeholder_image_restaurants_300x300.png",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Roti",
+      "categoryName": "Side",
+      "originalUrl": "https://cn-geo1.uber.com/static/mobile-content/eats/placeholder_images/placeholder_image_restaurants_300x300.png",
+      "localPath": null,
+      "status": "no_image"
+    }
+  ]
+}

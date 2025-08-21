@@ -1,0 +1,698 @@
+{
+  "restaurant": "Fuzion Kebab",
+  "downloadDate": "2025-08-17T01:39:59.822Z",
+  "stats": {
+    "total": 97,
+    "downloaded": 28,
+    "failed": 7,
+    "noImage": 62
+  },
+  "items": [
+    {
+      "dishName": "Fried chicken Family feast ( 8 Drums & 4 Thighs with Large chips and 1.5 l drink)",
+      "categoryName": "Family Meal",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/669a9df4c72b08744eb4a3aa2836b216/7f4ae9ca0446cbc23e71d8d395a98428.jpeg",
+      "localPath": "family_meal/fried_chicken_family_feast_8_drums_4_thighs_with_l.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Family Meal",
+      "categoryName": "Family Meal",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Kebab wrap combo for three",
+      "categoryName": "Family Meal",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Kebab wrap with 2 Drums and a can drink.",
+      "categoryName": "Family Meal",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/26175648c54c4e482b2528b7235991f2/58f691da9eaef86b0b51f9b2c483fe63.jpeg",
+      "localPath": "family_meal/kebab_wrap_with_2_drums_and_a_can_drink_.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Fish and fried chicken combo ( 4 pieces )",
+      "categoryName": "Family Meal",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/57759a64b7926bb4cfd93e5124716595/58f691da9eaef86b0b51f9b2c483fe63.jpeg",
+      "localPath": "family_meal/fish_and_fried_chicken_combo_4_pieces_.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Kebab wrap combo with regular fries and 750ml Milkshake",
+      "categoryName": "Family Meal",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Meat on rice with regular fries and 750ml Milkshake",
+      "categoryName": "Family Meal",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "2 Hoki fish, 2 sausage and large chips with a can drink",
+      "categoryName": "Family Meal",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Butter Chicken On Chips",
+      "categoryName": "Kebabs",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/916237e53b19e3f3639f4ffe71555498/f0d1762b91fd823a1aa9bd0dab5c648d.jpeg",
+      "localPath": "kebabs/butter_chicken_on_chips.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Butter Chicken Kebab Wrap",
+      "categoryName": "Kebabs",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/4dba99befa183cec2dd4709858cdfe89/f0d1762b91fd823a1aa9bd0dab5c648d.jpeg",
+      "localPath": "kebabs/butter_chicken_kebab_wrap.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Kebab Wrap",
+      "categoryName": "Kebabs",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/be9f6c9ba9cf0a8024c494bc2c67497c/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": "kebabs/kebab_wrap.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Meat on Chips",
+      "categoryName": "Kebabs",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/210ac78ab7f175e11c0bbb6a4471168d/4218ca1d09174218364162cd0b1a8cc1.jpeg",
+      "localPath": "kebabs/meat_on_chips.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Kebab on Rice",
+      "categoryName": "Kebabs",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/133776c33018cd35fdf89297c9a14fac/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": "kebabs/kebab_on_rice.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Low Carbs",
+      "categoryName": "Kebabs",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/7ad1eb212a2c425b333e42e2ad0010d4/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": "kebabs/low_carbs.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Loaded nachos",
+      "categoryName": "Kebabs",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/b7ed92f31b7f7613b112ac2290c7d5db/58f691da9eaef86b0b51f9b2c483fe63.jpeg",
+      "localPath": "kebabs/loaded_nachos.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Kebab wrap and drums combo",
+      "categoryName": "Kebabs",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/271a651efbde48e8a387ca9cc11b2c3b/58f691da9eaef86b0b51f9b2c483fe63.jpeg",
+      "localPath": "kebabs/kebab_wrap_and_drums_combo.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Meat on Chips",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/210ac78ab7f175e11c0bbb6a4471168d/4218ca1d09174218364162cd0b1a8cc1.jpeg",
+      "localPath": "featured_items/meat_on_chips.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Kebab Wrap",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/be9f6c9ba9cf0a8024c494bc2c67497c/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": "featured_items/kebab_wrap.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Dinner Box",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/4eb4b7fbe37fcb9422c3b908bd697ef0/7f4ae9ca0446cbc23e71d8d395a98428.jpeg",
+      "localPath": "featured_items/dinner_box.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Kebab on Rice",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/133776c33018cd35fdf89297c9a14fac/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": "featured_items/kebab_on_rice.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chicken nibble with fries and can drink",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/3c1f622df813ef31827cf5a8d3d6028e/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "featured_items/chicken_nibble_with_fries_and_can_drink.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Butter Chicken Swirl Chips. Large",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/7834b7ebdb2e687f4de57c588922dbd8/f0d1762b91fd823a1aa9bd0dab5c648d.jpeg",
+      "localPath": "featured_items/butter_chicken_swirl_chips_large.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Yokum Burger",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/61b4ee88da1ad18d6c35ddd310807e11/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": "featured_items/yokum_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "BAKLAVA",
+      "categoryName": "Featured items",
+      "originalUrl": "https://d1ralsognjng37.cloudfront.net/f889d524-8441-43ad-98db-cd3687cff3b5.jpeg",
+      "localPath": "featured_items/baklava.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Nachos",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/6d8870a5cb11520ca9bf67de153518c4/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": "featured_items/nachos.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Lunch Box",
+      "categoryName": "Fried chicken meals",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Dinner Box",
+      "categoryName": "Fried chicken meals",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken nibble with fries and can drink",
+      "categoryName": "Fried chicken meals",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "3 Drums and chips",
+      "categoryName": "Fried chicken meals",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Drum lovers",
+      "categoryName": "Fried chicken meals",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Fried chicken Family feast ( 8 Drums & 4 Thighs with Large chips and 1.5 l drink)",
+      "categoryName": "Fried chicken meals",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "12 Drums pack with 2 large fries and 1.5 l drink",
+      "categoryName": "Fried chicken meals",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "16 pack fried drums",
+      "categoryName": "Fried chicken meals",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Veggie Patty Burger",
+      "categoryName": "Burgers",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Beef Burger",
+      "categoryName": "Burgers",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/66d602895184f17e6b635f993c02e8ab/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": "burgers/beef_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Yokum Burger",
+      "categoryName": "Burgers",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/61b4ee88da1ad18d6c35ddd310807e11/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": "burgers/yokum_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Lamb Burger",
+      "categoryName": "Burgers",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Hamburger",
+      "categoryName": "Burgers",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Cheeseburger",
+      "categoryName": "Burgers",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Egg Burger",
+      "categoryName": "Burgers",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken Burger",
+      "categoryName": "Burgers",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Fish Burger",
+      "categoryName": "Burgers",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Double Cheese burger",
+      "categoryName": "Burgers",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Triple cheese burger",
+      "categoryName": "Burgers",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Butter Chicken Swirl Chips. Large",
+      "categoryName": "Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/aa00c12a195ea22cc9618d8d6a7218ed/530976139671a54e044dada9bcb718a4.jpeg",
+      "localPath": "sides/butter_chicken_swirl_chips_large.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Nachos",
+      "categoryName": "Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/900bbebf54fa1140cd0acd8011b283f2/d91641102b139d381db5ca8c6ecc7fc4.jpeg",
+      "localPath": "sides/nachos.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Jalapeno Bites",
+      "categoryName": "Sides",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chips",
+      "categoryName": "Sides",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Wedges with Sour Cream",
+      "categoryName": "Sides",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Fish",
+      "categoryName": "Sides",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Sausage",
+      "categoryName": "Sides",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Crab Stick",
+      "categoryName": "Sides",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Onion rings",
+      "categoryName": "Sides",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Kumara chips",
+      "categoryName": "Sides",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Prawn twisters",
+      "categoryName": "Sides",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Squid ring",
+      "categoryName": "Sides",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken nuggets",
+      "categoryName": "Sides",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Can Drinks",
+      "categoryName": "Beverages",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Bottle Drinks",
+      "categoryName": "Beverages",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Garlic Aioli",
+      "categoryName": "Dip",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Sweet Chilli",
+      "categoryName": "Dip",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Yoghurt",
+      "categoryName": "Dip",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Hummus",
+      "categoryName": "Dip",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Mint Garlic Yoghurt",
+      "categoryName": "Dip",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Mint",
+      "categoryName": "Dip",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Mayonnaise",
+      "categoryName": "Dip",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "BBQ",
+      "categoryName": "Dip",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Hot Chilli",
+      "categoryName": "Dip",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Tomato",
+      "categoryName": "Dip",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Tartar",
+      "categoryName": "Dip",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Mustard",
+      "categoryName": "Dip",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Sour cream",
+      "categoryName": "Dip",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken nuggets",
+      "categoryName": "Dip",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Kebab wrap combo for three",
+      "categoryName": "Specials",
+      "originalUrl": "https://www.ubereats.com/nz/store/fuzion-kebab-manurewa/s0-9tYDIR0K8fIFJB_8SDg?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522b34fbdb5-80c8-4742-bc7c-814907ff120e%2522%252C%2522sectionUuid%2522%253A%252275a64f16-efeb-4d22-99b5-679570acb3c5%2522%252C%2522subsectionUuid%2522%253A%2522069c5fd1-13a6-4392-8554-2334a904c52a%2522%252C%2522itemUuid%2522%253A%25228e23a09a-0471-4855-bf0a-6ef8e6d6fb92%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1",
+      "localPath": null,
+      "status": "failed",
+      "error": "Parse Error: Header overflow"
+    },
+    {
+      "dishName": "Combo Three",
+      "categoryName": "Specials",
+      "originalUrl": "https://www.ubereats.com/nz/store/fuzion-kebab-manurewa/s0-9tYDIR0K8fIFJB_8SDg?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522b34fbdb5-80c8-4742-bc7c-814907ff120e%2522%252C%2522sectionUuid%2522%253A%252275a64f16-efeb-4d22-99b5-679570acb3c5%2522%252C%2522subsectionUuid%2522%253A%2522069c5fd1-13a6-4392-8554-2334a904c52a%2522%252C%2522itemUuid%2522%253A%25220cd71200-9965-4a14-a134-8784e0f2972e%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1",
+      "localPath": null,
+      "status": "failed",
+      "error": "Parse Error: Header overflow"
+    },
+    {
+      "dishName": "Combo Four",
+      "categoryName": "Specials",
+      "originalUrl": "https://www.ubereats.com/nz/store/fuzion-kebab-manurewa/s0-9tYDIR0K8fIFJB_8SDg?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522b34fbdb5-80c8-4742-bc7c-814907ff120e%2522%252C%2522sectionUuid%2522%253A%252275a64f16-efeb-4d22-99b5-679570acb3c5%2522%252C%2522subsectionUuid%2522%253A%2522069c5fd1-13a6-4392-8554-2334a904c52a%2522%252C%2522itemUuid%2522%253A%252260242bd7-23d2-4969-8019-566fed961f78%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1",
+      "localPath": null,
+      "status": "failed",
+      "error": "Parse Error: Header overflow"
+    },
+    {
+      "dishName": "Combo Five",
+      "categoryName": "Specials",
+      "originalUrl": "https://www.ubereats.com/nz/store/fuzion-kebab-manurewa/s0-9tYDIR0K8fIFJB_8SDg?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522b34fbdb5-80c8-4742-bc7c-814907ff120e%2522%252C%2522sectionUuid%2522%253A%252275a64f16-efeb-4d22-99b5-679570acb3c5%2522%252C%2522subsectionUuid%2522%253A%2522069c5fd1-13a6-4392-8554-2334a904c52a%2522%252C%2522itemUuid%2522%253A%2522cfdbd59f-afb9-4044-8d0a-279a6fe26563%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1",
+      "localPath": null,
+      "status": "failed",
+      "error": "Parse Error: Header overflow"
+    },
+    {
+      "dishName": "Combo Six",
+      "categoryName": "Specials",
+      "originalUrl": "https://www.ubereats.com/nz/store/fuzion-kebab-manurewa/s0-9tYDIR0K8fIFJB_8SDg?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522b34fbdb5-80c8-4742-bc7c-814907ff120e%2522%252C%2522sectionUuid%2522%253A%252275a64f16-efeb-4d22-99b5-679570acb3c5%2522%252C%2522subsectionUuid%2522%253A%2522069c5fd1-13a6-4392-8554-2334a904c52a%2522%252C%2522itemUuid%2522%253A%2522c0b88dd4-f4f1-499b-9cfc-06052d4ff594%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1",
+      "localPath": null,
+      "status": "failed",
+      "error": "Parse Error: Header overflow"
+    },
+    {
+      "dishName": "Combo Seven",
+      "categoryName": "Specials",
+      "originalUrl": "https://www.ubereats.com/nz/store/fuzion-kebab-manurewa/s0-9tYDIR0K8fIFJB_8SDg?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522b34fbdb5-80c8-4742-bc7c-814907ff120e%2522%252C%2522sectionUuid%2522%253A%252275a64f16-efeb-4d22-99b5-679570acb3c5%2522%252C%2522subsectionUuid%2522%253A%2522069c5fd1-13a6-4392-8554-2334a904c52a%2522%252C%2522itemUuid%2522%253A%252246a03b36-4b4f-4ce3-9e5b-600e44c5c08a%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1",
+      "localPath": null,
+      "status": "failed",
+      "error": "Parse Error: Header overflow"
+    },
+    {
+      "dishName": "Combo Eight",
+      "categoryName": "Specials",
+      "originalUrl": "https://www.ubereats.com/nz/store/fuzion-kebab-manurewa/s0-9tYDIR0K8fIFJB_8SDg?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522b34fbdb5-80c8-4742-bc7c-814907ff120e%2522%252C%2522sectionUuid%2522%253A%252275a64f16-efeb-4d22-99b5-679570acb3c5%2522%252C%2522subsectionUuid%2522%253A%2522069c5fd1-13a6-4392-8554-2334a904c52a%2522%252C%2522itemUuid%2522%253A%25229444e369-92eb-4f2e-ad77-3dc7299164c2%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1",
+      "localPath": null,
+      "status": "failed",
+      "error": "Parse Error: Header overflow"
+    },
+    {
+      "dishName": "BAKLAVA",
+      "categoryName": "Desserts",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/496f721a4439a16e139f7df48da829b2/80e724aac6c998e7f45ff49ef26e8dca.jpeg",
+      "localPath": "desserts/baklava.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "BAKLAVA",
+      "categoryName": "Desserts",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/0ba7e31dcea11e858dcdfc783376cd4e/80e724aac6c998e7f45ff49ef26e8dca.jpeg",
+      "localPath": "desserts/baklava.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Nutella and Cheese Toastie",
+      "categoryName": "Desserts",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Donuts with chocolate dip",
+      "categoryName": "Desserts",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Cheese and onion",
+      "categoryName": "Toastie",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Banana Shake",
+      "categoryName": "Milk shakes and thick shakes",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Lime shake",
+      "categoryName": "Milk shakes and thick shakes",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Caramel shake",
+      "categoryName": "Milk shakes and thick shakes",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chocolate shake",
+      "categoryName": "Milk shakes and thick shakes",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Vanilla Shake",
+      "categoryName": "Milk shakes and thick shakes",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Strawberry Shake",
+      "categoryName": "Milk shakes and thick shakes",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "RASPBERRY",
+      "categoryName": "Milk shakes and thick shakes",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Kebab wrap with 2 Drums and a can drink.",
+      "categoryName": "Combos",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/58487000ed3ae228ca8f61f3853d63f2/4796c842d9b8e4afe99182e353aa6f5e.jpeg",
+      "localPath": "combos/kebab_wrap_with_2_drums_and_a_can_drink_.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Fish and fried chicken combo ( 4 pieces )",
+      "categoryName": "Combos",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/694f73ba36ae7599c07aee2a3d559f87/8a446d76681599ce804186eb3167355f.jpeg",
+      "localPath": "combos/fish_and_fried_chicken_combo_4_pieces_.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Kebab wrap combo with regular fries and 750ml Milkshake",
+      "categoryName": "Combos",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Meat on rice with regular fries and 750ml Milkshake",
+      "categoryName": "Combos",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "2 Hoki fish, 2 sausage and large chips with a can drink",
+      "categoryName": "Combos",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    }
+  ]
+}

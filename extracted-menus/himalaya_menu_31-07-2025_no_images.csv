@@ -1,0 +1,18 @@
+menuID,menuName,menuDisplayName,menuDescription,categoryID,categoryName,categoryDisplayName,categoryDescription,dishID,dishName,dishPrice,dishType,dishDescription,displayName,printName,tags
+,Featured Items,,,,Featured Items,,,,Steamed Chicken Momo,30.00,standard,No. 1 most liked,,,
+,Featured Items 2,,,,Featured Items,,,,Chicken Fried Noodles,31.00,standard,No. 2 most liked,,,
+,Featured Items 3,,,,Featured Items,,,,Chicken Jhol Momo,34.00,standard,No. 3 most liked,,,
+,Featured Items 4,,,,Featured Items,,,,Mixed Fried Noodles,35.00,standard,,,,
+,Featured Items 5,,,,Featured Items,,,,Steamed Vegan Momo (VG),30.00,standard,,,,
+,Featured Items 6,,,,Featured Items,,,,Vegan Fried Noodles (VG),26.00,standard,,,,
+,Featured Items 7,,,,Featured Items,,,,Egg Fried Noodles,31.00,standard,,,,
+,Mains,,,,Mains,,,,Steamed Vegan Momo (VG),30.00,standard,Comes in twelve pieces.,,,
+,Mains 9,,,,Mains,,,,Steamed Chicken Momo,30.00,standard,Comes in twelve pieces.,,,Popular
+,Mains 10,,,,Mains,,,,Vegan Jhol Momo (VG),34.00,standard,Comes in twelve pieces.,,,
+,Mains 11,,,,Mains,,,,Chicken Jhol Momo,34.00,standard,Comes in twelve pieces.,,,
+,Mains 12,,,,Mains,,,,Vegan Fried Noodles (VG),26.00,standard,"Stir-fried noodles, a vegan delight.",,
+,Mains 13,,,,Mains,,,,Egg Fried Noodles,31.00,standard,Stir-fried noodles with eggs.,,,
+,Mains 14,,,,Mains,,,,Chicken Fried Noodles,31.00,standard,Stir-fried noodles with chicken.,,,Popular
+,Mains 15,,,,Mains,,,,Mixed Fried Noodles,35.00,standard,"Comes with vegetables, chicken and eggs.",,
+,Mains 16,,,,Mains,,,,Vegetable Chilli Momo (V),24.00,standard,"Steamed dumplings filled with a mix of vegetables and spices, served in a chilli sauce.",,
+,Mains 17,,,,Mains,,,,Chicken Chilli Momo,24.00,standard,Spicy chicken dumplings filled with chilli.,,,Spicy

@@ -1,0 +1,19 @@
+{
+  "restaurant": "Curry Garden",
+  "primaryColor": "#A47F20",
+  "secondaryColor": "#C56421",
+  "theme": "dark",
+  "preset": "Interactive Showcase",
+  "components": {
+    "navBarTextEffects": {
+      "enabled": true,
+      "logoGradient": false
+    },
+    "welcomeMessages": {
+      "enabled": true,
+      "timeBasedGreeting": true,
+      "restaurantName": "Curry Garden"
+    }
+  },
+  "generatedAt": "2025-08-07T04:16:47.104Z"
+}

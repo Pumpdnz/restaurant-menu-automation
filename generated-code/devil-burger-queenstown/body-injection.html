@@ -1,0 +1,345 @@
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+      // Add ripple effect to buttons
+      function createRipple(event) {
+        const button = event.currentTarget;
+        
+        const circle = document.createElement("span");
+        const diameter = Math.max(button.clientWidth, button.clientHeight);
+        const radius = diameter / 2;
+        
+        circle.style.width = circle.style.height = `${diameter}px`;
+        circle.style.left = `${event.clientX - button.getBoundingClientRect().left - radius}px`;
+        circle.style.top = `${event.clientY - button.getBoundingClientRect().top - radius}px`;
+        circle.classList.add("ripple");
+        
+        const ripple = button.getElementsByClassName("ripple")[0];
+        
+        if (ripple) {
+          ripple.remove();
+        }
+        
+        button.appendChild(circle);
+      }
+      
+      // Add ripple style
+      const style = document.createElement('style');
+      style.textContent = `
+        .ripple {
+          position: absolute;
+          background-color: rgba(255, 255, 255, 0.4);
+          border-radius: 50%;
+          transform: scale(0);
+          animation: ripple 0.3s linear;
+          pointer-events: none;
+        }
+        
+        @keyframes ripple {
+          to {
+            transform: scale(4);
+            opacity: 0;
+          }
+        }
+        
+        .sc-bdVaJa, button[color="primary"], button {
+          position: relative;
+          overflow: hidden;
+        }
+      `;
+      document.head.appendChild(style);
+      
+      // Apply ripple effect to primary buttons
+      const buttons = document.querySelectorAll(".sc-bdVaJa, button[color='primary'], button");
+      buttons.forEach(button => {
+        button.addEventListener("click", createRipple);
+      });
+    
+
+
+      // Customisable time-based greeting message
+      setTimeout(() => {
+        const timeOfDay = new Date().getHours();
+        let greeting = '';
+        
+        // Use customisable time thresholds and messages
+        if (timeOfDay < 12) {
+          greeting = 'Good morning!';
+        } else if (timeOfDay < 17) {
+          greeting = 'Good afternoon!';
+        } else {
+          greeting = 'Good evening!';
+        }
+        
+        const greetingDiv = document.createElement('div');
+        greetingDiv.style.position = 'fixed';
+        greetingDiv.style.top = '160px';
+        greetingDiv.style.right = '20px';
+        greetingDiv.style.padding = '15px 25px';
+        greetingDiv.style.background = 'linear-gradient(135deg, #E1241D, #FDCC08)';
+        greetingDiv.style.borderRadius = '12px';
+        greetingDiv.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.3)';
+        greetingDiv.style.zIndex = '1000';
+        greetingDiv.style.opacity = '0';
+        greetingDiv.style.transform = 'translateX(100%)';
+        greetingDiv.style.transition = 'all 0.5s ease';
+        greetingDiv.style.fontFamily = 'inherit';
+        greetingDiv.style.fontSize = '16px';
+        
+        greetingDiv.innerHTML = `<strong style="color: #ffffff; font-size: 16px;">${greeting}</strong><br><small style="color: #ffffff; font-size: 14px;">Welcome to Devil Burger Queenstown!</small>`;
+        
+        document.body.appendChild(greetingDiv);
+        
+        setTimeout(() => {
+          greetingDiv.style.opacity = '1';
+          greetingDiv.style.transform = 'translateX(0)';
+        }, 100);
+        
+        setTimeout(() => {
+          greetingDiv.style.opacity = '0';
+          greetingDiv.style.transform = 'translateX(100%)';
+          setTimeout(() => greetingDiv.remove(), 500);
+        }, 4000);
+      }, 1500);
+    
+});
+</script>
+
+<!-- Phone Validation Script -->
+
+<script>
+// NZ/AUS Phone Validation - Final Production Version
+// Validates: starts with 02 (9-11 digits) or 04 (exactly 10 digits)
+// No debouncing - immediate validation
+
+(function() {
+  'use strict';
+  
+  // Add required CSS
+  const style = document.createElement('style');
+  style.textContent = `
+    .phone-validation-blocked {
+      display: none !important;
+    }
+    
+    .phone-error-message {
+      color: #1ea72e;
+      font-size: 14px;
+      margin-top: 5px;
+      padding: 5px 10px;
+      background: rgba(30, 167, 46, 0.1);
+      border-radius: 4px;
+      border: 1px solid rgba(30, 167, 46, 0.3);
+    }
+    
+    .phone-warning-message {
+      background: rgba(255, 193, 7, 0.1);
+      border: 1px solid rgba(255, 193, 7, 0.3);
+      color: #ffc107;
+      font-size: 14px;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      text-align: center;
+      font-weight: 600;
+    }
+    
+    .PhoneInputInput.invalid {
+      border-color: #1ea72e !important;
+      background-color: rgba(30, 167, 46, 0.05) !important;
+    }
+  `;
+  document.head.appendChild(style);
+  
+  // Main validation function
+  const phoneValidation = () => {
+    // Find phone input
+    const phoneInput = document.querySelector('.PhoneInputInput');
+    if (!phoneInput) {
+      return;
+    }
+    
+    // Check if validation is already set up
+    if (phoneInput.hasAttribute('data-validation-setup')) {
+      return;
+    }
+    phoneInput.setAttribute('data-validation-setup', 'true');
+    
+    // Create error element
+    let errorElement = document.querySelector('.phone-error-message');
+    if (!errorElement) {
+      errorElement = document.createElement('div');
+      errorElement.className = 'phone-error-message';
+      errorElement.style.display = 'none';
+      
+      const phoneContainer = phoneInput.closest('.PhoneInput');
+      if (phoneContainer) {
+        phoneContainer.parentNode.insertBefore(errorElement, phoneContainer.nextSibling);
+      }
+    }
+    
+    // Create warning element
+    let warningElement = null;
+    
+    // SIMPLE validation - check prefix and appropriate length
+    const validatePhone = (phoneNumber) => {
+      // Remove all non-digit characters
+      const cleanNumber = phoneNumber.replace(/\D/g, '');
+      
+      // Check if empty
+      if (!cleanNumber) {
+        return { valid: false, error: 'Phone number is required' };
+      }
+      
+      // Check if starts with 02 or 04
+      if (!cleanNumber.startsWith('02') && !cleanNumber.startsWith('04')) {
+        return { valid: false, error: 'Mobile number must start with 02 or 04' };
+      }
+      
+      // Check length based on prefix
+      if (cleanNumber.startsWith('04')) {
+        // 04 numbers must be exactly 10 digits
+        if (cleanNumber.length !== 10) {
+          return { valid: false, error: `(${cleanNumber.length}/10)` };
+        }
+      } else if (cleanNumber.startsWith('02')) {
+        // 02 numbers can be 9-11 digits
+        if (cleanNumber.length < 9) {
+          return { valid: false, error: `(${cleanNumber.length}/9)` };
+        }
+        if (cleanNumber.length > 11) {
+          return { valid: false, error: `(${cleanNumber.length}/11)` };
+        }
+      }
+      
+      return { valid: true };
+    };
+    
+    // Toggle payment section
+    const togglePaymentButtons = (show) => {
+      const paymentSection = document.querySelector('[class*="checkout__PlaceOrderWrapper"]');
+      
+      if (paymentSection) {
+        if (show) {
+          paymentSection.classList.remove('phone-validation-blocked');
+          if (warningElement) {
+            warningElement.remove();
+            warningElement = null;
+          }
+        } else {
+          paymentSection.classList.add('phone-validation-blocked');
+          
+          if (!warningElement) {
+            warningElement = document.createElement('div');
+            warningElement.className = 'phone-warning-message';
+            warningElement.innerHTML = 'Please enter a valid mobile number to place your order';
+            paymentSection.parentNode.insertBefore(warningElement, paymentSection);
+          }
+        }
+      }
+    };
+    
+    // Handle validation - NO DEBOUNCING
+    const handleValidation = () => {
+      const phoneValue = phoneInput.value;
+      const validation = validatePhone(phoneValue);
+      
+      if (validation.valid) {
+        errorElement.style.display = 'none';
+        phoneInput.classList.remove('invalid');
+        togglePaymentButtons(true);
+      } else {
+        errorElement.textContent = validation.error;
+        errorElement.style.display = 'block';
+        phoneInput.classList.add('invalid');
+        togglePaymentButtons(false);
+      }
+    };
+    
+    // Event handlers
+    const inputHandler = (e) => {
+      handleValidation();
+    };
+    
+    const changeHandler = (e) => {
+      handleValidation();
+    };
+    
+    const blurHandler = (e) => {
+      handleValidation();
+    };
+    
+    const keyupHandler = (e) => {
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        handleValidation();
+      }
+    };
+    
+    const pasteHandler = (e) => {
+      setTimeout(() => {
+        handleValidation();
+      }, 0);
+    };
+    
+    const cutHandler = (e) => {
+      setTimeout(() => {
+        handleValidation();
+      }, 0);
+    };
+    
+    // Set up ALL event listeners
+    phoneInput.addEventListener('input', inputHandler);
+    phoneInput.addEventListener('change', changeHandler);
+    phoneInput.addEventListener('blur', blurHandler);
+    phoneInput.addEventListener('keyup', keyupHandler);
+    phoneInput.addEventListener('paste', pasteHandler);
+    phoneInput.addEventListener('cut', cutHandler);
+    
+    // Check initial value
+    if (phoneInput.value) {
+      handleValidation();
+    } else {
+      togglePaymentButtons(false);
+    }
+  };
+  
+  // Modal observer
+  const modalObserver = new MutationObserver((mutations) => {
+    const checkoutModal = document.getElementById('checkout-modal');
+    const phoneInput = document.querySelector('.PhoneInputInput');
+    
+    if (checkoutModal && checkoutModal.style.display !== 'none' && phoneInput) {
+      phoneValidation();
+    }
+    
+    for (const mutation of mutations) {
+      if (mutation.type === 'childList') {
+        const addedNodes = Array.from(mutation.addedNodes);
+        const hasPhoneInput = addedNodes.some(node => {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            return node.querySelector && (
+              node.querySelector('.PhoneInputInput') ||
+              node.classList && node.classList.contains('PhoneInput')
+            );
+          }
+          return false;
+        });
+        
+        if (hasPhoneInput) {
+          setTimeout(phoneValidation, 100);
+        }
+      }
+    }
+  });
+  
+  modalObserver.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+  
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(phoneValidation, 500);
+  });
+  
+})();
+</script>

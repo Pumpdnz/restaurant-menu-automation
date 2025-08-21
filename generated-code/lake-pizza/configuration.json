@@ -1,0 +1,19 @@
+{
+  "restaurant": "Lake Pizza",
+  "primaryColor": "#3FA9D4",
+  "secondaryColor": "#000000",
+  "theme": "dark",
+  "preset": "Interactive Showcase",
+  "components": {
+    "navBarTextEffects": {
+      "enabled": true,
+      "logoGradient": false
+    },
+    "welcomeMessages": {
+      "enabled": true,
+      "timeBasedGreeting": true,
+      "restaurantName": "Lake Pizza"
+    }
+  },
+  "generatedAt": "2025-08-07T03:59:26.839Z"
+}

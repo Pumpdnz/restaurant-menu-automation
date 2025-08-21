@@ -1,0 +1,154 @@
+{
+  "restaurant": "Unknown Restaurant",
+  "downloadDate": "2025-08-05T05:09:08.354Z",
+  "stats": {
+    "total": 20,
+    "downloaded": 18,
+    "failed": 2,
+    "noImage": 0
+  },
+  "items": [
+    {
+      "dishName": "Loaded Nachos",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/8297b9d8914a7f0837491dcd166ea529/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "featured_items/loaded_nachos.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Fish and Chips",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/12a0044bfb9835be3e5a410394f43f9c/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "featured_items/fish_and_chips.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Spicy Bird Burger",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/2c14efbe5d2c825d16b0e64f6f5b26bd/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "featured_items/spicy_bird_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Fishy Burger",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/954d2ed68813e1f330cd947bf03c94a5/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "featured_items/fishy_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "The Dominator Burger",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/e43db2ec586566c3cb320eb20aa133b3/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "featured_items/the_dominator_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Bombay Fried Chicken",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/bfdb1b15ebf4366178434b4b3cc95bf9/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "featured_items/bombay_fried_chicken.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Spicy Bird Burger",
+      "categoryName": "Burgers",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/b34212ead25bf1ccb007f59da4c99cfa/3abbb396d0be3ff6a49b6a54e2ba05e9.jpeg",
+      "localPath": "burgers/spicy_bird_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Grill Thrill Burger",
+      "categoryName": "Burgers",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/17ce42590a9818209b8f5b9dc3352357/2864c2278ae9bdfd9d9ba184ec7cdd21.jpeg",
+      "localPath": "burgers/grill_thrill_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "The Dominator Burger",
+      "categoryName": "Burgers",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/f5604bf6fca5acb5d1a0ff2d513a6190/0fa4eef3db2df928e5cca6091f3636d2.jpeg",
+      "localPath": "burgers/the_dominator_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Smashed It Burger",
+      "categoryName": "Burgers",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/4c46d8c5b637df3b5470fe57966544cf/cd44aad7ad85354a820cd17b9bae8fe1.jpeg",
+      "localPath": "burgers/smashed_it_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Fishy Burger",
+      "categoryName": "Burgers",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/1443833aa5fdd8dfe39baae30b40e4ab/01e0e3b5c67269ab2c0d3a9f1575a015.jpeg",
+      "localPath": "burgers/fishy_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Meat Less Burger",
+      "categoryName": "Burgers",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/cf1bdb4d4f84f7cff9d65aba87071b79/2286d7fa6d03672f1419247f526c3b9f.jpeg",
+      "localPath": "burgers/meat_less_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Cajun Fries",
+      "categoryName": "Fries & loaded fries",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/4aacc1de55b4e11d366b60ace08bcffa/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "fries_loaded_fries/cajun_fries.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Wedges",
+      "categoryName": "Fries & loaded fries",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/0216d48b9bbaa422a31ecd98090988a3/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "fries_loaded_fries/wedges.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Loaded Fries",
+      "categoryName": "Fries & loaded fries",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/8403a59b9c0fb74f241792474069c762/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "fries_loaded_fries/loaded_fries.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Fish and Chips",
+      "categoryName": "Not Burgers",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/12a0044bfb9835be3e5a410394f43f9c/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "not_burgers/fish_and_chips.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Loaded Nachos",
+      "categoryName": "Not Burgers",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/8297b9d8914a7f0837491dcd166ea529/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "not_burgers/loaded_nachos.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Bombay Fried Chicken",
+      "categoryName": "Fried Chicken",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/bfdb1b15ebf4366178434b4b3cc95bf9/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "fried_chicken/bombay_fried_chicken.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Dominator Fried Chicken",
+      "categoryName": "Fried Chicken",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/3da48da6-ed2d-4935-8ab4-da9ef770031a.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Buttermilk Fried chicken",
+      "categoryName": "Fried Chicken",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/3da48da6-ed2d-4935-8ab4-da9ef770031a.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    }
+  ]
+}

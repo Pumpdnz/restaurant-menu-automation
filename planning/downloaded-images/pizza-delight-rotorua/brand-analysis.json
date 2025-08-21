@@ -1,0 +1,88 @@
+{
+  "restaurant": "Pizza Delight",
+  "location": "Rotorua",
+  "website": "https://www.pizzadelight.co.nz",
+  "extractedAt": "2025-08-19T02:26:36.645Z",
+  "logo": {
+    "type": "url",
+    "dimensions": "125x125",
+    "saved": true,
+    "logoColors": [
+      {
+        "hex": "#000000",
+        "name": "Black",
+        "description": "Primary background color of the circular logo"
+      },
+      {
+        "hex": "#FFFFFF",
+        "name": "White",
+        "description": "Main text color for 'Pizza' and 'Delight' branding"
+      },
+      {
+        "hex": "#D4B896",
+        "name": "Beige",
+        "description": "Pizza dough and crust color in food illustrations"
+      },
+      {
+        "hex": "#C41E3A",
+        "name": "Red",
+        "description": "Tomatoes and pizza sauce color in food graphics"
+      },
+      {
+        "hex": "#FFD700",
+        "name": "Gold",
+        "description": "Beer/beverage color in food illustrations"
+      },
+      {
+        "hex": "#228B22",
+        "name": "Green",
+        "description": "Herbs and basil color on pizza graphics"
+      },
+      {
+        "hex": "#8B4513",
+        "name": "Brown",
+        "description": "Various cooked food items and details"
+      }
+    ]
+  },
+  "websiteColors": [
+    {
+      "hex": "#663300",
+      "name": "Mixed",
+      "usage": "background, text, border",
+      "frequency": 297
+    },
+    {
+      "hex": "#333333",
+      "name": "Gray",
+      "usage": "text, border",
+      "frequency": 16
+    },
+    {
+      "hex": "#CC3366",
+      "name": "Purple",
+      "usage": "text, border",
+      "frequency": 12
+    },
+    {
+      "hex": "#FFFFFF",
+      "name": "White",
+      "usage": "background, border, text",
+      "frequency": 8
+    },
+    {
+      "hex": "#F9F3E6",
+      "name": "White",
+      "usage": "text, border",
+      "frequency": 2
+    },
+    {
+      "hex": "#000000",
+      "name": "Black",
+      "usage": "text",
+      "frequency": 1
+    }
+  ],
+  "theme": "light",
+  "backgroundColor": "#FFFFFF"
+}

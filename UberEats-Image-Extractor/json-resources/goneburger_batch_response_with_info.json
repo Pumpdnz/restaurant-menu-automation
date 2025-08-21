@@ -1,0 +1,496 @@
+{
+  "success": true,
+  "data": {
+    "menuItems": [
+      {
+        "dishName": "I Am Piggie Burger",
+        "dishPrice": 14.32,
+        "dishDescription": "Buttermilk crispy chicken, streaky bacon, melted cheddar cheese, lettuce, homemade garlic aioli and homemade bbq sauce in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/bdf8de88-aa7b-4e5e-be47-1e459bc4b3e6-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Most Liked"
+      },
+      {
+        "dishName": "The Aztec",
+        "dishPrice": 14.32,
+        "dishDescription": "Homemade beef patty, melted cheddar cheese, smashed avocado, sautéed onions, home-made garlic aioli, crunchy jalapeños, lettuce and tomato in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/4d949630-0ed6-47db-aef1-4f89b9b44b7d-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Most Liked"
+      },
+      {
+        "dishName": "The Big Daddy",
+        "dishPrice": 21.9,
+        "dishDescription": "Homemade double beef patty, double streaky bacon, double melted Cheddar cheese, crispy onions rings, crispy jalapeños, home-made garlic aioli and home-made BBQ sauce in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6bbb76f5-8030-40c2-bfaa-1a2fce6d1018-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Most Liked"
+      },
+      {
+        "dishName": "Gone Clucky",
+        "dishPrice": 18.9,
+        "dishDescription": "Buttermilk crispy chicken, streaky bacon, melted cheddar cheese, smashed avocado, gone burger sauce, sautéed onions, lettuce and tomato in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/61413a8b-217a-4524-902f-e03e37ae5649-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Most Liked"
+      },
+      {
+        "dishName": "Gone Cheesy",
+        "dishPrice": 17.9,
+        "dishDescription": "Homemade beef patty, melted cheddar cheese, home-made garlic aioli, gherkins, sautéed onions, lettuce and tomato in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/08802321-2914-4a47-aec6-9f1d5dd9fd63-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Most Liked"
+      },
+      {
+        "dishName": "Loaded Wedges",
+        "dishPrice": 15.9,
+        "dishDescription": "Topped with Bacon, cheese and sweet chilli. Served with homemade aioli (Not Gluten free)",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/8693dcb1-0df1-4202-b9ec-52e041d8c45b-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Most Liked"
+      },
+      {
+        "dishName": "I Am Piggie Burger",
+        "dishPrice": 14.32,
+        "dishDescription": "Buttermilk crispy chicken, streaky bacon, melted cheddar cheese, lettuce, homemade garlic aioli and homemade bbq sauce in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/bdf8de88-aa7b-4e5e-be47-1e459bc4b3e6-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Featured Items"
+      },
+      {
+        "dishName": "The Aztec",
+        "dishPrice": 14.32,
+        "dishDescription": "Homemade beef patty, melted cheddar cheese, smashed avocado, sautéed onions, home-made garlic aioli, crunchy jalapeños, lettuce and tomato in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/4d949630-0ed6-47db-aef1-4f89b9b44b7d-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Featured Items"
+      },
+      {
+        "dishName": "The Big Daddy",
+        "dishPrice": 21.9,
+        "dishDescription": "Homemade double beef patty, double streaky bacon, double melted Cheddar cheese, crispy onions rings, crispy jalapeños, home-made garlic aioli and home-made BBQ sauce in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6bbb76f5-8030-40c2-bfaa-1a2fce6d1018-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Featured Items"
+      },
+      {
+        "dishName": "Gone Clucky",
+        "dishPrice": 18.9,
+        "dishDescription": "Buttermilk crispy chicken, streaky bacon, melted cheddar cheese, smashed avocado, gone burger sauce, sautéed onions, lettuce and tomato in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/61413a8b-217a-4524-902f-e03e37ae5649-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Featured Items"
+      },
+      {
+        "dishName": "Loaded Wedges",
+        "dishPrice": 15.9,
+        "dishDescription": "Topped with Bacon, cheese and sweet chilli. Served with homemade aioli (Not Gluten free)",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/8693dcb1-0df1-4202-b9ec-52e041d8c45b-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Featured Items"
+      },
+      {
+        "dishName": "Gone Cheesy",
+        "dishPrice": 17.9,
+        "dishDescription": "Homemade beef patty, melted cheddar cheese, home-made garlic aioli, gherkins, sautéed onions, lettuce and tomato in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/08802321-2914-4a47-aec6-9f1d5dd9fd63-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Featured Items"
+      },
+      {
+        "dishName": "Gone Classic",
+        "dishPrice": 18.9,
+        "dishDescription": "Homemade beef patty, streaky bacon,melted cheddar cheese, sautéed onions, beetroot relish, home made garlic aioli, fried egg, lettuce and tomato in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/40bf3dee-8472-4d81-b929-376cacd70ec8-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Featured Items"
+      },
+      {
+        "dishName": "Premium Fries Regular",
+        "dishPrice": 7.5,
+        "dishDescription": "Premium sure crispy fries served with home-made aioli.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/78c436e7-efe1-469a-81c1-1310f01402a0-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Featured Items"
+      },
+      {
+        "dishName": "Loaded Fries",
+        "dishPrice": 15.99,
+        "dishDescription": "Premium sure crispy fries topped with bacon and cheese. Served with home-made Aioli.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/342e46b9-5227-4848-9961-b12c20520f86-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Featured Items"
+      },
+      {
+        "dishName": "The American",
+        "dishPrice": 17.9,
+        "dishDescription": "Homemade beef Pattie, streaky bacon, melted cheddar cheese, homemade onion rings, lettuce, homemade garlic aioli and homemade bbq sauce in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/48859366-5a0a-437c-9df9-629db2549c47-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Featured Items"
+      },
+      {
+        "dishName": "Retro Chicken",
+        "dishPrice": 18.9,
+        "dishDescription": "Marinated grilled chicken, streaky bacon, melted Camembert cheese, homemade garlic aioli, spiced plum sauce, sautéed onions, lettuce and tomato in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/fe348abb-5abc-4021-8161-283a7a6c6e1e-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Featured Items"
+      },
+      {
+        "dishName": "Coke Range",
+        "dishPrice": 6,
+        "dishDescription": "Drink from Coke range",
+        "imageURL": null,
+        "tags": [],
+        "categoryName": "Featured Items"
+      },
+      {
+        "dishName": "The Big Daddy",
+        "dishPrice": 21.9,
+        "dishDescription": "Homemade double beef patty, double streaky bacon, double melted Cheddar cheese, crispy onions rings, crispy jalapeños, home-made garlic aioli and home-made BBQ sauce in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6bbb76f5-8030-40c2-bfaa-1a2fce6d1018-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "Loaded Wedges",
+        "dishPrice": 15.9,
+        "dishDescription": "Topped with Bacon, cheese and sweet chilli. Served with homemade aioli (Not Gluten free)",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/8693dcb1-0df1-4202-b9ec-52e041d8c45b-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "I Am Piggie Burger",
+        "dishPrice": 14.32,
+        "dishDescription": "Buttermilk crispy chicken, streaky bacon, melted cheddar cheese, lettuce, homemade garlic aioli and homemade bbq sauce in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/bdf8de88-aa7b-4e5e-be47-1e459bc4b3e6-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "Gone Clucky",
+        "dishPrice": 18.9,
+        "dishDescription": "Buttermilk crispy chicken, streaky bacon, melted cheddar cheese, smashed avocado, gone burger sauce, sautéed onions, lettuce and tomato in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/61413a8b-217a-4524-902f-e03e37ae5649-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "Gone Cheesy",
+        "dishPrice": 17.9,
+        "dishDescription": "Homemade beef patty, melted cheddar cheese, home-made garlic aioli, gherkins, sautéed onions, lettuce and tomato in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/08802321-2914-4a47-aec6-9f1d5dd9fd63-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "Premium Fries Regular",
+        "dishPrice": 7.5,
+        "dishDescription": "Premium sure crispy fries served with home-made aioli.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/78c436e7-efe1-469a-81c1-1310f01402a0-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "Loaded Fries",
+        "dishPrice": 15.99,
+        "dishDescription": "Premium sure crispy fries topped with bacon and cheese. Served with home-made Aioli.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/342e46b9-5227-4848-9961-b12c20520f86-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "The American",
+        "dishPrice": 17.9,
+        "dishDescription": "Homemade beef Pattie, streaky bacon, melted cheddar cheese, homemade onion rings, lettuce, homemade garlic aioli and homemade bbq sauce in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/48859366-5a0a-437c-9df9-629db2549c47-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "Premium Fries Large",
+        "dishPrice": 9.9,
+        "dishDescription": "Premium sure crispy fries served with home-made aioli.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/2d136397-44a8-4e8e-9387-e544a2e88c8f-retina-large.png",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "Gone Classic",
+        "dishPrice": 18.9,
+        "dishDescription": "Homemade beef patty, streaky bacon,melted cheddar cheese, sautéed onions, beetroot relish, home made garlic aioli, fried egg, lettuce and tomato in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/40bf3dee-8472-4d81-b929-376cacd70ec8-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "Retro Chicken",
+        "dishPrice": 18.9,
+        "dishDescription": "Marinated grilled chicken, streaky bacon, melted Camembert cheese, homemade garlic aioli, spiced plum sauce, sautéed onions, lettuce and tomato in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/fe348abb-5abc-4021-8161-283a7a6c6e1e-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "The Aztec",
+        "dishPrice": 14.32,
+        "dishDescription": "Homemade beef patty, melted cheddar cheese, smashed avocado, sautéed onions, home-made garlic aioli, crunchy jalapeños, lettuce and tomato in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/4d949630-0ed6-47db-aef1-4f89b9b44b7d-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Beef Burgers"
+      },
+      {
+        "dishName": "Gone Classic",
+        "dishPrice": 18.9,
+        "dishDescription": "Homemade beef patty, streaky bacon,melted cheddar cheese, sautéed onions, beetroot relish, home made garlic aioli, fried egg, lettuce and tomato in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/40bf3dee-8472-4d81-b929-376cacd70ec8-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Beef Burgers"
+      },
+      {
+        "dishName": "Gone Cheesy",
+        "dishPrice": 17.9,
+        "dishDescription": "Homemade beef patty, melted cheddar cheese, home-made garlic aioli, gherkins, sautéed onions, lettuce and tomato in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/08802321-2914-4a47-aec6-9f1d5dd9fd63-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Beef Burgers"
+      },
+      {
+        "dishName": "Peek a Moo",
+        "dishPrice": 13.9,
+        "dishDescription": "Homemade beef Pattie, melted cheddar cheese, gherkin, mustard, lettuce and homemade garlic aioli in our homemade toasted bun.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Beef Burgers"
+      },
+      {
+        "dishName": "The Big Daddy",
+        "dishPrice": 21.9,
+        "dishDescription": "Homemade double beef patty, double streaky bacon, double melted Cheddar cheese, crispy onions rings, crispy jalapeños, home-made garlic aioli and home-made BBQ sauce in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6bbb76f5-8030-40c2-bfaa-1a2fce6d1018-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Beef Burgers"
+      },
+      {
+        "dishName": "The American",
+        "dishPrice": 17.9,
+        "dishDescription": "Homemade beef Pattie, streaky bacon, melted cheddar cheese, homemade onion rings, lettuce, homemade garlic aioli and homemade bbq sauce in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/48859366-5a0a-437c-9df9-629db2549c47-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Beef Burgers"
+      },
+      {
+        "dishName": "Retro Chicken",
+        "dishPrice": 18.9,
+        "dishDescription": "Marinated grilled chicken, streaky bacon, melted Camembert cheese, homemade garlic aioli, spiced plum sauce, sautéed onions, lettuce and tomato in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/fe348abb-5abc-4021-8161-283a7a6c6e1e-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Chicken Burgers"
+      },
+      {
+        "dishName": "Chicken Little",
+        "dishPrice": 14.9,
+        "dishDescription": "Marinated grilled chicken, melted Cheddar cheese, sautéed onions, home-made garlic aioli, lettuce and tomato in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/d4cddf42-5a3c-4840-b2d7-5ffafed4b4ac-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Chicken Burgers"
+      },
+      {
+        "dishName": "Hawaiian",
+        "dishPrice": 17.9,
+        "dishDescription": "Crumbed chicken, grilled pineapple ring, melted cheddar cheese, streaky bacon, lettuce, homemade garlic aioli and homemade bbq sauce in our homemade toasted bun.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Chicken Burgers"
+      },
+      {
+        "dishName": "The Commitment Burger",
+        "dishPrice": 17.9,
+        "dishDescription": "Marinated grilled chicken, streaky bacon, melted cheddar cheese, lettuce, homemade garlic aioli and plum sauce in our homemade toasted bun.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Chicken Burgers"
+      },
+      {
+        "dishName": "I Am Piggie Burger",
+        "dishPrice": 14.32,
+        "dishDescription": "Buttermilk crispy chicken, streaky bacon, melted cheddar cheese, lettuce, homemade garlic aioli and homemade bbq sauce in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/bdf8de88-aa7b-4e5e-be47-1e459bc4b3e6-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Chicken Burgers"
+      },
+      {
+        "dishName": "Gone Clucky",
+        "dishPrice": 18.9,
+        "dishDescription": "Buttermilk crispy chicken, streaky bacon, melted cheddar cheese, smashed avocado, gone burger sauce, sautéed onions, lettuce and tomato in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/61413a8b-217a-4524-902f-e03e37ae5649-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Chicken Burgers"
+      },
+      {
+        "dishName": "Vege Smash",
+        "dishPrice": 15.9,
+        "dishDescription": "Homemade Kumara and chickpea smash pattie, beetroot, home-made tomato chilli jam, lettuce and tomato in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/b4059504-2045-49cc-8263-529ab6f823c0-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Veggie Burgers"
+      },
+      {
+        "dishName": "Gone Gardening",
+        "dishPrice": 16.9,
+        "dishDescription": "Crumbed mushroom, Camembert cheese, homemade garlic aioli, crispy onion rings, lettuce and tomato in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/7ba28421-5023-4b3a-8365-24bd1d5430df-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Veggie Burgers"
+      },
+      {
+        "dishName": "Chicken",
+        "dishPrice": 11.9,
+        "dishDescription": "Marinated grilled chicken, melted cheddar cheese, home-made garlic aioli and tomato sauce in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/fe348abb-5abc-4021-8161-283a7a6c6e1e-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Kiddie Burgers"
+      },
+      {
+        "dishName": "Beef",
+        "dishPrice": 11.9,
+        "dishDescription": "Homemade beef patty, melted Cheddar cheese, home-made garlic aioli and tomato sauce in our homemade toasted bun.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/4d949630-0ed6-47db-aef1-4f89b9b44b7d-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Kiddie Burgers"
+      },
+      {
+        "dishName": "Cheese Cake",
+        "dishPrice": 6.9,
+        "dishDescription": "Salted caramel cheesecake",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Desserts"
+      },
+      {
+        "dishName": "Gluten Free Brownie",
+        "dishPrice": 6.9,
+        "dishDescription": "Double chocolate gluten free brownie with icing sugar.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Desserts"
+      },
+      {
+        "dishName": "Loaded Wedges",
+        "dishPrice": 15.9,
+        "dishDescription": "Topped with Bacon, cheese and sweet chilli. Served with homemade aioli (Not Gluten free)",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/8693dcb1-0df1-4202-b9ec-52e041d8c45b-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Sides"
+      },
+      {
+        "dishName": "Kumara Fries Regular",
+        "dishPrice": 8.5,
+        "dishDescription": "Served with Homemade Aioli.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Sides"
+      },
+      {
+        "dishName": "Premium Fries Large",
+        "dishPrice": 9.9,
+        "dishDescription": "Premium sure crispy fries served with home-made aioli.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/2d136397-44a8-4e8e-9387-e544a2e88c8f-retina-large.png",
+        "tags": [],
+        "categoryName": "Sides"
+      },
+      {
+        "dishName": "Crumbed Calamari",
+        "dishPrice": 9.9,
+        "dishDescription": "Served with Homemade Aioli. (Not Gluten free)",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Sides"
+      },
+      {
+        "dishName": "Premium Fries Combo Large",
+        "dishPrice": 13.9,
+        "dishDescription": "Premium sure crispy fries. Served with home-made aioli and drink from coke range.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Sides"
+      },
+      {
+        "dishName": "Kumara Fries Large",
+        "dishPrice": 10.9,
+        "dishDescription": "Served with home-made aioli.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Sides"
+      },
+      {
+        "dishName": "Seasoned Wedges Regular",
+        "dishPrice": 7.5,
+        "dishDescription": "Seasoned wedges served with home-made aioli. (Not Gluten free)",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Sides"
+      },
+      {
+        "dishName": "Seasoned Wedges Large",
+        "dishPrice": 9.9,
+        "dishDescription": "Seasoned Wedges served with home-made aioli. (Not Gluten free)",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Sides"
+      },
+      {
+        "dishName": "Premium Fries Combo Regular",
+        "dishPrice": 9.5,
+        "dishDescription": "Premium sure crispy fries served with home-made aioli and drink from coke range.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Sides"
+      },
+      {
+        "dishName": "Premium Fries Regular",
+        "dishPrice": 7.5,
+        "dishDescription": "Premium sure crispy fries served with home-made aioli.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/78c436e7-efe1-469a-81c1-1310f01402a0-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Sides"
+      },
+      {
+        "dishName": "Loaded Fries",
+        "dishPrice": 15.99,
+        "dishDescription": "Premium sure crispy fries topped with bacon and cheese. Served with home-made Aioli.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/342e46b9-5227-4848-9961-b12c20520f86-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Sides"
+      }
+    ],
+    "restaurantInfo": {
+      "name": "Gone Burger"
+    }
+  },
+  "categories": {
+    "successful": [
+      "Most Liked",
+      "Featured Items",
+      "Most Ordered",
+      "Beef Burgers",
+      "Chicken Burgers",
+      "Fish Burger",
+      "Veggie Burgers",
+      "Kiddie Burgers",
+      "Desserts",
+      "Drinks",
+      "Sides"
+    ],
+    "failed": []
+  },
+  "stats": {
+    "totalItems": 58,
+    "successfulCategories": 11,
+    "failedCategories": 0,
+    "processingTime": 124079
+  }
+}

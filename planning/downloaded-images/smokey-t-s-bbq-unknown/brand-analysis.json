@@ -1,0 +1,39 @@
+{
+  "restaurant": "Smokey T's BBQ",
+  "location": "Unknown",
+  "website": "https://smokeytsbbq.com",
+  "extractedAt": "2025-08-15T07:11:16.377Z",
+  "logo": {
+    "type": "url",
+    "dimensions": "320x312",
+    "saved": true,
+    "logoColors": [
+      {
+        "hex": "#C41E3A",
+        "name": "Crimson Red",
+        "description": "Primary brand color used for the elegant 'Barbecue' script text"
+      },
+      {
+        "hex": "#FFFFFF",
+        "name": "Transparent White",
+        "description": "Background - logo has transparent background"
+      }
+    ]
+  },
+  "websiteColors": [
+    {
+      "hex": "#FFFFFF",
+      "name": "White",
+      "usage": "text, border",
+      "frequency": 28
+    },
+    {
+      "hex": "#000000",
+      "name": "Black",
+      "usage": "background",
+      "frequency": 3
+    }
+  ],
+  "theme": "dark",
+  "backgroundColor": "#000000"
+}

@@ -1,0 +1,1 @@
+{"success":true,"jobId":"batch_1754543817796_6fafbbcd3dff2c85","status":"completed","progress":{"percentage":100,"totalCategories":15,"completedCategories":14,"failedCategories":1,"currentCategory":"Finishing remaining categories"},"timing":{"startTime":"2025-08-07T05:16:57.796Z","elapsedSeconds":520,"estimatedRemainingSeconds":0},"error":null}

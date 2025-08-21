@@ -1,0 +1,779 @@
+{
+  "restaurant": "Pizza Delight",
+  "downloadDate": "2025-08-19T03:00:43.837Z",
+  "stats": {
+    "total": 100,
+    "downloaded": 33,
+    "failed": 67,
+    "noImage": 0
+  },
+  "items": [
+    {
+      "dishName": "Cheesy Garlic Bread",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/e8758b908d332f6e462db2c9ae295698/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "featured_items/cheesy_garlic_bread.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Loaded Wedges (Bacon and Cheese)",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/5a2329d07ca9ff0211a06b0a55028a7d/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "featured_items/loaded_wedges_bacon_and_cheese_.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Pepperoni Pizza",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/5e72fe5a92480dfd04e9c7d9a57c5e7d/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "featured_items/pepperoni_pizza.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Hawaiian Pizza",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/791b8f6f2f4a233d16d9607aee1b2118/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "featured_items/hawaiian_pizza.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Apricot Chicken Delight Pizza",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/92bd95f08b3ad7274911618f926445c2/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "featured_items/apricot_chicken_delight_pizza.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Seafood Delight Pizza",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/8920ac31bdc23ca7667dd29909a1d769/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "featured_items/seafood_delight_pizza.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Loaded Veggie Delight Pizza (V)",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/9a819b125038c34b6c9f05c06af5b0c6/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "featured_items/loaded_veggie_delight_pizza_v_.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Bacon and Chicken Pasta in White Sauce",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/ece84b115be19bde7763dc7d10246c3e/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "featured_items/bacon_and_chicken_pasta_in_white_sauce.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Bacon Delight Pizza",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/c3dc751f3e30b9538849164abea0eb68/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "featured_items/bacon_delight_pizza.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Peppery Chicken Delight Pizza",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/39bcd0b2fe7e27b8706bf879e65e4873/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "featured_items/peppery_chicken_delight_pizza.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "The Earth Bite Burger (V)",
+      "categoryName": "Burgers",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/9cc1c81181209e7beaddf6db1190cd41/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "burgers/the_earth_bite_burger_v_.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Spicy Veggie Vortex Burger (V)",
+      "categoryName": "Burgers",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/345266be00cac2d114ed7e42c10924ec/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "burgers/spicy_veggie_vortex_burger_v_.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "The Coop Classic Burger",
+      "categoryName": "Burgers",
+      "originalUrl": "https://www.ubereats.com/nz/store/pizza-delight/ODSEwN_9Qvi-y0f1M9qAIA?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522383484c0-dffd-42f8-becb-47f533da8020%2522%252C%2522sectionUuid%2522%253A%25223e6a16c5-b69b-4904-a7eb-a5f6afdb77a9%2522%252C%2522subsectionUuid%2522%253A%25221fbfc1f6-d8bc-4214-9c8e-e20e3d4c955f%2522%252C%2522itemUuid%2522%253A%252250e9f510-26fe-4fc7-a637-5cbdab4821ec%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1",
+      "localPath": null,
+      "status": "failed",
+      "error": "Parse Error: Header overflow"
+    },
+    {
+      "dishName": "The Beef Boss Burger",
+      "categoryName": "Burgers",
+      "originalUrl": "https://www.ubereats.com/nz/store/pizza-delight/ODSEwN_9Qvi-y0f1M9qAIA?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522383484c0-dffd-42f8-becb-47f533da8020%2522%252C%2522sectionUuid%2522%253A%25223e6a16c5-b69b-4904-a7eb-a5f6afdb77a9%2522%252C%2522subsectionUuid%2522%253A%25221fbfc1f6-d8bc-4214-9c8e-e20e3d4c955f%2522%252C%2522itemUuid%2522%253A%25220cbb32ea-4e1f-4430-8108-28b11f0c7a17%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1",
+      "localPath": null,
+      "status": "failed",
+      "error": "Parse Error: Header overflow"
+    },
+    {
+      "dishName": "The Cluck and Oink Burger",
+      "categoryName": "Burgers",
+      "originalUrl": "https://www.ubereats.com/nz/store/pizza-delight/ODSEwN_9Qvi-y0f1M9qAIA?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522383484c0-dffd-42f8-becb-47f533da8020%2522%252C%2522sectionUuid%2522%253A%25223e6a16c5-b69b-4904-a7eb-a5f6afdb77a9%2522%252C%2522subsectionUuid%2522%253A%25221fbfc1f6-d8bc-4214-9c8e-e20e3d4c955f%2522%252C%2522itemUuid%2522%253A%2522835c99a1-115f-4619-b332-81058ef4dae1%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1",
+      "localPath": null,
+      "status": "failed",
+      "error": "Parse Error: Header overflow"
+    },
+    {
+      "dishName": "Noodlicious Veggie Burger (V)",
+      "categoryName": "Burgers",
+      "originalUrl": "https://www.ubereats.com/nz/store/pizza-delight/ODSEwN_9Qvi-y0f1M9qAIA?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522383484c0-dffd-42f8-becb-47f533da8020%2522%252C%2522sectionUuid%2522%253A%25223e6a16c5-b69b-4904-a7eb-a5f6afdb77a9%2522%252C%2522subsectionUuid%2522%253A%25221fbfc1f6-d8bc-4214-9c8e-e20e3d4c955f%2522%252C%2522itemUuid%2522%253A%252297d7ccf1-e547-44a1-b961-df174fe4a931%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1",
+      "localPath": null,
+      "status": "failed",
+      "error": "Parse Error: Header overflow"
+    },
+    {
+      "dishName": "Bacon and Chicken Pasta in White Sauce",
+      "categoryName": "Pastas",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/ece84b115be19bde7763dc7d10246c3e/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "pastas/bacon_and_chicken_pasta_in_white_sauce.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Red Sauce Veggie Pasta (V)",
+      "categoryName": "Pastas",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/3d2a3f1c8f2244db63c75c6b40281a5f/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "pastas/red_sauce_veggie_pasta_v_.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "White Sauce Veggie Pasta (V)",
+      "categoryName": "Pastas",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/a85c4cce0f49386f9a31aa5748273ac9/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "pastas/white_sauce_veggie_pasta_v_.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Butter Chicken Pasta",
+      "categoryName": "Pastas",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/ece84b115be19bde7763dc7d10246c3e/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "pastas/butter_chicken_pasta.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Spinach Chicken Pasta",
+      "categoryName": "Pastas",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/ece84b115be19bde7763dc7d10246c3e/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "pastas/spinach_chicken_pasta.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Red Sauce Chicken Pasta",
+      "categoryName": "Pastas",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/ece84b115be19bde7763dc7d10246c3e/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "pastas/red_sauce_chicken_pasta.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "White Sauce Chicken Pasta",
+      "categoryName": "Pastas",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/ece84b115be19bde7763dc7d10246c3e/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "pastas/white_sauce_chicken_pasta.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Peppery Chicken Delight Pizza",
+      "categoryName": "Deluxe Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/39bcd0b2fe7e27b8706bf879e65e4873/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "deluxe_delight_pizza/peppery_chicken_delight_pizza.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Seafood Delight Pizza",
+      "categoryName": "Deluxe Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/8920ac31bdc23ca7667dd29909a1d769/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "deluxe_delight_pizza/seafood_delight_pizza.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Apricot Chicken Delight Pizza",
+      "categoryName": "Deluxe Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/92bd95f08b3ad7274911618f926445c2/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "deluxe_delight_pizza/apricot_chicken_delight_pizza.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Loaded Meaty Delight Pizza",
+      "categoryName": "Deluxe Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/9a819b125038c34b6c9f05c06af5b0c6/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "deluxe_delight_pizza/loaded_meaty_delight_pizza.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Loaded Veggie Delight Pizza (V)",
+      "categoryName": "Deluxe Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/9a819b125038c34b6c9f05c06af5b0c6/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "deluxe_delight_pizza/loaded_veggie_delight_pizza_v_.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "BBQ Meaty Delight Pizza",
+      "categoryName": "Deluxe Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/c3dc751f3e30b9538849164abea0eb68/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "deluxe_delight_pizza/bbq_meaty_delight_pizza.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Bacon Delight Pizza",
+      "categoryName": "Deluxe Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/c3dc751f3e30b9538849164abea0eb68/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "deluxe_delight_pizza/bacon_delight_pizza.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chicken Delight Pizza",
+      "categoryName": "Deluxe Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/0afd086f-6f89-48e5-a85e-23b1e05db98d/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Thai Chicken Delight Pizza",
+      "categoryName": "Deluxe Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/6cf7e311-6174-4efb-a6e5-4bf82e3a4cd0/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Ham, Chicken and Pineapple Delight Pizza",
+      "categoryName": "Deluxe Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/5fe537a3-6ae1-43bd-b16e-b38b9f2dece5/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Cranberry Veggie Lovers Delight Pizza (V)",
+      "categoryName": "Deluxe Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/c45da318-0939-42b5-8197-e5f2364912bb/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Veggie Corn Delight Pizza (V)",
+      "categoryName": "Deluxe Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/65134333-94bf-436c-bf9e-76f11de2509c/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Cranberry Chicken Delight Pizza",
+      "categoryName": "Deluxe Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/9de38ba4-61b7-45a3-ab0a-65932f70d9c3/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Veggie Paneer Delight Pizza (V)",
+      "categoryName": "Deluxe Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/0f226a01-b7cd-4c24-aea6-c6d12c38b013/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Thai Paneer Delight Pizza (V)",
+      "categoryName": "Deluxe Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/90d63839-9c80-407a-877d-26ef00d4e72c/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Meaty and Seafood Delight Pizza",
+      "categoryName": "Deluxe Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/cbe88cf8-b21a-4975-8546-17dc097fb692/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Garlic Beef Delight Pizza",
+      "categoryName": "Deluxe Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/06411078-a24e-41f8-aadb-f1697bd5c760/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Peri Peri Meaty Delight Pizza",
+      "categoryName": "Deluxe Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/b28809b7-4afe-438d-a81a-80c91ade04e3/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Sweet Chilli Beef and Bacon Delight Pizza",
+      "categoryName": "Deluxe Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/fa506043-d438-4fe3-8b5a-16331787349e/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Butter Chicken Delight Pizza",
+      "categoryName": "Creative Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/4c48ca09a9b04b3082886c8f2cc2d672/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Kadhai Paneer Delight Pizza (V)",
+      "categoryName": "Creative Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/2f4b5094bb344a388cf31f85621a2785/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Vegetable Makhani Delight Pizza (V)",
+      "categoryName": "Creative Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/f36bf900700f426eb048b9d2f26fc699/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Tandoori Paneer and Corns Delight Pizza (V)",
+      "categoryName": "Creative Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/3309658a59724fda83fabc3f0007da11/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Chilli Chicken Delight Pizza",
+      "categoryName": "Creative Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/584b597f50f0419aaa5b3111913f2ddd/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Tandoori Chicken Delight Pizza",
+      "categoryName": "Creative Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/6f75284b24274356a3ceacdbab1ca614/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Chicken Seekh Kebab Delight Pizza",
+      "categoryName": "Creative Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/4f165986bce840a3a462b8bf683c5026/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Kadhai Chicken Delight Pizza",
+      "categoryName": "Creative Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/dab1db68c5a8492ba4c8eecc65d5fe7a/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Tandoori Chaap Delight Pizza (V)",
+      "categoryName": "Creative Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/445b55f92ad84d65aefa6ee8da8048b1/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Chilli Paneer Delight Pizza (V)",
+      "categoryName": "Creative Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/e0d7850f4c8c4c018305477582d81436/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Chilli Mushroom Delight Pizza (V)",
+      "categoryName": "Creative Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/a7e2cce696d049baa17c8fd5b57335ec/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Indian Maggie Vegetable Delight Pizza (V)",
+      "categoryName": "Creative Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/c8e9e65cb8e9433d9761c07f54e58286/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Hawaiian Pizza",
+      "categoryName": "Basic Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/791b8f6f2f4a233d16d9607aee1b2118/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "basic_delight_pizza/hawaiian_pizza.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Pepperoni Pizza",
+      "categoryName": "Basic Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/5e72fe5a92480dfd04e9c7d9a57c5e7d/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "basic_delight_pizza/pepperoni_pizza.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Ham and Cheese Pizza",
+      "categoryName": "Basic Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/22111111111111111111111111111111/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Onions and Cheese Pizza (V)",
+      "categoryName": "Basic Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/1024a839-9ee1-4813-bd4d-e6ab1c2b3952/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Margherita Pizza (V)",
+      "categoryName": "Basic Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/2f576d71-da98-41dd-bed2-9f2c7b058fbe/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Chicken and Cheese Pizza",
+      "categoryName": "Basic Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/cadc74d7-0842-4902-be2b-86ee0f1c4b39/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Cheesy Garlic Pizza (V)",
+      "categoryName": "Basic Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/2563c25e-a94e-4b3e-bc74-fc498e641cf9/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Veggie Pizza (V)",
+      "categoryName": "Basic Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/179198fd-139b-4766-90b1-ebeb9af01c95/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Cheese Lover's Pizza (V)",
+      "categoryName": "Basic Delight Pizza",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/ef5e270a-8ff5-470d-8e7d-712e7191af0e/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Garlic Bread",
+      "categoryName": "Baked Breads",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/e8758b908d332f6e462db2c9ae295698/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "baked_breads/garlic_bread.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Cheesy Garlic Bread",
+      "categoryName": "Baked Breads",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/e8758b908d332f6e462db2c9ae295698/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "baked_breads/cheesy_garlic_bread.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Margherita Bread",
+      "categoryName": "Baked Breads",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/e8758b908d332f6e462db2c9ae295698/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "baked_breads/margherita_bread.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Ham and Cheese Garlic Bread",
+      "categoryName": "Baked Breads",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/e8758b908d332f6e462db2c9ae295698/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "baked_breads/ham_and_cheese_garlic_bread.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Loaded Wedges (Bacon and Cheese)",
+      "categoryName": "Kickin Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/5a2329d07ca9ff0211a06b0a55028a7d/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": "kickin_sides/loaded_wedges_bacon_and_cheese_.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Wedges Topped with Sour Cream and Sweet Chilli",
+      "categoryName": "Kickin Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/11111111111111111111111111111111/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Fries",
+      "categoryName": "Kickin Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/11111111111111111111111111111111/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Veg Loaded Fries",
+      "categoryName": "Kickin Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/11111111111111111111111111111111/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Cheesy Jalapeno Bites",
+      "categoryName": "Kickin Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/11111111111111111111111111111111/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Jalapeno Poppers",
+      "categoryName": "Kickin Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/11111111111111111111111111111111/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Broccoli and Cheese",
+      "categoryName": "Kickin Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/11111111111111111111111111111111/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Chicken Sticks Southern Style",
+      "categoryName": "Kickin Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/11111111111111111111111111111111/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Beer Battered Onions Rings",
+      "categoryName": "Kickin Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/11111111111111111111111111111111/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Beer Battered Fries",
+      "categoryName": "Kickin Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/11111111111111111111111111111111/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Kumara Fries",
+      "categoryName": "Kickin Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/11111111111111111111111111111111/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Chicken Nuggets",
+      "categoryName": "Kickin Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/11111111111111111111111111111111/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Chicken Popcorn",
+      "categoryName": "Kickin Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/11111111111111111111111111111111/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Smoked Chipotle Sweet Potato",
+      "categoryName": "Kickin Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/11111111111111111111111111111111/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Chocolate Thickshake",
+      "categoryName": "Thickshakes",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/3454bc7042b446f2bcb60a2dcba2a7d0/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Caramel Thickshake",
+      "categoryName": "Thickshakes",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/d6ea69f0cefb4c12881e-a473a39a32da/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Spearmint Thickshake",
+      "categoryName": "Thickshakes",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/8cdf4623e9504e999664e9712b676f48/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Vanilla Thickshake",
+      "categoryName": "Thickshakes",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/73562be4314d4289a88dc3d670ff42be/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Strawberry Thickshake",
+      "categoryName": "Thickshakes",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/57bb1d6e88ef4d76923051506e06277e/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Creaming Soda Thickshake",
+      "categoryName": "Thickshakes",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/d445d959821f4e3c8bbb58073c78d030/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Coffee Chai Thickshake",
+      "categoryName": "Thickshakes",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/0b59d3c5dd0f44aa853ba2c02f20b245/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Lime Thickshake",
+      "categoryName": "Thickshakes",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/6dee53d3d93142619dba8954358eb815/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "White Chocolate Thickshake",
+      "categoryName": "Thickshakes",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/1a4740f230794b1387f33d4beb5b2981/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Orange Thickshake",
+      "categoryName": "Thickshakes",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/1c2b9d2d994e460eb863c14aeaa207f3/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Aioli",
+      "categoryName": "Dips and Sauce District",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/d5cdc542-95a6-4522-9494-557213d4f8a5/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Mayonnaise",
+      "categoryName": "Dips and Sauce District",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/f2b5fb97-d844-4a9c-bedf-e3cedc48a506/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Sweet Chilli Sauce",
+      "categoryName": "Dips and Sauce District",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/05bcdb33-07fe-4705-b713-b58b2be92e3f/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Tomato Sauce",
+      "categoryName": "Dips and Sauce District",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/d10a9399-a7b4-474b-a5a2-d122ad8e80b1/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Chipotle Mayonnaise",
+      "categoryName": "Dips and Sauce District",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/b1b35346-89a1-493d-b7fb-a30326e2c1c3/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Sriracha",
+      "categoryName": "Dips and Sauce District",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/bad8f6a7-14bb-494e-a36d-fd9355d6daa0/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Sour Cream",
+      "categoryName": "Dips and Sauce District",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/1021771c-52e3-4e5e-96ea-3a60ae27e079/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Cream and Cheese",
+      "categoryName": "Dips and Sauce District",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/3ad38134-e395-4f89-a01d-34bb39087131/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Basil Pesto",
+      "categoryName": "Dips and Sauce District",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/f2ffed33-bfdc-4032-87f6-6349b02053a5/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    }
+  ]
+}

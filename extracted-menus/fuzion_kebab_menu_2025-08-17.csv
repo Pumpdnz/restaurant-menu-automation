@@ -1,0 +1,104 @@
+menuID,menuName,menuDisplayName,menuDescription,categoryID,categoryName,categoryDisplayName,categoryDescription,dishID,dishName,dishPrice,dishType,dishDescription,displayName,printName,tags,imageURL
+,Menu,,,,Family Meal,,,,Fried chicken Family feast ( 8 Drums & 4 Thighs with Large chips and 1.5 l drink),58.00,standard,"Enjoy a hearty meal with 8 chicken drums, 4 thighs, large chips, and a refreshing 1.5L drink.",,,Popular,https://tb-static.uber.com/prod/image-proc/processed_images/669a9df4c72b08744eb4a3aa2836b216/7f4ae9ca0446cbc23e71d8d395a98428.jpeg
+,Menu,,,,Family Meal,,,,Family Meal,40.00,standard,"Two kebab wraps, two can drinks and two chips.",,,,
+,Menu,,,,Family Meal,,,,Kebab wrap combo for three,58.00,standard,"Three kebab wraps, three can drinks and three chips.",,,,
+,Menu,,,,Family Meal,,,,Kebab wrap with 2 Drums and a can drink.,24.50,standard,"Choose your favourite meat , salads and sauces. Comes with 2 seasons fried drums with a can drink.",,,,https://tb-static.uber.com/prod/image-proc/processed_images/26175648c54c4e482b2528b7235991f2/58f691da9eaef86b0b51f9b2c483fe63.jpeg
+,Menu,,,,Family Meal,,,,Fish and fried chicken combo ( 4 pieces ),22.50,standard,"2 Crispy battered Hoki fish , 2 seasoned fried drums and a regular chips with a can drink.",,,,https://tb-static.uber.com/prod/image-proc/processed_images/57759a64b7926bb4cfd93e5124716595/58f691da9eaef86b0b51f9b2c483fe63.jpeg
+,Menu,,,,Family Meal,,,,Kebab wrap combo with regular fries and 750ml Milkshake,24.50,standard,"Kebab wrap with your choice of meat, served with regular fries and a refreshing can drink.",,,Popular,
+,Menu,,,,Family Meal,,,,Meat on rice with regular fries and 750ml Milkshake,26.50,standard,"Savor your choice of meat on rice, paired with regular fries and a refreshing 750ml milkshake.",,,,
+,Menu,,,,Family Meal,,,,"2 Hoki fish, 2 sausage and large chips with a can drink",22.50,standard,"2 Pieces of battered fish, 2 sausages and a crispy fries with seasoning salt served with Tartare sauce and a can drink.",,,,
+,Menu,,,,Kebabs,,,,Butter Chicken On Chips,18.50,standard,Marinated Fresh donner chicken on chips. Comes with Butter chicken Sauce and lots of cheese.,,,,https://tb-static.uber.com/prod/image-proc/processed_images/916237e53b19e3f3639f4ffe71555498/f0d1762b91fd823a1aa9bd0dab5c648d.jpeg
+,Menu,,,,Kebabs,,,,Butter Chicken Kebab Wrap,14.75,standard,"Butter Chicken kebab comes with Butter Chicken Sauce , Marinated chicken breast donner kebab with hollandaise sauce. You can select salad of your choice",,,,https://tb-static.uber.com/prod/image-proc/processed_images/4dba99befa183cec2dd4709858cdfe89/f0d1762b91fd823a1aa9bd0dab5c648d.jpeg
+,Menu,,,,Kebabs,,,,Kebab Wrap,15.90,standard,"Comes with your choice of meat, salad and three sauces.",,,,https://tb-static.uber.com/prod/image-proc/processed_images/be9f6c9ba9cf0a8024c494bc2c67497c/a19bb09692310dfd41e49a96c424b3a6.jpeg
+,Menu,,,,Kebabs,,,,Meat on Chips,19.90,standard,"Comes with chips, cheese, your choice of meat and three sauces.",,,,https://tb-static.uber.com/prod/image-proc/processed_images/210ac78ab7f175e11c0bbb6a4471168d/4218ca1d09174218364162cd0b1a8cc1.jpeg
+,Menu,,,,Kebabs,,,,Kebab on Rice,18.75,standard,"Comes with rice, your choice of meat, salad and three sauces.",,,,https://tb-static.uber.com/prod/image-proc/processed_images/133776c33018cd35fdf89297c9a14fac/a19bb09692310dfd41e49a96c424b3a6.jpeg
+,Menu,,,,Kebabs,,,,Low Carbs,18.75,standard,"Comes with salad, your choice of meat and three sauces.",,,,https://tb-static.uber.com/prod/image-proc/processed_images/7ad1eb212a2c425b333e42e2ad0010d4/a19bb09692310dfd41e49a96c424b3a6.jpeg
+,Menu,,,,Kebabs,,,,Loaded nachos,15.50,standard,"Crispy nachos with choice of meat and topped with onions, tomatoes, and olives for a delightful crunch and flavor.",,,,https://tb-static.uber.com/prod/image-proc/processed_images/b7ed92f31b7f7613b112ac2290c7d5db/58f691da9eaef86b0b51f9b2c483fe63.jpeg
+,Menu,,,,Kebabs,,,,Kebab wrap and drums combo,24.50,standard,Select any kebab wrap and enjoy a combination with 2 Drums with a can of drink,,,,https://tb-static.uber.com/prod/image-proc/processed_images/271a651efbde48e8a387ca9cc11b2c3b/58f691da9eaef86b0b51f9b2c483fe63.jpeg
+,Menu,,,,Featured items,,,,Meat on Chips,19.90,standard,"Comes with chips, cheese, your choice of meat and three sauces.",,,,https://tb-static.uber.com/prod/image-proc/processed_images/210ac78ab7f175e11c0bbb6a4471168d/4218ca1d09174218364162cd0b1a8cc1.jpeg
+,Menu,,,,Featured items,,,,Kebab Wrap,15.90,standard,"Comes with your choice of meat, salad and three sauces.",,,,https://tb-static.uber.com/prod/image-proc/processed_images/be9f6c9ba9cf0a8024c494bc2c67497c/a19bb09692310dfd41e49a96c424b3a6.jpeg
+,Menu,,,,Featured items,,,,Dinner Box,17.50,standard,Includes a variety of meats and sides.,,,,https://tb-static.uber.com/prod/image-proc/processed_images/4eb4b7fbe37fcb9422c3b908bd697ef0/7f4ae9ca0446cbc23e71d8d395a98428.jpeg
+,Menu,,,,Featured items,,,,Kebab on Rice,18.75,standard,"Comes with rice, your choice of meat, salad and three sauces.",,,,https://tb-static.uber.com/prod/image-proc/processed_images/133776c33018cd35fdf89297c9a14fac/a19bb09692310dfd41e49a96c424b3a6.jpeg
+,Menu,,,,Featured items,,,,Chicken nibble with fries and can drink,19.50,standard,5 pieces chicken nibble with fries and can drink. Choose your favourite drink and sauce.,,,,https://tb-static.uber.com/prod/image-proc/processed_images/3c1f622df813ef31827cf5a8d3d6028e/70aa2a4db7f990373ca9c376323e3dea.jpeg
+,Menu,,,,Featured items,,,,Butter Chicken Swirl Chips. Large,7.50,standard,Large Size Butter Chicken Chips. Only Butter Chicken Sauce.,,,,https://tb-static.uber.com/prod/image-proc/processed_images/7834b7ebdb2e687f4de57c588922dbd8/f0d1762b91fd823a1aa9bd0dab5c648d.jpeg
+,Menu,,,,Featured items,,,,Yokum Burger,12.00,standard,"Chicken and stuffing wrapped in egg, lettuce, onion and garlic aioli sauce.",,,,https://tb-static.uber.com/prod/image-proc/processed_images/61b4ee88da1ad18d6c35ddd310807e11/a19bb09692310dfd41e49a96c424b3a6.jpeg
+,Menu,,,,Featured items,,,,BAKLAVA,19.90,standard,TURKISH SWEET DISH WITH PISTACHIOS 6 PIECES,,,,https://d1ralsognjng37.cloudfront.net/f889d524-8441-43ad-98db-cd3687cff3b5.jpeg
+,Menu,,,,Featured items,,,,Nachos,11.00,standard,With cheese and sour cream.,,,,https://tb-static.uber.com/prod/image-proc/processed_images/6d8870a5cb11520ca9bf67de153518c4/a19bb09692310dfd41e49a96c424b3a6.jpeg
+,Menu,,,,Fried chicken meals,,,,Lunch Box,12.00,standard,"1 thigh, 1 Drum with regular size chips",,,,
+,Menu,,,,Fried chicken meals,,,,Dinner Box,17.50,standard,2 Drums and one thigh with regular chips and can of drink,,,,
+,Menu,,,,Fried chicken meals,,,,Chicken nibble with fries and can drink,19.50,standard,"5 pieces chicken nibble with fries and can drink 
+Choose your favourite drink and sauce",,,,
+,Menu,,,,Fried chicken meals,,,,3 Drums and chips,17.50,standard,3 Drums and regular size chips with can drink,,,,
+,Menu,,,,Fried chicken meals,,,,Drum lovers,37.50,standard,8 pack Drums and large regular chips and 1.5 l bottle of drink,,,,
+,Menu,,,,Fried chicken meals,,,,Fried chicken Family feast ( 8 Drums & 4 Thighs with Large chips and 1.5 l drink),58.00,standard,"Enjoy a hearty meal with 8 chicken drums, 4 thighs, large chips, and a refreshing 1.5L drink.
+Popular",,,,
+,Menu,,,,Fried chicken meals,,,,12 Drums pack with 2 large fries and 1.5 l drink,56.50,standard,12 peices Seasoned and crispy fried chicken drums with 2 large chips and 1.5 l drink,,,,
+,Menu,,,,Fried chicken meals,,,,16 pack fried drums,45.50,standard,16 drumsticks pack,,,,
+,Menu,,,,Burgers,,,,Veggie Patty Burger,12.00,standard,"Comes with a Gourmet veggie patty, Cheese, Lettuce, Tomatoes, Onion , Hollandaise Sauce and Mayo with secret Herbs",,,,
+,Menu,,,,Burgers,,,,Beef Burger,12.00,standard,"120gm beef patty, lettuce, onion, cheese, pickle, mustard sauce and tomato sauce.",,,,https://tb-static.uber.com/prod/image-proc/processed_images/66d602895184f17e6b635f993c02e8ab/a19bb09692310dfd41e49a96c424b3a6.jpeg
+,Menu,,,,Burgers,,,,Yokum Burger,12.00,standard,"Chicken and stuffing wrapped in egg, lettuce, onion and garlic aioli sauce.",,,,https://tb-static.uber.com/prod/image-proc/processed_images/61b4ee88da1ad18d6c35ddd310807e11/a19bb09692310dfd41e49a96c424b3a6.jpeg
+,Menu,,,,Burgers,,,,Lamb Burger,12.00,standard,"Lamb meat, lettuce, onion and BBQ sauce.",,,,
+,Menu,,,,Burgers,,,,Hamburger,6.00,standard,"Onions, meat patty and BBQ sauce.",,,,
+,Menu,,,,Burgers,,,,Cheeseburger,7.00,standard,"Meat patty, lettuce, onion, cheese and BBQ sauce.",,,,
+,Menu,,,,Burgers,,,,Egg Burger,7.00,standard,"Meat patty, lettuce, onion, egg and mayonnaise sauce.",,,,
+,Menu,,,,Burgers,,,,Chicken Burger,10.00,standard,"Chicken patty, lettuce, onion, tomato and mayonnaise sauce.",,,,
+,Menu,,,,Burgers,,,,Fish Burger,10.00,standard,Deep fried fish. Lettuce and tartare sauce.,,,,
+,Menu,,,,Burgers,,,,Double Cheese burger,10.00,standard,"Two cheese burger patties, lettuce, onion, cheese and bbq sauce.",,,,
+,Menu,,,,Burgers,,,,Triple cheese burger,10.50,standard,"Three cheeseburger patties, lettuce, onion, cheese, BBQ sauce",,,,
+,Menu,,,,Sides,,,,Butter Chicken Swirl Chips. Large,7.50,standard,Large Size Butter Chicken Chips. Only Butter Chicken Sauce.,,,,https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/aa00c12a195ea22cc9618d8d6a7218ed/530976139671a54e044dada9bcb718a4.jpeg
+,Menu,,,,Sides,,,,Nachos,11.00,standard,With cheese and sour cream.,,,,https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/900bbebf54fa1140cd0acd8011b283f2/d91641102b139d381db5ca8c6ecc7fc4.jpeg
+,Menu,,,,Sides,,,,Jalapeno Bites,6.50,standard,6 Pieces of hot and crispy jalapeno bites.,,,,
+,Menu,,,,Sides,,,,Chips,4.50,standard,Crispy fried potato strips served as a side dish.,,,,
+,Menu,,,,Sides,,,,Wedges with Sour Cream,9.00,standard,Crisp potato wedges served with a side of tangy sour cream.,,,,
+,Menu,,,,Sides,,,,Fish,5.00,standard,Fresh fish served as a side dish.,,,,
+,Menu,,,,Sides,,,,Sausage,2.50,standard,,,,,
+,Menu,,,,Sides,,,,Crab Stick,2.00,standard,,,,,
+,Menu,,,,Sides,,,,Onion rings,4.00,standard,Crispy onion slices served as a side dish.,,,,
+,Menu,,,,Sides,,,,Kumara chips,9.00,standard,Fried kumara chips with garlic aioli dip.,,,,
+,Menu,,,,Sides,,,,Prawn twisters,12.00,standard,5 Fried prawn twister with sweet chili dip.,,,,
+,Menu,,,,Sides,,,,Squid ring,10.00,standard,6 deep fried squid rings with sweet chili dip.,,,,
+,Menu,,,,Sides,,,,Chicken nuggets,12.00,standard,7 Chicken nuggets with 1 dip,,,,
+,Menu,,,,Beverages,,,,Can Drinks,3.00,standard,330 mL.,,,,
+,Menu,,,,Beverages,,,,Bottle Drinks,5.00,standard,,,,,
+,Menu,,,,Dip,,,,Garlic Aioli,2.00,standard,Rich and creamy dip infused with garlic.,,,,
+,Menu,,,,Dip,,,,Sweet Chilli,2.00,standard,Sweet and spicy dipping sauce.,,,,
+,Menu,,,,Dip,,,,Yoghurt,2.00,standard,A refreshing and tangy accompaniment to your meal.,,,,
+,Menu,,,,Dip,,,,Hummus,2.00,standard,Traditional Middle Eastern dip made from chickpeas.,,,,
+,Menu,,,,Dip,,,,Mint Garlic Yoghurt,2.00,standard,Fresh yoghurt infused with the cooling essence of mint and a hint of garlic.,,,,
+,Menu,,,,Dip,,,,Mint,2.00,standard,Fresh and cooling herb dip.,,,,
+,Menu,,,,Dip,,,,Mayonnaise,2.00,standard,Rich and creamy condiment perfect for dipping.,,,,
+,Menu,,,,Dip,,,,BBQ,2.00,standard,Tangy and smoky dipping sauce.,,,,
+,Menu,,,,Dip,,,,Hot Chilli,2.00,standard,Spicy and flavorful dip.,,,,
+,Menu,,,,Dip,,,,Tomato,2.00,standard,,,,,
+,Menu,,,,Dip,,,,Tartar,2.00,standard,,,,,
+,Menu,,,,Dip,,,,Mustard,2.00,standard,Tangy and pungent condiment adding flavour to your meal.,,,,
+,Menu,,,,Dip,,,,Sour cream,2.00,standard,Tangy and creamy accompaniment to your meal.,,,,
+,Menu,,,,Dip,,,,Chicken nuggets,12.00,standard,7 chicken nuggets with 1 dip.,,,,
+,Menu,,,,Specials,,,,Kebab wrap combo for three,58.00,standard,"Three kebab wraps, three can drinks and three chips.",,,,https://www.ubereats.com/nz/store/fuzion-kebab-manurewa/s0-9tYDIR0K8fIFJB_8SDg?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522b34fbdb5-80c8-4742-bc7c-814907ff120e%2522%252C%2522sectionUuid%2522%253A%252275a64f16-efeb-4d22-99b5-679570acb3c5%2522%252C%2522subsectionUuid%2522%253A%2522069c5fd1-13a6-4392-8554-2334a904c52a%2522%252C%2522itemUuid%2522%253A%25228e23a09a-0471-4855-bf0a-6ef8e6d6fb92%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1
+,Menu,,,,Specials,,,,Combo Three,52.00,standard,"Two Rice dish/Meat on chips , Two can drinks and two chips.",,,,https://www.ubereats.com/nz/store/fuzion-kebab-manurewa/s0-9tYDIR0K8fIFJB_8SDg?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522b34fbdb5-80c8-4742-bc7c-814907ff120e%2522%252C%2522sectionUuid%2522%253A%252275a64f16-efeb-4d22-99b5-679570acb3c5%2522%252C%2522subsectionUuid%2522%253A%2522069c5fd1-13a6-4392-8554-2334a904c52a%2522%252C%2522itemUuid%2522%253A%25220cd71200-9965-4a14-a134-8784e0f2972e%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1
+,Menu,,,,Specials,,,,Combo Four,74.00,standard,"Three Rice dish/Meat on chips, Three can drinks and three chips.",,,,https://www.ubereats.com/nz/store/fuzion-kebab-manurewa/s0-9tYDIR0K8fIFJB_8SDg?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522b34fbdb5-80c8-4742-bc7c-814907ff120e%2522%252C%2522sectionUuid%2522%253A%252275a64f16-efeb-4d22-99b5-679570acb3c5%2522%252C%2522subsectionUuid%2522%253A%2522069c5fd1-13a6-4392-8554-2334a904c52a%2522%252C%2522itemUuid%2522%253A%252260242bd7-23d2-4969-8019-566fed961f78%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1
+,Menu,,,,Specials,,,,Combo Five,32.00,standard,"Two yokum burger/Beef burger, One chips and one 1.5 litre.",,,,https://www.ubereats.com/nz/store/fuzion-kebab-manurewa/s0-9tYDIR0K8fIFJB_8SDg?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522b34fbdb5-80c8-4742-bc7c-814907ff120e%2522%252C%2522sectionUuid%2522%253A%252275a64f16-efeb-4d22-99b5-679570acb3c5%2522%252C%2522subsectionUuid%2522%253A%2522069c5fd1-13a6-4392-8554-2334a904c52a%2522%252C%2522itemUuid%2522%253A%2522cfdbd59f-afb9-4044-8d0a-279a6fe26563%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1
+,Menu,,,,Specials,,,,Combo Six,40.00,standard,"Four Egg burger/Cheese burger, Two chips and one 1.5 litre drink.",,,,https://www.ubereats.com/nz/store/fuzion-kebab-manurewa/s0-9tYDIR0K8fIFJB_8SDg?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522b34fbdb5-80c8-4742-bc7c-814907ff120e%2522%252C%2522sectionUuid%2522%253A%252275a64f16-efeb-4d22-99b5-679570acb3c5%2522%252C%2522subsectionUuid%2522%253A%2522069c5fd1-13a6-4392-8554-2334a904c52a%2522%252C%2522itemUuid%2522%253A%2522c0b88dd4-f4f1-499b-9cfc-06052d4ff594%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1
+,Menu,,,,Specials,,,,Combo Seven,13.00,standard,"Cheeseburger, chips and a can of drink.",,,,https://www.ubereats.com/nz/store/fuzion-kebab-manurewa/s0-9tYDIR0K8fIFJB_8SDg?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522b34fbdb5-80c8-4742-bc7c-814907ff120e%2522%252C%2522sectionUuid%2522%253A%252275a64f16-efeb-4d22-99b5-679570acb3c5%2522%252C%2522subsectionUuid%2522%253A%2522069c5fd1-13a6-4392-8554-2334a904c52a%2522%252C%2522itemUuid%2522%253A%252246a03b36-4b4f-4ce3-9e5b-600e44c5c08a%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1
+,Menu,,,,Specials,,,,Combo Eight,18.00,standard,"Nachos, chips and a can of drink.",,,,https://www.ubereats.com/nz/store/fuzion-kebab-manurewa/s0-9tYDIR0K8fIFJB_8SDg?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522b34fbdb5-80c8-4742-bc7c-814907ff120e%2522%252C%2522sectionUuid%2522%253A%252275a64f16-efeb-4d22-99b5-679570acb3c5%2522%252C%2522subsectionUuid%2522%253A%2522069c5fd1-13a6-4392-8554-2334a904c52a%2522%252C%2522itemUuid%2522%253A%25229444e369-92eb-4f2e-ad77-3dc7299164c2%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1
+,Menu,,,,Desserts,,,,BAKLAVA,6.90,standard,"TURKISH SWEET DISH WITH PISTACHIOS 
+2 PIECES",,,,https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/496f721a4439a16e139f7df48da829b2/80e724aac6c998e7f45ff49ef26e8dca.jpeg
+,Menu,,,,Desserts,,,,BAKLAVA,19.90,standard,"TURKISH SWEET DISH WITH PISTACHIOS
+6 PIECES",,,,https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/0ba7e31dcea11e858dcdfc783376cd4e/80e724aac6c998e7f45ff49ef26e8dca.jpeg
+,Menu,,,,Desserts,,,,Nutella and Cheese Toastie,6.00,standard,"Rich, sweet Nutella paired with melted cheese on toasted bread.",,,,
+,Menu,,,,Desserts,,,,Donuts with chocolate dip,10.00,standard,6 fried donuts with chocolate dip,,,,
+,Menu,,,,Toastie,,,,Cheese and onion,5.00,standard,,,,,
+,Menu,,,,Milk shakes and thick shakes,,,,Banana Shake,6.90,standard,,,,,
+,Menu,,,,Milk shakes and thick shakes,,,,Lime shake,6.90,standard,,,,,
+,Menu,,,,Milk shakes and thick shakes,,,,Caramel shake,6.90,standard,,,,,
+,Menu,,,,Milk shakes and thick shakes,,,,Chocolate shake,6.90,standard,,,,,
+,Menu,,,,Milk shakes and thick shakes,,,,Vanilla Shake,6.50,standard,"Creamy and smooth, a classic milkshake flavour.",,,,
+,Menu,,,,Milk shakes and thick shakes,,,,Strawberry Shake,6.90,standard,,,,,
+,Menu,,,,Milk shakes and thick shakes,,,,RASPBERRY,6.90,standard,,,,,
+,Menu,,,,Combos,,,,Kebab wrap with 2 Drums and a can drink.,24.50,standard,"Choose your favourite meat , salads and sauces 
+Comes with 2 seasons fried drums with a can drink",,,,https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/58487000ed3ae228ca8f61f3853d63f2/4796c842d9b8e4afe99182e353aa6f5e.jpeg
+,Menu,,,,Combos,,,,Fish and fried chicken combo ( 4 pieces ),22.50,standard,"2 Crispy battered Hoki fish , 2 seasoned fried drums and a regular chips with a can drink",,,,https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/694f73ba36ae7599c07aee2a3d559f87/8a446d76681599ce804186eb3167355f.jpeg
+,Menu,,,,Combos,,,,Kebab wrap combo with regular fries and 750ml Milkshake,24.50,standard,"Kebab wrap with your choice of meat, served with regular fries and a refreshing can drink.",,,Popular,
+,Menu,,,,Combos,,,,Meat on rice with regular fries and 750ml Milkshake,26.50,standard,"Savor your choice of meat on rice, paired with regular fries and a refreshing 750ml milkshake.",,,,
+,Menu,,,,Combos,,,,"2 Hoki fish, 2 sausage and large chips with a can drink",22.50,standard,"2 Pieces of battered fish, 2 sausages and a crispy fries with seasoning salt served with Tartare sauce 
+And a can drink",,,,

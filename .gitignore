@@ -1,0 +1,73 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+.nyc_output
+
+# Build outputs
+dist/
+build/
+out/
+
+# Downloaded/generated content
+downloads/extracted-images/*/
+json-resources/*.json
+firecrawl-logs/
+screenshots/
+*.png
+*.jpg
+*.jpeg
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Cache
+.cache/
+.npm/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv
+
+# Playwright
+playwright-report/
+test-results/
+
+# Local notes
+*.local.md
+notes.txt
+TODO.txt

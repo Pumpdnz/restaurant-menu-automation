@@ -1,0 +1,1075 @@
+{
+  "data": {
+    "menuItems": [
+      {
+        "dishName": "Butter Chicken",
+        "dishPrice": 22.5,
+        "dishDescription": "Boneless tandoori chicken pieces simmered in rich tomato and creamy sauce.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/69a4d520-3a3a-4739-9205-0d27ca8a0eb1-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Featured Items"
+      },
+      {
+        "dishName": "Chicken Biryani",
+        "dishPrice": 20,
+        "dishDescription": "Chicken cooked with rice and on a slow fire and served with raita.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/42e39436-2078-41ef-96db-4c5298bf05da-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Featured Items"
+      },
+      {
+        "dishName": "Chicken Pasanda",
+        "dishPrice": 22.5,
+        "dishDescription": "Boneless chicken pieces cooked with aromatic herbs, and spices in almond and tomato gravy.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6d703a57-9545-45a1-88f5-e10369e09cd8-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Featured Items"
+      },
+      {
+        "dishName": "Lamb Rogan Josh",
+        "dishPrice": 23.5,
+        "dishDescription": "Lamb Cooked in traditional Kashmiri style.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/0021481c-9267-4d9f-bed2-29614d085118-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Featured Items"
+      },
+      {
+        "dishName": "Samosa",
+        "dishPrice": 10,
+        "dishDescription": "Triangular pastry stuffed with potatoes and peas deep fried until crispy, served with tamarind sauce.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/d2857b57-5afb-47ab-818b-a843696a75fc-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Featured Items"
+      },
+      {
+        "dishName": "South Indian Brinjal Curry",
+        "dishPrice": 21.5,
+        "dishDescription": "Eggplant cooked in whole spices sabut garam masala onion tomato and finished with coriander leaves.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/f2f2939a-c6ef-4632-a1cf-61e27407496f-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Featured Items"
+      },
+      {
+        "dishName": "Palak Paneer",
+        "dishPrice": 20.9,
+        "dishDescription": "Cubes of cheese cooked with spinach, tomato and onion gravy.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/b4351ccc-23f3-4feb-a77e-b8f6efb2e6be-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Featured Items"
+      },
+      {
+        "dishName": "Butter Chicken",
+        "dishPrice": 22.5,
+        "dishDescription": "Boneless tandoori chicken pieces simmered in rich tomato and creamy sauce.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/69a4d520-3a3a-4739-9205-0d27ca8a0eb1-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "Chicken Biryani",
+        "dishPrice": 20,
+        "dishDescription": "Chicken cooked with rice and on a slow fire and served with raita.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/42e39436-2078-41ef-96db-4c5298bf05da-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "Samosa",
+        "dishPrice": 10,
+        "dishDescription": "Triangular pastry stuffed with potatoes and peas deep fried until crispy, served with tamarind sauce.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/d2857b57-5afb-47ab-818b-a843696a75fc-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "Lamb Rogan Josh",
+        "dishPrice": 23.5,
+        "dishDescription": "Lamb Cooked in traditional Kashmiri style.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/0021481c-9267-4d9f-bed2-29614d085118-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "Chicken Pasanda",
+        "dishPrice": 22.5,
+        "dishDescription": "Boneless chicken pieces cooked with aromatic herbs, and spices in almond and tomato gravy.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6d703a57-9545-45a1-88f5-e10369e09cd8-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "Garlic Naan",
+        "dishPrice": 6,
+        "dishDescription": "Bread made of refined flour sprinkled with crushed garlic, and baked in tandoor.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "Buttar chicken +rice + Naan+drink",
+        "dishPrice": 26.5,
+        "dishDescription": "Tender chicken in creamy tomato gravy, served with aromatic rice, warm Naan bread, and a refreshing drink.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "Cheese Naan",
+        "dishPrice": 7,
+        "dishDescription": "Bread stuffed with cheese. Baked in tandoor.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "Onion Bhaji",
+        "dishPrice": 10.5,
+        "dishDescription": "Sliced onion spiced and mixed with chick pea and fried until golden, served with tamarind sauce.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "Chicken korma +rice +Naan+drink",
+        "dishPrice": 26.5,
+        "dishDescription": "Tender chicken in creamy korma sauce, served with rice, Naan, and a choice of beverage.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "Chicken Korma",
+        "dishPrice": 22.5,
+        "dishDescription": "Chicken simmered in rich cashew nut creamy sauce.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "Chicken Tikka Masala",
+        "dishPrice": 22.5,
+        "dishDescription": "Boneless tandoori chicken cooked in onion, capsicum and tomato sauce with herbs and spices.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "Butter Chicken",
+        "dishPrice": 16.5,
+        "dishDescription": "Creamy tomato-based curry with tender chicken, infused with a delicate blend of aromatic Indian spices.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Appetizers - Kids Special"
+      },
+      {
+        "dishName": "Mango Chicken",
+        "dishPrice": 16,
+        "dishDescription": "Boneless chicken cooked with mango and mild sauce, spiced with a touch of ginger.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Appetizers - Kids Special"
+      },
+      {
+        "dishName": "Finger Chips",
+        "dishPrice": 9,
+        "dishDescription": "Golden fried potato sticks, typically seasoned with a hint of salt.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Appetizers - Kids Special"
+      },
+      {
+        "dishName": "Chicken Nugget",
+        "dishPrice": 9,
+        "dishDescription": "Battered and deep-fried pieces of boneless chicken typically served golden brown.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Appetizers - Kids Special"
+      },
+      {
+        "dishName": "Samosa",
+        "dishPrice": 10,
+        "dishDescription": "Triangular pastry stuffed with potatoes and peas deep fried until crispy, served with tamarind sauce.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/d2857b57-5afb-47ab-818b-a843696a75fc-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Appetizers - Vegetarian"
+      },
+      {
+        "dishName": "Veg Platter for 2",
+        "dishPrice": 21.5,
+        "dishDescription": "Combination of mixed pakora, samosa,and onion bhaji. Served with tamarind sauce.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Appetizers - Vegetarian"
+      },
+      {
+        "dishName": "Onion Bhaji",
+        "dishPrice": 10.5,
+        "dishDescription": "Sliced onion spiced and mixed with chick pea and fried until golden, served with tamarind sauce.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Appetizers - Vegetarian"
+      },
+      {
+        "dishName": "Mixed Pakora",
+        "dishPrice": 10,
+        "dishDescription": "Mixed vegetables battered with chickpeas & fried, served with tamarind sauce.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Appetizers - Vegetarian"
+      },
+      {
+        "dishName": "Veggie Kathi Roll",
+        "dishPrice": 14.5,
+        "dishDescription": "Cottage cheese, mix vegetable roasted kebab wrapped in a paratha bread.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Appetizers - Vegetarian"
+      },
+      {
+        "dishName": "Paneer Pakora",
+        "dishPrice": 15.5,
+        "dishDescription": "Homemade cottage cheese dipped in batter, served with tamarind sauce.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Appetizers - Vegetarian"
+      },
+      {
+        "dishName": "Garden Special Veg Platter",
+        "dishPrice": 24,
+        "dishDescription": "Combination of mix pakora, onion bhaji, paneer pakora & spring roll. Served with tamarind sauce.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/cf0d2306-9f35-451f-8e44-8473058eba64-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Appetizers - Vegetarian"
+      },
+      {
+        "dishName": "Paneer Tikka",
+        "dishPrice": 16.5,
+        "dishDescription": "Cheese marinated with yogurt, herb, spices and grilled in tandoor.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Appetizers - Vegetarian"
+      },
+      {
+        "dishName": "Spring Rolls",
+        "dishPrice": 12.5,
+        "dishDescription": "Thin pastry grilled with veggie and mild spices, served with sweet chilli sauce.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Appetizers - Vegetarian"
+      },
+      {
+        "dishName": "Poppadam Starter",
+        "dishPrice": 12.5,
+        "dishDescription": "Crispy poppadoms fried in oil and served with mango chutney, mixed pickle, raita and kachumber salad.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Appetizers - Vegetarian"
+      },
+      {
+        "dishName": "Pappadam",
+        "dishPrice": 2,
+        "dishDescription": "Papadam: Thin, crispy lentil wafer, typically spiced and either fried or baked.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Appetizers - Vegetarian"
+      },
+      {
+        "dishName": "Masala Pappadam",
+        "dishPrice": 9.5,
+        "dishDescription": "Deep-fried crispy lentil wafers topped with chopped onions, cilantro, tomato, green chili, chat masala, and lemon juice.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Appetizers - Vegetarian"
+      },
+      {
+        "dishName": "Seekh Kebab",
+        "dishPrice": 15.5,
+        "dishDescription": "Eight pieces. Spiced lamb mince skewered and roasted in tandoor, served with mint sauce.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/f013848c-1825-45ff-832d-45824d308765-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Appetizers - Non-Vegetarian"
+      },
+      {
+        "dishName": "Tandoori Chicken",
+        "dishPrice": 15,
+        "dishDescription": "Chicken on the bones, marinated overnight in yogurt spices, roasted in tandoor, served with mint sauce.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Appetizers - Non-Vegetarian"
+      },
+      {
+        "dishName": "Chicken Lolipop",
+        "dishPrice": 16.5,
+        "dishDescription": "Five pieces. Chicken wings treated with light spices and deep fried.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Appetizers - Non-Vegetarian"
+      },
+      {
+        "dishName": "Chicken Kathi Roll",
+        "dishPrice": 15.5,
+        "dishDescription": "Chicken roasted kebab wrapped in a paratha bread.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Appetizers - Non-Vegetarian"
+      },
+      {
+        "dishName": "Fish Tikka",
+        "dishPrice": 23,
+        "dishDescription": "Seven pieces. Fish pieces marinated in herbs and spices, cooked in tandoor, served with mint sauce.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Appetizers - Non-Vegetarian"
+      },
+      {
+        "dishName": "Chicken Pakora",
+        "dishPrice": 14,
+        "dishDescription": "Chicken battered with chickpeas & deep fried, served with mint sauce.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Appetizers - Non-Vegetarian"
+      },
+      {
+        "dishName": "Garden Special Platter",
+        "dishPrice": 31.1,
+        "dishDescription": "Includes chicken tikka, fish tikka, seekh kebab, and chicken malai tikka, served with mint sauce.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/525de568-e583-4abc-8c16-cd02ff4d89c8-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Appetizers - Non-Vegetarian"
+      },
+      {
+        "dishName": "Mix Platter for 2",
+        "dishPrice": 25.5,
+        "dishDescription": "Includes onion bhaji, samosa, seekh kebab, chicken tikka, and chicken malai tikka.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Appetizers - Non-Vegetarian"
+      },
+      {
+        "dishName": "Lamb Kathi aRoll",
+        "dishPrice": 16.5,
+        "dishDescription": "Lamb roasted kebab wrapped in a paratha bread.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Appetizers - Non-Vegetarian"
+      },
+      {
+        "dishName": "Fish Pakora",
+        "dishPrice": 15,
+        "dishDescription": "Seven pieces. Fish battered with chickpeas & deep fried, served with mint sauce.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Appetizers - Non-Vegetarian"
+      },
+      {
+        "dishName": "Garden Special Tikka",
+        "dishPrice": 26,
+        "dishDescription": "Garden special is a herbaceous green masala chicken prepared with fresh herbs like coriander, and mint, yogurt, cashews, and spices. Served with mint sauce.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/2d617c6f-32fe-4866-9c04-673256a696c7-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Appetizers - Non-Vegetarian"
+      },
+      {
+        "dishName": "Chicken Malai Tikka",
+        "dishPrice": 25,
+        "dishDescription": "Gluten-free. Chicken pieces marinated in yogurt, cream with cashew nut, and white pepper, then skewered, and roasted in tandoor. Served with mint chutney.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/93c292ca-33ab-4a25-b907-b1dcd030a5d4-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Appetizers - Non-Vegetarian"
+      },
+      {
+        "dishName": "Chicken Tikka",
+        "dishPrice": 14.5,
+        "dishDescription": "Half comes with four pieces and full comes with seven pieces. Boneless chicken pieces marinated in yogurt and then roasted in tandoor, served with mint sauce.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/ff019099-5e51-4170-ad47-021535f7cfb2-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Appetizers - Non-Vegetarian"
+      },
+      {
+        "dishName": "Tandoori Prawn",
+        "dishPrice": 23.5,
+        "dishDescription": "Prawn marinated overnight in yogurt & spiced then roasted in a tandoor oven, served with mint sauce.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Appetizers - Non-Vegetarian"
+      },
+      {
+        "dishName": "Butter Chicken",
+        "dishPrice": 22.5,
+        "dishDescription": "Boneless tandoori chicken pieces simmered in rich tomato and creamy sauce.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/69a4d520-3a3a-4739-9205-0d27ca8a0eb1-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Mains - Chicken Dishes"
+      },
+      {
+        "dishName": "Chicken Pasanda",
+        "dishPrice": 22.5,
+        "dishDescription": "Boneless chicken pieces cooked with aromatic herbs, and spices in almond and tomato gravy.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6d703a57-9545-45a1-88f5-e10369e09cd8-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Mains - Chicken Dishes"
+      },
+      {
+        "dishName": "Mango Chicken",
+        "dishPrice": 22.5,
+        "dishDescription": "Boneless chicken cooked in mango-flavoured cream and is a sweet curry.",
+        "imageURL": null,
+        "tags": [],
+        "categoryName": "Mains - Chicken Dishes"
+      },
+      {
+        "dishName": "Chicken Korma",
+        "dishPrice": 22.5,
+        "dishDescription": "Chicken simmered in rich cashew nut creamy sauce.",
+        "imageURL": null,
+        "tags": [],
+        "categoryName": "Mains - Chicken Dishes"
+      },
+      {
+        "dishName": "Chicken Tikka Masala",
+        "dishPrice": 22.5,
+        "dishDescription": "Boneless tandoori chicken cooked in onion, capsicum and tomato sauce with herbs and spices.",
+        "imageURL": null,
+        "tags": [],
+        "categoryName": "Mains - Chicken Dishes"
+      },
+      {
+        "dishName": "Chicken Vindaloo",
+        "dishPrice": 22.5,
+        "dishDescription": "Chicken cooked with potato, ginger, and spices in onion tomato sauce with a hint of lemon.",
+        "imageURL": null,
+        "tags": [],
+        "categoryName": "Mains - Chicken Dishes"
+      },
+      {
+        "dishName": "Chicken Saag",
+        "dishPrice": 22.5,
+        "dishDescription": "Chicken cooked with spinach, ginger and garlic in onion tomato gravy.",
+        "imageURL": null,
+        "tags": [],
+        "categoryName": "Mains - Chicken Dishes"
+      },
+      {
+        "dishName": "Chicken Garden",
+        "dishPrice": 22.5,
+        "dishDescription": "Boneless chicken cooked in chef's delicious special gravy.(secret recipe)",
+        "imageURL": null,
+        "tags": [],
+        "categoryName": "Mains - Chicken Dishes"
+      },
+      {
+        "dishName": "Chicken Salan",
+        "dishPrice": 23.5,
+        "dishDescription": "Boneless chicken cooked in whole spices sabut garam masala onion tomato and finished with coriander leaves.",
+        "imageURL": null,
+        "tags": [],
+        "categoryName": "Mains - Chicken Dishes"
+      },
+      {
+        "dishName": "Lemon Honey chicken",
+        "dishPrice": 22.5,
+        "dishDescription": "Boneless tandoori breast chicken pieces simmered in rich tomato and creamy sauce finished with lemon and honey.",
+        "imageURL": null,
+        "tags": [],
+        "categoryName": "Mains - Chicken Dishes"
+      },
+      {
+        "dishName": "Chicken Madras",
+        "dishPrice": 22.5,
+        "dishDescription": "Chicken cooked in south Indian style with coconut cream.",
+        "imageURL": null,
+        "tags": [],
+        "categoryName": "Mains - Chicken Dishes"
+      },
+      {
+        "dishName": "Garden Spl. Chicken",
+        "dishPrice": 23.5,
+        "dishDescription": "Chicken cooked in chef's delicious spl. gravy.",
+        "imageURL": null,
+        "tags": [],
+        "categoryName": "Mains - Chicken Dishes"
+      },
+      {
+        "dishName": "Chicken Jalfrezi",
+        "dishPrice": 22.5,
+        "dishDescription": "Roasted chicken cooked with thick gravy and fresh vegetables.",
+        "imageURL": null,
+        "tags": [],
+        "categoryName": "Mains - Chicken Dishes"
+      },
+      {
+        "dishName": "Chicken Balti",
+        "dishPrice": 22.5,
+        "dishDescription": "Pieces of roasted chicken cooked with coriander seeds, ginger and garlic with a hint of lemon juice",
+        "imageURL": null,
+        "tags": [],
+        "categoryName": "Mains - Chicken Dishes"
+      },
+      {
+        "dishName": "Bhuna Chicken",
+        "dishPrice": 23.5,
+        "dishDescription": "Chicken pieces cooked in chopped onion, and tomato masala gravy.",
+        "imageURL": null,
+        "tags": [],
+        "categoryName": "Mains - Chicken Dishes"
+      },
+      {
+        "dishName": "Kadai Chicken",
+        "dishPrice": 22.5,
+        "dishDescription": "Boneless chicken cooked in onion gravy with capsicum and ginger garlic.",
+        "imageURL": null,
+        "tags": [],
+        "categoryName": "Mains - Chicken Dishes"
+      },
+      {
+        "dishName": "Chicken Rogan Josh",
+        "dishPrice": 22.5,
+        "dishDescription": "Chicken cooked in traditional Kashmiri style.",
+        "imageURL": null,
+        "tags": [],
+        "categoryName": "Mains - Chicken Dishes"
+      },
+      {
+        "dishName": "Chicken Malaysian Curry",
+        "dishPrice": 22.5,
+        "dishDescription": "Tender chicken/spices and coconut milk in rich and spices and curry sauce.",
+        "imageURL": null,
+        "tags": [],
+        "categoryName": "Mains - Chicken Dishes"
+      },
+      {
+        "dishName": "Fish Garden Special",
+        "dishPrice": 24.5,
+        "dishDescription": "Fish cooked in chef's delicious special gravy.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Mains - Sea Food Delights"
+      },
+      {
+        "dishName": "Butter Prawn",
+        "dishPrice": 24,
+        "dishDescription": "Prawns cooked in rich creamy tomato gravy.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Mains - Sea Food Delights"
+      },
+      {
+        "dishName": "Prawn Balti",
+        "dishPrice": 24,
+        "dishDescription": "Prawns cooked in onion sauce with pounded coriander, ginger, garlic and a hint of lemon.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Mains - Sea Food Delights"
+      },
+      {
+        "dishName": "Malabari Fish Curry",
+        "dishPrice": 24,
+        "dishDescription": "Fish and potato cooked in coconut cream and onion tomato gravy.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Mains - Sea Food Delights"
+      },
+      {
+        "dishName": "Fish Tikka Masala",
+        "dishPrice": 24,
+        "dishDescription": "Tandoori fish cooked in onion, garlic, ginger, and other spices with diced onion, tomato, and capsicum.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Mains - Sea Food Delights"
+      },
+      {
+        "dishName": "Fish Balti",
+        "dishPrice": 24,
+        "dishDescription": "Fish cooked in onion sauce with pounded coriander, ginger, garlic and lemon juices.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Mains - Sea Food Delights"
+      },
+      {
+        "dishName": "Prawn Garden Special",
+        "dishPrice": 24.5,
+        "dishDescription": "Prawns cooked in chefs delicious special gravy.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Mains - Sea Food Delights"
+      },
+      {
+        "dishName": "Malaysian Fish Curry",
+        "dishPrice": 24,
+        "dishDescription": "Blender to grind or make a spices paste with fish with okra and egg plant.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Mains - Sea Food Delights"
+      },
+      {
+        "dishName": "Malaysian Prawn Curry",
+        "dishPrice": 24,
+        "dishDescription": "Blender to grind or make a spices paste with fish with okra and egg plant.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Mains - Sea Food Delights"
+      },
+      {
+        "dishName": "Lamb Madras",
+        "dishPrice": 23.5,
+        "dishDescription": "Lamb cooked in south Indian style with coconut cream.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Mains - Lamb/goat Delights"
+      },
+      {
+        "dishName": "Lamb Vindaloo",
+        "dishPrice": 23.5,
+        "dishDescription": "Lamb cooked with potato, ginger, spices in onion tomato sauce with a hint of lemon.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Mains - Lamb/goat Delights"
+      },
+      {
+        "dishName": "Lamb Sang",
+        "dishPrice": 23.5,
+        "dishDescription": "Lamb cooked with spinach, ginger, and garlic in onion tomato gravy.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Mains - Lamb/goat Delights"
+      },
+      {
+        "dishName": "Garden Special Lamb",
+        "dishPrice": 23.5,
+        "dishDescription": "Lamb cooked in chefs delicious special gravy.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/5736541c-147a-4372-9e6d-923bdc7e8034-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Mains - Lamb/goat Delights"
+      },
+      {
+        "dishName": "Lamb Tikka Masala",
+        "dishPrice": 23.5,
+        "dishDescription": "This delightful dish combines tender pieces of marinated lamb with a rich and creamy tomato, onion based sauce.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Mains - Lamb/goat Delights"
+      },
+      {
+        "dishName": "Butter Lamb",
+        "dishPrice": 23.5,
+        "dishDescription": "An Elegant dish of tender Lamb simmered with tomatoes, cream, butter, cashew and spices.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Mains - Lamb/goat Delights"
+      },
+      {
+        "dishName": "Kadai Lamb",
+        "dishPrice": 23.5,
+        "dishDescription": "Lamb cooked in onion gravy with capsicum, and ginger garlic.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Mains - Lamb/goat Delights"
+      },
+      {
+        "dishName": "Lamb Handi",
+        "dishPrice": 23.5,
+        "dishDescription": "A kashmiri delight of lamb cooked in green bean and cardamom avoured curry.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Mains - Lamb/goat Delights"
+      },
+      {
+        "dishName": "Goat Raara",
+        "dishPrice": 24,
+        "dishDescription": "Goat meat with bones cooked in the traditional Indian style with tomato and onion gravy.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Mains - Lamb/goat Delights"
+      },
+      {
+        "dishName": "Goat Saag",
+        "dishPrice": 24,
+        "dishDescription": "Goat meat cooked in rich onion and spinach gravy.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Mains - Lamb/goat Delights"
+      },
+      {
+        "dishName": "Goat Handi",
+        "dishPrice": 24,
+        "dishDescription": "A Kashmiri delight of goat cooked in green bean and cardamom avoured curry.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Mains - Lamb/goat Delights"
+      },
+      {
+        "dishName": "Lamb Dalcha",
+        "dishPrice": 23.5,
+        "dishDescription": "Lamb simmered in black lentils, ginger, garlic and other spices.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Mains - Lamb/goat Delights"
+      },
+      {
+        "dishName": "Lamb Balti",
+        "dishPrice": 23.5,
+        "dishDescription": "Lamb cooked with coriander seeds.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Mains - Lamb/goat Delights"
+      },
+      {
+        "dishName": "Lamb Do Pyaaza",
+        "dishPrice": 23.5,
+        "dishDescription": "Lamb cooked with onion and diced tomato",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Mains - Lamb/goat Delights"
+      },
+      {
+        "dishName": "Lamb Rogan Josh",
+        "dishPrice": 23.5,
+        "dishDescription": "Lamb Cooked in traditional Kashmiri style.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/0021481c-9267-4d9f-bed2-29614d085118-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Mains - Lamb/goat Delights"
+      },
+      {
+        "dishName": "Lamb Korma",
+        "dishPrice": 23.5,
+        "dishDescription": "Lamb pieces cooked in onion, tomato and cashew nut gravy",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Mains - Lamb/goat Delights"
+      },
+      {
+        "dishName": "Chilli Chicken",
+        "dishPrice": 19,
+        "dishDescription": "Boneless chicken pieces sauteed with onion, capsicum, garlic, soysauce and vinegar.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/69a4d520-3a3a-4739-9205-0d27ca8a0eb1-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Mains - Indo Chinese"
+      },
+      {
+        "dishName": "Paneer Chilli",
+        "dishPrice": 18,
+        "dishDescription": "Paneer mixed with corn flour and deep fried, sauteed with ginger, garlic, onion, soy sauce, and vinegar.",
+        "imageURL": null,
+        "tags": [],
+        "categoryName": "Mains - Indo Chinese"
+      },
+      {
+        "dishName": "Chicken Fried Rice",
+        "dishPrice": 18,
+        "dishDescription": "Rice cooked and been stir fried in wok or a frying pan with boneless chicken and mixed with vegetables,",
+        "imageURL": null,
+        "tags": [],
+        "categoryName": "Mains - Indo Chinese"
+      },
+      {
+        "dishName": "Chicken Manchurian",
+        "dishPrice": 19.5,
+        "dishDescription": "Chicken pieces sauteed with garlic, onion, ginger, soy sauce and finished with spring onions.",
+        "imageURL": null,
+        "tags": [],
+        "categoryName": "Mains - Indo Chinese"
+      },
+      {
+        "dishName": "Vegetarian Fried Rice",
+        "dishPrice": 17,
+        "dishDescription": "Rice cooked and beans stir-fried in a wok or a frying pan and mixed with vegetables.",
+        "imageURL": null,
+        "tags": [],
+        "categoryName": "Mains - Indo Chinese"
+      },
+      {
+        "dishName": "Mushroom Chilli",
+        "dishPrice": 18,
+        "dishDescription": "Mushroom mixed with corn flour and deep fried, sauteed with ginger, garlic, onion, soy sauce, and vinegar.",
+        "imageURL": null,
+        "tags": [],
+        "categoryName": "Mains - Indo Chinese"
+      },
+      {
+        "dishName": "Vegetable Hakka Noodles",
+        "dishPrice": 17,
+        "dishDescription": "Vegetables sauteed with noodles, garlic, ginger, soy sauce, and vinegar.",
+        "imageURL": null,
+        "tags": [],
+        "categoryName": "Mains - Indo Chinese"
+      },
+      {
+        "dishName": "Chicken Hakka Noodles",
+        "dishPrice": 18,
+        "dishDescription": "Chicken sauteed with noodles, garlic, ginger, soy sauce, and vinegar.",
+        "imageURL": null,
+        "tags": [],
+        "categoryName": "Mains - Indo Chinese"
+      },
+      {
+        "dishName": "Lamb Biryani",
+        "dishPrice": 22,
+        "dishDescription": "Lamb cooked with rice and on a slow fire and served with raita.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Biryani"
+      },
+      {
+        "dishName": "Prawn Biryani",
+        "dishPrice": 21.5,
+        "dishDescription": "Prawn cooked with rice and aromatic spices on a slow fire and served with raita.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Biryani"
+      },
+      {
+        "dishName": "Fish Biryani",
+        "dishPrice": 21.5,
+        "dishDescription": "Fish cooked with rice and aromatic spices on a slow fire and served with raita.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Biryani"
+      },
+      {
+        "dishName": "Chicken Biryani",
+        "dishPrice": 20,
+        "dishDescription": "Chicken cooked with rice and on a slow fire and served with raita.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/42e39436-2078-41ef-96db-4c5298bf05da-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Biryani"
+      },
+      {
+        "dishName": "Vegetable Biryani",
+        "dishPrice": 19,
+        "dishDescription": "Vegetable cooked with rice and on a slow fire and served with raita.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Biryani"
+      },
+      {
+        "dishName": "Garlic Naan",
+        "dishPrice": 6,
+        "dishDescription": "Bread made of refined flour sprinkled with crushed garlic, and baked in tandoor.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Tandoori Naan Bread"
+      },
+      {
+        "dishName": "Cheese Naan",
+        "dishPrice": 7,
+        "dishDescription": "Bread stuffed with cheese. Baked in tandoor.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Tandoori Naan Bread"
+      },
+      {
+        "dishName": "Cheese Chilli Naan",
+        "dishPrice": 7.5,
+        "dishDescription": "Bread made of refined flour sprinkled with cheese and sprinkled with chopped chillies on top baked in tandoor.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Tandoori Naan Bread"
+      },
+      {
+        "dishName": "Paneer Kulcha",
+        "dishPrice": 7.5,
+        "dishDescription": "Naan with a stuffing of grated paneer with spices. Baked in tandoor.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Tandoori Naan Bread"
+      },
+      {
+        "dishName": "Onion Kulcha",
+        "dishPrice": 6.5,
+        "dishDescription": "Naan with a stuffing of chopped onions, and spices. Baked in tandoor.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Tandoori Naan Bread"
+      },
+      {
+        "dishName": "Aloo Paratha",
+        "dishPrice": 6.5,
+        "dishDescription": "Wholemeal flour bread stuffed with mashed potatoes, and spices. Baked in tandoor",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Tandoori Naan Bread"
+      },
+      {
+        "dishName": "Garlic Roti",
+        "dishPrice": 6,
+        "dishDescription": "Whole meal flour bread sprinkled with crushed garlic, and baked in tandoor.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Tandoori Naan Bread"
+      },
+      {
+        "dishName": "Kashmiri Naan",
+        "dishPrice": 6.5,
+        "dishDescription": "Naan stuffed with crushed nuts, coconut and sultanas. Baked in tandoor.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Tandoori Naan Bread"
+      },
+      {
+        "dishName": "Chicken and Cheese Naan",
+        "dishPrice": 7.5,
+        "dishDescription": "Leavened bread stuffed with cheese and chicken baked in tandoor.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Tandoori Naan Bread"
+      },
+      {
+        "dishName": "Lachha Paratha",
+        "dishPrice": 6.5,
+        "dishDescription": "Wholemeal flour bread layered with lashings of butter baked in tandoor.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Tandoori Naan Bread"
+      },
+      {
+        "dishName": "Methi Paratha",
+        "dishPrice": 6.5,
+        "dishDescription": "Bread made of wholemeal flour and fenugreek leaves. Baked in tandoor.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Tandoori Naan Bread"
+      },
+      {
+        "dishName": "Keema Naan",
+        "dishPrice": 7,
+        "dishDescription": "Naan with a stuffing of mince lamb and spices. Baked in tandoor.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Tandoori Naan Bread"
+      },
+      {
+        "dishName": "Plain Naan",
+        "dishPrice": 5,
+        "dishDescription": "Soft, warm, and fluffy traditional Indian flatbread. Perfect for pairing with any dish.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Tandoori Naan Bread"
+      },
+      {
+        "dishName": "Tandoori Roti",
+        "dishPrice": 5,
+        "dishDescription": "Whole flour bread baked in tandoor.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Tandoori Naan Bread"
+      },
+      {
+        "dishName": "Mango Chutney",
+        "dishPrice": 4.5,
+        "dishDescription": "Sweet and tangy mango pieces typically prepared with sugar, vinegar, and mild spices.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Salads/ Accompaniments"
+      },
+      {
+        "dishName": "Mixed Pickle",
+        "dishPrice": 4.5,
+        "dishDescription": "A tangy and spicy blend of mango, lime, green chilies, carrots, and ginger, typically marinated in Indian spices.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Salads/ Accompaniments"
+      },
+      {
+        "dishName": "Raita",
+        "dishPrice": 6,
+        "dishDescription": "Crisp, cool yogurt dip flavored with cucumber and fresh herbs.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Salads/ Accompaniments"
+      },
+      {
+        "dishName": "Green Salad",
+        "dishPrice": 7,
+        "dishDescription": "Fresh mixed greens with seasonal vegetables",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Salads/ Accompaniments"
+      },
+      {
+        "dishName": "Ice Cream",
+        "dishPrice": 6,
+        "dishDescription": "Rich, creamy frozen delight available in various flavors to tantalize your taste buds.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/26125002-eabf-4828-ae19-db95aba4ae47-retina-large.png",
+        "tags": [],
+        "categoryName": "Dessert"
+      },
+      {
+        "dishName": "Gulab Jamun with Ice Cream",
+        "dishPrice": 11.5,
+        "dishDescription": "With ice-cream (2 pieces of gulab jamun with 1 scoop of ice cream.)",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/ac132b0e-8620-417b-b5da-3bd4731a956e-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Dessert"
+      },
+      {
+        "dishName": "Mango Kulfi",
+        "dishPrice": 6,
+        "dishDescription": "Traditional Indian Frozen Dessert with Rich Mango Flavor",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Dessert"
+      },
+      {
+        "dishName": "Carrot Halwa",
+        "dishPrice": 7,
+        "dishDescription": "Grated carrots slow-cooked in milk and sugar, typically garnished with nuts and a hint of cardamom.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/b9b95d24-463a-4fc6-b2b8-f560266f2a47-retina-large.png",
+        "tags": [],
+        "categoryName": "Dessert"
+      },
+      {
+        "dishName": "Gulab Jamun",
+        "dishPrice": 6,
+        "dishDescription": "Traditional Indian sweet, milky dough fried and immersed in fragrant syrup.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/c5e9309d-145d-4d65-b97f-dc788e51aecd-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Dessert"
+      },
+      {
+        "dishName": "Lemon Rice",
+        "dishPrice": 6,
+        "dishDescription": "South Indian-style lemon rice has fragrant basmati rice infused with fresh lemon juice, mustard seeds, and warm spices.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Rice"
+      },
+      {
+        "dishName": "Green Peas Pulao",
+        "dishPrice": 6,
+        "dishDescription": "Peas pulao is a delicious rice pilaf made with green peas, spices, herbs & basmati rice.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Rice"
+      },
+      {
+        "dishName": "Coconut Rice",
+        "dishPrice": 5.5,
+        "dishDescription": "Asian rice dish made with fresh grated coconut, mustard tempering spices,and rice",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Rice"
+      },
+      {
+        "dishName": "Plane Rice",
+        "dishPrice": 5,
+        "dishDescription": "Basmati Rice plain steamed basmati rice.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Rice"
+      },
+      {
+        "dishName": "Jeera Rice",
+        "dishPrice": 5,
+        "dishDescription": "Basmati rice cooked with cumin seeds",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Rice"
+      }
+    ]
+  },
+  "options": {
+    "outputPath": "./downloads/extracted-images/currygarden-wellington",
+    "groupByCategory": true,
+    "skipPlaceholders": true
+  }
+}

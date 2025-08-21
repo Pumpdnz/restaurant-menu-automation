@@ -1,0 +1,61 @@
+{
+  "restaurant": "Gorilla Kitchen",
+  "location": "New Zealand",
+  "website": "https://www.gorillakitchen.nz/",
+  "extractedAt": "2025-08-15T07:33:21.687Z",
+  "logo": {
+    "type": "url",
+    "dimensions": "166x165",
+    "saved": true,
+    "logoColors": [
+      {
+        "hex": "#F4D03F",
+        "name": "Golden Yellow",
+        "description": "Circular border and text around logo"
+      },
+      {
+        "hex": "#000000",
+        "name": "Black",
+        "description": "Gorilla face details and main text"
+      },
+      {
+        "hex": "#FFFFFF",
+        "name": "White",
+        "description": "Gorilla face base and highlights"
+      },
+      {
+        "hex": "#8B4513",
+        "name": "Brown",
+        "description": "Subtle shading in gorilla face"
+      }
+    ]
+  },
+  "colors": [
+    {
+      "hex": "#000000",
+      "name": "Black",
+      "usage": "text, border",
+      "frequency": 45
+    },
+    {
+      "hex": "#116DFF",
+      "name": "Mixed",
+      "usage": "text, border",
+      "frequency": 2
+    },
+    {
+      "hex": "#AD1822",
+      "name": "Red",
+      "usage": "background, border",
+      "frequency": 2
+    },
+    {
+      "hex": "#FFFFFF",
+      "name": "White",
+      "usage": "background",
+      "frequency": 1
+    }
+  ],
+  "theme": "dark",
+  "backgroundColor": "#000000"
+}

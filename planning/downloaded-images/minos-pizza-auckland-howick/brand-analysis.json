@@ -1,0 +1,80 @@
+{
+  "restaurant": "Minos Pizza",
+  "location": "Auckland, Howick",
+  "website": "https://minos.co.nz",
+  "extractedAt": "2025-08-14T01:43:28.528Z",
+  "logo": {
+    "type": "url",
+    "dimensions": "669x371",
+    "saved": true,
+    "logoColors": [
+      {
+        "hex": "#FFFFFF",
+        "name": "White",
+        "description": "Main text color for 'MINOS' brand name and decorative elements"
+      },
+      {
+        "hex": "#000000",
+        "name": "Black", 
+        "description": "Background color of the main logo shield/badge"
+      },
+      {
+        "hex": "#333333",
+        "name": "Dark Gray",
+        "description": "Text color for 'MEDITERRANEAN CUISINE' tagline below logo"
+      }
+    ]
+  },
+  "websiteColors": [
+    {
+      "hex": "#d63e2d",
+      "name": "Red",
+      "usage": "primary",
+      "frequency": 10
+    },
+    {
+      "hex": "#ffd819",
+      "name": "Yellow",
+      "usage": "secondary",
+      "frequency": 10
+    },
+    {
+      "hex": "#FFFFFF",
+      "name": "White",
+      "usage": "text",
+      "frequency": 9
+    },
+    {
+      "hex": "#444444",
+      "name": "Gray",
+      "usage": "border",
+      "frequency": 3
+    },
+    {
+      "hex": "#E1E1E1",
+      "name": "White",
+      "usage": "border",
+      "frequency": 9
+    },
+    {
+      "hex": "#000000",
+      "name": "Black",
+      "usage": "text",
+      "frequency": 3
+    },
+    {
+      "hex": "#191919",
+      "name": "Black",
+      "usage": "border, background",
+      "frequency": 3
+    },
+    {
+      "hex": "#EEEEEE",
+      "name": "White",
+      "usage": "text",
+      "frequency": 2
+    }
+  ],
+  "theme": "dark",
+  "backgroundColor": "#000000"
+}

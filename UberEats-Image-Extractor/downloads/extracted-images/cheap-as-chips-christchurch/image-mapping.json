@@ -1,0 +1,264 @@
+{
+  "restaurant": "Cheap As Chips",
+  "downloadDate": "2025-08-18T00:00:00.000Z",
+  "stats": {
+    "total": 37,
+    "downloaded": 12,
+    "failed": 0,
+    "noImage": 25
+  },
+  "items": [
+    {
+      "dishName": "Koala's March",
+      "categoryName": "Confectionery-Snacks",
+      "originalUrl": "",
+      "localPath": "confectionery_snacks/koalas_march.webp",
+      "status": "success"
+    },
+    {
+      "dishName": "Rice Moments",
+      "categoryName": "Confectionery-Snacks",
+      "originalUrl": "",
+      "localPath": "confectionery_snacks/rice_moments.png",
+      "status": "success"
+    },
+    {
+      "dishName": "Hi-Chew Bags",
+      "categoryName": "Confectionery-Snacks",
+      "originalUrl": "",
+      "localPath": "confectionery_snacks/hi_chew_bags.webp",
+      "status": "success"
+    },
+    {
+      "dishName": "Feastables 60gm Bar Range",
+      "categoryName": "Confectionery-Snacks",
+      "originalUrl": "",
+      "localPath": "confectionery_snacks/feastables_60gm_bar_range.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Feastables 35gm Milk Crunch Bar",
+      "categoryName": "Confectionery-Snacks",
+      "originalUrl": "",
+      "localPath": "confectionery_snacks/feastables_35gm_milk_crunch_bar.webp",
+      "status": "success"
+    },
+    {
+      "dishName": "Kewpie Mayo",
+      "categoryName": "Confectionery-Snacks",
+      "originalUrl": "",
+      "localPath": "confectionery_snacks/kewpie_mayo.png",
+      "status": "success"
+    },
+    {
+      "dishName": "Sour Smog Ball - Toxic Waste - Slime Licker & Nestle Bar One",
+      "categoryName": "Confectionery-Snacks",
+      "originalUrl": "",
+      "localPath": "confectionery_snacks/sour_smog_ball_toxic_waste_slime_licker_nestle_bar_one.png",
+      "status": "success"
+    },
+    {
+      "dishName": "Aneka Breakfast Cracker",
+      "categoryName": "Confectionery-Snacks",
+      "originalUrl": "",
+      "localPath": "confectionery_snacks/aneka_breakfast_cracker.png",
+      "status": "success"
+    },
+    {
+      "dishName": "Nerds Rope Rainbow",
+      "categoryName": "Confectionery-Snacks",
+      "originalUrl": "",
+      "localPath": "confectionery_snacks/nerds_rope.png",
+      "status": "success"
+    },
+    {
+      "dishName": "Mogu Mogu",
+      "categoryName": "Beverages",
+      "originalUrl": "",
+      "localPath": "beverages/mogu_mogu.webp",
+      "status": "success"
+    },
+    {
+      "dishName": "Vida Cans",
+      "categoryName": "Beverages",
+      "originalUrl": "",
+      "localPath": "beverages/vida_cans.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Coke range 330ml 18pk",
+      "categoryName": "Beverages",
+      "originalUrl": "",
+      "localPath": "beverages/coke_range_330ml_18pk.png",
+      "status": "success"
+    },
+    {
+      "dishName": "Coke range 330ml 8pk",
+      "categoryName": "Beverages",
+      "originalUrl": "",
+      "localPath": "beverages/coke_range_330ml_8pk.jpg",
+      "status": "no_image"
+    },
+    {
+      "dishName": "Mother and Live+ Energy Drinks 250ml 6pk",
+      "categoryName": "Beverages",
+      "originalUrl": "",
+      "localPath": "beverages/mother_and_live_energy_drinks_250ml_6pk.jpg",
+      "status": "no_image"
+    },
+    {
+      "dishName": "Sparkling Duet 330ml 6pk",
+      "categoryName": "Beverages",
+      "originalUrl": "",
+      "localPath": "beverages/sparkling_duet_330ml_6pk.jpg",
+      "status": "no_image"
+    },
+    {
+      "dishName": "Savia Aloe Vera Drink",
+      "categoryName": "Beverages",
+      "originalUrl": "",
+      "localPath": "beverages/savia_aloe_vera_drink.jpg",
+      "status": "no_image"
+    },
+    {
+      "dishName": "Kiwi Blue Water 4pk 1.5L",
+      "categoryName": "Beverages",
+      "originalUrl": "",
+      "localPath": "beverages/kiwi_blue_water_4pk_15l.jpg",
+      "status": "no_image"
+    },
+    {
+      "dishName": "V Energy Drink 250ml 4pk",
+      "categoryName": "Beverages",
+      "originalUrl": "",
+      "localPath": "beverages/v_energy_drink_250ml_4pk.jpg",
+      "status": "no_image"
+    },
+    {
+      "dishName": "Lotus Sushi Rice 20kg varieties",
+      "categoryName": "Essentials-Baby Needs",
+      "originalUrl": "",
+      "localPath": "essentials_baby_needs/lotus_sushi_rice_20kg_varieties.jpg",
+      "status": "no_image"
+    },
+    {
+      "dishName": "Lotus Sushi Rice 2kg varieties",
+      "categoryName": "Essentials-Baby Needs",
+      "originalUrl": "",
+      "localPath": "essentials_baby_needs/lotus_sushi_rice_2kg_varieties.jpg",
+      "status": "no_image"
+    },
+    {
+      "dishName": "Simply Canola Oil 2L",
+      "categoryName": "Essentials-Baby Needs",
+      "originalUrl": "",
+      "localPath": "essentials_baby_needs/simply_canola_oil_2l.jpg",
+      "status": "no_image"
+    },
+    {
+      "dishName": "Clipper Lighters",
+      "categoryName": "Essentials-Baby Needs",
+      "originalUrl": "",
+      "localPath": "essentials_baby_needs/clipper_lighters.jpg",
+      "status": "no_image"
+    },
+    {
+      "dishName": "Nestle Shredded Wheat",
+      "categoryName": "Essentials-Baby Needs",
+      "originalUrl": "",
+      "localPath": "essentials_baby_needs/nestle_shredded_wheat.jpg",
+      "status": "no_image"
+    },
+    {
+      "dishName": "Fortune Long Grain 1kg Rice",
+      "categoryName": "Essentials-Baby Needs",
+      "originalUrl": "",
+      "localPath": "essentials_baby_needs/fortune_long_grain_1kg_rice.jpg",
+      "status": "no_image"
+    },
+    {
+      "dishName": "Mini Stars Wipes",
+      "categoryName": "Essentials-Baby Needs",
+      "originalUrl": "",
+      "localPath": "essentials_baby_needs/mini_stars_wipes.jpg",
+      "status": "no_image"
+    },
+    {
+      "dishName": "Kidicare Nappies/Pants Bigger Value Pack Range",
+      "categoryName": "Essentials-Baby Needs",
+      "originalUrl": "",
+      "localPath": "essentials_baby_needs/kidicare_nappies_pants_bigger_value_pack_range.jpg",
+      "status": "no_image"
+    },
+    {
+      "dishName": "Kidicare Nappies/Pants Small Pack Range",
+      "categoryName": "Essentials-Baby Needs",
+      "originalUrl": "",
+      "localPath": "essentials_baby_needs/kidicare_nappies_pants_small_pack_range.jpg",
+      "status": "no_image"
+    },
+    {
+      "dishName": "Hilsa Fish per kg",
+      "categoryName": "Frozen-Chilled",
+      "originalUrl": "",
+      "localPath": "frozen_chilled/hilsa_fish_per_kg.jpg",
+      "status": "no_image"
+    },
+    {
+      "dishName": "Rohu Fish per kg",
+      "categoryName": "Frozen-Chilled",
+      "originalUrl": "",
+      "localPath": "frozen_chilled/rohu_fish_per_kg.jpg",
+      "status": "no_image"
+    },
+    {
+      "dishName": "Talapia per kg",
+      "categoryName": "Frozen-Chilled",
+      "originalUrl": "",
+      "localPath": "frozen_chilled/talapia_per_kg.jpg",
+      "status": "no_image"
+    },
+    {
+      "dishName": "Rama San Veges",
+      "categoryName": "Frozen-Chilled",
+      "originalUrl": "",
+      "localPath": "frozen_chilled/rama_san_veges.jpg",
+      "status": "no_image"
+    },
+    {
+      "dishName": "Ben & Jerry's Ice Cream",
+      "categoryName": "Frozen-Chilled",
+      "originalUrl": "",
+      "localPath": "frozen_chilled/ben_jerrys_ice_cream.jpg",
+      "status": "no_image"
+    },
+    {
+      "dishName": "Other Fish Range",
+      "categoryName": "Frozen-Chilled",
+      "originalUrl": "",
+      "localPath": "frozen_chilled/other_fish_range.jpg",
+      "status": "no_image"
+    },
+    {
+      "dishName": "Frozen Vegetables & Emma Jane's Paneer Range",
+      "categoryName": "Frozen-Chilled",
+      "originalUrl": "",
+      "localPath": "frozen_chilled/frozen_vegetables_emma_janes_paneer_range.jpg",
+      "status": "no_image"
+    },
+    {
+      "dishName": "Frozen Meat and Chicken Patties Range Leader",
+      "categoryName": "Frozen-Chilled",
+      "originalUrl": "",
+      "localPath": "frozen_chilled/frozen_meat_and_chicken_patties_range_leader.jpg",
+      "status": "no_image"
+    },
+    {
+      "dishName": "Emma Jane's Dessert Range",
+      "categoryName": "Frozen-Chilled",
+      "originalUrl": "",
+      "localPath": "frozen_chilled/emma_janes_dessert_range.jpg",
+      "status": "no_image"
+    }
+  ]
+}

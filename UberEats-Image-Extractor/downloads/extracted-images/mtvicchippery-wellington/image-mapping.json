@@ -1,0 +1,362 @@
+{
+  "restaurant": "Unknown Restaurant",
+  "downloadDate": "2025-08-04T05:15:59.785Z",
+  "stats": {
+    "total": 50,
+    "downloaded": 45,
+    "failed": 0,
+    "noImage": 5
+  },
+  "items": [
+    {
+      "dishName": "Handcut Agria",
+      "categoryName": "Fries",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/442178a57c3e90bcb7054e328fe7b767/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "fries/handcut_agria.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Crinkle Cut",
+      "categoryName": "Fries",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/0c94c1632686b4156ffac4e17fd31918/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "fries/crinkle_cut.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Kumara (Sweet Potato)",
+      "categoryName": "Fries",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/eb986965309f5ffc1bbf185fe49824b9/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "fries/kumara_sweet_potato_.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Beer Battered Chips",
+      "categoryName": "Fries",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/612217910c4bed1a02bee07842a5db1b/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "fries/beer_battered_chips.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chips, Cheese & Gravy",
+      "categoryName": "Fries",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/46b9d7cd9dc1717c001795790e5be9d2/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "fries/chips_cheese_gravy.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Tarakihi",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/36ccc81f2a4023257bcc52fea19c1691/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "featured_items/tarakihi.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Crinkle Cut",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/0c94c1632686b4156ffac4e17fd31918/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "featured_items/crinkle_cut.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chips, Cheese & Gravy",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/46b9d7cd9dc1717c001795790e5be9d2/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "featured_items/chips_cheese_gravy.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Handcut Agria",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/442178a57c3e90bcb7054e328fe7b767/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "featured_items/handcut_agria.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Hoki",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/7876c28c11ef82e5012f023a342fb2a9/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "featured_items/hoki.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Craft Beer Battered Sausage",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/bb42f64ef3009a06becd399a762a81c0/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "featured_items/craft_beer_battered_sausage.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chicken Tenders",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/16d36723bc6c413cdc19ecd0f4af485d/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "featured_items/chicken_tenders.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Southern Style Chicken Burger",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/b83081b90890d30888a8ba9dacab4e63/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "featured_items/southern_style_chicken_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Cheesy Garlic Bread",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/f617382b67f3c57bf1afdc6d5c3fdf42/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "featured_items/cheesy_garlic_bread.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Beer Battered Chips",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/612217910c4bed1a02bee07842a5db1b/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "featured_items/beer_battered_chips.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "C.F.C Snackbox",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/4c7b433fa2a75d7e5cb682f9a1779b9b/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "featured_items/c_f_c_snackbox.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Kumara (Sweet Potato)",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/eb986965309f5ffc1bbf185fe49824b9/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "featured_items/kumara_sweet_potato_.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Kid Chicken Tenders",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/6d3632fcef262ccb83403ce6f7944e66/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "featured_items/kid_chicken_tenders.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Panko Crumbed Calamari",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/289ce2c09e812dc26355cf5b5985538b/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "featured_items/panko_crumbed_calamari.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Kid Fish Fingers",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/c9441cde0f4640aaa6ac0ff98bdc9e46/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "featured_items/kid_fish_fingers.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Panko Crumbed Fish Burger",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/c92570ce93a293a384540d22f9868973/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "featured_items/panko_crumbed_fish_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Coleslaw",
+      "categoryName": "Featured items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/2489954958c04a27c0af268742b44367/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "featured_items/coleslaw.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Homemade Tartare",
+      "categoryName": "Sauces",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/2c401f6fe7954285806a1ea80f695c48/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "sauces/homemade_tartare.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Watties Tomato Sauce",
+      "categoryName": "Sauces",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/7f52aa7d640402fbcf54864f15a46e65/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "sauces/watties_tomato_sauce.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Homemade Aioli",
+      "categoryName": "Sauces",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/65a635c9d1e03f44a75e20ba9dc810d2/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "sauces/homemade_aioli.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Potato Fritter",
+      "categoryName": "Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/3922d6ed2f7b7e799c21184373037bc5/46a88ecd3678dbea69d08c4652e4b1be.jpeg",
+      "localPath": "sides/potato_fritter.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Jalapeno Popper",
+      "categoryName": "Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/93cce21b62a5df215cc670ee3e3fdbae/a61049aa54da38ba123c0aecd626bc83.jpeg",
+      "localPath": "sides/jalapeno_popper.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Craft Beer Battered Pickled Mussels",
+      "categoryName": "Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/85c401f40e7ad313d3fa56d347298c05/5a7fe0bbfb3d93f38e24c9b7cdd86ef1.jpeg",
+      "localPath": "sides/craft_beer_battered_pickled_mussels.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Cheesy Garlic Bread",
+      "categoryName": "Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/f617382b67f3c57bf1afdc6d5c3fdf42/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "sides/cheesy_garlic_bread.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Craft Beer Battered Onion Rings",
+      "categoryName": "Sides",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Fresh Pineapple Fritter",
+      "categoryName": "Sides",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Panko Crumbed Calamari",
+      "categoryName": "Sides",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken Tenders",
+      "categoryName": "Sides",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Craft Beer Battered Sausage",
+      "categoryName": "Sides",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Hoki",
+      "categoryName": "Today'S Market Fish",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/7876c28c11ef82e5012f023a342fb2a9/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "today_s_market_fish/hoki.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Snapper",
+      "categoryName": "Today'S Market Fish",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/0c94c1632686b4156ffac4e17fd31918/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "today_s_market_fish/snapper.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Tarakihi",
+      "categoryName": "Today'S Market Fish",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/36ccc81f2a4023257bcc52fea19c1691/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "today_s_market_fish/tarakihi.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Southern Style Chicken Burger",
+      "categoryName": "Burgers",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/b83081b90890d30888a8ba9dacab4e63/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "burgers/southern_style_chicken_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Halloumi Burger",
+      "categoryName": "Burgers",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/488b84972f40d1a03d1189bcd03c3fc1/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "burgers/halloumi_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Sticky Pork Belly Burger",
+      "categoryName": "Burgers",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/1ce6c0db1573cbb161e067ff16ee8250/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "burgers/sticky_pork_belly_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "August special - Drunk Chick Burger",
+      "categoryName": "Burgers",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/720ad185eddd510b33a606a797a4f22b/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "burgers/august_special_drunk_chick_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Panko Crumbed Fish Burger",
+      "categoryName": "Burgers",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/c92570ce93a293a384540d22f9868973/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "burgers/panko_crumbed_fish_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Vegan Quinoa Burger",
+      "categoryName": "Burgers",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/1338b2f0d8fb6939b40198dc57f99a11/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "burgers/vegan_quinoa_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Kid Chicken Tenders",
+      "categoryName": "Kids Special",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/db46e15c6329649d6206d88f230f13db/97ef050b1716893ca6bd911ab6cad524.jpeg",
+      "localPath": "kids_special/kid_chicken_tenders.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Kid Fish Fingers",
+      "categoryName": "Kids Special",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/c9441cde0f4640aaa6ac0ff98bdc9e46/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "kids_special/kid_fish_fingers.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Kids Cheese Burger",
+      "categoryName": "Kids Special",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/3d6ebaf4c63f93bf4f0aa3ab3eb5668d/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "kids_special/kids_cheese_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chippery Fried Chicken",
+      "categoryName": "Specials",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/abdd0f0da3e472e60fc0fd95e20f8fc8/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "specials/chippery_fried_chicken.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "C.F.C Snackbox",
+      "categoryName": "Specials",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/4c7b433fa2a75d7e5cb682f9a1779b9b/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "specials/c_f_c_snackbox.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chips, Cheese & Gravy",
+      "categoryName": "Specials",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/46b9d7cd9dc1717c001795790e5be9d2/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "specials/chips_cheese_gravy.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Donuts",
+      "categoryName": "Specials",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/7655568214930c15d687164a780d924f/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "specials/donuts.jpg",
+      "status": "success"
+    }
+  ]
+}

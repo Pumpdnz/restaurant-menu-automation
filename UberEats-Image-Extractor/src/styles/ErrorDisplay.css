@@ -1,0 +1,20 @@
+/* ErrorDisplay.css - Error display component styles */
+.error-display {
+  background-color: #fff5f5;
+  border: 1px solid #ff3860;
+  border-radius: 4px;
+  padding: 15px;
+  margin: 20px 0;
+  display: flex;
+  align-items: center;
+}
+
+.error-icon {
+  font-size: 1.5rem;
+  margin-right: 15px;
+}
+
+.error-message {
+  color: #ff3860;
+  font-size: 1rem;
+}

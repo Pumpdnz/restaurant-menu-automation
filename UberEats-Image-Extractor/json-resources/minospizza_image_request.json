@@ -1,0 +1,422 @@
+{
+  "data": {
+    "menuItems": [
+      {
+        "dishName": "Hawaiian Pizza",
+        "dishPrice": 21,
+        "dishDescription": "Tomato sauce, ham, pineapple chunks, and cheese.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/fb4cb9ee-676d-42e6-b9a8-fd4427f4524a-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "Pizza Bread",
+        "dishPrice": 13,
+        "dishDescription": "Freshly crushed garlic, virgin olive oil, Italian herbs, and eight cheese blend.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/4cb407a7-17ea-4425-b596-0a93405ade50-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "Quattro Stagioni Pizza",
+        "dishPrice": 25,
+        "dishDescription": "Tomato sauce, mushrooms, ham, Italian salami, freshly cooked prawns, and cheese.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/4b3ede1a-8d8e-4770-a72b-25d017a860d1-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "Margherita Pizza",
+        "dishPrice": 18.5,
+        "dishDescription": "Tomato sauce and cheese.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/be9f2b41-09c3-4534-bc91-3d9d8ed67cdc-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "Minos Special Pizza",
+        "dishPrice": 29.8,
+        "dishDescription": "Tomato sauce, mushrooms, capers, onions, capsicum, black Spanish olives, asparagus tips, freshly cooked prawns, flaked tuna, bacon, ham, Italian salami, Mediterranean anchovies, and cheese.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/89819ea6-ea35-4f20-b531-765ca884b0eb-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "Prosciutto Pizza",
+        "dishPrice": 21,
+        "dishDescription": "Tomato sauce, ham, Italian prosciutto and cheese.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/7c3c806a-1ff0-4c0e-8847-11eddab07dff-retina-large.png",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "Spaghetti Bolognese",
+        "dishPrice": 25,
+        "dishDescription": "Bolognese meat sauce with herbs and garlic on freshly cooked noodles topped with eight blend cheese a dash of Parmesan and Italian herbs.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/bc55bfca-efd9-4d7b-81e5-05bfbf2d8769-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Most Ordered"
+      },
+      {
+        "dishName": "Hawaiian Pizza",
+        "dishPrice": 21,
+        "dishDescription": "Tomato sauce, ham, pineapple chunks, and cheese.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/fb4cb9ee-676d-42e6-b9a8-fd4427f4524a-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Featured Items"
+      },
+      {
+        "dishName": "Quattro Stagioni Pizza",
+        "dishPrice": 25,
+        "dishDescription": "Tomato sauce, mushrooms, ham, Italian salami, freshly cooked prawns, and cheese.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/4b3ede1a-8d8e-4770-a72b-25d017a860d1-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Featured Items"
+      },
+      {
+        "dishName": "Margherita Pizza",
+        "dishPrice": 18.5,
+        "dishDescription": "Tomato sauce and cheese.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/be9f2b41-09c3-4534-bc91-3d9d8ed67cdc-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Featured Items"
+      },
+      {
+        "dishName": "Minos Special Pizza",
+        "dishPrice": 29.8,
+        "dishDescription": "Tomato sauce, mushrooms, capers, onions, capsicum, black Spanish olives, asparagus tips, freshly cooked prawns, flaked tuna, bacon, ham, Italian salami, Mediterranean anchovies, and cheese.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/89819ea6-ea35-4f20-b531-765ca884b0eb-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Featured Items"
+      },
+      {
+        "dishName": "Pizza Bread",
+        "dishPrice": 13,
+        "dishDescription": "Freshly crushed garlic, virgin olive oil, Italian herbs, and eight cheese blend.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/4cb407a7-17ea-4425-b596-0a93405ade50-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Featured Items"
+      },
+      {
+        "dishName": "Prosciutto Pizza",
+        "dishPrice": 21,
+        "dishDescription": "Tomato sauce, ham, Italian prosciutto and cheese.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/7c3c806a-1ff0-4c0e-8847-11eddab07dff-retina-large.png",
+        "tags": [],
+        "categoryName": "Featured Items"
+      },
+      {
+        "dishName": "Spaghetti Bolognese",
+        "dishPrice": 25,
+        "dishDescription": "Bolognese meat sauce with herbs and garlic on freshly cooked noodles topped with eight blend cheese a dash of Parmesan and Italian herbs.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/bc55bfca-efd9-4d7b-81e5-05bfbf2d8769-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Featured Items"
+      },
+      {
+        "dishName": "Cheesecake",
+        "dishPrice": 15,
+        "dishDescription": "Creamy cheesecake on a graham cracker crust.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Desserts"
+      },
+      {
+        "dishName": "Tiramisu",
+        "dishPrice": 12,
+        "dishDescription": "Ladyfingers soaked in espresso, layered with mascarpone cheese, and dusted with cocoa powder.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/dfdcaae1-538f-4834-91a5-92287b258d28-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Desserts"
+      },
+      {
+        "dishName": "Prawn Cocktail",
+        "dishPrice": 16,
+        "dishDescription": "10 pieces of freshly cooked prawns, seafood dressing on locally grown Lollo Biondi, lemon",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/a8159433-5d94-4c26-b3e0-c8dc4c2ed952-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Entrée"
+      },
+      {
+        "dishName": "Italian Salad",
+        "dishPrice": 14,
+        "dishDescription": "Lollo Biondi, fresh tomato, cucumber, red onion, olives, feta, pepperoncini, house Italian dressing",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/9136b305-0728-44a2-bc38-daf70bfacedd-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Entrée"
+      },
+      {
+        "dishName": "Pizza Bread",
+        "dishPrice": 13,
+        "dishDescription": "Freshly crushed garlic, virgin olive oil, Italian herbs, and eight cheese blend.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/4cb407a7-17ea-4425-b596-0a93405ade50-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Entrée"
+      },
+      {
+        "dishName": "Carnivores Dream",
+        "dishPrice": 62,
+        "dishDescription": "One large meatlovers with a meaty pasta and a half price pizza bread.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Combos"
+      },
+      {
+        "dishName": "Chicken & Bacon Fettuccine",
+        "dishPrice": 26,
+        "dishDescription": "Affumicato chicken, bacon, garlic, onion, napoletana sauce, cream, parmigiano",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/b61fb37a-99b4-407b-b875-70cd4d5a4738-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Pasta"
+      },
+      {
+        "dishName": "Spaghetti Carbonara",
+        "dishPrice": 26,
+        "dishDescription": "Guanciale, egg, garlic, parmigiano, pepper",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/fc46a3c3-aba7-466d-84f9-a70f1081c961-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Pasta"
+      },
+      {
+        "dishName": "Spaghetti Bolognese",
+        "dishPrice": 25,
+        "dishDescription": "Bolognese meat sauce with herbs and garlic on freshly cooked noodles topped with eight blend cheese a dash of Parmesan and Italian herbs.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/bc55bfca-efd9-4d7b-81e5-05bfbf2d8769-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Pasta"
+      },
+      {
+        "dishName": "Chicken Lasagne",
+        "dishPrice": 27,
+        "dishDescription": "Gluten free. Freshly roasted chicken, flaked bacon, onions, and fresh herb blend in a creamy sauce between layers of lasagne sheets. Topped with eight cheese blend and sprinkled with Parmesan and Italian herbs.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/b61fb37a-99b4-407b-b875-70cd4d5a4738-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Pasta"
+      },
+      {
+        "dishName": "Fettuccine Vegetarian",
+        "dishPrice": 26,
+        "dishDescription": "Freshly diced seasonal vegetables and fresh fettuccine noodles tossed in a fresh herb, garlic, cream, and tomato sauce.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/b61fb37a-99b4-407b-b875-70cd4d5a4738-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Pasta"
+      },
+      {
+        "dishName": "Paglia E Fieno",
+        "dishPrice": 25,
+        "dishDescription": "Ham, peas, onion, butter, cream, parsley",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/b61fb37a-99b4-407b-b875-70cd4d5a4738-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Pasta"
+      },
+      {
+        "dishName": "Pasta Al Limone",
+        "dishPrice": 30,
+        "dishDescription": "Fresh prawns, fresh chilli, shallots, lemon, basil, parsley, cream",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/b61fb37a-99b4-407b-b875-70cd4d5a4738-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Pasta"
+      },
+      {
+        "dishName": "Beef Lasagne",
+        "dishPrice": 26,
+        "dishDescription": "Lasagne meat recipe with fresh herbs and garlic between layers of fresh pasta and diced ham topped with tomato sauce, eight blend cheese, a dash of Parmesan, and Italian herbs.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/b61fb37a-99b4-407b-b875-70cd4d5a4738-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Pasta"
+      },
+      {
+        "dishName": "Moussaka",
+        "dishPrice": 26,
+        "dishDescription": "Layers of roast potato, eggplant, and meat sauce topped with a generous layer of bechamel sauce and a sprinkle of Parmesan cheese.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/c252ac60-46be-4e25-ae40-1a2e3bfc58ea-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Pasta"
+      },
+      {
+        "dishName": "Hawaiian Pizza",
+        "dishPrice": 21,
+        "dishDescription": "Tomato sauce, ham, pineapple chunks, and cheese.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/fb4cb9ee-676d-42e6-b9a8-fd4427f4524a-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Pizza"
+      },
+      {
+        "dishName": "Pizza Bread",
+        "dishPrice": 13,
+        "dishDescription": "Freshly crushed garlic, virgin olive oil, Italian herbs, and eight cheese blend.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/4cb407a7-17ea-4425-b596-0a93405ade50-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Pizza"
+      },
+      {
+        "dishName": "Quattro Stagioni Pizza",
+        "dishPrice": 25,
+        "dishDescription": "Tomato sauce, mushrooms, ham, Italian salami, freshly cooked prawns, and cheese.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/4b3ede1a-8d8e-4770-a72b-25d017a860d1-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Pizza"
+      },
+      {
+        "dishName": "Margherita Pizza",
+        "dishPrice": 18.5,
+        "dishDescription": "Tomato sauce and cheese.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/be9f2b41-09c3-4534-bc91-3d9d8ed67cdc-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Pizza"
+      },
+      {
+        "dishName": "Minos Special Pizza",
+        "dishPrice": 29.8,
+        "dishDescription": "Tomato sauce, mushrooms, capers, onions, capsicum, black Spanish olives, asparagus tips, freshly cooked prawns, flaked tuna, bacon, ham, Italian salami, Mediterranean anchovies, and cheese.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/89819ea6-ea35-4f20-b531-765ca884b0eb-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Pizza"
+      },
+      {
+        "dishName": "Prosciutto Pizza",
+        "dishPrice": 21,
+        "dishDescription": "Tomato sauce, ham, Italian prosciutto and cheese.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/7c3c806a-1ff0-4c0e-8847-11eddab07dff-retina-large.png",
+        "tags": [],
+        "categoryName": "Pizza"
+      },
+      {
+        "dishName": "Meat Lovers Pizza",
+        "dishPrice": 23,
+        "dishDescription": "Tomato sauce, ham, bacon, Italian salami, and cheese.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/4b3ede1a-8d8e-4770-a72b-25d017a860d1-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Pizza"
+      },
+      {
+        "dishName": "Chicken Pizza",
+        "dishPrice": 26.5,
+        "dishDescription": "Tomato sauce, succulent smoked chicken, creamy brie, cranberry sauce, and cheese.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/4b3ede1a-8d8e-4770-a72b-25d017a860d1-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Pizza"
+      },
+      {
+        "dishName": "Funghi Pizza",
+        "dishPrice": 21,
+        "dishDescription": "Tomato sauce, mushrooms, and cheese.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/4b3ede1a-8d8e-4770-a72b-25d017a860d1-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Pizza"
+      },
+      {
+        "dishName": "Paesana Pizza",
+        "dishPrice": 21,
+        "dishDescription": "Tomato sauce, onions, black Spanish olives, capsicum, and cheese.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/4b3ede1a-8d8e-4770-a72b-25d017a860d1-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Pizza"
+      },
+      {
+        "dishName": "Mexicana Pizza",
+        "dishPrice": 23,
+        "dishDescription": "Tomato sauce, ham, bacon, Italian salami, hot chilli flakes, and cheese.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/4b3ede1a-8d8e-4770-a72b-25d017a860d1-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Pizza"
+      },
+      {
+        "dishName": "Capricciosa Pizza",
+        "dishPrice": 23,
+        "dishDescription": "Tomato sauce, Spanish olives, capers, Mediterranean anchovies, and cheese.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/4b3ede1a-8d8e-4770-a72b-25d017a860d1-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Pizza"
+      },
+      {
+        "dishName": "Marinara Pizza",
+        "dishPrice": 24,
+        "dishDescription": "Tomato sauce, freshly cooked prawns, flaked tuna, Mediterranean anchovies, freshly cooked mussels, and cheese.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/4b3ede1a-8d8e-4770-a72b-25d017a860d1-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Pizza"
+      },
+      {
+        "dishName": "Bacon Pizza",
+        "dishPrice": 21,
+        "dishDescription": "Tomato sauce, bacon, and cheese.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/4b3ede1a-8d8e-4770-a72b-25d017a860d1-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Pizza"
+      },
+      {
+        "dishName": "Vegetarian Pizza",
+        "dishPrice": 25.5,
+        "dishDescription": "Vegetarian. Tomato sauce, mushrooms, onions, capsicum, Spanish olives, asparagus tips, capers, and cheese.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/4b3ede1a-8d8e-4770-a72b-25d017a860d1-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Pizza"
+      },
+      {
+        "dishName": "Fanta",
+        "dishPrice": 3,
+        "dishDescription": "Fruity and effervescent soda, typically featuring bold orange flavor and vibrant zest.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/df0f6867-db29-432c-aee4-60dbe0257999-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Cold Drinks"
+      },
+      {
+        "dishName": "L&P",
+        "dishPrice": 3,
+        "dishDescription": "330ml in can.",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Cold Drinks"
+      },
+      {
+        "dishName": "GInger Beer",
+        "dishPrice": 6,
+        "dishDescription": "375ml.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/619a377a-5424-4c3c-9318-57d0c26761ac-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Cold Drinks"
+      },
+      {
+        "dishName": "Coke no sugar",
+        "dishPrice": 3,
+        "dishDescription": "Coke Zero Sugar: Crisp, Refreshing, No-Calorie Classic Cola",
+        "imageURL": "",
+        "tags": [],
+        "categoryName": "Cold Drinks"
+      },
+      {
+        "dishName": "Lemon Lime Bitters",
+        "dishPrice": 6,
+        "dishDescription": "375ml.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/a527d005-f493-4d42-9fac-338bbac07134-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Cold Drinks"
+      },
+      {
+        "dishName": "Coke",
+        "dishPrice": 3,
+        "dishDescription": "330ml in can.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/d4482fc7-af92-4b0f-82a4-9cfed1385369-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Cold Drinks"
+      },
+      {
+        "dishName": "Sprite",
+        "dishPrice": 3,
+        "dishDescription": "330ml in can.",
+        "imageURL": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/35a0dd75-f75c-42e1-a0e0-32131a1ff652-retina-large.jpg",
+        "tags": [],
+        "categoryName": "Cold Drinks"
+      }
+    ],
+    "restaurantInfo": {
+      "name": "Minos Pizza"
+    }
+  },
+  "options": {
+    "outputPath": "./downloads/extracted-images/minos-pizza-auckland-howick",
+    "groupByCategory": true,
+    "skipPlaceholders": true
+  }
+}

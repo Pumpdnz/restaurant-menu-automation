@@ -1,0 +1,418 @@
+{
+  "restaurant": "Gone Burger",
+  "downloadDate": "2025-08-16T04:32:38.757Z",
+  "stats": {
+    "total": 58,
+    "downloaded": 45,
+    "failed": 0,
+    "noImage": 13
+  },
+  "items": [
+    {
+      "dishName": "I Am Piggie Burger",
+      "categoryName": "Most Liked",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/bdf8de88-aa7b-4e5e-be47-1e459bc4b3e6-retina-large.jpg",
+      "localPath": "most_liked/i_am_piggie_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "The Aztec",
+      "categoryName": "Most Liked",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/4d949630-0ed6-47db-aef1-4f89b9b44b7d-retina-large.jpg",
+      "localPath": "most_liked/the_aztec.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "The Big Daddy",
+      "categoryName": "Most Liked",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6bbb76f5-8030-40c2-bfaa-1a2fce6d1018-retina-large.jpg",
+      "localPath": "most_liked/the_big_daddy.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Gone Clucky",
+      "categoryName": "Most Liked",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/61413a8b-217a-4524-902f-e03e37ae5649-retina-large.jpg",
+      "localPath": "most_liked/gone_clucky.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Gone Cheesy",
+      "categoryName": "Most Liked",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/08802321-2914-4a47-aec6-9f1d5dd9fd63-retina-large.jpg",
+      "localPath": "most_liked/gone_cheesy.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Loaded Wedges",
+      "categoryName": "Most Liked",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/8693dcb1-0df1-4202-b9ec-52e041d8c45b-retina-large.jpg",
+      "localPath": "most_liked/loaded_wedges.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "I Am Piggie Burger",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/bdf8de88-aa7b-4e5e-be47-1e459bc4b3e6-retina-large.jpg",
+      "localPath": "featured_items/i_am_piggie_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "The Aztec",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/4d949630-0ed6-47db-aef1-4f89b9b44b7d-retina-large.jpg",
+      "localPath": "featured_items/the_aztec.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "The Big Daddy",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6bbb76f5-8030-40c2-bfaa-1a2fce6d1018-retina-large.jpg",
+      "localPath": "featured_items/the_big_daddy.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Gone Clucky",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/61413a8b-217a-4524-902f-e03e37ae5649-retina-large.jpg",
+      "localPath": "featured_items/gone_clucky.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Loaded Wedges",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/8693dcb1-0df1-4202-b9ec-52e041d8c45b-retina-large.jpg",
+      "localPath": "featured_items/loaded_wedges.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Gone Cheesy",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/08802321-2914-4a47-aec6-9f1d5dd9fd63-retina-large.jpg",
+      "localPath": "featured_items/gone_cheesy.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Gone Classic",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/40bf3dee-8472-4d81-b929-376cacd70ec8-retina-large.jpg",
+      "localPath": "featured_items/gone_classic.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Premium Fries Regular",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/78c436e7-efe1-469a-81c1-1310f01402a0-retina-large.jpg",
+      "localPath": "featured_items/premium_fries_regular.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Loaded Fries",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/342e46b9-5227-4848-9961-b12c20520f86-retina-large.jpg",
+      "localPath": "featured_items/loaded_fries.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "The American",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/48859366-5a0a-437c-9df9-629db2549c47-retina-large.jpg",
+      "localPath": "featured_items/the_american.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Retro Chicken",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/fe348abb-5abc-4021-8161-283a7a6c6e1e-retina-large.jpg",
+      "localPath": "featured_items/retro_chicken.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Coke Range",
+      "categoryName": "Featured Items",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "The Big Daddy",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6bbb76f5-8030-40c2-bfaa-1a2fce6d1018-retina-large.jpg",
+      "localPath": "most_ordered/the_big_daddy.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Loaded Wedges",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/8693dcb1-0df1-4202-b9ec-52e041d8c45b-retina-large.jpg",
+      "localPath": "most_ordered/loaded_wedges.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "I Am Piggie Burger",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/bdf8de88-aa7b-4e5e-be47-1e459bc4b3e6-retina-large.jpg",
+      "localPath": "most_ordered/i_am_piggie_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Gone Clucky",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/61413a8b-217a-4524-902f-e03e37ae5649-retina-large.jpg",
+      "localPath": "most_ordered/gone_clucky.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Gone Cheesy",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/08802321-2914-4a47-aec6-9f1d5dd9fd63-retina-large.jpg",
+      "localPath": "most_ordered/gone_cheesy.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Premium Fries Regular",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/78c436e7-efe1-469a-81c1-1310f01402a0-retina-large.jpg",
+      "localPath": "most_ordered/premium_fries_regular.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Loaded Fries",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/342e46b9-5227-4848-9961-b12c20520f86-retina-large.jpg",
+      "localPath": "most_ordered/loaded_fries.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "The American",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/48859366-5a0a-437c-9df9-629db2549c47-retina-large.jpg",
+      "localPath": "most_ordered/the_american.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Premium Fries Large",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/2d136397-44a8-4e8e-9387-e544a2e88c8f-retina-large.png",
+      "localPath": "most_ordered/premium_fries_large.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Gone Classic",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/40bf3dee-8472-4d81-b929-376cacd70ec8-retina-large.jpg",
+      "localPath": "most_ordered/gone_classic.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Retro Chicken",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/fe348abb-5abc-4021-8161-283a7a6c6e1e-retina-large.jpg",
+      "localPath": "most_ordered/retro_chicken.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "The Aztec",
+      "categoryName": "Beef Burgers",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/4d949630-0ed6-47db-aef1-4f89b9b44b7d-retina-large.jpg",
+      "localPath": "beef_burgers/the_aztec.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Gone Classic",
+      "categoryName": "Beef Burgers",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/40bf3dee-8472-4d81-b929-376cacd70ec8-retina-large.jpg",
+      "localPath": "beef_burgers/gone_classic.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Gone Cheesy",
+      "categoryName": "Beef Burgers",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/08802321-2914-4a47-aec6-9f1d5dd9fd63-retina-large.jpg",
+      "localPath": "beef_burgers/gone_cheesy.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Peek a Moo",
+      "categoryName": "Beef Burgers",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "The Big Daddy",
+      "categoryName": "Beef Burgers",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6bbb76f5-8030-40c2-bfaa-1a2fce6d1018-retina-large.jpg",
+      "localPath": "beef_burgers/the_big_daddy.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "The American",
+      "categoryName": "Beef Burgers",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/48859366-5a0a-437c-9df9-629db2549c47-retina-large.jpg",
+      "localPath": "beef_burgers/the_american.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Retro Chicken",
+      "categoryName": "Chicken Burgers",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/fe348abb-5abc-4021-8161-283a7a6c6e1e-retina-large.jpg",
+      "localPath": "chicken_burgers/retro_chicken.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chicken Little",
+      "categoryName": "Chicken Burgers",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/d4cddf42-5a3c-4840-b2d7-5ffafed4b4ac-retina-large.jpg",
+      "localPath": "chicken_burgers/chicken_little.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Hawaiian",
+      "categoryName": "Chicken Burgers",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "The Commitment Burger",
+      "categoryName": "Chicken Burgers",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "I Am Piggie Burger",
+      "categoryName": "Chicken Burgers",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/bdf8de88-aa7b-4e5e-be47-1e459bc4b3e6-retina-large.jpg",
+      "localPath": "chicken_burgers/i_am_piggie_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Gone Clucky",
+      "categoryName": "Chicken Burgers",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/61413a8b-217a-4524-902f-e03e37ae5649-retina-large.jpg",
+      "localPath": "chicken_burgers/gone_clucky.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Vege Smash",
+      "categoryName": "Veggie Burgers",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/b4059504-2045-49cc-8263-529ab6f823c0-retina-large.jpg",
+      "localPath": "veggie_burgers/vege_smash.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Gone Gardening",
+      "categoryName": "Veggie Burgers",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/7ba28421-5023-4b3a-8365-24bd1d5430df-retina-large.jpg",
+      "localPath": "veggie_burgers/gone_gardening.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chicken",
+      "categoryName": "Kiddie Burgers",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/fe348abb-5abc-4021-8161-283a7a6c6e1e-retina-large.jpg",
+      "localPath": "kiddie_burgers/chicken.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Beef",
+      "categoryName": "Kiddie Burgers",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/4d949630-0ed6-47db-aef1-4f89b9b44b7d-retina-large.jpg",
+      "localPath": "kiddie_burgers/beef.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Cheese Cake",
+      "categoryName": "Desserts",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Gluten Free Brownie",
+      "categoryName": "Desserts",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Loaded Wedges",
+      "categoryName": "Sides",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/8693dcb1-0df1-4202-b9ec-52e041d8c45b-retina-large.jpg",
+      "localPath": "sides/loaded_wedges.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Kumara Fries Regular",
+      "categoryName": "Sides",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Premium Fries Large",
+      "categoryName": "Sides",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/2d136397-44a8-4e8e-9387-e544a2e88c8f-retina-large.png",
+      "localPath": "sides/premium_fries_large.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Crumbed Calamari",
+      "categoryName": "Sides",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Premium Fries Combo Large",
+      "categoryName": "Sides",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Kumara Fries Large",
+      "categoryName": "Sides",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Seasoned Wedges Regular",
+      "categoryName": "Sides",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Seasoned Wedges Large",
+      "categoryName": "Sides",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Premium Fries Combo Regular",
+      "categoryName": "Sides",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Premium Fries Regular",
+      "categoryName": "Sides",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/78c436e7-efe1-469a-81c1-1310f01402a0-retina-large.jpg",
+      "localPath": "sides/premium_fries_regular.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Loaded Fries",
+      "categoryName": "Sides",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/342e46b9-5227-4848-9961-b12c20520f86-retina-large.jpg",
+      "localPath": "sides/loaded_fries.jpg",
+      "status": "success"
+    }
+  ]
+}

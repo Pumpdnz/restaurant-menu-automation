@@ -1,0 +1,865 @@
+{
+  "success": true,
+  "data": {
+    "menuItems": [
+      {
+        "dishDescription": "Cheesy Garlic Bread",
+        "dishName": "Cheesy Garlic Bread",
+        "dishPrice": 11.49,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/e8758b908d332f6e462db2c9ae295698/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Featured items"
+      },
+      {
+        "dishDescription": "Loaded Wedges (Bacon and Cheese)",
+        "dishName": "Loaded Wedges (Bacon and Cheese)",
+        "dishPrice": 11.49,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/5a2329d07ca9ff0211a06b0a55028a7d/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Featured items"
+      },
+      {
+        "dishDescription": "Pepperoni Pizza",
+        "dishName": "Pepperoni Pizza",
+        "dishPrice": 14.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/5e72fe5a92480dfd04e9c7d9a57c5e7d/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Featured items"
+      },
+      {
+        "dishDescription": "Hawaiian Pizza",
+        "dishName": "Hawaiian Pizza",
+        "dishPrice": 14.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/791b8f6f2f4a233d16d9607aee1b2118/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Featured items"
+      },
+      {
+        "dishDescription": "Apricot Chicken Delight Pizza",
+        "dishName": "Apricot Chicken Delight Pizza",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/92bd95f08b3ad7274911618f926445c2/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Featured items"
+      },
+      {
+        "dishDescription": "Seafood Delight Pizza",
+        "dishName": "Seafood Delight Pizza",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/8920ac31bdc23ca7667dd29909a1d769/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Featured items"
+      },
+      {
+        "dishDescription": "Loaded Veggie Delight Pizza (V)",
+        "dishName": "Loaded Veggie Delight Pizza (V)",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/9a819b125038c34b6c9f05c06af5b0c6/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Featured items"
+      },
+      {
+        "dishDescription": "Bacon and Chicken Pasta in White Sauce",
+        "dishName": "Bacon and Chicken Pasta in White Sauce",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/ece84b115be19bde7763dc7d10246c3e/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Featured items"
+      },
+      {
+        "dishDescription": "Bacon Delight Pizza",
+        "dishName": "Bacon Delight Pizza",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/c3dc751f3e30b9538849164abea0eb68/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Featured items"
+      },
+      {
+        "dishDescription": "Peppery Chicken Delight Pizza",
+        "dishName": "Peppery Chicken Delight Pizza",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/39bcd0b2fe7e27b8706bf879e65e4873/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Featured items"
+      },
+      {
+        "dishDescription": "Brioche bun, vegetable patty, lettuce, onions, tomato, onions rings, coleslaw, cheddar cheese slice, aioli and burger sauce.",
+        "dishName": "The Earth Bite Burger (V)",
+        "dishPrice": 18.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/9cc1c81181209e7beaddf6db1190cd41/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Burgers"
+      },
+      {
+        "dishDescription": "Brioche bun, vegetable patty, lettuce, onions, tomato, onions rings, jalapenos, black pepper, cheddar cheese slice, chilli flakes, oregano, aioli and burger sauce.",
+        "dishName": "Spicy Veggie Vortex Burger (V)",
+        "dishPrice": 18.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/345266be00cac2d114ed7e42c10924ec/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [
+          "Spicy"
+        ],
+        "categoryName": "Burgers"
+      },
+      {
+        "dishDescription": "Brioche bun, chicken patty, lettuce, onions, tomato, blue cheese sauce, cheddar cheese slice, parmesan, aioli and burger sauce.",
+        "dishName": "The Coop Classic Burger",
+        "dishPrice": 18.99,
+        "imageURL": "https://www.ubereats.com/nz/store/pizza-delight/ODSEwN_9Qvi-y0f1M9qAIA?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522383484c0-dffd-42f8-becb-47f533da8020%2522%252C%2522sectionUuid%2522%253A%25223e6a16c5-b69b-4904-a7eb-a5f6afdb77a9%2522%252C%2522subsectionUuid%2522%253A%25221fbfc1f6-d8bc-4214-9c8e-e20e3d4c955f%2522%252C%2522itemUuid%2522%253A%252250e9f510-26fe-4fc7-a637-5cbdab4821ec%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1",
+        "tags": [],
+        "categoryName": "Burgers"
+      },
+      {
+        "dishDescription": "Brioche bun, beef patty, lettuce, onions, tomato, plum sauce, streaky bacon, cheddar cheese slice, Parmesan, aioli and blue cheese sauce.",
+        "dishName": "The Beef Boss Burger",
+        "dishPrice": 18.99,
+        "imageURL": "https://www.ubereats.com/nz/store/pizza-delight/ODSEwN_9Qvi-y0f1M9qAIA?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522383484c0-dffd-42f8-becb-47f533da8020%2522%252C%2522sectionUuid%2522%253A%25223e6a16c5-b69b-4904-a7eb-a5f6afdb77a9%2522%252C%2522subsectionUuid%2522%253A%25221fbfc1f6-d8bc-4214-9c8e-e20e3d4c955f%2522%252C%2522itemUuid%2522%253A%25220cbb32ea-4e1f-4430-8108-28b11f0c7a17%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1",
+        "tags": [],
+        "categoryName": "Burgers"
+      },
+      {
+        "dishDescription": "Brioche bun, chicken patty, lettuce, onions, tomato, streaky bacon, cheddar cheese slice, Parmesan, aioli and burger sauce.",
+        "dishName": "The Cluck and Oink Burger",
+        "dishPrice": 18.99,
+        "imageURL": "https://www.ubereats.com/nz/store/pizza-delight/ODSEwN_9Qvi-y0f1M9qAIA?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522383484c0-dffd-42f8-becb-47f533da8020%2522%252C%2522sectionUuid%2522%253A%25223e6a16c5-b69b-4904-a7eb-a5f6afdb77a9%2522%252C%2522subsectionUuid%2522%253A%25221fbfc1f6-d8bc-4214-9c8e-e20e3d4c955f%2522%252C%2522itemUuid%2522%253A%2522835c99a1-115f-4619-b332-81058ef4dae1%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1",
+        "tags": [],
+        "categoryName": "Burgers"
+      },
+      {
+        "dishDescription": "Brioche bun, vegetable patty, onions, tomato, vegetable noodles, paneer slice, schezwan sauce, tomato sauce and mayonnaise.",
+        "dishName": "Noodlicious Veggie Burger (V)",
+        "dishPrice": 18.99,
+        "imageURL": "https://www.ubereats.com/nz/store/pizza-delight/ODSEwN_9Qvi-y0f1M9qAIA?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522383484c0-dffd-42f8-becb-47f533da8020%2522%252C%2522sectionUuid%2522%253A%25223e6a16c5-b69b-4904-a7eb-a5f6afdb77a9%2522%252C%2522subsectionUuid%2522%253A%25221fbfc1f6-d8bc-4214-9c8e-e20e3d4c955f%2522%252C%2522itemUuid%2522%253A%252297d7ccf1-e547-44a1-b961-df174fe4a931%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1",
+        "tags": [],
+        "categoryName": "Burgers"
+      },
+      {
+        "dishDescription": "Penne pasta, bacon flakes, chicken pieces cooked in creamy sauce, Parmesan cheese and mild spices and finished with mozzarella cheese.",
+        "dishName": "Bacon and Chicken Pasta in White Sauce",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/ece84b115be19bde7763dc7d10246c3e/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Pastas"
+      },
+      {
+        "dishDescription": "Penne pasta, onions, capsicum, sweet corns, pineapple cooked in tomato flavoured sauce and spices finished with mozzarella cheese and black olives.",
+        "dishName": "Red Sauce Veggie Pasta (V)",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/3d2a3f1c8f2244db63c75c6b40281a5f/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [
+          "V"
+        ],
+        "categoryName": "Pastas"
+      },
+      {
+        "dishDescription": "Penne pasta, onions, capsicum and sweet corns cooked in creamy sauce and mild spices and finished with mozzarella, herbs and Parmesan cheese.",
+        "dishName": "White Sauce Veggie Pasta (V)",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/a85c4cce0f49386f9a31aa5748273ac9/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [
+          "V"
+        ],
+        "categoryName": "Pastas"
+      },
+      {
+        "dishDescription": "Penne pasta, chicken pieces, onions and capsicum cooked in butter sauce and spices and finished with mozzarella cheese.",
+        "dishName": "Butter Chicken Pasta",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/ece84b115be19bde7763dc7d10246c3e/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Pastas"
+      },
+      {
+        "dishDescription": "Penne pasta, chicken pieces, onions, cooked in spinach sauce and mild spices and finished with mozzarella cheese and baby spinach leaves.",
+        "dishName": "Spinach Chicken Pasta",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/ece84b115be19bde7763dc7d10246c3e/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Pastas"
+      },
+      {
+        "dishDescription": "Penne pasta, marinated chicken, onions, capsicum, sweet corns and pineapple cooked tomato flavoured sauce and spicy spices finished with mozzarella cheese and black olives.",
+        "dishName": "Red Sauce Chicken Pasta",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/ece84b115be19bde7763dc7d10246c3e/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Pastas"
+      },
+      {
+        "dishDescription": "Penne pasta, marinated chicken, onions, capsicum and sweet corns cooked in creamy sauce and mild spices and finished with mozzarella, herbs and Parmesan cheese.",
+        "dishName": "White Sauce Chicken Pasta",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/ece84b115be19bde7763dc7d10246c3e/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Pastas"
+      },
+      {
+        "dishDescription": "Spicy. Tomato base, onions, garlic, black pepper, coriander, capsicum, marinated baked chicken, mushrooms, jalapenos, chilli flakes, black olives, mozzarella and peri peri mayonnaise swirl.",
+        "dishName": "Peppery Chicken Delight Pizza",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/39bcd0b2fe7e27b8706bf879e65e4873/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [
+          "Spicy"
+        ],
+        "categoryName": "Deluxe Delight Pizza"
+      },
+      {
+        "dishDescription": "Crème fraiche base, onions, spinach, mushrooms, salmon, prawns, shrimps, garlic, black olives and mozzarella topped with oregano and Parmesan.",
+        "dishName": "Seafood Delight Pizza",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/8920ac31bdc23ca7667dd29909a1d769/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Deluxe Delight Pizza"
+      },
+      {
+        "dishDescription": "Apricot sauce base, onions, garlic, feta cheese, capsicum, caramelised onions, pineapple, marinated baked chicken and mozzarella topped with apricot sauce.",
+        "dishName": "Apricot Chicken Delight Pizza",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/92bd95f08b3ad7274911618f926445c2/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Deluxe Delight Pizza"
+      },
+      {
+        "dishDescription": "Tomato base, marinated chicken, beef, pepperoni, bacon flakes, onions, capsicum, mushrooms, black olives, oregano and mozzarella.",
+        "dishName": "Loaded Meaty Delight Pizza",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/9a819b125038c34b6c9f05c06af5b0c6/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Deluxe Delight Pizza"
+      },
+      {
+        "dishDescription": "Tomato base, onions, black pepper, pineapple, capsicum, caramelised onions, mushrooms, tomatoes, ginger, garlic, black olives, avocado, baby spinach, cream and cheese, mozzarella and topped with oregano and Parmesan.",
+        "dishName": "Loaded Veggie Delight Pizza (V)",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/9a819b125038c34b6c9f05c06af5b0c6/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Deluxe Delight Pizza"
+      },
+      {
+        "dishDescription": "Tomato base, barbecue sauce, beef, bacon flakes, pepperoni, streaky bacon, marinated chicken, onions, capsicum, black olives and mozzarella topped with barbecue sauce swirl.",
+        "dishName": "BBQ Meaty Delight Pizza",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/c3dc751f3e30b9538849164abea0eb68/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Deluxe Delight Pizza"
+      },
+      {
+        "dishDescription": "Crème fraiche base, bacon flakes, streaky bacon, feta cheese, onions, mushrooms, baby spinach and mozzarella topped with Italian herbs and Parmesan.",
+        "dishName": "Bacon Delight Pizza",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/c3dc751f3e30b9538849164abea0eb68/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Deluxe Delight Pizza"
+      },
+      {
+        "dishDescription": "Tomato base, marinated baked chicken, onions, capsicum, mushrooms, black black olives, garlic and mozzarella topped with Italian herbs.",
+        "dishName": "Chicken Delight Pizza",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/0afd086f-6f89-48e5-a85e-23b1e05db98d/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Deluxe Delight Pizza"
+      },
+      {
+        "dishDescription": "Satay base, onions, mushrooms, chilli flakes, capsicum, black pepper, tomatoes, cream and cheese, marinated baked chicken and mozzarella.",
+        "dishName": "Thai Chicken Delight Pizza",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/6cf7e311-6174-4efb-a6e5-4bf82e3a4cd0/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Deluxe Delight Pizza"
+      },
+      {
+        "dishDescription": "Tomato base, bacon flakes, marinated chicken, pineapple, ham slices, onions, mushrooms and mozzarella topped with oregano and Parmesan.",
+        "dishName": "Ham, Chicken and Pineapple Delight Pizza",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/5fe537a3-6ae1-43bd-b16e-b38b9f2dece5/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Deluxe Delight Pizza"
+      },
+      {
+        "dishDescription": "Cranberry base, onions, mushrooms, pineapple, capsicum, black olives, camembert cheese and mozzarella.",
+        "dishName": "Cranberry Veggie Lovers Delight Pizza (V)",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/c45da318-0939-42b5-8197-e5f2364912bb/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Deluxe Delight Pizza"
+      },
+      {
+        "dishDescription": "Tomato base, onions, garlic, black pepper, capsicum, tomatoes, sweet corns, black olives, mushroom, mozzarella and mayonnaise swirl.",
+        "dishName": "Veggie Corn Delight Pizza (V)",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/65134333-94bf-436c-bf9e-76f11de2509c/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Deluxe Delight Pizza"
+      },
+      {
+        "dishDescription": "Cranberry base, onions, marinated chicken, capsicum, mushroom, pineapple, black olives, camembert cheese and mozzarella.",
+        "dishName": "Cranberry Chicken Delight Pizza",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/9de38ba4-61b7-45a3-ab0a-65932f70d9c3/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Deluxe Delight Pizza"
+      },
+      {
+        "dishDescription": "Tomato base, mayonnaise, paneer cubes, onions, capsicum, tomatoes, garlic, ginger and mozzarella, topped with Italian herbs.",
+        "dishName": "Veggie Paneer Delight Pizza (V)",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/0f226a01-b7cd-4c24-aea6-c6d12c38b013/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Deluxe Delight Pizza"
+      },
+      {
+        "dishDescription": "Satay sauce base, onions, paneer cubes, mushroom, garlic, chilli flakes, capsicum, black pepper, tomatoes, cream and cheese, mozzarella.",
+        "dishName": "Thai Paneer Delight Pizza (V)",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/90d63839-9c80-407a-877d-26ef00d4e72c/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Deluxe Delight Pizza"
+      },
+      {
+        "dishDescription": "Tomato base, beef, bacon flakes, onions, salmon, prawns, shrimps, garlic, black pepper and mozzarella topped with garlic aioli.",
+        "dishName": "Meaty and Seafood Delight Pizza",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/cbe88cf8-b21a-4975-8546-17dc097fb692/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Deluxe Delight Pizza"
+      },
+      {
+        "dishDescription": "Garlic sauce base, onions, mushrooms, tomatoes, beef, capsicum, streaky bacon, black olives, mozzarella and aioli swirl.",
+        "dishName": "Garlic Beef Delight Pizza",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/06411078-a24e-41f8-aadb-f1697bd5c760/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Deluxe Delight Pizza"
+      },
+      {
+        "dishDescription": "Tomato base, peri peri mayonnaise, beef, bacon flakes, pepperoni, marinated chicken, onions, capsicum, jalapenos and black olives, topped with peri peri mayonnaise swirl.",
+        "dishName": "Peri Peri Meaty Delight Pizza",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/b28809b7-4afe-438d-a81a-80c91ade04e3/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [
+          "Spicy"
+        ],
+        "categoryName": "Deluxe Delight Pizza"
+      },
+      {
+        "dishDescription": "Tomato base, sweet chilli sauce, onions, capsicum, beef, bacon flakes, streaky bacon, tomatoes, caramelised onions and mozzarella topped with sweet chilli sauce.",
+        "dishName": "Sweet Chilli Beef and Bacon Delight Pizza",
+        "dishPrice": 19.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/fa506043-d438-4fe3-8b5a-16331787349e/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [
+          "Spicy"
+        ],
+        "categoryName": "Deluxe Delight Pizza"
+      },
+      {
+        "dishDescription": "Butter sauce, marinated baked chicken, onions, capsicum, coriander, mozzarella and Parmesan.",
+        "dishName": "Butter Chicken Delight Pizza",
+        "dishPrice": 24.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/4c48ca09a9b04b3082886c8f2cc2d672/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Creative Delight Pizza"
+      },
+      {
+        "dishDescription": "Marinated paneer cooked in kadai gravy, ginger, garlic, coriander, onions, capsicum and mozzarella topped with spices.",
+        "dishName": "Kadhai Paneer Delight Pizza (V)",
+        "dishPrice": 24.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/2f4b5094bb344a388cf31f85621a2785/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [
+          "Spicy"
+        ],
+        "categoryName": "Creative Delight Pizza"
+      },
+      {
+        "dishDescription": "Makhani sauce base, onions, garlic, black pepper, ginger, coriander, capsicum, pineapple, mushrooms, tomatoes, mayonnaise and mozzarella.",
+        "dishName": "Vegetable Makhani Delight Pizza (V)",
+        "dishPrice": 24.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/f36bf900700f426eb048b9d2f26fc699/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Creative Delight Pizza"
+      },
+      {
+        "dishDescription": "Tandoori sauce, tandoori paneer cubes, onions, capsicum, garlic, ginger, sweet corns, tomatoes, mushrooms, coriander and mozzarella topped with spices.",
+        "dishName": "Tandoori Paneer and Corns Delight Pizza (V)",
+        "dishPrice": 24.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/3309658a59724fda83fabc3f0007da11/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [
+          "Spicy"
+        ],
+        "categoryName": "Creative Delight Pizza"
+      },
+      {
+        "dishDescription": "Chicken pieces cooked in schezwan sauce, onions, capsicum, garlic, ginger, tomatoes, coriander and mozzarella.",
+        "dishName": "Chilli Chicken Delight Pizza",
+        "dishPrice": 24.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/584b597f50f0419aaa5b3111913f2ddd/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [
+          "Spicy"
+        ],
+        "categoryName": "Creative Delight Pizza"
+      },
+      {
+        "dishDescription": "Tandoori sauce base, tandoori chicken, ginger, garlic, onions, capsicum and mozzarella topped with spices.",
+        "dishName": "Tandoori Chicken Delight Pizza",
+        "dishPrice": 24.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/6f75284b24274356a3ceacdbab1ca614/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [
+          "Spicy"
+        ],
+        "categoryName": "Creative Delight Pizza"
+      },
+      {
+        "dishDescription": "Chicken kebab pieces, ginger, garlic, coriander, tandoori sauce, onions, capsicum and mozzarella topped with spices.",
+        "dishName": "Chicken Seekh Kebab Delight Pizza",
+        "dishPrice": 24.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/4f165986bce840a3a462b8bf683c5026/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Creative Delight Pizza"
+      },
+      {
+        "dishDescription": "Marinated chicken cooked in kadai gravy, ginger, garlic, coriander, onions, capsicum and mozzarella topped with spices.",
+        "dishName": "Kadhai Chicken Delight Pizza",
+        "dishPrice": 24.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/dab1db68c5a8492ba4c8eecc65d5fe7a/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [
+          "Spicy"
+        ],
+        "categoryName": "Creative Delight Pizza"
+      },
+      {
+        "dishDescription": "Tandoori sauce, marinated baked soya chaap cubes, onions, capsicum, tomatoes, ginger, garlic, black pepper, coriander and mozzarella.",
+        "dishName": "Tandoori Chaap Delight Pizza (V)",
+        "dishPrice": 24.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/445b55f92ad84d65aefa6ee8da8048b1/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [
+          "Spicy"
+        ],
+        "categoryName": "Creative Delight Pizza"
+      },
+      {
+        "dishDescription": "Paneer cubes cooked in schezwan sauce, onions, capsicum, garlic, ginger, tomatoes, coriander and mozzarella.",
+        "dishName": "Chilli Paneer Delight Pizza (V)",
+        "dishPrice": 24.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/e0d7850f4c8c4c018305477582d81436/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [
+          "Spicy"
+        ],
+        "categoryName": "Creative Delight Pizza"
+      },
+      {
+        "dishDescription": "Mushrooms cooked in schezwan sauce, onions, capsicum, garlic, ginger, tomatoes, coriander and mozzarella.",
+        "dishName": "Chilli Mushroom Delight Pizza (V)",
+        "dishPrice": 24.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/a7e2cce696d049baa17c8fd5b57335ec/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [
+          "Spicy"
+        ],
+        "categoryName": "Creative Delight Pizza"
+      },
+      {
+        "dishDescription": "Indian maggie noodles cooked in spices, onions, tomatoes, capsicum, corns and mozzarella, topped with Indian spices.",
+        "dishName": "Indian Maggie Vegetable Delight Pizza (V)",
+        "dishPrice": 24.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/c8e9e65cb8e9433d9761c07f54e58286/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Creative Delight Pizza"
+      },
+      {
+        "dishDescription": "Tomato base, ham, pineapple and mozzarella.",
+        "dishName": "Hawaiian Pizza",
+        "dishPrice": 14.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/791b8f6f2f4a233d16d9607aee1b2118/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Basic Delight Pizza"
+      },
+      {
+        "dishDescription": "Tomato base, pepperoni and mozzarella.",
+        "dishName": "Pepperoni Pizza",
+        "dishPrice": 14.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/5e72fe5a92480dfd04e9c7d9a57c5e7d/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Basic Delight Pizza"
+      },
+      {
+        "dishDescription": "Tomato base, ham, onions, mushrooms and mozzarella.",
+        "dishName": "Ham and Cheese Pizza",
+        "dishPrice": 14.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/22111111111111111111111111111111/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Basic Delight Pizza"
+      },
+      {
+        "dishDescription": "Tomato base, onions, black olives and mozzarella.",
+        "dishName": "Onions and Cheese Pizza (V)",
+        "dishPrice": 14.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/1024a839-9ee1-4813-bd4d-e6ab1c2b3952/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Basic Delight Pizza"
+      },
+      {
+        "dishDescription": "Tomato base, baby spinach and mozzarella, topped with oregano and Parmesan.",
+        "dishName": "Margherita Pizza (V)",
+        "dishPrice": 14.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/2f576d71-da98-41dd-bed2-9f2c7b058fbe/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Basic Delight Pizza"
+      },
+      {
+        "dishDescription": "Tomato base, marinated chicken, onions and mozzarella.",
+        "dishName": "Chicken and Cheese Pizza",
+        "dishPrice": 14.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/cadc74d7-0842-4902-be2b-86ee0f1c4b39/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Basic Delight Pizza"
+      },
+      {
+        "dishDescription": "Tomato base, garlic sauce, garlic and mozzarella.",
+        "dishName": "Cheesy Garlic Pizza (V)",
+        "dishPrice": 14.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/2563c25e-a94e-4b3e-bc74-fc498e641cf9/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Basic Delight Pizza"
+      },
+      {
+        "dishDescription": "Tomato base, onions, capsicum, tomatoes and mozzarella.",
+        "dishName": "Veggie Pizza (V)",
+        "dishPrice": 14.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/179198fd-139b-4766-90b1-ebeb9af01c95/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Basic Delight Pizza"
+      },
+      {
+        "dishDescription": "Tomato base, mozzarella, camembert, feta cheese and Parmesan cheese.",
+        "dishName": "Cheese Lover's Pizza (V)",
+        "dishPrice": 14.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/ef5e270a-8ff5-470d-8e7d-712e7191af0e/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Basic Delight Pizza"
+      },
+      {
+        "dishDescription": "Crispy baked bread infused with aromatic garlic, perfect as a savory side or a delicious snack.",
+        "dishName": "Garlic Bread",
+        "dishPrice": 9.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/e8758b908d332f6e462db2c9ae295698/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Baked Breads"
+      },
+      {
+        "dishDescription": "Golden baked bread topped with melted cheese and garlic for a savory delight.",
+        "dishName": "Cheesy Garlic Bread",
+        "dishPrice": 11.49,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/e8758b908d332f6e462db2c9ae295698/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Baked Breads"
+      },
+      {
+        "dishDescription": "Classic baked bread topped with fresh tomatoes, mozzarella, and basil for a simple yet delicious taste.",
+        "dishName": "Margherita Bread",
+        "dishPrice": 11.49,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/e8758b908d332f6e462db2c9ae295698/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Baked Breads"
+      },
+      {
+        "dishDescription": "Savory garlic bread topped with ham and cheese, baked to perfection for a delightful, cheesy experience.",
+        "dishName": "Ham and Cheese Garlic Bread",
+        "dishPrice": 12.49,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/e8758b908d332f6e462db2c9ae295698/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Baked Breads"
+      },
+      {
+        "dishDescription": "Bacon and cheese.",
+        "dishName": "Loaded Wedges (Bacon and Cheese)",
+        "dishPrice": 11.49,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/5a2329d07ca9ff0211a06b0a55028a7d/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Kickin Sides"
+      },
+      {
+        "dishDescription": "Topped with sour cream and sweet chilli sauce.",
+        "dishName": "Wedges Topped with Sour Cream and Sweet Chilli",
+        "dishPrice": 9.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/11111111111111111111111111111111/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Kickin Sides"
+      },
+      {
+        "dishDescription": "Crispy fries, a perfect side to any meal, offering a satisfying crunch with every bite.",
+        "dishName": "Fries",
+        "dishPrice": 6.49,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/11111111111111111111111111111111/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [
+          "Popular"
+        ],
+        "categoryName": "Kickin Sides"
+      },
+      {
+        "dishDescription": "Crispy fries topped with a medley of fresh vegetables for a satisfying and savory side dish.",
+        "dishName": "Veg Loaded Fries",
+        "dishPrice": 9.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/11111111111111111111111111111111/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Kickin Sides"
+      },
+      {
+        "dishDescription": "Six pieces.",
+        "dishName": "Cheesy Jalapeno Bites",
+        "dishPrice": 8.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/11111111111111111111111111111111/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Kickin Sides"
+      },
+      {
+        "dishDescription": "Six pieces.",
+        "dishName": "Jalapeno Poppers",
+        "dishPrice": 11.49,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/11111111111111111111111111111111/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Kickin Sides"
+      },
+      {
+        "dishDescription": "Six pieces.",
+        "dishName": "Broccoli and Cheese",
+        "dishPrice": 9.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/11111111111111111111111111111111/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Kickin Sides"
+      },
+      {
+        "dishDescription": "Savory chicken sticks with a Southern twist, perfect for a flavorful side dish.",
+        "dishName": "Chicken Sticks Southern Style",
+        "dishPrice": 11.49,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/11111111111111111111111111111111/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Kickin Sides"
+      },
+      {
+        "dishDescription": "Six pieces.",
+        "dishName": "Beer Battered Onions Rings",
+        "dishPrice": 8.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/11111111111111111111111111111111/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Kickin Sides"
+      },
+      {
+        "dishDescription": "Crispy fries coated in a light beer batter for a perfect golden crunch.",
+        "dishName": "Beer Battered Fries",
+        "dishPrice": 7.49,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/11111111111111111111111111111111/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Kickin Sides"
+      },
+      {
+        "dishDescription": "Crispy kumara fries, a delightful side to complement your meal.",
+        "dishName": "Kumara Fries",
+        "dishPrice": 7.49,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/11111111111111111111111111111111/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Kickin Sides"
+      },
+      {
+        "dishDescription": "Crispy chicken nuggets, perfect as a side or snack, offering a delightful crunch in every bite.",
+        "dishName": "Chicken Nuggets",
+        "dishPrice": 8.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/11111111111111111111111111111111/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Kickin Sides"
+      },
+      {
+        "dishDescription": "Crispy chicken bites, perfect for snacking or sharing, offering a delightful burst of flavor in every bite.",
+        "dishName": "Chicken Popcorn",
+        "dishPrice": 8.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/11111111111111111111111111111111/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Kickin Sides"
+      },
+      {
+        "dishDescription": "Six pieces.",
+        "dishName": "Smoked Chipotle Sweet Potato",
+        "dishPrice": 8.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/11111111111111111111111111111111/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Kickin Sides"
+      },
+      {
+        "dishDescription": "Rich, creamy chocolate delight blended into a thickshake for a sweet indulgence.",
+        "dishName": "Chocolate Thickshake",
+        "dishPrice": 8.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/3454bc7042b446f2bcb60a2dcba2a7d0/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Thickshakes"
+      },
+      {
+        "dishDescription": "Indulgent caramel thickshake, creamy and rich, perfect for a sweet treat.",
+        "dishName": "Caramel Thickshake",
+        "dishPrice": 8.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/d6ea69f0cefb4c12881e-a473a39a32da/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Thickshakes"
+      },
+      {
+        "dishDescription": "Creamy spearmint delight, blended to perfection for a refreshing thickshake experience.",
+        "dishName": "Spearmint Thickshake",
+        "dishPrice": 8.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/8cdf4623e9504e999664e9712b676f48/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Thickshakes"
+      },
+      {
+        "dishDescription": "Creamy vanilla delight, blended to perfection for a rich, indulgent thickshake experience.",
+        "dishName": "Vanilla Thickshake",
+        "dishPrice": 8.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/73562be4314d4289a88dc3d670ff42be/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Thickshakes"
+      },
+      {
+        "dishDescription": "Creamy blend of strawberries for a refreshing, indulgent treat.",
+        "dishName": "Strawberry Thickshake",
+        "dishPrice": 8.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/57bb1d6e88ef4d76923051506e06277e/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Thickshakes"
+      },
+      {
+        "dishDescription": "A creamy, indulgent thickshake with the nostalgic taste of creaming soda.",
+        "dishName": "Creaming Soda Thickshake",
+        "dishPrice": 8.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/d445d959821f4e3c8bbb58073c78d030/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Thickshakes"
+      },
+      {
+        "dishDescription": "A creamy blend of coffee and chai flavors in a thickshake, perfect for a refreshing treat.",
+        "dishName": "Coffee Chai Thickshake",
+        "dishPrice": 8.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/0b59d3c5dd0f44aa853ba2c02f20b245/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Thickshakes"
+      },
+      {
+        "dishDescription": "Creamy lime delight blended to perfection for a refreshing, tangy thickshake experience.",
+        "dishName": "Lime Thickshake",
+        "dishPrice": 8.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/6dee53d3d93142619dba8954358eb815/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Thickshakes"
+      },
+      {
+        "dishDescription": "Indulge in a creamy blend of white chocolate, crafted into a luscious thickshake for a sweet treat.",
+        "dishName": "White Chocolate Thickshake",
+        "dishPrice": 8.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/1a4740f230794b1387f33d4beb5b2981/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Thickshakes"
+      },
+      {
+        "dishDescription": "Creamy orange delight blended to perfection for a refreshing, fruity thickshake experience.",
+        "dishName": "Orange Thickshake",
+        "dishPrice": 8.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/1c2b9d2d994e460eb863c14aeaa207f3/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Thickshakes"
+      },
+      {
+        "dishDescription": "Creamy garlic dip perfect for enhancing your favorite dishes.",
+        "dishName": "Aioli",
+        "dishPrice": 1.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/d5cdc542-95a6-4522-9494-557213d4f8a5/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Dips and Sauce District"
+      },
+      {
+        "dishDescription": "Creamy and smooth, perfect for adding a rich, tangy touch to your favorite dishes.",
+        "dishName": "Mayonnaise",
+        "dishPrice": 1.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/f2b5fb97-d844-4a9c-bedf-e3cedc48a506/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Dips and Sauce District"
+      },
+      {
+        "dishDescription": "A tangy and sweet sauce with a hint of chili, perfect for adding a flavorful kick to your favorite dishes.",
+        "dishName": "Sweet Chilli Sauce",
+        "dishPrice": 1.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/05bcdb33-07fe-4705-b713-b58b2be92e3f/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Dips and Sauce District"
+      },
+      {
+        "dishDescription": "Rich and tangy tomato sauce, perfect for enhancing your favorite dishes.",
+        "dishName": "Tomato Sauce",
+        "dishPrice": 1.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/d10a9399-a7b4-474b-a5a2-d122ad8e80b1/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Dips and Sauce District"
+      },
+      {
+        "dishDescription": "Smoky chipotle blended with creamy mayonnaise for a spicy, tangy dip or spread.",
+        "dishName": "Chipotle Mayonnaise",
+        "dishPrice": 1.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/b1b35346-89a1-493d-b7fb-a30326e2c1c3/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [
+          "Spicy"
+        ],
+        "categoryName": "Dips and Sauce District"
+      },
+      {
+        "dishDescription": "Spicy and tangy sauce with a kick, perfect for adding heat to your favorite dishes.",
+        "dishName": "Sriracha",
+        "dishPrice": 1.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/bad8f6a7-14bb-494e-a36d-fd9355d6daa0/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [
+          "Spicy"
+        ],
+        "categoryName": "Dips and Sauce District"
+      },
+      {
+        "dishDescription": "Creamy and tangy dip, perfect for adding a zesty touch to your favorite dishes.",
+        "dishName": "Sour Cream",
+        "dishPrice": 2.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/1021771c-52e3-4e5e-96ea-3a60ae27e079/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Dips and Sauce District"
+      },
+      {
+        "dishDescription": "A creamy, cheesy dip perfect for pairing with your favorite snacks or dishes.",
+        "dishName": "Cream and Cheese",
+        "dishPrice": 2.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/3ad38134-e395-4f89-a01d-34bb39087131/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Dips and Sauce District"
+      },
+      {
+        "dishDescription": "Fresh basil pesto, a vibrant blend of basil, garlic, pine nuts, and Parmesan cheese, perfect for enhancing any dish.",
+        "dishName": "Basil Pesto",
+        "dishPrice": 2.99,
+        "imageURL": "https://tb-static.uber.com/prod/image-proc/processed_images/f2ffed33-bfdc-4032-87f6-6349b02053a5/70aa2a4db7f990373ca9c376323e3dea.jpeg",
+        "tags": [],
+        "categoryName": "Dips and Sauce District"
+      }
+    ],
+    "restaurantInfo": {
+      "name": "Pizza Delight"
+    }
+  },
+  "categories": {
+    "successful": [
+      "Featured items",
+      "Burgers",
+      "Pastas",
+      "Deluxe Delight Pizza",
+      "Creative Delight Pizza",
+      "Basic Delight Pizza",
+      "Baked Breads",
+      "Kickin Sides",
+      "Thickshakes",
+      "Dips and Sauce District"
+    ],
+    "failed": []
+  },
+  "stats": {
+    "totalItems": 100,
+    "successfulCategories": 10,
+    "failedCategories": 0,
+    "processingTime": 201958
+  }
+}

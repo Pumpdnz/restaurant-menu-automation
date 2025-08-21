@@ -1,0 +1,38 @@
+{
+  "restaurant": "Devil Burger",
+  "location": "Unknown",
+  "website": "https://devilburger.com",
+  "extractedAt": "2025-08-09T23:01:41.317Z",
+  "logo": {
+    "type": "url",
+    "dimensions": "800x450",
+    "saved": true,
+    "logoColors": [
+      {
+        "hex": "#E53E3E",
+        "name": "Devil Red",
+        "description": "Primary brand color used for the devil silhouette figure"
+      },
+      {
+        "hex": "#FFFFFF",
+        "name": "White",
+        "description": "Text color for 'DEVIL BURGER' lettering with distressed effect"
+      },
+      {
+        "hex": "#000000",
+        "name": "Black",
+        "description": "Background color providing contrast for logo elements"
+      }
+    ]
+  },
+  "colors": [
+    {
+      "hex": "#FFFFFF",
+      "name": "White",
+      "usage": "text, border",
+      "frequency": 6
+    }
+  ],
+  "theme": "dark",
+  "backgroundColor": "#000000"
+}

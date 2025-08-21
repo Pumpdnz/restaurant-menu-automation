@@ -1,0 +1,25 @@
+{
+  "name": "pumpd-automation-scripts",
+  "version": "1.0.0",
+  "description": "Automation scripts for Pumpd restaurant onboarding",
+  "type": "module",
+  "main": "process-logo.js",
+  "scripts": {
+    "process-logo": "node process-logo.js",
+    "test-logo": "node process-logo.js --test"
+  },
+  "keywords": [
+    "automation",
+    "image-processing",
+    "logo",
+    "remove.bg"
+  ],
+  "dependencies": {
+    "remove.bg": "^1.3.0",
+    "sharp": "^0.33.2",
+    "dotenv": "^16.4.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

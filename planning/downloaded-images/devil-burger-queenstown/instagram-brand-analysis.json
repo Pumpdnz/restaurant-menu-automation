@@ -1,0 +1,40 @@
+{
+  "restaurant": "Devil Burger",
+  "location": "Queenstown",
+  "instagramUrl": "https://www.instagram.com/devilburgernz/",
+  "extractedAt": "2025-08-10T02:27:19.381Z",
+  "logo": {
+    "type": "profile_picture",
+    "path": "logo-from-instagram.jpg",
+    "dimensions": "150x150",
+    "saved": true,
+    "logoColors": [
+      {
+        "hex": "#E53E3E",
+        "name": "Devil Red",
+        "description": "Primary brand color - vibrant red used for the devil horns icon and text accents"
+      },
+      {
+        "hex": "#000000", 
+        "name": "Black",
+        "description": "Secondary color - used for the background and primary text"
+      },
+      {
+        "hex": "#FFFFFF",
+        "name": "White", 
+        "description": "Text color - used for the 'DEVIL BURGER' text for contrast against black background"
+      },
+      {
+        "hex": "#FF4545",
+        "name": "Bright Red",
+        "description": "Accent color - lighter red variation used for highlights and visual depth"
+      }
+    ]
+  },
+  "postImages": {
+    "count": 9,
+    "saved": ["instagram-post-image-1.jpg", "instagram-post-image-2.jpg", "instagram-post-image-3.jpg", "instagram-post-image-4.jpg", "instagram-post-image-5.jpg", "instagram-post-image-6.jpg", "instagram-post-image-7.jpg", "instagram-post-image-8.jpg", "instagram-post-image-9.jpg"]
+  },
+  "theme": "dark",
+  "backgroundColor": "#000000"
+}

@@ -1,0 +1,68 @@
+{
+  "restaurant": "Sahara India",
+  "location": "New Zealand",
+  "website": "https://www.saharaindia.co.nz/",
+  "extractedAt": "2025-08-15T06:20:46.328Z",
+  "logo": {
+    "type": "url",
+    "dimensions": "250x95",
+    "saved": true,
+    "logoColors": [
+      {
+        "hex": "#B64211",
+        "name": "Maroon Red",
+        "description": "Primary background color of the logo"
+      },
+      {
+        "hex": "#FEE64E",
+        "name": "Golden Yellow",
+        "description": "Text color for 'SAHARA' and decorative elements"
+      },
+      {
+        "hex": "#FFFFFF",
+        "name": "White",
+        "description": "Text color for Hindi text and accent details"
+      }
+    ]
+  },
+  "colors": [
+    {
+      "hex": "#000000",
+      "name": "Black",
+      "usage": "text, border",
+      "frequency": 24
+    },
+    {
+      "hex": "#033B4A",
+      "name": "Mixed",
+      "usage": "text, border",
+      "frequency": 12
+    },
+    {
+      "hex": "#FFFFFF",
+      "name": "White",
+      "usage": "text, border",
+      "frequency": 9
+    },
+    {
+      "hex": "#FEE64E",
+      "name": "Yellow/Gold",
+      "usage": "text, border",
+      "frequency": 8
+    },
+    {
+      "hex": "#B64211",
+      "name": "Red",
+      "usage": "text, border, background",
+      "frequency": 3
+    },
+    {
+      "hex": "#202020",
+      "name": "Black",
+      "usage": "text, border",
+      "frequency": 2
+    }
+  ],
+  "theme": "light",
+  "backgroundColor": "#FFFFFF"
+}

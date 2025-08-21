@@ -1,0 +1,243 @@
+{
+  "restaurant": "Smokey T's",
+  "downloadDate": "2025-08-15T06:52:33.651Z",
+  "stats": {
+    "total": 33,
+    "downloaded": 28,
+    "failed": 0,
+    "noImage": 5
+  },
+  "items": [
+    {
+      "dishName": "Beef Brisket Burger",
+      "categoryName": "Meals",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/31e4c6060db8bf45a663ecdf34347272/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "meals/beef_brisket_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Pork Belly Burger",
+      "categoryName": "Meals",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/f2c1a4742c4753778b372d73081a6b33/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "meals/pork_belly_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Jerk Chicken Burger",
+      "categoryName": "Meals",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/efd3ce6b2804a64b3b2eac5d16ed55cc/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "meals/jerk_chicken_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Southern Fried Chicken with Brisket Gravy Burger",
+      "categoryName": "Meals",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/a2accbed9def8f83ea2ef16511cb8b71/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "meals/southern_fried_chicken_with_brisket_gravy_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Ocean Beef™ Brisket (12 Hour Smoked) Pit Platter",
+      "categoryName": "Meals",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/15d45743dea0a99a872039d0688bb8e1/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "meals/ocean_beef_brisket_12_hour_smoked_pit_platter.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Pork Belly (Six Hour Smoked) Pit Platter",
+      "categoryName": "Meals",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/1428c6813f884c7c042f1c2f36746946/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "meals/pork_belly_six_hour_smoked_pit_platter.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Jerk Chicken (Two Hour Smoked) Pit Platter",
+      "categoryName": "Meals",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/5d598b9f5e896780e96abc7398f20643/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "meals/jerk_chicken_two_hour_smoked_pit_platter.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Platter for Two",
+      "categoryName": "Meals",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/acaac8b511a3e203d74382ddc0c3c730/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "meals/platter_for_two.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Ribs",
+      "categoryName": "Meals",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/44f98261a0c44b6c2e402640e80a586f/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "meals/ribs.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Beef Brisket Burger",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/31e4c6060db8bf45a663ecdf34347272/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "featured_items/beef_brisket_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Pork Belly Burger",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/f2c1a4742c4753778b372d73081a6b33/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "featured_items/pork_belly_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Jerk Chicken Burger",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/efd3ce6b2804a64b3b2eac5d16ed55cc/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "featured_items/jerk_chicken_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Southern Fried Chicken with Brisket Gravy Burger",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/a2accbed9def8f83ea2ef16511cb8b71/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "featured_items/southern_fried_chicken_with_brisket_gravy_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Ocean Beef™ Brisket (12 Hour Smoked) Pit Platter",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/15d45743dea0a99a872039d0688bb8e1/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "featured_items/ocean_beef_brisket_12_hour_smoked_pit_platter.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Pork Belly (Six Hour Smoked) Pit Platter",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/1428c6813f884c7c042f1c2f36746946/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "featured_items/pork_belly_six_hour_smoked_pit_platter.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Jerk Chicken (Two Hour Smoked) Pit Platter",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/5d598b9f5e896780e96abc7398f20643/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "featured_items/jerk_chicken_two_hour_smoked_pit_platter.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Platter for Two",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/acaac8b511a3e203d74382ddc0c3c730/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "featured_items/platter_for_two.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Ribs",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/44f98261a0c44b6c2e402640e80a586f/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "featured_items/ribs.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Iced Latte",
+      "categoryName": "Beverages",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Coke® 330ml",
+      "categoryName": "Beverages",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/da7099e477b7fac8a0efebd65484f934/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "beverages/coke_330ml.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Coke® Zero Sugar 330ml",
+      "categoryName": "Beverages",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/55063343d79408e2e2270996072b1cf9/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "beverages/coke_zero_sugar_330ml.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Fanta® 330ml",
+      "categoryName": "Beverages",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/a09b0c54cfb648ae851939ffcde60b4c/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "beverages/fanta_330ml.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Sprite® 330ml",
+      "categoryName": "Beverages",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/5046c65c5abafcbc8535c314a1526351/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "beverages/sprite_330ml.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Southern Fried Chicken",
+      "categoryName": "Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/84a6e4b25bb154fb1059a0d57d4e4785/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "sides/southern_fried_chicken.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chicken Wings",
+      "categoryName": "Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/08b2338ffcb19619fbb061fc0ca59c36/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "sides/chicken_wings.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Buffalo Wings",
+      "categoryName": "Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/4eefb099363b82cebe43c9ebb3a94cad/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "sides/buffalo_wings.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Jalapeno Cheese Sausage",
+      "categoryName": "Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/f4acc857e5e3fa0574b2ba4535888997/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "sides/jalapeno_cheese_sausage.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Mash with Brisket Gravy",
+      "categoryName": "Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/5f4b5bd6680f9880e686426b3ee22f90/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "sides/mash_with_brisket_gravy.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Mac and Cheese with Pork Belly",
+      "categoryName": "Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/4871548a4c4b41bd228c4e97aa5350fc/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "sides/mac_and_cheese_with_pork_belly.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Slaw",
+      "categoryName": "Sides",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Grilled Tortillas",
+      "categoryName": "Sides",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Waffle Fries",
+      "categoryName": "Sides",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Loaded Fries",
+      "categoryName": "Sides",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    }
+  ]
+}

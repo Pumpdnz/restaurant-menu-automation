@@ -1,0 +1,131 @@
+{
+  "restaurant": "Unknown Restaurant",
+  "downloadDate": "2025-08-01T02:12:01.986Z",
+  "stats": {
+    "total": 17,
+    "downloaded": 15,
+    "failed": 0,
+    "noImage": 2
+  },
+  "items": [
+    {
+      "dishName": "Steamed Chicken Momo",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/f88abdfb8625bb895c33e433b5093a77/0fb376d1da56c05644450062d25c5c84.jpeg",
+      "localPath": "featured_items/steamed_chicken_momo.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chicken Fried Noodles",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/31f3198dfba445506a613976e4e1a403/0fb376d1da56c05644450062d25c5c84.jpeg",
+      "localPath": "featured_items/chicken_fried_noodles.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chicken Jhol Momo",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/73a88950c107b0ccddb96368f6c8fc5e/0fb376d1da56c05644450062d25c5c84.jpeg",
+      "localPath": "featured_items/chicken_jhol_momo.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Mixed Fried Noodles",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/31f3198dfba445506a613976e4e1a403/0fb376d1da56c05644450062d25c5c84.jpeg",
+      "localPath": "featured_items/mixed_fried_noodles.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Steamed Vegan Momo (VG)",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/0804ff647ad36fb478d45eb7d83ad90c/0fb376d1da56c05644450062d25c5c84.jpeg",
+      "localPath": "featured_items/steamed_vegan_momo_vg_.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Vegan Fried Noodles (VG)",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/31f3198dfba445506a613976e4e1a403/0fb376d1da56c05644450062d25c5c84.jpeg",
+      "localPath": "featured_items/vegan_fried_noodles_vg_.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Egg Fried Noodles",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/31f3198dfba445506a613976e4e1a403/0fb376d1da56c05644450062d25c5c84.jpeg",
+      "localPath": "featured_items/egg_fried_noodles.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Steamed Vegan Momo (VG)",
+      "categoryName": "Mains",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/0804ff647ad36fb478d45eb7d83ad90c/0fb376d1da56c05644450062d25c5c84.jpeg",
+      "localPath": "mains/steamed_vegan_momo_vg_.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Steamed Chicken Momo",
+      "categoryName": "Mains",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/f88abdfb8625bb895c33e433b5093a77/0fb376d1da56c05644450062d25c5c84.jpeg",
+      "localPath": "mains/steamed_chicken_momo.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Vegan Jhol Momo (VG)",
+      "categoryName": "Mains",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/73a88950c107b0ccddb96368f6c8fc5e/0fb376d1da56c05644450062d25c5c84.jpeg",
+      "localPath": "mains/vegan_jhol_momo_vg_.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chicken Jhol Momo",
+      "categoryName": "Mains",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/73a88950c107b0ccddb96368f6c8fc5e/0fb376d1da56c05644450062d25c5c84.jpeg",
+      "localPath": "mains/chicken_jhol_momo.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Vegan Fried Noodles (VG)",
+      "categoryName": "Mains",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/31f3198dfba445506a613976e4e1a403/0fb376d1da56c05644450062d25c5c84.jpeg",
+      "localPath": "mains/vegan_fried_noodles_vg_.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Egg Fried Noodles",
+      "categoryName": "Mains",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/31f3198dfba445506a613976e4e1a403/0fb376d1da56c05644450062d25c5c84.jpeg",
+      "localPath": "mains/egg_fried_noodles.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chicken Fried Noodles",
+      "categoryName": "Mains",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/31f3198dfba445506a613976e4e1a403/0fb376d1da56c05644450062d25c5c84.jpeg",
+      "localPath": "mains/chicken_fried_noodles.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Mixed Fried Noodles",
+      "categoryName": "Mains",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/31f3198dfba445506a613976e4e1a403/0fb376d1da56c05644450062d25c5c84.jpeg",
+      "localPath": "mains/mixed_fried_noodles.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Vegetable Chilli Momo (V)",
+      "categoryName": "Mains",
+      "originalUrl": "https://cn-geo1.uber.com/static/mobile-content/eats/placeholder_images/placeholder_image_restaurants_300x300.png",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken Chilli Momo",
+      "categoryName": "Mains",
+      "originalUrl": "https://cn-geo1.uber.com/static/mobile-content/eats/placeholder_images/placeholder_image_restaurants_300x300.png",
+      "localPath": null,
+      "status": "no_image"
+    }
+  ]
+}

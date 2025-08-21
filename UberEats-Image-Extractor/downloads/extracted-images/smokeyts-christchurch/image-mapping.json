@@ -1,0 +1,149 @@
+{
+  "restaurant": "Unknown Restaurant",
+  "downloadDate": "2025-08-02T08:19:28.408Z",
+  "stats": {
+    "total": 19,
+    "downloaded": 15,
+    "failed": 4,
+    "noImage": 0
+  },
+  "items": [
+    {
+      "dishName": "Beef Brisket Burger",
+      "categoryName": "Meals",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/31e4c6060db8bf45a663ecdf34347272/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "meals/beef_brisket_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Pork Belly Burger",
+      "categoryName": "Meals",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/f2c1a4742c4753778b372d73081a6b33/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "meals/pork_belly_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Jerk Chicken Burger",
+      "categoryName": "Meals",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/efd3ce6b2804a64b3b2eac5d16ed55cc/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "meals/jerk_chicken_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Southern Fried Chicken with Brisket Gravy Burger",
+      "categoryName": "Meals",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/a2accbed9def8f83ea2ef16511cb8b71/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "meals/southern_fried_chicken_with_brisket_gravy_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Ocean Beef™ Brisket (12 Hour Smoked) Pit Platter",
+      "categoryName": "Meals",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/15d45743dea0a99a872039d0688bb8e1/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "meals/ocean_beef_brisket_12_hour_smoked_pit_platter.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Pork Belly (Six Hour Smoked) Pit Platter",
+      "categoryName": "Meals",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/1428c6813f884c7c042f1c2f36746946/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "meals/pork_belly_six_hour_smoked_pit_platter.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Jerk Chicken (Two Hour Smoked) Pit Platter",
+      "categoryName": "Meals",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/5d598b9f5e896780e96abc7398f20643/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "meals/jerk_chicken_two_hour_smoked_pit_platter.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Platter for Two",
+      "categoryName": "Meals",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/acaac8b511a3e203d74382ddc0c3c730/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "meals/platter_for_two.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Ribs",
+      "categoryName": "Meals",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/44f98261a0c44b6c2e402640e80a586f/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "meals/ribs.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Southern Fried Chicken",
+      "categoryName": "Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/84a6e4b25bb154fb1059a0d57d4e4785/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "sides/southern_fried_chicken.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chicken Wings",
+      "categoryName": "Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/08b2338ffcb19619fbb061fc0ca59c36/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "sides/chicken_wings.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Buffalo Wings",
+      "categoryName": "Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/4eefb099363b82cebe43c9ebb3a94cad/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "sides/buffalo_wings.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Jalapeno Cheese Sausage",
+      "categoryName": "Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/f4acc857e5e3fa0574b2ba4535888997/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "sides/jalapeno_cheese_sausage.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Mash with Brisket Gravy",
+      "categoryName": "Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/5f4b5bd6680f9880e686426b3ee22f90/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "sides/mash_with_brisket_gravy.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Mac and Cheese with Pork Belly",
+      "categoryName": "Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/4871548a4c4b41bd228c4e97aa5350fc/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "sides/mac_and_cheese_with_pork_belly.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Slaw",
+      "categoryName": "Sides",
+      "originalUrl": "https://www.ubereats.com/nz/store/smokey-ts-cashel-street/rWCJOIotUEGcllMiycozVw?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522ad608938-8a2d-5041-9c96-5322c9ca3357%2522%252C%2522sectionUuid%2522%253A%2522f36ca25e-fa0e-44f2-a9e3-c5d2c0406918%2522%252C%2522subsectionUuid%2522%253A%2522dda77556-1a5e-415c-b147-b4981f02ddc7%2522%252C%2522itemUuid%2522%253A%2522d4ce71dc-510a-4032-a87c-4fdd84c21496%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1",
+      "localPath": null,
+      "status": "failed",
+      "error": "Parse Error: Header overflow"
+    },
+    {
+      "dishName": "Grilled Tortillas",
+      "categoryName": "Sides",
+      "originalUrl": "https://www.ubereats.com/nz/store/smokey-ts-cashel-street/rWCJOIotUEGcllMiycozVw?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522ad608938-8a2d-5041-9c96-5322c9ca3357%2522%252C%2522sectionUuid%2522%253A%2522f36ca25e-fa0e-44f2-a9e3-c5d2c0406918%2522%252C%2522subsectionUuid%2522%253A%2522dda77556-1a5e-415c-b147-b4981f02ddc7%2522%252C%2522itemUuid%2522%253A%252228da7230-0831-4b43-b28c-b5d607d283ce%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1",
+      "localPath": null,
+      "status": "failed",
+      "error": "Parse Error: Header overflow"
+    },
+    {
+      "dishName": "Waffle Fries",
+      "categoryName": "Sides",
+      "originalUrl": "https://www.ubereats.com/nz/store/smokey-ts-cashel-street/rWCJOIotUEGcllMiycozVw?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522ad608938-8a2d-5041-9c96-5322c9ca3357%2522%252C%2522sectionUuid%2522%253A%2522f36ca25e-fa0e-44f2-a9e3-c5d2c0406918%2522%252C%2522subsectionUuid%2522%253A%2522dda77556-1a5e-415c-b147-b4981f02ddc7%2522%252C%2522itemUuid%2522%253A%2522286dc7e8-dedd-45a5-946d-cd0a5fb57a61%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1",
+      "localPath": null,
+      "status": "failed",
+      "error": "Parse Error: Header overflow"
+    },
+    {
+      "dishName": "Loaded Fries",
+      "categoryName": "Sides",
+      "originalUrl": "https://www.ubereats.com/nz/store/smokey-ts-cashel-street/rWCJOIotUEGcllMiycozVw?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522ad608938-8a2d-5041-9c96-5322c9ca3357%2522%252C%2522sectionUuid%2522%253A%2522f36ca25e-fa0e-44f2-a9e3-c5d2c0406918%2522%252C%2522subsectionUuid%2522%253A%2522dda77556-1a5e-415c-b147-b4981f02ddc7%2522%252C%2522itemUuid%2522%253A%252222d76914-4fda-492f-b13d-89ac00e29559%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1",
+      "localPath": null,
+      "status": "failed",
+      "error": "Parse Error: Header overflow"
+    }
+  ]
+}

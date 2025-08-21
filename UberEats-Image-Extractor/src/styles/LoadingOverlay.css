@@ -1,0 +1,202 @@
+/* styles/LoadingOverlay.css - Styles for the loading overlay component */
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+}
+
+.loading-container {
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  padding: 30px;
+  max-width: 500px;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.loading-spinner {
+  width: 60px;
+  height: 60px;
+  border: 5px solid #f0f0f0;
+  border-top: 5px solid #4a90e2;
+  border-radius: 50%;
+  animation: spin 1.2s linear infinite;
+  margin-bottom: 20px;
+}
+
+.loading-content {
+  width: 100%;
+}
+
+.loading-status {
+  margin: 0 0 15px 0;
+  font-size: 22px;
+  color: #333;
+  font-weight: 600;
+}
+
+.extraction-method {
+  margin-bottom: 15px;
+}
+
+.method-badge, 
+.strategy-badge {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 20px;
+  color: white;
+  margin-right: 5px;
+}
+
+.method-badge.scrape {
+  background-color: #4CAF50;
+}
+
+.method-badge.extract {
+  background-color: #FF9800;
+}
+
+.strategy-badge.category-based {
+  background-color: #6c5ce7;
+}
+
+.loading-description {
+  margin: 15px 0 0 0;
+  color: #666;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.strategy-description {
+  margin: 10px 0;
+  color: #666;
+  font-size: 14px;
+  line-height: 1.4;
+  font-style: italic;
+  background-color: rgba(108, 92, 231, 0.1);
+  padding: 10px;
+  border-radius: 5px;
+  border-left: 3px solid #6c5ce7;
+}
+
+.extraction-warnings {
+  margin-top: 15px;
+  padding: 10px;
+  background-color: rgba(255, 152, 0, 0.1);
+  border-radius: 5px;
+  text-align: left;
+}
+
+.extraction-warnings h4 {
+  color: #f39c12;
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-size: 15px;
+}
+
+.extraction-warnings ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.extraction-warnings li {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+
+.loading-progress {
+  margin: 15px 0;
+  width: 100%;
+}
+
+.progress-bar {
+  height: 8px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 5px;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: #4a90e2;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 14px;
+  color: #666;
+  text-align: right;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .loading-overlay {
+    background-color: rgba(0, 0, 0, 0.8);
+  }
+  
+  .loading-container {
+    background-color: #272727;
+  }
+  
+  .loading-spinner {
+    border-color: #333;
+    border-top-color: #4a90e2;
+  }
+  
+  .loading-status {
+    color: #e0e0e0;
+  }
+  
+  .loading-description,
+  .strategy-description {
+    color: #aaa;
+  }
+  
+  .strategy-description {
+    background-color: rgba(108, 92, 231, 0.15);
+    border-left-color: #6c5ce7;
+  }
+  
+  .extraction-warnings {
+    background-color: rgba(255, 152, 0, 0.15);
+  }
+  
+  .extraction-warnings h4 {
+    color: #f39c12;
+  }
+  
+  .extraction-warnings li {
+    color: #aaa;
+  }
+  
+  .progress-bar {
+    background-color: #333;
+  }
+  
+  .progress-text {
+    color: #aaa;
+  }
+}

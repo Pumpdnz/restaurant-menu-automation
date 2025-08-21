@@ -1,0 +1,43 @@
+{
+  "restaurant": "Devil Burger",
+  "city": "Queenstown",
+  "searchQuery": "Devil Burger Queenstown Restaurant Logo site:instagram.com OR site:facebook.com",
+  "selectedIndex": 15,
+  "selectionReason": "Manually selected after screenshot evaluation",
+  "imageUrl": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ2q5U1Pua-0WP3a__25zocP9EN0IE8OZUpqg&s",
+  "dimensions": {
+    "width": 224,
+    "height": 225
+  },
+  "searchTimestamp": "2025-08-10T01:10:09.605Z",
+  "extractionTimestamp": "2025-08-10T01:10:39.410Z",
+  "download": {
+    "url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ2q5U1Pua-0WP3a__25zocP9EN0IE8OZUpqg&s",
+    "path": "/Users/giannimunro/Desktop/cursor-projects/pumpd-webhook/automation/planning/downloaded-images/DevilBurger-Queenstown/logo.png",
+    "size": 8438,
+    "downloadedAt": "2025-08-10T01:10:45.320Z"
+  },
+  "logoColors": [
+    {
+      "hex": "#E53935",
+      "name": "Devil Red",
+      "description": "Primary brand color - vibrant red used for devil silhouette and 'DEVIL' text"
+    },
+    {
+      "hex": "#FFFFFF", 
+      "name": "Pure White",
+      "description": "Secondary color for 'BURGER' text providing contrast"
+    },
+    {
+      "hex": "#000000",
+      "name": "Pure Black", 
+      "description": "Background color creating strong contrast for the logo elements"
+    },
+    {
+      "hex": "#2E2E2E",
+      "name": "Dark Gray",
+      "description": "Subtle detailing color used in devil silhouette shadows"
+    }
+  ],
+  "colorAnalysisTimestamp": "2025-08-10T01:10:50.000Z"
+}

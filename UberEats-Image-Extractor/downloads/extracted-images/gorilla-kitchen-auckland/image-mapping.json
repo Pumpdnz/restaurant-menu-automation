@@ -1,0 +1,731 @@
+{
+  "restaurant": "Gorilla Kitchen",
+  "downloadDate": "2025-08-15T07:38:10.258Z",
+  "stats": {
+    "total": 102,
+    "downloaded": 46,
+    "failed": 5,
+    "noImage": 51
+  },
+  "items": [
+    {
+      "dishName": "Double Pizza Deal",
+      "categoryName": "Love Combo",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/736e3157c9b30be7cb4dd17881be51d9/58f691da9eaef86b0b51f9b2c483fe63.jpeg",
+      "localPath": "love_combo/double_pizza_deal.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Trio Pizza Deal",
+      "categoryName": "Love Combo",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/8a670dadbb814fa31575f6ef054e834a/58f691da9eaef86b0b51f9b2c483fe63.jpeg",
+      "localPath": "love_combo/trio_pizza_deal.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Pizza Party Deal",
+      "categoryName": "Love Combo",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/4050ced642f75ec508728ed694ef36ee/58f691da9eaef86b0b51f9b2c483fe63.jpeg",
+      "localPath": "love_combo/pizza_party_deal.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Double Pizza + Loaded Fries Deal",
+      "categoryName": "Love Combo",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/41c64a96f21acb942cedb4d6e45adf0e/58f691da9eaef86b0b51f9b2c483fe63.jpeg",
+      "localPath": "love_combo/double_pizza_loaded_fries_deal.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Premium Burger + Regular Fries + Drink + Ketchup",
+      "categoryName": "Love Combo",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/b6186b24b1bc4295a7ede3dad2ce003c/58f691da9eaef86b0b51f9b2c483fe63.jpeg",
+      "localPath": "love_combo/premium_burger_regular_fries_drink_ketchup.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Premium Burger + Loaded Fries + Drink",
+      "categoryName": "Love Combo",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/8f5e4d246f2678461b9b0e0eefd7c6b9/58f691da9eaef86b0b51f9b2c483fe63.jpeg",
+      "localPath": "love_combo/premium_burger_loaded_fries_drink.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Double Pizza Deal",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/736e3157c9b30be7cb4dd17881be51d9/58f691da9eaef86b0b51f9b2c483fe63.jpeg",
+      "localPath": "featured_items/double_pizza_deal.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Trio Pizza Deal",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/8a670dadbb814fa31575f6ef054e834a/58f691da9eaef86b0b51f9b2c483fe63.jpeg",
+      "localPath": "featured_items/trio_pizza_deal.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Pizza Party Deal",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/4050ced642f75ec508728ed694ef36ee/58f691da9eaef86b0b51f9b2c483fe63.jpeg",
+      "localPath": "featured_items/pizza_party_deal.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Double Pizza + Loaded Fries Deal",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/41c64a96f21acb942cedb4d6e45adf0e/58f691da9eaef86b0b51f9b2c483fe63.jpeg",
+      "localPath": "featured_items/double_pizza_loaded_fries_deal.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Premium Burger + Regular Fries + Drink + Ketchup",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/b6186b24b1bc4295a7ede3dad2ce003c/58f691da9eaef86b0b51f9b2c483fe63.jpeg",
+      "localPath": "featured_items/premium_burger_regular_fries_drink_ketchup.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Premium Burger + Loaded Fries + Drink",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/8f5e4d246f2678461b9b0e0eefd7c6b9/58f691da9eaef86b0b51f9b2c483fe63.jpeg",
+      "localPath": "featured_items/premium_burger_loaded_fries_drink.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Banoffee",
+      "categoryName": "Sweet Surrender",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/6c4057815bef4209552234af826226a2/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": "sweet_surrender/banoffee.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Black Forrest",
+      "categoryName": "Sweet Surrender",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/06e6de66369e0af9118998620631e8b6/4218ca1d09174218364162cd0b1a8cc1.jpeg",
+      "localPath": "sweet_surrender/black_forrest.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Apple Pie",
+      "categoryName": "Sweet Surrender",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/a6633d7d88a8dd63c5d2febe8db8604e/7f4ae9ca0446cbc23e71d8d395a98428.jpeg",
+      "localPath": "sweet_surrender/apple_pie.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "BBQ Chicken & Bacon Pizza XL size",
+      "categoryName": "Pizzeria",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/d0abaf13201771721139ebfe8e4f1145/3b105e4f00e2751d21998b7bfebb1670.jpeg",
+      "localPath": "pizzeria/bbq_chicken_bacon_pizza_xl_size.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Vegefarm Pizza Xl size",
+      "categoryName": "Pizzeria",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/4a41bdb3726f4ae2cf2cbefb76df7497/216a8fa67875b8273562cd3722fe426e.jpeg",
+      "localPath": "pizzeria/vegefarm_pizza_xl_size.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Spicy Tofu Pizza XL size",
+      "categoryName": "Pizzeria",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/0005cc5c881726e27fcf4b47c65a02fc/e5ac45903aef09388f57d40b440f2d4d.jpeg",
+      "localPath": "pizzeria/spicy_tofu_pizza_xl_size.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Hawaiian Pizza Xl size",
+      "categoryName": "Pizzeria",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/aa26a01a484d88b94ed9a304641ec11b/72c9b78de096dfdbdaea3eae2419a56a.jpeg",
+      "localPath": "pizzeria/hawaiian_pizza_xl_size.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Margareeta Pizza XL size",
+      "categoryName": "Pizzeria",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/a40d48f4bc82192b990a682e8b10b28a/fef69755d47335da041111999295bdcf.jpeg",
+      "localPath": "pizzeria/margareeta_pizza_xl_size.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Any Pizza + Drink Combo",
+      "categoryName": "Pizzeria",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/9fd3ba4e72a7a1d674810107d42e7756/610b1ea702779f37344ffa9f793a00c8.jpeg",
+      "localPath": "pizzeria/any_pizza_drink_combo.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Double Pizza Deal",
+      "categoryName": "Pizzeria",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/7a68e215b41a7ee4a42a58cd19315fe1/cf67457d35f9ba4a615cedd6a624e0fa.jpeg",
+      "localPath": "pizzeria/double_pizza_deal.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Peperoni pizza XL size",
+      "categoryName": "Pizzeria",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/06bef250a00aa5217672032e6e6cae63/5d6609eceee8012d89152b46afcb9600.jpeg",
+      "localPath": "pizzeria/peperoni_pizza_xl_size.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Trio Pizza Deal",
+      "categoryName": "Pizzeria",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/e86ccbd0f7e8ab33c7e19f986153960a/9cc294a9553bd69c44aea136ae6b72b5.jpeg",
+      "localPath": "pizzeria/trio_pizza_deal.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Pizza Party Deal",
+      "categoryName": "Pizzeria",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/f97b6db9c85daf9de69811ec90ba9441/2081c425fb3f439891a61b53ec4e6ae8.jpeg",
+      "localPath": "pizzeria/pizza_party_deal.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Double Pizza + Loaded Fries Deal",
+      "categoryName": "Pizzeria",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/25a13a8dd64f0b047bac768303fe2d33/65b93417410c62d3fd88dd5708c5c243.jpeg",
+      "localPath": "pizzeria/double_pizza_loaded_fries_deal.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Cashewcado Pizza XL size",
+      "categoryName": "Pizzeria",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/cadcc8c4-4fae-4269-8152-dae3098b50a8.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Keto a Good Life (GF)",
+      "categoryName": "Break The Fast",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/b6e8173cdf33c2f06299688ae5ba3b61/bc9c318a9c96996e2d990faf2b0c65f6.jpeg",
+      "localPath": "break_the_fast/keto_a_good_life_gf_.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Gorilla Filla",
+      "categoryName": "Break The Fast",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/8119d3ea37df60053b95c8a1ea5f4174/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": "break_the_fast/gorilla_filla.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Bruschetta",
+      "categoryName": "Break The Fast",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/0d9f9c758bffb1c885ee10cd0f43af51/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": "break_the_fast/bruschetta.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Be The Change",
+      "categoryName": "Break The Fast",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Swap tofu to vegan egg",
+      "categoryName": "Break The Fast",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Loaded Mexi Fries (GFO)",
+      "categoryName": "Chip Off The Old Block",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/eaabd16f950bf040c0403be29734fbec/541c64adba349bed5477d4ac70647af0.jpeg",
+      "localPath": "chip_off_the_old_block/loaded_mexi_fries_gfo_.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Loaded Fire Fries (GFO)",
+      "categoryName": "Chip Off The Old Block",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/f41d0c94916de8eae86dbe838391116a/f3c98dc1771a4197e3db54327219ee60.jpeg",
+      "localPath": "chip_off_the_old_block/loaded_fire_fries_gfo_.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chipsters (GF)",
+      "categoryName": "Chip Off The Old Block",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/57fcbdfd8bb5bfea6a569fee80bb08cd/5c26d6afe1d24b69e3dc4a88d3c375d8.jpeg",
+      "localPath": "chip_off_the_old_block/chipsters_gf_.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Loaded Ranch Fries (GFO)",
+      "categoryName": "Chip Off The Old Block",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/9b8689bb6d4ffc584f4b1209b4e26478/e383a6450bdf8295487f654118d6e646.jpeg",
+      "localPath": "chip_off_the_old_block/loaded_ranch_fries_gfo_.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Seize Her salad",
+      "categoryName": "Out to Lunch",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/5d28c0d4d4d05cbccf0efbd502762a20/8db630a645440a12426a3cebb823cf51.jpeg",
+      "localPath": "out_to_lunch/seize_her_salad.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Nacho Business (GF)",
+      "categoryName": "Out to Lunch",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/c8d66dab3530fed23505593262b9e381/07db88791e871125fe262a18f5bb51b1.jpeg",
+      "localPath": "out_to_lunch/nacho_business_gf_.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Phish n Chips",
+      "categoryName": "Out to Lunch",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/53403dfcaedc7d2b0cebb1ab2bcd1fb0/487ae0daed2f8c501250c6aaa6ef7ae0.jpeg",
+      "localPath": "out_to_lunch/phish_n_chips.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Royale with Cheese with regular fries",
+      "categoryName": "Burgertory (all burgers comes with regular fries)",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/b4b96496c9b89413ebc9c35c1f834976/df242725f7fb2819d52535d667cc1009.jpeg",
+      "localPath": "burgertory_all_burgers_comes_with_regular_fries_/royale_with_cheese_with_regular_fries.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Frida with regular fries",
+      "categoryName": "Burgertory (all burgers comes with regular fries)",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/75361e6e3a1ce3e481464c1553a4e81f/d697d9a536de5d42001d4a7295a0a342.jpeg",
+      "localPath": "burgertory_all_burgers_comes_with_regular_fries_/frida_with_regular_fries.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "BBQ Chickun Cheese with regular fries",
+      "categoryName": "Burgertory (all burgers comes with regular fries)",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/1e35be88110f563f2877f9cedd5ae4dc/312e2ef754f9e1c329243f8ae8e656f2.jpeg",
+      "localPath": "burgertory_all_burgers_comes_with_regular_fries_/bbq_chickun_cheese_with_regular_fries.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Ocean warrior with regular fries",
+      "categoryName": "Burgertory (all burgers comes with regular fries)",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/18e119e74d172ddc91b204a287536f53/b09a95a4379fc5a39922f6ebe14d6f51.jpeg",
+      "localPath": "burgertory_all_burgers_comes_with_regular_fries_/ocean_warrior_with_regular_fries.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Burbur Burger with regular fries",
+      "categoryName": "Burgertory (all burgers comes with regular fries)",
+      "originalUrl": "https://www.ubereats.com/nz/store/gorilla-kitchen/q9RWQrkiRbGNqUuaGt0pQA?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522abd45642-b922-45b1-8da9-4b9a1add2940%2522%252C%2522sectionUuid%2522%253A%2522a059a82d-590b-47e9-9051-396c4ecb820e%2522%252C%2522subsectionUuid%2522%253A%2522d98062dc-361f-482e-8cf2-28dc8143edec%2522%252C%2522itemUuid%2522%253A%25227bdfb4ce-c3b6-40fe-b98f-b29d43d1a041%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1",
+      "localPath": null,
+      "status": "failed",
+      "error": "Parse Error: Header overflow"
+    },
+    {
+      "dishName": "Satay faction burger with regular fries",
+      "categoryName": "Burgertory (all burgers comes with regular fries)",
+      "originalUrl": "https://www.ubereats.com/nz/store/gorilla-kitchen/q9RWQrkiRbGNqUuaGt0pQA?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522abd45642-b922-45b1-8da9-4b9a1add2940%2522%252C%2522sectionUuid%2522%253A%2522a059a82d-590b-47e9-9051-396c4ecb820e%2522%252C%2522subsectionUuid%2522%253A%2522d98062dc-361f-482e-8cf2-28dc8143edec%2522%252C%2522itemUuid%2522%253A%2522211dcfc4-0dd2-4a0e-a53f-1fbae82dd046%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1",
+      "localPath": null,
+      "status": "failed",
+      "error": "Parse Error: Header overflow"
+    },
+    {
+      "dishName": "Tropical",
+      "categoryName": "Smooth Brews",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Ixcacao",
+      "categoryName": "Smooth Brews",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Acai",
+      "categoryName": "Smooth Brews",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Juices By The Glass",
+      "categoryName": "Cold Brews",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Phoenix Organic Juices",
+      "categoryName": "Cold Brews",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Mylkshakes",
+      "categoryName": "Drinks",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/d030669683fdf48a3c669edde6d7f363/4218ca1d09174218364162cd0b1a8cc1.jpeg",
+      "localPath": "drinks/mylkshakes.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Tropical",
+      "categoryName": "Drinks",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Ixcacao",
+      "categoryName": "Drinks",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Acai",
+      "categoryName": "Drinks",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Juices By The Glass",
+      "categoryName": "Drinks",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Phoenix Organic Juices",
+      "categoryName": "Drinks",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Iced Chocolate",
+      "categoryName": "Drinks",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/88fcb9ed77f447c811258d16145d865a/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": "drinks/iced_chocolate.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Iced Coffee",
+      "categoryName": "Drinks",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/7c63fc02279d16d703dac11a25ae158e/4218ca1d09174218364162cd0b1a8cc1.jpeg",
+      "localPath": "drinks/iced_coffee.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Bohemia Organic Tea",
+      "categoryName": "Drinks",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Bohemia Premium Organic Teas",
+      "categoryName": "Drinks",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Mayan Man Cacao Tea",
+      "categoryName": "Drinks",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Forage + Bloom Organic Teas",
+      "categoryName": "Drinks",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Espresso",
+      "categoryName": "Drinks",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Flat White",
+      "categoryName": "Drinks",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Turmeric Ginger Oat Latte",
+      "categoryName": "Drinks",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Latte",
+      "categoryName": "Drinks",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Hot Chocolate",
+      "categoryName": "Drinks",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Phoenix Chai Latte",
+      "categoryName": "Drinks",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Mocha",
+      "categoryName": "Drinks",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Ristretto",
+      "categoryName": "Drinks",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Long Black",
+      "categoryName": "Drinks",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Americano",
+      "categoryName": "Drinks",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Moon",
+      "categoryName": "Drinks",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Lovers",
+      "categoryName": "Drinks",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Shroom",
+      "categoryName": "Drinks",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Bliss",
+      "categoryName": "Drinks",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Iced Chocolate",
+      "categoryName": "Ice Ice Baby",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/88fcb9ed77f447c811258d16145d865a/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": "ice_ice_baby/iced_chocolate.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Iced Coffee",
+      "categoryName": "Ice Ice Baby",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/7c63fc02279d16d703dac11a25ae158e/4218ca1d09174218364162cd0b1a8cc1.jpeg",
+      "localPath": "ice_ice_baby/iced_coffee.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Bohemia Organic Tea",
+      "categoryName": "Tea Brews By The Pot",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Bohemia Premium Organic Teas",
+      "categoryName": "Tea Brews By The Pot",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Mayan Man Cacao Tea",
+      "categoryName": "Classic White Tea",
+      "originalUrl": "https://www.ubereats.com/nz/store/gorilla-kitchen/q9RWQrkiRbGNqUuaGt0pQA?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522abd45642-b922-45b1-8da9-4b9a1add2940%2522%252C%2522sectionUuid%2522%253A%2522a059a82d-590b-47e9-9051-396c4ecb820e%2522%252C%2522subsectionUuid%2522%253A%2522fad83091-49b6-472b-9b19-39a6234e2f56%2522%252C%2522itemUuid%2522%253A%2522d9131980-579e-4909-8b8d-7dcf62a6b348%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1",
+      "localPath": null,
+      "status": "failed",
+      "error": "Parse Error: Header overflow"
+    },
+    {
+      "dishName": "Forage + Bloom Organic Teas",
+      "categoryName": "Classic White Tea",
+      "originalUrl": "https://www.ubereats.com/nz/store/gorilla-kitchen/q9RWQrkiRbGNqUuaGt0pQA?mod=quickView&modctx=%257B%2522storeUuid%2522%253A%2522abd45642-b922-45b1-8da9-4b9a1add2940%2522%252C%2522sectionUuid%2522%253A%2522a059a82d-590b-47e9-9051-396c4ecb820e%2522%252C%2522subsectionUuid%2522%253A%2522fad83091-49b6-472b-9b19-39a6234e2f56%2522%252C%2522itemUuid%2522%253A%25220fa34b85-a855-44f6-a5de-c38599c230b7%2522%252C%2522showSeeDetailsCTA%2522%253Atrue%257D&ps=1",
+      "localPath": null,
+      "status": "failed",
+      "error": "Parse Error: Header overflow"
+    },
+    {
+      "dishName": "Espresso",
+      "categoryName": "Hot Brews",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Flat White",
+      "categoryName": "Hot Brews",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Turmeric Ginger Oat Latte",
+      "categoryName": "Hot Brews",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Latte",
+      "categoryName": "Hot Brews",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Hot Chocolate",
+      "categoryName": "Hot Brews",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Phoenix Chai Latte",
+      "categoryName": "Hot Brews",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Mocha",
+      "categoryName": "Hot Brews",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Ristretto",
+      "categoryName": "Hot Brews",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Long Black",
+      "categoryName": "Hot Brews",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Americano",
+      "categoryName": "Hot Brews",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Moon",
+      "categoryName": "Misty Day Plant Potions",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Lovers",
+      "categoryName": "Misty Day Plant Potions",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Shroom",
+      "categoryName": "Misty Day Plant Potions",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Bliss",
+      "categoryName": "Misty Day Plant Potions",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Sticky Date Pudding",
+      "categoryName": "Dessert",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/14e6d3be7b117703e48be3b7530bf7e2/818646138724c808eb6d3b1aa056a184.jpeg",
+      "localPath": "dessert/sticky_date_pudding.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Snickers Bar (GF)",
+      "categoryName": "Dessert",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chocolate Brownie",
+      "categoryName": "Dessert",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Ginger Crunch (GF)",
+      "categoryName": "Dessert",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Raspberry Cup Cake (GF)",
+      "categoryName": "Dessert",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Caramel Cup Cake",
+      "categoryName": "Dessert",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    }
+  ]
+}

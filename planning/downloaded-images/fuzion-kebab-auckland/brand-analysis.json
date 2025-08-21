@@ -1,0 +1,27 @@
+{
+  "restaurantName": "Fuzion Kebab",
+  "location": "Auckland",
+  "logoColors": [
+    {
+      "hex": "#F5A623",
+      "name": "Golden Orange",
+      "usage": "Primary brand color - text and decorative elements"
+    },
+    {
+      "hex": "#D0021B",
+      "name": "Crimson Red",
+      "usage": "Secondary brand color - kebab skewer and circle border"
+    },
+    {
+      "hex": "#FF6B35",
+      "name": "Flame Orange",
+      "usage": "Accent color - flame effects"
+    }
+  ],
+  "websiteColors": [],
+  "theme": "light",
+  "source": "logo",
+  "cuisine": "Kebabs",
+  "analysisDate": "2025-08-17",
+  "notes": "Logo features a kebab skewer with flame effects in warm colors. Est. 2018 indicates established business."
+}

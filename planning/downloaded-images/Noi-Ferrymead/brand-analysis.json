@@ -1,0 +1,62 @@
+{
+  "restaurant": "Noi",
+  "location": "Ferrymead",
+  "website": "https://www.noi.co.nz/",
+  "extractedAt": "2025-08-07T00:53:06.571Z",
+  "logo": {
+    "type": "base64",
+    "dimensions": "197x153",
+    "saved": true,
+    "logoColors": [
+      {
+        "hex": "#E6B800",
+        "name": "Golden Yellow",
+        "description": "Primary brand color used for fish icon and main 'Noi' text"
+      },
+      {
+        "hex": "#F2D966",
+        "name": "Light Golden",
+        "description": "Lighter shade used for subtitle text 'South East Asian Cuisine'"
+      },
+      {
+        "hex": "#FFFFFF",
+        "name": "White",
+        "description": "Background color providing contrast for the golden elements"
+      }
+    ]
+  },
+  "websiteColors": [
+    {
+      "hex": "#FFFFFF",
+      "name": "White",
+      "usage": "text, border",
+      "frequency": 16
+    },
+    {
+      "hex": "#4D4D4D",
+      "name": "Gray",
+      "usage": "text, border",
+      "frequency": 12
+    },
+    {
+      "hex": "#333333",
+      "name": "Gray",
+      "usage": "background, border",
+      "frequency": 10
+    },
+    {
+      "hex": "#666666",
+      "name": "Purple",
+      "usage": "background",
+      "frequency": 2
+    },
+    {
+      "hex": "#173A00",
+      "name": "Mixed",
+      "usage": "background",
+      "frequency": 1
+    }
+  ],
+  "theme": "light",
+  "backgroundColor": "#FFFFFF"
+}

@@ -1,0 +1,944 @@
+{
+  "restaurant": "Curry Garden",
+  "downloadDate": "2025-08-07T06:01:12.826Z",
+  "stats": {
+    "total": 133,
+    "downloaded": 28,
+    "failed": 1,
+    "noImage": 104
+  },
+  "items": [
+    {
+      "dishName": "Butter Chicken",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/69a4d520-3a3a-4739-9205-0d27ca8a0eb1-retina-large.jpg",
+      "localPath": "featured_items/butter_chicken.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chicken Biryani",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/42e39436-2078-41ef-96db-4c5298bf05da-retina-large.jpg",
+      "localPath": "featured_items/chicken_biryani.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chicken Pasanda",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6d703a57-9545-45a1-88f5-e10369e09cd8-retina-large.jpg",
+      "localPath": "featured_items/chicken_pasanda.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Lamb Rogan Josh",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/0021481c-9267-4d9f-bed2-29614d085118-retina-large.jpg",
+      "localPath": "featured_items/lamb_rogan_josh.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Samosa",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/d2857b57-5afb-47ab-818b-a843696a75fc-retina-large.jpg",
+      "localPath": "featured_items/samosa.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "South Indian Brinjal Curry",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/f2f2939a-c6ef-4632-a1cf-61e27407496f-retina-large.jpg",
+      "localPath": "featured_items/south_indian_brinjal_curry.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Palak Paneer",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/b4351ccc-23f3-4feb-a77e-b8f6efb2e6be-retina-large.jpg",
+      "localPath": "featured_items/palak_paneer.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Butter Chicken",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/69a4d520-3a3a-4739-9205-0d27ca8a0eb1-retina-large.jpg",
+      "localPath": "most_ordered/butter_chicken.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chicken Biryani",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/42e39436-2078-41ef-96db-4c5298bf05da-retina-large.jpg",
+      "localPath": "most_ordered/chicken_biryani.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Samosa",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/d2857b57-5afb-47ab-818b-a843696a75fc-retina-large.jpg",
+      "localPath": "most_ordered/samosa.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Lamb Rogan Josh",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/0021481c-9267-4d9f-bed2-29614d085118-retina-large.jpg",
+      "localPath": "most_ordered/lamb_rogan_josh.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chicken Pasanda",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6d703a57-9545-45a1-88f5-e10369e09cd8-retina-large.jpg",
+      "localPath": "most_ordered/chicken_pasanda.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Garlic Naan",
+      "categoryName": "Most Ordered",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Buttar chicken +rice + Naan+drink",
+      "categoryName": "Most Ordered",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Cheese Naan",
+      "categoryName": "Most Ordered",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Onion Bhaji",
+      "categoryName": "Most Ordered",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken korma +rice +Naan+drink",
+      "categoryName": "Most Ordered",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken Korma",
+      "categoryName": "Most Ordered",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken Tikka Masala",
+      "categoryName": "Most Ordered",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Butter Chicken",
+      "categoryName": "Appetizers - Kids Special",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Mango Chicken",
+      "categoryName": "Appetizers - Kids Special",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Finger Chips",
+      "categoryName": "Appetizers - Kids Special",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken Nugget",
+      "categoryName": "Appetizers - Kids Special",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Samosa",
+      "categoryName": "Appetizers - Vegetarian",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/d2857b57-5afb-47ab-818b-a843696a75fc-retina-large.jpg",
+      "localPath": "appetizers_vegetarian/samosa.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Veg Platter for 2",
+      "categoryName": "Appetizers - Vegetarian",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Onion Bhaji",
+      "categoryName": "Appetizers - Vegetarian",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Mixed Pakora",
+      "categoryName": "Appetizers - Vegetarian",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Veggie Kathi Roll",
+      "categoryName": "Appetizers - Vegetarian",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Paneer Pakora",
+      "categoryName": "Appetizers - Vegetarian",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Garden Special Veg Platter",
+      "categoryName": "Appetizers - Vegetarian",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/cf0d2306-9f35-451f-8e44-8473058eba64-retina-large.jpg",
+      "localPath": "appetizers_vegetarian/garden_special_veg_platter.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Paneer Tikka",
+      "categoryName": "Appetizers - Vegetarian",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Spring Rolls",
+      "categoryName": "Appetizers - Vegetarian",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Poppadam Starter",
+      "categoryName": "Appetizers - Vegetarian",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Pappadam",
+      "categoryName": "Appetizers - Vegetarian",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Masala Pappadam",
+      "categoryName": "Appetizers - Vegetarian",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Seekh Kebab",
+      "categoryName": "Appetizers - Non-Vegetarian",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/f013848c-1825-45ff-832d-45824d308765-retina-large.jpg",
+      "localPath": "appetizers_non_vegetarian/seekh_kebab.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Tandoori Chicken",
+      "categoryName": "Appetizers - Non-Vegetarian",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken Lolipop",
+      "categoryName": "Appetizers - Non-Vegetarian",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken Kathi Roll",
+      "categoryName": "Appetizers - Non-Vegetarian",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Fish Tikka",
+      "categoryName": "Appetizers - Non-Vegetarian",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken Pakora",
+      "categoryName": "Appetizers - Non-Vegetarian",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Garden Special Platter",
+      "categoryName": "Appetizers - Non-Vegetarian",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/525de568-e583-4abc-8c16-cd02ff4d89c8-retina-large.jpg",
+      "localPath": "appetizers_non_vegetarian/garden_special_platter.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Mix Platter for 2",
+      "categoryName": "Appetizers - Non-Vegetarian",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Lamb Kathi aRoll",
+      "categoryName": "Appetizers - Non-Vegetarian",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Fish Pakora",
+      "categoryName": "Appetizers - Non-Vegetarian",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Garden Special Tikka",
+      "categoryName": "Appetizers - Non-Vegetarian",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/2d617c6f-32fe-4866-9c04-673256a696c7-retina-large.jpg",
+      "localPath": "appetizers_non_vegetarian/garden_special_tikka.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chicken Malai Tikka",
+      "categoryName": "Appetizers - Non-Vegetarian",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/93c292ca-33ab-4a25-b907-b1dcd030a5d4-retina-large.jpg",
+      "localPath": "appetizers_non_vegetarian/chicken_malai_tikka.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chicken Tikka",
+      "categoryName": "Appetizers - Non-Vegetarian",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/ff019099-5e51-4170-ad47-021535f7cfb2-retina-large.jpg",
+      "localPath": "appetizers_non_vegetarian/chicken_tikka.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Tandoori Prawn",
+      "categoryName": "Appetizers - Non-Vegetarian",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Butter Chicken",
+      "categoryName": "Mains - Chicken Dishes",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/69a4d520-3a3a-4739-9205-0d27ca8a0eb1-retina-large.jpg",
+      "localPath": "mains_chicken_dishes/butter_chicken.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chicken Pasanda",
+      "categoryName": "Mains - Chicken Dishes",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6d703a57-9545-45a1-88f5-e10369e09cd8-retina-large.jpg",
+      "localPath": "mains_chicken_dishes/chicken_pasanda.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Mango Chicken",
+      "categoryName": "Mains - Chicken Dishes",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken Korma",
+      "categoryName": "Mains - Chicken Dishes",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken Tikka Masala",
+      "categoryName": "Mains - Chicken Dishes",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken Vindaloo",
+      "categoryName": "Mains - Chicken Dishes",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken Saag",
+      "categoryName": "Mains - Chicken Dishes",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken Garden",
+      "categoryName": "Mains - Chicken Dishes",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken Salan",
+      "categoryName": "Mains - Chicken Dishes",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Lemon Honey chicken",
+      "categoryName": "Mains - Chicken Dishes",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken Madras",
+      "categoryName": "Mains - Chicken Dishes",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Garden Spl. Chicken",
+      "categoryName": "Mains - Chicken Dishes",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken Jalfrezi",
+      "categoryName": "Mains - Chicken Dishes",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken Balti",
+      "categoryName": "Mains - Chicken Dishes",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Bhuna Chicken",
+      "categoryName": "Mains - Chicken Dishes",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Kadai Chicken",
+      "categoryName": "Mains - Chicken Dishes",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken Rogan Josh",
+      "categoryName": "Mains - Chicken Dishes",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken Malaysian Curry",
+      "categoryName": "Mains - Chicken Dishes",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Fish Garden Special",
+      "categoryName": "Mains - Sea Food Delights",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Butter Prawn",
+      "categoryName": "Mains - Sea Food Delights",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Prawn Balti",
+      "categoryName": "Mains - Sea Food Delights",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Malabari Fish Curry",
+      "categoryName": "Mains - Sea Food Delights",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Fish Tikka Masala",
+      "categoryName": "Mains - Sea Food Delights",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Fish Balti",
+      "categoryName": "Mains - Sea Food Delights",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Prawn Garden Special",
+      "categoryName": "Mains - Sea Food Delights",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Malaysian Fish Curry",
+      "categoryName": "Mains - Sea Food Delights",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Malaysian Prawn Curry",
+      "categoryName": "Mains - Sea Food Delights",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Lamb Madras",
+      "categoryName": "Mains - Lamb/goat Delights",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Lamb Vindaloo",
+      "categoryName": "Mains - Lamb/goat Delights",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Lamb Sang",
+      "categoryName": "Mains - Lamb/goat Delights",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Garden Special Lamb",
+      "categoryName": "Mains - Lamb/goat Delights",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/5736541c-147a-4372-9e6d-923bdc7e8034-retina-large.jpg",
+      "localPath": "mains_lamb_goat_delights/garden_special_lamb.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Lamb Tikka Masala",
+      "categoryName": "Mains - Lamb/goat Delights",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Butter Lamb",
+      "categoryName": "Mains - Lamb/goat Delights",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Kadai Lamb",
+      "categoryName": "Mains - Lamb/goat Delights",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Lamb Handi",
+      "categoryName": "Mains - Lamb/goat Delights",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Goat Raara",
+      "categoryName": "Mains - Lamb/goat Delights",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Goat Saag",
+      "categoryName": "Mains - Lamb/goat Delights",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Goat Handi",
+      "categoryName": "Mains - Lamb/goat Delights",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Lamb Dalcha",
+      "categoryName": "Mains - Lamb/goat Delights",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Lamb Balti",
+      "categoryName": "Mains - Lamb/goat Delights",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Lamb Do Pyaaza",
+      "categoryName": "Mains - Lamb/goat Delights",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Lamb Rogan Josh",
+      "categoryName": "Mains - Lamb/goat Delights",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/0021481c-9267-4d9f-bed2-29614d085118-retina-large.jpg",
+      "localPath": "mains_lamb_goat_delights/lamb_rogan_josh.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Lamb Korma",
+      "categoryName": "Mains - Lamb/goat Delights",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chilli Chicken",
+      "categoryName": "Mains - Indo Chinese",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/69a4d520-3a3a-4739-9205-0d27ca8a0eb1-retina-large.jpg",
+      "localPath": "mains_indo_chinese/chilli_chicken.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Paneer Chilli",
+      "categoryName": "Mains - Indo Chinese",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken Fried Rice",
+      "categoryName": "Mains - Indo Chinese",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken Manchurian",
+      "categoryName": "Mains - Indo Chinese",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Vegetarian Fried Rice",
+      "categoryName": "Mains - Indo Chinese",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Mushroom Chilli",
+      "categoryName": "Mains - Indo Chinese",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Vegetable Hakka Noodles",
+      "categoryName": "Mains - Indo Chinese",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken Hakka Noodles",
+      "categoryName": "Mains - Indo Chinese",
+      "originalUrl": null,
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Lamb Biryani",
+      "categoryName": "Biryani",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Prawn Biryani",
+      "categoryName": "Biryani",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Fish Biryani",
+      "categoryName": "Biryani",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken Biryani",
+      "categoryName": "Biryani",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/42e39436-2078-41ef-96db-4c5298bf05da-retina-large.jpg",
+      "localPath": "biryani/chicken_biryani.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Vegetable Biryani",
+      "categoryName": "Biryani",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Garlic Naan",
+      "categoryName": "Tandoori Naan Bread",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Cheese Naan",
+      "categoryName": "Tandoori Naan Bread",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Cheese Chilli Naan",
+      "categoryName": "Tandoori Naan Bread",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Paneer Kulcha",
+      "categoryName": "Tandoori Naan Bread",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Onion Kulcha",
+      "categoryName": "Tandoori Naan Bread",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Aloo Paratha",
+      "categoryName": "Tandoori Naan Bread",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Garlic Roti",
+      "categoryName": "Tandoori Naan Bread",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Kashmiri Naan",
+      "categoryName": "Tandoori Naan Bread",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Chicken and Cheese Naan",
+      "categoryName": "Tandoori Naan Bread",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Lachha Paratha",
+      "categoryName": "Tandoori Naan Bread",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Methi Paratha",
+      "categoryName": "Tandoori Naan Bread",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Keema Naan",
+      "categoryName": "Tandoori Naan Bread",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Plain Naan",
+      "categoryName": "Tandoori Naan Bread",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Tandoori Roti",
+      "categoryName": "Tandoori Naan Bread",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Mango Chutney",
+      "categoryName": "Salads/ Accompaniments",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Mixed Pickle",
+      "categoryName": "Salads/ Accompaniments",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Raita",
+      "categoryName": "Salads/ Accompaniments",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Green Salad",
+      "categoryName": "Salads/ Accompaniments",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Ice Cream",
+      "categoryName": "Dessert",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/26125002-eabf-4828-ae19-db95aba4ae47-retina-large.png",
+      "localPath": "dessert/ice_cream.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Gulab Jamun with Ice Cream",
+      "categoryName": "Dessert",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/ac132b0e-8620-417b-b5da-3bd4731a956e-retina-large.jpg",
+      "localPath": "dessert/gulab_jamun_with_ice_cream.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Mango Kulfi",
+      "categoryName": "Dessert",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Carrot Halwa",
+      "categoryName": "Dessert",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/b9b95d24-463a-4fc6-b2b8-f560266f2a47-retina-large.png",
+      "localPath": "dessert/carrot_halwa.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Gulab Jamun",
+      "categoryName": "Dessert",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/c5e9309d-145d-4d65-b97f-dc788e51aecd-retina-large.jpg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 403"
+    },
+    {
+      "dishName": "Lemon Rice",
+      "categoryName": "Rice",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Green Peas Pulao",
+      "categoryName": "Rice",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Coconut Rice",
+      "categoryName": "Rice",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Plane Rice",
+      "categoryName": "Rice",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    },
+    {
+      "dishName": "Jeera Rice",
+      "categoryName": "Rice",
+      "originalUrl": "",
+      "localPath": null,
+      "status": "no_image"
+    }
+  ]
+}

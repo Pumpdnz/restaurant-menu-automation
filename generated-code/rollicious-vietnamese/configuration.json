@@ -1,0 +1,19 @@
+{
+  "restaurant": "Rollicious Vietnamese",
+  "primaryColor": "#E34E21",
+  "secondaryColor": "#234220",
+  "theme": "light",
+  "preset": "Interactive Showcase",
+  "components": {
+    "navBarTextEffects": {
+      "enabled": true,
+      "logoGradient": false
+    },
+    "welcomeMessages": {
+      "enabled": true,
+      "timeBasedGreeting": true,
+      "restaurantName": "Rollicious Vietnamese"
+    }
+  },
+  "generatedAt": "2025-08-07T04:28:14.958Z"
+}

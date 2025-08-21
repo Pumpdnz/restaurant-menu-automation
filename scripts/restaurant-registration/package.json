@@ -1,0 +1,26 @@
+{
+  "name": "restaurant-registration-automation",
+  "version": "1.0.0",
+  "description": "Automated restaurant registration for Pumpd admin portal",
+  "main": "register-restaurant.js",
+  "scripts": {
+    "register": "node register-restaurant.js",
+    "register:debug": "node register-restaurant.js --debug",
+    "test": "node test-registration-steps.js",
+    "test:step": "node test-registration-steps.js"
+  },
+  "keywords": [
+    "puppeteer",
+    "automation",
+    "restaurant",
+    "registration"
+  ],
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "playwright": "^1.54.2",
+    "puppeteer": "^23.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
