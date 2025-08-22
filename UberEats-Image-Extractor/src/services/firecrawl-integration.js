@@ -64,8 +64,10 @@ export async function scrapeUberEatsRestaurant(url, options = {}) {
       
       // Call Firecrawl API
       console.log('Calling Firecrawl API with options:', firecrawlOptions);
-      const response = await firecrawl_scrape(firecrawlOptions);
-      
+      // TODO: Replace with actual Firecrawl API call through the backend
+      // For now, return mock data
+      const response = await mockFirecrawlScrape(firecrawlOptions);
+
       // Validate response
       if (!response || !response.rawHtml || response.rawHtml.length < 1000) {
         throw new Error('Invalid or incomplete response from Firecrawl API');

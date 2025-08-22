@@ -40,10 +40,13 @@ async function getPlatformByName(platformName) {
   if (!isDatabaseAvailable()) return null;
   
   try {
+    // Always use lowercase for consistency
+    const normalizedName = platformName.toLowerCase();
+    
     const { data, error } = await supabase
       .from('platforms')
       .select('*')
-      .eq('name', platformName)
+      .eq('name', normalizedName)
       .single();
     
     if (error) throw error;
@@ -527,6 +530,715 @@ async function getActiveMenuItems(restaurantId, platformId = null) {
   }
 }
 
+/**
+ * Get all restaurants
+ */
+async function getAllRestaurants() {
+  if (!isDatabaseAvailable()) return [];
+  
+  try {
+    const { data, error } = await supabase
+      .from('restaurants')
+      .select(`
+        *,
+        restaurant_platforms (
+          url,
+          last_scraped_at,
+          platforms (name)
+        )
+      `)
+      .order('name');
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('[Database] Error getting all restaurants:', error);
+    return [];
+  }
+}
+
+/**
+ * Get restaurant by ID
+ */
+async function getRestaurantById(restaurantId) {
+  if (!isDatabaseAvailable()) return null;
+  
+  try {
+    const { data, error } = await supabase
+      .from('restaurants')
+      .select(`
+        *,
+        restaurant_platforms (
+          url,
+          last_scraped_at,
+          platforms (name, id)
+        )
+      `)
+      .eq('id', restaurantId)
+      .single();
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('[Database] Error getting restaurant by ID:', error);
+    return null;
+  }
+}
+
+/**
+ * Get all menus for a restaurant
+ */
+async function getRestaurantMenus(restaurantId) {
+  if (!isDatabaseAvailable()) return [];
+  
+  try {
+    const { data, error } = await supabase
+      .from('menus')
+      .select(`
+        *,
+        platforms (name),
+        extraction_jobs (
+          job_id,
+          status,
+          created_at,
+          completed_at
+        )
+      `)
+      .eq('restaurant_id', restaurantId)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('[Database] Error getting restaurant menus:', error);
+    return [];
+  }
+}
+
+/**
+ * Activate a specific menu version
+ */
+async function activateMenu(menuId) {
+  if (!isDatabaseAvailable()) return null;
+  
+  try {
+    // Get the menu to find restaurant_id and platform_id
+    const { data: menu, error: menuError } = await supabase
+      .from('menus')
+      .select('restaurant_id, platform_id')
+      .eq('id', menuId)
+      .single();
+    
+    if (menuError) throw menuError;
+    
+    // Deactivate all other menus for this restaurant/platform
+    const { error: deactivateError } = await supabase
+      .from('menus')
+      .update({ is_active: false })
+      .eq('restaurant_id', menu.restaurant_id)
+      .eq('platform_id', menu.platform_id);
+    
+    if (deactivateError) throw deactivateError;
+    
+    // Activate the specified menu
+    const { data, error } = await supabase
+      .from('menus')
+      .update({ is_active: true })
+      .eq('id', menuId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('[Database] Error activating menu:', error);
+    return null;
+  }
+}
+
+/**
+ * Soft delete a menu
+ */
+async function deleteMenu(menuId) {
+  if (!isDatabaseAvailable()) return false;
+  
+  try {
+    // We'll mark it as inactive rather than hard delete
+    const { error } = await supabase
+      .from('menus')
+      .update({ 
+        is_active: false,
+        deleted_at: new Date().toISOString()
+      })
+      .eq('id', menuId);
+    
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('[Database] Error deleting menu:', error);
+    return false;
+  }
+}
+
+/**
+ * Compare two menu versions
+ */
+async function compareMenus(menuId1, menuId2) {
+  if (!isDatabaseAvailable()) return null;
+  
+  try {
+    // Get both menus with their items
+    const [menu1, menu2] = await Promise.all([
+      getMenuWithItems(menuId1),
+      getMenuWithItems(menuId2)
+    ]);
+    
+    if (!menu1 || !menu2) {
+      throw new Error('One or both menus not found');
+    }
+    
+    // Build comparison data
+    const comparison = {
+      menu1: {
+        id: menu1.id,
+        version: menu1.version,
+        created_at: menu1.created_at,
+        categories: menu1.categories?.length || 0,
+        items: 0
+      },
+      menu2: {
+        id: menu2.id,
+        version: menu2.version,
+        created_at: menu2.created_at,
+        categories: menu2.categories?.length || 0,
+        items: 0
+      },
+      differences: {
+        added: [],
+        removed: [],
+        modified: []
+      }
+    };
+    
+    // Create item maps for comparison
+    const items1 = new Map();
+    const items2 = new Map();
+    
+    menu1.categories?.forEach(cat => {
+      cat.menu_items?.forEach(item => {
+        comparison.menu1.items++;
+        items1.set(item.name, { ...item, category: cat.name });
+      });
+    });
+    
+    menu2.categories?.forEach(cat => {
+      cat.menu_items?.forEach(item => {
+        comparison.menu2.items++;
+        items2.set(item.name, { ...item, category: cat.name });
+      });
+    });
+    
+    // Find added and modified items
+    for (const [name, item2] of items2) {
+      const item1 = items1.get(name);
+      if (!item1) {
+        comparison.differences.added.push({
+          name: item2.name,
+          category: item2.category,
+          price: item2.price
+        });
+      } else if (item1.price !== item2.price) {
+        comparison.differences.modified.push({
+          name: item2.name,
+          category: item2.category,
+          oldPrice: item1.price,
+          newPrice: item2.price,
+          change: item2.price - item1.price
+        });
+      }
+    }
+    
+    // Find removed items
+    for (const [name, item1] of items1) {
+      if (!items2.has(name)) {
+        comparison.differences.removed.push({
+          name: item1.name,
+          category: item1.category,
+          price: item1.price
+        });
+      }
+    }
+    
+    return comparison;
+  } catch (error) {
+    console.error('[Database] Error comparing menus:', error);
+    return null;
+  }
+}
+
+/**
+ * Search menus by item name or description
+ */
+async function searchMenus(searchTerm, restaurantId = null) {
+  if (!isDatabaseAvailable()) return [];
+  
+  try {
+    let query = supabase
+      .from('menu_items')
+      .select(`
+        *,
+        menus!inner (
+          id,
+          version,
+          is_active,
+          restaurants (name, slug),
+          platforms (name)
+        ),
+        categories (name)
+      `)
+      .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`)
+      .eq('menus.is_active', true);
+    
+    if (restaurantId) {
+      query = query.eq('menus.restaurant_id', restaurantId);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('[Database] Error searching menus:', error);
+    return [];
+  }
+}
+
+/**
+ * Get all extraction jobs with optional filters
+ */
+async function getExtractionJobs(filters = {}) {
+  if (!isDatabaseAvailable()) return [];
+  
+  try {
+    let query = supabase
+      .from('extraction_jobs')
+      .select(`
+        *,
+        restaurants (name, slug),
+        platforms (name)
+      `)
+      .order('created_at', { ascending: false });
+    
+    if (filters.status) {
+      query = query.eq('status', filters.status);
+    }
+    
+    if (filters.restaurantId) {
+      query = query.eq('restaurant_id', filters.restaurantId);
+    }
+    
+    if (filters.limit) {
+      query = query.limit(filters.limit);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('[Database] Error getting extraction jobs:', error);
+    return [];
+  }
+}
+
+/**
+ * Cancel an extraction job
+ */
+async function cancelExtractionJob(jobId) {
+  if (!isDatabaseAvailable()) return false;
+  
+  try {
+    const { error } = await supabase
+      .from('extraction_jobs')
+      .update({
+        status: 'cancelled',
+        completed_at: new Date().toISOString(),
+        error: 'Cancelled by user'
+      })
+      .eq('job_id', jobId);
+    
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('[Database] Error cancelling extraction job:', error);
+    return false;
+  }
+}
+
+/**
+ * Create a new restaurant
+ */
+async function createRestaurant(restaurantData) {
+  if (!isDatabaseAvailable()) return null;
+  
+  try {
+    const { data, error } = await supabase
+      .from('restaurants')
+      .insert({
+        name: restaurantData.name,
+        slug: restaurantData.slug || restaurantData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        address: restaurantData.address,
+        phone: restaurantData.phone,
+        email: restaurantData.email,
+        website: restaurantData.website,
+        logo_url: restaurantData.logo_url,
+        brand_colors: restaurantData.brand_colors,
+        metadata: restaurantData.metadata || {}
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('[Database] Error creating restaurant:', error);
+    return null;
+  }
+}
+
+/**
+ * Update a restaurant
+ */
+async function updateRestaurant(restaurantId, updates) {
+  if (!isDatabaseAvailable()) return null;
+  
+  try {
+    const { data, error } = await supabase
+      .from('restaurants')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', restaurantId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('[Database] Error updating restaurant:', error);
+    return null;
+  }
+}
+
+/**
+ * Duplicate a menu
+ */
+async function duplicateMenu(menuId) {
+  if (!isDatabaseAvailable()) return null;
+  
+  try {
+    // Get the original menu with all items
+    const originalMenu = await getMenuWithItems(menuId);
+    if (!originalMenu) {
+      throw new Error('Menu not found');
+    }
+    
+    // Create new menu
+    const newMenu = await createMenu({
+      restaurantId: originalMenu.restaurant_id,
+      extractionJobId: originalMenu.extraction_job_id,
+      platformId: originalMenu.platform_id,
+      rawData: originalMenu.menu_data
+    });
+    
+    if (!newMenu) {
+      throw new Error('Failed to create duplicate menu');
+    }
+    
+    // Duplicate categories and items
+    if (originalMenu.categories) {
+      const categoryMap = {};
+      
+      // Create categories
+      for (const cat of originalMenu.categories) {
+        const { data: newCat, error } = await supabase
+          .from('categories')
+          .insert({
+            menu_id: newMenu.id,
+            name: cat.name,
+            description: cat.description,
+            position: cat.position,
+            selector: cat.selector
+          })
+          .select()
+          .single();
+        
+        if (!error && newCat) {
+          categoryMap[cat.id] = newCat.id;
+        }
+      }
+      
+      // Create items
+      for (const cat of originalMenu.categories) {
+        if (cat.menu_items) {
+          for (const item of cat.menu_items) {
+            const { data: newItem, error } = await supabase
+              .from('menu_items')
+              .insert({
+                menu_id: newMenu.id,
+                category_id: categoryMap[cat.id],
+                name: item.name,
+                description: item.description,
+                price: item.price,
+                currency: item.currency,
+                tags: item.tags,
+                dietary_info: item.dietary_info,
+                platform_item_id: item.platform_item_id,
+                is_available: item.is_available,
+                metadata: item.metadata
+              })
+              .select()
+              .single();
+            
+            // Duplicate images if exist
+            if (!error && newItem && item.item_images) {
+              for (const img of item.item_images) {
+                await supabase
+                  .from('item_images')
+                  .insert({
+                    menu_item_id: newItem.id,
+                    url: img.url,
+                    type: img.type
+                  });
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    return newMenu;
+  } catch (error) {
+    console.error('[Database] Error duplicating menu:', error);
+    return null;
+  }
+}
+
+/**
+ * Update a single menu item
+ */
+async function updateMenuItem(itemId, updates) {
+  if (!isDatabaseAvailable()) return null;
+  
+  try {
+    const { data, error } = await supabase
+      .from('menu_items')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', itemId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('[Database] Error updating menu item:', error);
+    return null;
+  }
+}
+
+/**
+ * Bulk update menu items
+ */
+async function bulkUpdateMenuItems(updates) {
+  if (!isDatabaseAvailable()) return [];
+  
+  try {
+    const results = [];
+    
+    for (const update of updates) {
+      const { id, ...data } = update;
+      const { data: updated, error } = await supabase
+        .from('menu_items')
+        .update({
+          ...data,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (!error && updated) {
+        results.push(updated);
+      }
+    }
+    
+    return results;
+  } catch (error) {
+    console.error('[Database] Error bulk updating menu items:', error);
+    return [];
+  }
+}
+
+/**
+ * Add item to category
+ */
+async function addItemToCategory(categoryId, itemData) {
+  if (!isDatabaseAvailable()) return null;
+  
+  try {
+    // Get category to find menu_id
+    const { data: category, error: catError } = await supabase
+      .from('categories')
+      .select('menu_id')
+      .eq('id', categoryId)
+      .single();
+    
+    if (catError) throw catError;
+    
+    const { data, error } = await supabase
+      .from('menu_items')
+      .insert({
+        menu_id: category.menu_id,
+        category_id: categoryId,
+        name: itemData.name,
+        description: itemData.description,
+        price: itemData.price,
+        currency: itemData.currency || 'NZD',
+        tags: itemData.tags || [],
+        dietary_info: itemData.dietary_info || {},
+        is_available: itemData.is_available !== false,
+        metadata: itemData.metadata || {}
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('[Database] Error adding item to category:', error);
+    return null;
+  }
+}
+
+/**
+ * Get price history for restaurant
+ */
+async function getPriceHistory(restaurantId, itemId = null) {
+  if (!isDatabaseAvailable()) return [];
+  
+  try {
+    let query = supabase
+      .from('price_history')
+      .select(`
+        *,
+        menu_items (name, category_id),
+        extraction_jobs (created_at)
+      `)
+      .order('detected_at', { ascending: false });
+    
+    // Join through menu_items to get restaurant
+    if (restaurantId) {
+      // This requires a more complex query through menus
+      const { data: menus } = await supabase
+        .from('menus')
+        .select('id')
+        .eq('restaurant_id', restaurantId);
+      
+      if (menus) {
+        const menuIds = menus.map(m => m.id);
+        query = supabase
+          .from('price_history')
+          .select(`
+            *,
+            menu_items!inner (
+              name,
+              category_id,
+              menu_id
+            ),
+            extraction_jobs (created_at)
+          `)
+          .in('menu_items.menu_id', menuIds)
+          .order('detected_at', { ascending: false });
+      }
+    }
+    
+    if (itemId) {
+      query = query.eq('menu_item_id', itemId);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('[Database] Error getting price history:', error);
+    return [];
+  }
+}
+
+/**
+ * Get extraction statistics
+ */
+async function getExtractionStats() {
+  if (!isDatabaseAvailable()) return null;
+  
+  try {
+    // Get overall stats
+    const { data: jobs, error: jobsError } = await supabase
+      .from('extraction_jobs')
+      .select('status, created_at, completed_at');
+    
+    if (jobsError) throw jobsError;
+    
+    const stats = {
+      totalExtractions: jobs.length,
+      successful: jobs.filter(j => j.status === 'completed').length,
+      failed: jobs.filter(j => j.status === 'failed').length,
+      avgDuration: 0,
+      successRate: 0,
+      itemsPerMenu: 0
+    };
+    
+    // Calculate average duration
+    const completedJobs = jobs.filter(j => j.status === 'completed' && j.completed_at);
+    if (completedJobs.length > 0) {
+      const durations = completedJobs.map(j => {
+        const start = new Date(j.created_at);
+        const end = new Date(j.completed_at);
+        return (end - start) / 1000; // seconds
+      });
+      stats.avgDuration = durations.reduce((a, b) => a + b, 0) / durations.length;
+    }
+    
+    // Calculate success rate
+    if (jobs.length > 0) {
+      stats.successRate = (stats.successful / jobs.length) * 100;
+    }
+    
+    // Get items per menu average
+    const { data: menus, error: menusError } = await supabase
+      .from('menus')
+      .select(`
+        id,
+        menu_items (id)
+      `);
+    
+    if (!menusError && menus && menus.length > 0) {
+      const itemCounts = menus.map(m => m.menu_items?.length || 0);
+      stats.itemsPerMenu = itemCounts.reduce((a, b) => a + b, 0) / menus.length;
+    }
+    
+    return stats;
+  } catch (error) {
+    console.error('[Database] Error getting extraction stats:', error);
+    return null;
+  }
+}
+
 // Export all functions
 module.exports = {
   initializeDatabase,
@@ -537,26 +1249,47 @@ module.exports = {
   
   // Restaurant operations
   upsertRestaurant,
+  createRestaurant,
+  updateRestaurant,
+  getAllRestaurants,
+  getRestaurantById,
+  getRestaurantMenus,
   
   // Extraction job operations
   createExtractionJob,
   updateExtractionJob,
   getExtractionJob,
+  getExtractionJobs,
+  cancelExtractionJob,
   
   // Menu operations
   createMenu,
+  activateMenu,
+  deleteMenu,
+  duplicateMenu,
+  compareMenus,
   
   // Category operations
   createCategories,
+  addItemToCategory,
   
   // Menu item operations
   createMenuItems,
+  updateMenuItem,
+  bulkUpdateMenuItems,
   
   // Image operations
   createItemImages,
   
   // Log operations
   createExtractionLog,
+  
+  // Search operations
+  searchMenus,
+  
+  // Analytics operations
+  getPriceHistory,
+  getExtractionStats,
   
   // Combined operations
   saveExtractionResults,

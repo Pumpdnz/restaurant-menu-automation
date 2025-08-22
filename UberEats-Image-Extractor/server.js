@@ -23,6 +23,9 @@ const {
   UBEREATS_OPTION_SETS_PROMPT
 } = require('./src/services/firecrawl-service');
 
+// Import database service
+const db = require('./src/services/database-service');
+
 // Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 3007;
@@ -101,7 +104,7 @@ function cleanupOldJobs() {
 setInterval(cleanupOldJobs, 30 * 60 * 1000);
 
 // Start background extraction process
-async function startBackgroundExtraction(jobId, url, categories) {
+async function startBackgroundExtraction(jobId, url, categories, restaurantName = null, options = {}) {
   // Initialize job state
   const job = {
     jobId: jobId,
@@ -112,6 +115,11 @@ async function startBackgroundExtraction(jobId, url, categories) {
     failedCategories: 0,
     currentCategory: null,
     startTime: Date.now(),
+    options: {
+      includeImages: options.includeImages !== false,
+      generateCSV: options.generateCSV !== false,
+      ...options
+    },
     endTime: null,
     data: null,
     categories: {
@@ -123,10 +131,50 @@ async function startBackgroundExtraction(jobId, url, categories) {
   
   jobStore.set(jobId, job);
   
+  // Initialize database job if available
+  let dbJob = null;
+  let restaurant = null;
+  let platform = null;
+  
   try {
     // Detect platform type
     const isUberEats = url.includes('ubereats.com');
     const isDoorDash = url.includes('doordash.com');
+    const platformName = isUberEats ? 'UberEats' : isDoorDash ? 'DoorDash' : 'Custom';
+    
+    // Try to extract restaurant name from URL if not provided
+    if (!restaurantName) {
+      const urlParts = url.split('/');
+      const storeIndex = urlParts.indexOf('store');
+      if (storeIndex !== -1 && urlParts[storeIndex + 1]) {
+        restaurantName = urlParts[storeIndex + 1].replace(/-/g, ' ');
+      }
+    }
+    
+    // Save to database if available
+    if (db.isDatabaseAvailable() && restaurantName) {
+      try {
+        // Get the existing extraction job that was already created
+        dbJob = await db.getExtractionJob(jobId);
+        
+        if (dbJob) {
+          restaurant = { id: dbJob.restaurant_id };
+          
+          // Update job status to running
+          await db.updateExtractionJob(jobId, {
+            status: 'running',
+            started_at: new Date().toISOString(),
+            progress: { 
+              totalCategories: categories.length,
+              completedCategories: 0
+            }
+          });
+        }
+      } catch (dbError) {
+        console.log(`[Database] Note: ${dbError.message}`);
+        // Continue without database tracking if there's an issue
+      }
+    }
     
     // Process each category
     const categoryResults = [];
@@ -290,6 +338,27 @@ async function startBackgroundExtraction(jobId, url, categories) {
     
     console.log(`[Job ${jobId}] Successfully extracted a total of ${menuItems.length} menu items across ${categoryResults.length} categories`);
     
+    // Save extraction results to database
+    if (db.isDatabaseAvailable() && dbJob) {
+      try {
+        const extractionData = {
+          menuItems: menuItems,
+          categories: categories.map((cat, idx) => ({
+            ...cat,
+            itemCount: categoryResults.find(r => r.categoryName === cat.name)?.menuItems?.length || 0
+          }))
+        };
+        
+        const dbResult = await db.saveExtractionResults(jobId, extractionData);
+        if (dbResult) {
+          console.log(`[Job ${jobId}] Results saved to database - Menu ID: ${dbResult.menu.id}`);
+        }
+      } catch (dbError) {
+        console.error(`[Job ${jobId}] Failed to save to database:`, dbError.message);
+        // Continue even if database save fails
+      }
+    }
+    
     // Update job with final results
     job.state = 'completed';
     job.endTime = Date.now();
@@ -305,6 +374,15 @@ async function startBackgroundExtraction(jobId, url, categories) {
     
   } catch (error) {
     console.error(`[Job ${jobId}] Fatal error during extraction:`, error.message);
+    
+    // Update database job if available
+    if (db.isDatabaseAvailable() && dbJob) {
+      await db.updateExtractionJob(jobId, {
+        status: 'failed',
+        error: error.message,
+        completed_at: new Date().toISOString()
+      });
+    }
     
     // Update job with error
     job.state = 'failed';
@@ -1417,42 +1495,42 @@ app.post('/api/scan-categories', async (req, res) => {
     console.log('Category scan response status:', response.status);
     console.log('Response data structure:', Object.keys(response.data));
     
-    // Debug log for response
+    // Debug log for response structure if needed
     if (process.env.DEBUG_MODE === 'true') {
-      console.log('Raw v2 response structure:');
-      console.log('- response.data keys:', Object.keys(response.data));
-      if (response.data.data) {
-        console.log('- response.data.data keys:', Object.keys(response.data.data));
-        if (response.data.data.json) {
-          console.log('- Found json data:', JSON.stringify(response.data.data.json, null, 2).substring(0, 500));
-        }
-        if (response.data.data.categories) {
-          console.log('- Found categories directly:', JSON.stringify(response.data.data.categories, null, 2).substring(0, 500));
-        }
-      }
+      console.log('\n🔍 DEBUG - Firecrawl v2 Response Analysis:');
+      console.log('Response status:', response.status);
+      console.log('Response data keys:', response.data ? Object.keys(response.data) : 'null');
+      
+      // Log sample of response for debugging
+      const responseStr = JSON.stringify(response.data, null, 2);
+      console.log('Response preview (first 1000 chars):', responseStr.substring(0, 1000));
     }
     
     // Parse v2 response
     const parsedResponse = response.data;
     
-    // Check if response is successful
-    if (!parsedResponse.success) {
-      throw new Error(`API returned error: ${parsedResponse.error || 'Unknown error'}`);
+    // Check if response is valid
+    if (!parsedResponse || typeof parsedResponse !== 'object') {
+      throw new Error(`Invalid response from Firecrawl API`);
     }
     
-    // Extract categories from response
+    // Check for API error
+    if (parsedResponse.success === false && parsedResponse.error) {
+      throw new Error(`Firecrawl API error: ${parsedResponse.error}`);
+    }
+    
+    // Extract categories from response - v2 structure
     let categories = [];
     
-    // In v2, JSON extracted data is in data.json
+    // Firecrawl v2 returns JSON extraction in data.json
     if (parsedResponse.data && parsedResponse.data.json && parsedResponse.data.json.categories) {
-      console.log('Found categories in data.json.categories');
       categories = parsedResponse.data.json.categories;
-      console.log('Categories found:', JSON.stringify(categories, null, 2));
+      console.log(`✅ Found ${categories.length} categories in Firecrawl response`);
     }
-    // Fallback to direct categories location
-    else if (parsedResponse.data && parsedResponse.data.categories) {
-      console.log('Found categories in data.categories');
-      categories = parsedResponse.data.categories;
+    // Fallback: check direct json field (some v2 responses)
+    else if (parsedResponse.json && parsedResponse.json.categories) {
+      categories = parsedResponse.json.categories;
+      console.log(`✅ Found ${categories.length} categories in Firecrawl response (direct json)`);
     }
     else {
       // Try to search deeper in the response for categories
@@ -1662,7 +1740,7 @@ app.post('/api/extract-images-for-category', async (req, res) => {
  * This is the second phase of the two-phase extraction process
  */
 app.post('/api/batch-extract-categories', async (req, res) => {
-  const { url, categories, async = false } = req.body;
+  const { url, categories, async = false, restaurantName } = req.body;
   
   // Validate URL
   if (!validateRestaurantUrl(url, res)) {
@@ -1694,7 +1772,7 @@ app.post('/api/batch-extract-categories', async (req, res) => {
     const jobId = generateJobId();
     
     // Start extraction in background
-    startBackgroundExtraction(jobId, url, categories);
+    startBackgroundExtraction(jobId, url, categories, restaurantName);
     
     // Calculate estimated time (30 seconds per category)
     const estimatedSeconds = categories.length * 30;
@@ -2607,13 +2685,1457 @@ app.post('/api/download-images', async (req, res) => {
 });
 
 /**
- * Handle 404s for API routes
+ * Database-aware API endpoints
  */
-app.all('/api/*', (req, res) => {
-  res.status(404).json({
-    success: false,
-    error: 'API endpoint not found'
-  });
+
+/**
+ * GET /api/restaurants
+ * List all restaurants in the database
+ */
+app.get('/api/restaurants', async (req, res) => {
+  try {
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+    
+    const restaurants = await db.getAllRestaurants();
+    
+    return res.json({
+      success: true,
+      count: restaurants.length,
+      restaurants: restaurants
+    });
+  } catch (error) {
+    console.error('[API] Error listing restaurants:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to list restaurants'
+    });
+  }
+});
+
+/**
+ * GET /api/restaurants/:id/menus
+ * Get all menus for a specific restaurant
+ */
+app.get('/api/restaurants/:id/menus', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+    
+    // Verify restaurant exists
+    const restaurant = await db.getRestaurantById(id);
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        error: 'Restaurant not found'
+      });
+    }
+    
+    // Get all menus for the restaurant
+    const menus = await db.getRestaurantMenus(id);
+    
+    return res.json({
+      success: true,
+      restaurant: {
+        id: restaurant.id,
+        name: restaurant.name,
+        slug: restaurant.slug
+      },
+      count: menus.length,
+      menus: menus
+    });
+  } catch (error) {
+    console.error('[API] Error getting restaurant menus:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get restaurant menus'
+    });
+  }
+});
+
+/**
+ * GET /api/menus/:id
+ * Get full menu with all items and categories
+ */
+app.get('/api/menus/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+    
+    const menu = await db.getMenuWithItems(id);
+    
+    if (!menu) {
+      return res.status(404).json({
+        success: false,
+        error: 'Menu not found'
+      });
+    }
+    
+    // Calculate statistics
+    const stats = {
+      totalCategories: menu.categories ? menu.categories.length : 0,
+      totalItems: 0,
+      totalImages: 0
+    };
+    
+    if (menu.categories) {
+      menu.categories.forEach(category => {
+        if (category.menu_items) {
+          stats.totalItems += category.menu_items.length;
+          category.menu_items.forEach(item => {
+            if (item.item_images) {
+              stats.totalImages += item.item_images.length;
+            }
+          });
+        }
+      });
+    }
+    
+    return res.json({
+      success: true,
+      menu: menu,
+      stats: stats
+    });
+  } catch (error) {
+    console.error('[API] Error getting menu:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get menu'
+    });
+  }
+});
+
+/**
+ * POST /api/menus/:id/export
+ * Export menu to CSV format
+ */
+app.post('/api/menus/:id/export', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { options } = req.body;
+    
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+    
+    // Get the full menu with items
+    const menu = await db.getMenuWithItems(id);
+    
+    if (!menu) {
+      return res.status(404).json({
+        success: false,
+        error: 'Menu not found'
+      });
+    }
+    
+    // Transform database format to the expected format for CSV generation
+    const menuItems = [];
+    
+    if (menu.categories) {
+      menu.categories.forEach(category => {
+        if (category.menu_items) {
+          category.menu_items.forEach(item => {
+            // Get the primary image URL if available
+            let imageURL = '';
+            if (item.item_images && item.item_images.length > 0) {
+              const primaryImage = item.item_images.find(img => img.type === 'primary');
+              imageURL = primaryImage ? primaryImage.url : item.item_images[0].url;
+            }
+            
+            menuItems.push({
+              menuName: menu.restaurants?.name || 'Menu',
+              categoryName: category.name,
+              dishName: item.name,
+              dishPrice: item.price,
+              dishDescription: item.description || '',
+              tags: item.tags || [],
+              imageURL: imageURL,
+              // Additional fields from database
+              currency: item.currency || 'NZD',
+              isAvailable: item.is_available
+            });
+          });
+        }
+      });
+    }
+    
+    // Generate CSV using existing logic
+    const headers = [
+      'menuID', 'menuName', 'menuDisplayName', 'menuDescription',
+      'categoryID', 'categoryName', 'categoryDisplayName', 'categoryDescription',
+      'dishID', 'dishName', 'dishPrice', 'dishType', 'dishDescription',
+      'displayName', 'printName', 'tags', 'imageURL'
+    ];
+    
+    const DEFAULT_DISH_TYPE = 'standard';
+    const comboItems = options?.comboItems || [];
+    const fieldEdits = options?.fieldEdits || {};
+    
+    const rows = [];
+    
+    menuItems.forEach(item => {
+      const customItem = {
+        ...item,
+        ...(fieldEdits[item.dishName] || {})
+      };
+      
+      const menuName = customItem.menuName || 'Menu';
+      const isDishTypeCombo = comboItems.includes(customItem.dishName);
+      const dishType = isDishTypeCombo ? 'combo' : DEFAULT_DISH_TYPE;
+      
+      const tagsString = customItem.tags && Array.isArray(customItem.tags) 
+        ? customItem.tags.join(', ')
+        : '';
+      
+      rows.push([
+        '', // menuID
+        escapeCSVField(menuName),
+        '', // menuDisplayName
+        '', // menuDescription
+        '', // categoryID
+        escapeCSVField(customItem.categoryName || 'Uncategorized'),
+        '', // categoryDisplayName
+        '', // categoryDescription
+        '', // dishID
+        escapeCSVField(customItem.dishName || ''),
+        formatPrice(customItem.dishPrice || 0),
+        dishType,
+        escapeCSVField(customItem.dishDescription || ''),
+        '', // displayName
+        '', // printName
+        escapeCSVField(tagsString),
+        escapeCSVField(customItem.imageURL || '')
+      ]);
+    });
+    
+    // Build CSV content
+    let csvContent = headers.join(',') + '\n';
+    rows.forEach(row => {
+      csvContent += row.join(',') + '\n';
+    });
+    
+    // Generate filename
+    const restaurantName = menu.restaurants?.name || 'restaurant';
+    const date = new Date().toISOString().split('T')[0];
+    const filename = `${formatFilename(restaurantName)}_menu_${date}.csv`;
+    
+    return res.json({
+      success: true,
+      csvData: csvContent,
+      filename: filename,
+      stats: {
+        rowCount: rows.length,
+        columnCount: headers.length
+      },
+      menuInfo: {
+        id: menu.id,
+        version: menu.version,
+        restaurantName: menu.restaurants?.name,
+        platformName: menu.platforms?.name
+      }
+    });
+  } catch (error) {
+    console.error('[API] Error exporting menu:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to export menu'
+    });
+  }
+});
+
+/**
+ * Extraction Management API endpoints
+ */
+
+/**
+ * POST /api/extractions/start
+ * Start a new extraction with database tracking
+ */
+app.post('/api/extractions/start', async (req, res) => {
+  try {
+    const { url, platform, options = {}, extractionType = 'batch' } = req.body;
+    
+    if (!url) {
+      return res.status(400).json({
+        success: false,
+        error: 'URL is required'
+      });
+    }
+    
+    // Use provided restaurant name or extract from URL
+    let restaurantName = req.body.restaurantName || 'Unknown Restaurant';
+    let platformName = platform || 'Unknown';
+    
+    // Auto-detect platform and restaurant name from URL if not provided
+    if (url.includes('ubereats.com')) {
+      platformName = 'ubereats';
+      // Only extract restaurant name if not provided
+      if (!req.body.restaurantName) {
+        const match = url.match(/\/store\/([^\/\?]+)/);
+        if (match) {
+          restaurantName = match[1].replace(/-/g, ' ').replace(/_/g, ' ');
+          // Capitalize first letter of each word
+          restaurantName = restaurantName.split(' ').map(word => 
+            word.charAt(0).toUpperCase() + word.slice(1)
+          ).join(' ');
+        }
+      }
+    } else if (url.includes('doordash.com')) {
+      platformName = 'doordash';
+      // Only extract restaurant name if not provided
+      if (!req.body.restaurantName) {
+        const match = url.match(/\/store\/([^\/\?]+)/);
+        if (match) {
+          restaurantName = match[1].replace(/-/g, ' ').replace(/_/g, ' ');
+          restaurantName = restaurantName.split(' ').map(word => 
+            word.charAt(0).toUpperCase() + word.slice(1)
+          ).join(' ');
+        }
+      }
+    }
+    
+    // Create or update restaurant in database
+    const restaurantData = await db.upsertRestaurant({
+      name: restaurantName,
+      url: url,
+      platformName: platformName
+    });
+    
+    if (!restaurantData) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to create restaurant in database'
+      });
+    }
+    
+    // Generate job ID
+    const jobId = generateJobId();
+    
+    // Create extraction job in database with options
+    const dbJob = await db.createExtractionJob({
+      jobId: jobId,
+      restaurantId: restaurantData.restaurant.id,
+      platformId: restaurantData.platform.id,
+      url: url,
+      jobType: extractionType === 'batch' ? 'full_menu' : 'categories_only',
+      config: { 
+        extractionType,
+        includeImages: options.includeImages !== false, // Default to true
+        generateCSV: options.generateCSV !== false, // Default to true
+        ...options
+      }
+    });
+    
+    if (!dbJob) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to create extraction job in database'
+      });
+    }
+    
+    // Start the extraction based on type
+    if (extractionType === 'batch') {
+      // First scan for categories
+      try {
+        const scanPayload = {
+          url: url,
+          formats: [{
+            type: 'json',
+            schema: CATEGORY_DETECTION_SCHEMA,
+            prompt: UBEREATS_CATEGORY_PROMPT
+          }],
+          onlyMainContent: true,
+          waitFor: 2000,
+          timeout: 90000,
+          maxAge: parseInt(process.env.FIRECRAWL_CACHE_MAX_AGE || '172800')
+        };
+        
+        console.log(`[Job ${jobId}] Scanning for categories...`);
+        const scanResponse = await axios.post(`${FIRECRAWL_API_URL}/v2/scrape`, scanPayload, {
+          headers: {
+            'Authorization': `Bearer ${FIRECRAWL_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 95000
+        });
+        
+        // Extract categories from the response - check multiple possible locations
+        let categories = [];
+        
+        // Check different possible response structures
+        if (scanResponse.data?.data?.formats?.json?.categories) {
+          categories = scanResponse.data.data.formats.json.categories;
+        } else if (scanResponse.data?.data?.json?.categories) {
+          categories = scanResponse.data.data.json.categories;
+        } else if (scanResponse.data?.data?.categories) {
+          categories = scanResponse.data.data.categories;
+        } else {
+          // Log the structure to debug
+          console.log(`[Job ${jobId}] Response structure:`, JSON.stringify(scanResponse.data?.data, null, 2).slice(0, 500));
+        }
+        
+        console.log(`[Job ${jobId}] Found ${categories.length} categories:`, categories.map(c => c.name));
+        
+        // Start background extraction with the found categories
+        startBackgroundExtraction(jobId, url, categories, restaurantName, options);
+      } catch (scanError) {
+        console.error(`[Job ${jobId}] Category scan failed:`, scanError.message);
+        // Fallback to empty categories if scan fails
+        startBackgroundExtraction(jobId, url, [], restaurantName, options);
+      }
+      
+      return res.json({
+        success: true,
+        jobId: jobId,
+        message: 'Extraction started',
+        restaurantId: restaurantData.restaurant.id,
+        trackingUrl: `/api/extractions/${jobId}`,
+        options: {
+          includeImages: options.includeImages !== false,
+          generateCSV: options.generateCSV !== false
+        }
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        error: 'Only batch extraction is currently supported'
+      });
+    }
+  } catch (error) {
+    console.error('[API] Error starting extraction:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to start extraction'
+    });
+  }
+});
+
+/**
+ * GET /api/extractions/:jobId
+ * Get extraction job details from database
+ */
+app.get('/api/extractions/:jobId', async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    
+    if (!db.isDatabaseAvailable()) {
+      // Fall back to in-memory store
+      const status = getJobStatus(jobId);
+      if (!status) {
+        return res.status(404).json({
+          success: false,
+          error: 'Job not found'
+        });
+      }
+      return res.json({
+        success: true,
+        job: status
+      });
+    }
+    
+    // Get from database
+    const job = await db.getExtractionJob(jobId);
+    
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        error: 'Extraction job not found'
+      });
+    }
+    
+    // Also check in-memory for real-time status
+    const memoryStatus = getJobStatus(jobId);
+    
+    return res.json({
+      success: true,
+      job: {
+        ...job,
+        liveStatus: memoryStatus
+      }
+    });
+  } catch (error) {
+    console.error('[API] Error getting extraction job:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get extraction job'
+    });
+  }
+});
+
+/**
+ * POST /api/extractions/:jobId/retry
+ * Retry a failed extraction
+ */
+app.post('/api/extractions/:jobId/retry', async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+    
+    // Get the original job
+    const originalJob = await db.getExtractionJob(jobId);
+    
+    if (!originalJob) {
+      return res.status(404).json({
+        success: false,
+        error: 'Original extraction job not found'
+      });
+    }
+    
+    if (originalJob.status !== 'failed') {
+      return res.status(400).json({
+        success: false,
+        error: 'Can only retry failed jobs'
+      });
+    }
+    
+    // Create new job with same config
+    const newJobId = generateJobId();
+    
+    const newJob = await db.createExtractionJob({
+      jobId: newJobId,
+      restaurantId: originalJob.restaurant_id,
+      platformId: originalJob.platform_id,
+      url: originalJob.url,
+      jobType: originalJob.job_type,
+      config: {
+        ...originalJob.config,
+        retriedFrom: jobId
+      }
+    });
+    
+    if (!newJob) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to create retry job'
+      });
+    }
+    
+    // Start the extraction
+    startBackgroundExtraction(
+      newJobId, 
+      originalJob.url, 
+      [], 
+      originalJob.restaurants?.name
+    );
+    
+    return res.json({
+      success: true,
+      newJobId: newJobId,
+      message: 'Extraction retry started',
+      trackingUrl: `/api/extractions/${newJobId}`
+    });
+  } catch (error) {
+    console.error('[API] Error retrying extraction:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to retry extraction'
+    });
+  }
+});
+
+/**
+ * DELETE /api/extractions/:jobId
+ * Cancel a running extraction
+ */
+app.delete('/api/extractions/:jobId', async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    
+    // Check if job exists in memory
+    const job = jobStore.get(jobId);
+    
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        error: 'Job not found'
+      });
+    }
+    
+    if (job.state === 'completed' || job.state === 'failed') {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot cancel completed or failed job'
+      });
+    }
+    
+    // Cancel in memory
+    job.state = 'cancelled';
+    job.endTime = Date.now();
+    job.error = 'Cancelled by user';
+    
+    // Cancel in database if available
+    if (db.isDatabaseAvailable()) {
+      await db.cancelExtractionJob(jobId);
+    }
+    
+    return res.json({
+      success: true,
+      message: 'Extraction job cancelled'
+    });
+  } catch (error) {
+    console.error('[API] Error cancelling extraction:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to cancel extraction'
+    });
+  }
+});
+
+/**
+ * Menu Management API endpoints
+ */
+
+/**
+ * POST /api/menus/:id/activate
+ * Set a menu as the active version
+ */
+app.post('/api/menus/:id/activate', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+    
+    const menu = await db.activateMenu(id);
+    
+    if (!menu) {
+      return res.status(404).json({
+        success: false,
+        error: 'Menu not found or activation failed'
+      });
+    }
+    
+    return res.json({
+      success: true,
+      message: 'Menu activated successfully',
+      menu: {
+        id: menu.id,
+        version: menu.version,
+        is_active: menu.is_active
+      }
+    });
+  } catch (error) {
+    console.error('[API] Error activating menu:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to activate menu'
+    });
+  }
+});
+
+/**
+ * POST /api/menus/:id/compare
+ * Compare two menu versions
+ */
+app.post('/api/menus/:id/compare', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { compareWithId } = req.body;
+    
+    if (!compareWithId) {
+      return res.status(400).json({
+        success: false,
+        error: 'compareWithId is required'
+      });
+    }
+    
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+    
+    const comparison = await db.compareMenus(id, compareWithId);
+    
+    if (!comparison) {
+      return res.status(404).json({
+        success: false,
+        error: 'One or both menus not found'
+      });
+    }
+    
+    return res.json({
+      success: true,
+      comparison: comparison
+    });
+  } catch (error) {
+    console.error('[API] Error comparing menus:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to compare menus'
+    });
+  }
+});
+
+/**
+ * DELETE /api/menus/:id
+ * Soft delete a menu
+ */
+app.delete('/api/menus/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+    
+    const deleted = await db.deleteMenu(id);
+    
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        error: 'Menu not found or deletion failed'
+      });
+    }
+    
+    return res.json({
+      success: true,
+      message: 'Menu deleted successfully'
+    });
+  } catch (error) {
+    console.error('[API] Error deleting menu:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to delete menu'
+    });
+  }
+});
+
+/**
+ * Search and Filter API endpoints
+ */
+
+/**
+ * GET /api/search/menus
+ * Search menus by item name or description
+ */
+app.get('/api/search/menus', async (req, res) => {
+  try {
+    const { q, restaurantId } = req.query;
+    
+    if (!q) {
+      return res.status(400).json({
+        success: false,
+        error: 'Search query (q) is required'
+      });
+    }
+    
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+    
+    const results = await db.searchMenus(q, restaurantId);
+    
+    return res.json({
+      success: true,
+      query: q,
+      count: results.length,
+      results: results
+    });
+  } catch (error) {
+    console.error('[API] Error searching menus:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to search menus'
+    });
+  }
+});
+
+/**
+ * GET /api/search/items
+ * Alias for /api/search/menus - searches items across menus
+ */
+app.get('/api/search/items', async (req, res) => {
+  // Reuse the menu search endpoint logic
+  req.url = '/api/search/menus';
+  return app.handle(req, res);
+});
+
+/**
+ * GET /api/extractions
+ * List all extraction jobs with optional filters
+ */
+app.get('/api/extractions', async (req, res) => {
+  try {
+    const { status, restaurantId, limit } = req.query;
+    
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+    
+    const filters = {};
+    if (status) filters.status = status;
+    if (restaurantId) filters.restaurantId = restaurantId;
+    if (limit) filters.limit = parseInt(limit);
+    
+    const jobs = await db.getExtractionJobs(filters);
+    
+    return res.json({
+      success: true,
+      count: jobs.length,
+      jobs: jobs
+    });
+  } catch (error) {
+    console.error('[API] Error listing extraction jobs:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to list extraction jobs'
+    });
+  }
+});
+
+/**
+ * Restaurant Management API endpoints
+ */
+
+/**
+ * GET /api/restaurants/:id
+ * Get a specific restaurant by ID
+ */
+app.get('/api/restaurants/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+    
+    const restaurant = await db.getRestaurantById(id);
+    
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        error: 'Restaurant not found'
+      });
+    }
+    
+    return res.json({
+      success: true,
+      restaurant: restaurant
+    });
+  } catch (error) {
+    console.error('[API] Error getting restaurant:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get restaurant'
+    });
+  }
+});
+
+/**
+ * POST /api/restaurants
+ * Create a new restaurant
+ */
+app.post('/api/restaurants', async (req, res) => {
+  try {
+    const restaurantData = req.body;
+    
+    if (!restaurantData.name) {
+      return res.status(400).json({
+        success: false,
+        error: 'Restaurant name is required'
+      });
+    }
+    
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+    
+    const restaurant = await db.createRestaurant(restaurantData);
+    
+    if (!restaurant) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to create restaurant'
+      });
+    }
+    
+    return res.status(201).json({
+      success: true,
+      restaurant: restaurant
+    });
+  } catch (error) {
+    console.error('[API] Error creating restaurant:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to create restaurant'
+    });
+  }
+});
+
+/**
+ * PATCH /api/restaurants/:id
+ * Update a restaurant
+ */
+app.patch('/api/restaurants/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+    
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+    
+    const restaurant = await db.updateRestaurant(id, updates);
+    
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        error: 'Restaurant not found or update failed'
+      });
+    }
+    
+    return res.json({
+      success: true,
+      restaurant: restaurant
+    });
+  } catch (error) {
+    console.error('[API] Error updating restaurant:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to update restaurant'
+    });
+  }
+});
+
+/**
+ * POST /api/menus/:id/duplicate
+ * Duplicate a menu
+ */
+app.post('/api/menus/:id/duplicate', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+    
+    const newMenu = await db.duplicateMenu(id);
+    
+    if (!newMenu) {
+      return res.status(404).json({
+        success: false,
+        error: 'Menu not found or duplication failed'
+      });
+    }
+    
+    return res.status(201).json({
+      success: true,
+      message: 'Menu duplicated successfully',
+      menu: newMenu
+    });
+  } catch (error) {
+    console.error('[API] Error duplicating menu:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to duplicate menu'
+    });
+  }
+});
+
+/**
+ * Item Management API endpoints
+ */
+
+/**
+ * PATCH /api/menu-items/:id
+ * Update a single menu item
+ */
+app.patch('/api/menu-items/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+    
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+    
+    const item = await db.updateMenuItem(id, updates);
+    
+    if (!item) {
+      return res.status(404).json({
+        success: false,
+        error: 'Menu item not found or update failed'
+      });
+    }
+    
+    return res.json({
+      success: true,
+      item: item
+    });
+  } catch (error) {
+    console.error('[API] Error updating menu item:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to update menu item'
+    });
+  }
+});
+
+/**
+ * POST /api/menu-items/bulk-update
+ * Bulk update menu items
+ */
+app.post('/api/menu-items/bulk-update', async (req, res) => {
+  try {
+    const { updates } = req.body;
+    
+    if (!updates || !Array.isArray(updates)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Updates array is required'
+      });
+    }
+    
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+    
+    const results = await db.bulkUpdateMenuItems(updates);
+    
+    return res.json({
+      success: true,
+      updated: results.length,
+      items: results
+    });
+  } catch (error) {
+    console.error('[API] Error bulk updating menu items:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to bulk update menu items'
+    });
+  }
+});
+
+/**
+ * POST /api/categories/:id/items
+ * Add an item to a category
+ */
+app.post('/api/categories/:id/items', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const itemData = req.body;
+    
+    if (!itemData.name || !itemData.price) {
+      return res.status(400).json({
+        success: false,
+        error: 'Item name and price are required'
+      });
+    }
+    
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+    
+    const item = await db.addItemToCategory(id, itemData);
+    
+    if (!item) {
+      return res.status(404).json({
+        success: false,
+        error: 'Category not found or item creation failed'
+      });
+    }
+    
+    return res.status(201).json({
+      success: true,
+      item: item
+    });
+  } catch (error) {
+    console.error('[API] Error adding item to category:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to add item to category'
+    });
+  }
+});
+
+/**
+ * Analytics API endpoints
+ */
+
+/**
+ * GET /api/menus/compare
+ * Compare menus with query parameters
+ */
+app.get('/api/menus/compare', async (req, res) => {
+  try {
+    const { menu1, menu2 } = req.query;
+    
+    if (!menu1 || !menu2) {
+      return res.status(400).json({
+        success: false,
+        error: 'Both menu1 and menu2 parameters are required'
+      });
+    }
+    
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+    
+    const comparison = await db.compareMenus(menu1, menu2);
+    
+    if (!comparison) {
+      return res.status(404).json({
+        success: false,
+        error: 'One or both menus not found'
+      });
+    }
+    
+    return res.json({
+      success: true,
+      comparison: comparison
+    });
+  } catch (error) {
+    console.error('[API] Error comparing menus:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to compare menus'
+    });
+  }
+});
+
+/**
+ * GET /api/restaurants/:id/price-history
+ * Get price history for a restaurant
+ */
+app.get('/api/restaurants/:id/price-history', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { itemId, startDate, endDate } = req.query;
+    
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+    
+    let history = await db.getPriceHistory(id, itemId);
+    
+    // Filter by date if provided
+    if (startDate || endDate) {
+      const start = startDate ? new Date(startDate) : new Date('1970-01-01');
+      const end = endDate ? new Date(endDate) : new Date();
+      
+      history = history.filter(h => {
+        const detected = new Date(h.detected_at);
+        return detected >= start && detected <= end;
+      });
+    }
+    
+    return res.json({
+      success: true,
+      restaurantId: id,
+      count: history.length,
+      history: history
+    });
+  } catch (error) {
+    console.error('[API] Error getting price history:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get price history'
+    });
+  }
+});
+
+/**
+ * GET /api/analytics/extraction-stats
+ * Get extraction statistics
+ */
+app.get('/api/analytics/extraction-stats', async (req, res) => {
+  try {
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+    
+    const stats = await db.getExtractionStats();
+    
+    if (!stats) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to calculate statistics'
+      });
+    }
+    
+    return res.json({
+      success: true,
+      stats: stats
+    });
+  } catch (error) {
+    console.error('[API] Error getting extraction stats:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get extraction statistics'
+    });
+  }
+});
+
+/**
+ * Export API endpoints
+ */
+
+/**
+ * POST /api/exports/csv
+ * Generate CSV export from database
+ */
+app.post('/api/exports/csv', async (req, res) => {
+  try {
+    const { menuId, format = 'full' } = req.body;
+    
+    if (!menuId) {
+      return res.status(400).json({
+        success: false,
+        error: 'menuId is required'
+      });
+    }
+    
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+    
+    // Get the menu with items
+    const menu = await db.getMenuWithItems(menuId);
+    
+    if (!menu) {
+      return res.status(404).json({
+        success: false,
+        error: 'Menu not found'
+      });
+    }
+    
+    // Transform to CSV format based on format type
+    const menuItems = [];
+    
+    if (menu.categories) {
+      menu.categories.forEach(category => {
+        if (category.menu_items) {
+          category.menu_items.forEach(item => {
+            let imageURL = '';
+            if (item.item_images && item.item_images.length > 0) {
+              const primaryImage = item.item_images.find(img => img.type === 'primary');
+              imageURL = primaryImage ? primaryImage.url : item.item_images[0].url;
+            }
+            
+            const menuItem = {
+              menuName: menu.restaurants?.name || 'Menu',
+              categoryName: category.name,
+              dishName: item.name,
+              dishPrice: item.price,
+              dishDescription: item.description || '',
+              tags: item.tags || [],
+              imageURL: imageURL
+            };
+            
+            // Apply format-specific transformations
+            if (format === 'clean') {
+              // Remove images for clean format
+              menuItem.imageURL = '';
+            } else if (format === 'changes') {
+              // Only include items with recent price changes
+              // This would need price history data
+            }
+            
+            menuItems.push(menuItem);
+          });
+        }
+      });
+    }
+    
+    // Generate CSV
+    const headers = format === 'clean' 
+      ? ['menuName', 'categoryName', 'dishName', 'dishPrice', 'dishDescription', 'tags']
+      : ['menuID', 'menuName', 'menuDisplayName', 'menuDescription',
+         'categoryID', 'categoryName', 'categoryDisplayName', 'categoryDescription',
+         'dishID', 'dishName', 'dishPrice', 'dishType', 'dishDescription',
+         'displayName', 'printName', 'tags', 'imageURL'];
+    
+    const rows = [];
+    menuItems.forEach(item => {
+      if (format === 'clean') {
+        rows.push([
+          escapeCSVField(item.menuName),
+          escapeCSVField(item.categoryName),
+          escapeCSVField(item.dishName),
+          formatPrice(item.dishPrice),
+          escapeCSVField(item.dishDescription),
+          escapeCSVField(Array.isArray(item.tags) ? item.tags.join(', ') : '')
+        ]);
+      } else {
+        rows.push([
+          '', // menuID
+          escapeCSVField(item.menuName),
+          '', // menuDisplayName
+          '', // menuDescription
+          '', // categoryID
+          escapeCSVField(item.categoryName),
+          '', // categoryDisplayName
+          '', // categoryDescription
+          '', // dishID
+          escapeCSVField(item.dishName),
+          formatPrice(item.dishPrice),
+          'standard', // dishType
+          escapeCSVField(item.dishDescription),
+          '', // displayName
+          '', // printName
+          escapeCSVField(Array.isArray(item.tags) ? item.tags.join(', ') : ''),
+          escapeCSVField(item.imageURL)
+        ]);
+      }
+    });
+    
+    let csvContent = headers.join(',') + '\n';
+    rows.forEach(row => {
+      csvContent += row.join(',') + '\n';
+    });
+    
+    const restaurantName = menu.restaurants?.name || 'restaurant';
+    const date = new Date().toISOString().split('T')[0];
+    const filename = `${formatFilename(restaurantName)}_menu_${format}_${date}.csv`;
+    
+    // TODO: Track export in database
+    
+    return res.json({
+      success: true,
+      csvData: csvContent,
+      filename: filename,
+      format: format,
+      stats: {
+        rowCount: rows.length,
+        columnCount: headers.length
+      }
+    });
+  } catch (error) {
+    console.error('[API] Error exporting CSV:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to export CSV'
+    });
+  }
+});
+
+/**
+ * POST /api/exports/pdf
+ * Generate PDF export (placeholder)
+ */
+app.post('/api/exports/pdf', async (req, res) => {
+  try {
+    const { menuId, template = 'default' } = req.body;
+    
+    if (!menuId) {
+      return res.status(400).json({
+        success: false,
+        error: 'menuId is required'
+      });
+    }
+    
+    // TODO: Implement PDF generation
+    // This would require a PDF library like pdfkit or puppeteer
+    
+    return res.status(501).json({
+      success: false,
+      error: 'PDF export not yet implemented'
+    });
+  } catch (error) {
+    console.error('[API] Error exporting PDF:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to export PDF'
+    });
+  }
+});
+
+/**
+ * GET /api/exports/history
+ * Get export history (placeholder)
+ */
+app.get('/api/exports/history', async (req, res) => {
+  try {
+    const { restaurantId, limit = 50 } = req.query;
+    
+    // TODO: Implement export history tracking
+    // This would require a new exports table in the database
+    
+    return res.json({
+      success: true,
+      message: 'Export history tracking not yet implemented',
+      exports: []
+    });
+  } catch (error) {
+    console.error('[API] Error getting export history:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get export history'
+    });
+  }
 });
 
 /**
@@ -2636,7 +4158,16 @@ app.listen(PORT, () => {
   console.log(`[Server] Running on port ${PORT}`);
   console.log(`[Server] Firecrawl API Version: v2`);
   console.log(`[Server] Cache Max Age: ${process.env.FIRECRAWL_CACHE_MAX_AGE || 172800} seconds`);
+  
+  // Initialize database connection
+  const dbInitialized = db.initializeDatabase();
+  if (dbInitialized) {
+    console.log(`[Server] Database: Connected to Supabase`);
+  } else {
+    console.log(`[Server] Database: Not configured (running in memory-only mode)`);
+  }
   console.log('\n[Server] Available endpoints:');
+  console.log('\n  === Extraction Endpoints ===');
   console.log(`  POST   /api/scrape                    - Direct page scraping`);
   console.log(`  POST   /api/scan-categories           - Scan for menu categories`);
   console.log(`  POST   /api/batch-extract-categories  - Extract full menu data`);
@@ -2645,8 +4176,51 @@ app.listen(PORT, () => {
   console.log(`  POST   /api/extract-images-for-category - Extract category images`);
   console.log(`  POST   /api/generate-csv              - Generate CSV from data`);
   console.log(`  POST   /api/generate-clean-csv        - Generate clean CSV`);
-  console.log(`  GET    /api/status                    - Server status`);
   console.log(`  POST   /api/download-images           - Download menu images`);
+  
+  if (dbInitialized) {
+    console.log('\n  === Restaurant Management ===');
+    console.log(`  GET    /api/restaurants               - List all restaurants`);
+    console.log(`  GET    /api/restaurants/:id           - Get restaurant details`);
+    console.log(`  POST   /api/restaurants               - Create new restaurant`);
+    console.log(`  PATCH  /api/restaurants/:id           - Update restaurant`);
+    console.log(`  GET    /api/restaurants/:id/menus     - Get restaurant menus`);
+    console.log(`  GET    /api/restaurants/:id/price-history - Get price history`);
+    
+    console.log('\n  === Extraction Management ===');
+    console.log(`  POST   /api/extractions/start         - Start new extraction`);
+    console.log(`  GET    /api/extractions               - List extraction jobs`);
+    console.log(`  GET    /api/extractions/:jobId        - Get extraction details`);
+    console.log(`  POST   /api/extractions/:jobId/retry  - Retry failed extraction`);
+    console.log(`  DELETE /api/extractions/:jobId        - Cancel extraction`);
+    
+    console.log('\n  === Menu Management ===');
+    console.log(`  GET    /api/menus/:id                 - Get full menu with items`);
+    console.log(`  GET    /api/menus/compare             - Compare menus (query params)`);
+    console.log(`  POST   /api/menus/:id/activate        - Activate menu version`);
+    console.log(`  POST   /api/menus/:id/compare         - Compare menu versions`);
+    console.log(`  POST   /api/menus/:id/duplicate       - Duplicate menu`);
+    console.log(`  POST   /api/menus/:id/export          - Export menu to CSV`);
+    console.log(`  DELETE /api/menus/:id                 - Delete menu`);
+    
+    console.log('\n  === Item Management ===');
+    console.log(`  PATCH  /api/menu-items/:id            - Update menu item`);
+    console.log(`  POST   /api/menu-items/bulk-update    - Bulk update items`);
+    console.log(`  POST   /api/categories/:id/items      - Add item to category`);
+    
+    console.log('\n  === Search & Analytics ===');
+    console.log(`  GET    /api/search/menus              - Search menu items`);
+    console.log(`  GET    /api/search/items              - Search items (alias)`);
+    console.log(`  GET    /api/analytics/extraction-stats - Get extraction statistics`);
+    
+    console.log('\n  === Export ===');
+    console.log(`  POST   /api/exports/csv               - Export menu to CSV`);
+    console.log(`  POST   /api/exports/pdf               - Export menu to PDF`);
+    console.log(`  GET    /api/exports/history           - Get export history`);
+  }
+  
+  console.log('\n  === System Endpoints ===');
+  console.log(`  GET    /api/status                    - Server status`);
   
   // Show Firecrawl API key status
   if (!FIRECRAWL_API_KEY) {
