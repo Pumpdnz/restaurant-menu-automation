@@ -13,9 +13,9 @@ export default function Layout() {
       <div className="flex">
         <Sidebar sidebarOpen={sidebarOpen} />
         
-        {/* Main content */}
+        {/* Main content - responsive padding and width */}
         <main className="flex-1 min-h-[calc(100vh-4rem)] overflow-y-auto">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
             <Outlet />
           </div>
         </main>

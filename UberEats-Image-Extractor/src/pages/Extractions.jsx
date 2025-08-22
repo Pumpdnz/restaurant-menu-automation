@@ -97,26 +97,55 @@ export default function Extractions() {
     }
   };
 
-  const handleDownloadCSV = async (jobId) => {
+  const handleDownloadCSV = async (extraction) => {
     try {
-      const response = await api.get(`/batch-extract-results/${jobId}`);
-      if (response.data.success && response.data.data) {
-        // Generate CSV from the data
-        const csvResponse = await api.post('/generate-csv', {
-          data: response.data.data
+      // Check if the extraction has a menuId (database-driven)
+      if (extraction.menu_id) {
+        // Use direct CSV download endpoint for database menus
+        const response = await api.get(`/menus/${extraction.menu_id}/csv`, {
+          responseType: 'blob',
+          params: { format: 'full' }
         });
         
-        if (csvResponse.data.success && csvResponse.data.csv) {
-          // Download the CSV
-          const blob = new Blob([csvResponse.data.csv], { type: 'text/csv' });
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `menu-${jobId}.csv`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          window.URL.revokeObjectURL(url);
+        // Create download link
+        const url = window.URL.createObjectURL(response.data);
+        const a = document.createElement('a');
+        a.href = url;
+        
+        // Extract filename from Content-Disposition header or use default
+        const contentDisposition = response.headers['content-disposition'];
+        let filename = `${extraction.restaurant_name || 'menu'}_export.csv`;
+        if (contentDisposition) {
+          const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(contentDisposition);
+          if (matches && matches[1]) {
+            filename = matches[1].replace(/['"]/g, '');
+          }
+        }
+        
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      } else {
+        // Fall back to old method for legacy extractions
+        const response = await api.get(`/batch-extract-results/${extraction.job_id}`);
+        if (response.data.success && response.data.data) {
+          const csvResponse = await api.post('/generate-csv', {
+            data: response.data.data
+          });
+          
+          if (csvResponse.data.success && csvResponse.data.csv) {
+            const blob = new Blob([csvResponse.data.csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `menu-${extraction.job_id}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+          }
         }
       }
     } catch (err) {
@@ -172,19 +201,20 @@ export default function Extractions() {
       </div>
 
       <div className="mt-8">
-        <div className="rounded-lg border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Job ID</TableHead>
-                <TableHead>Restaurant</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Items</TableHead>
-                <TableHead>Started</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+        <div className="rounded-lg border bg-card overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="min-w-[120px]">Job ID</TableHead>
+                  <TableHead className="min-w-[150px]">Restaurant</TableHead>
+                  <TableHead className="min-w-[100px]">Status</TableHead>
+                  <TableHead className="min-w-[80px]">Items</TableHead>
+                  <TableHead className="min-w-[150px]">Started</TableHead>
+                  <TableHead className="text-right min-w-[120px]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
               {extractions.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground">
@@ -230,7 +260,7 @@ export default function Extractions() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => handleDownloadCSV(extraction.job_id)}
+                              onClick={() => handleDownloadCSV(extraction)}
                               className="text-brand-green hover:text-brand-green hover:bg-brand-green/10"
                             >
                               <Download className="h-4 w-4" />
@@ -254,6 +284,7 @@ export default function Extractions() {
               )}
             </TableBody>
           </Table>
+          </div>
         </div>
       </div>
     </div>

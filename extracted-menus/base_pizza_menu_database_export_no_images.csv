@@ -1,0 +1,38 @@
+menuName,categoryName,dishName,dishPrice,dishDescription,tags
+Base Pizza,Featured items,Sir George,30.00,"BBQ Sauce, bacon, pepperoni, red onion, pulled beef, mozzarella topped with your choice of Chipotle mayo or Aioli",
+Base Pizza,Featured items,Pepperoni,28.00,"House-made tomato sauce, mozzarella, locally made pepperoni",
+Base Pizza,Featured items,Margherita,25.00,"House-made tomato sauce, fresh mozzarella, basil, cracked pepper, and olive oil. Vegetarian",Vegetarian
+Base Pizza,Featured items,BBQ Chicken,30.00,"BBQ Chicken, olive oil garlic, mozzarella, feta, fire roasted capsicum, red onion, jalapeno, topped with coriander",
+Base Pizza,Featured items,Hand Cut Fries,11.00,Delicious & Hot Hand Cut Fries,
+Base Pizza,Featured items,Garlic Fries,13.00,Hand Cut Fries tossed in garlic butter,
+Base Pizza,Featured items,"Mac ""N"" Cheese Hashbrown",13.00,"Cheesy gooey Mac ""N"" Cheese, crumbed in panko breadcrumbs and deep fried, served with sweet chilli sauce (Vegetarian)",Vegetarian
+Base Pizza,Featured items,The King,28.00,"House made tomato sauce, Shaved ham & pineapple",
+Base Pizza,Featured items,Butter Chicken Pizza,30.00,"Butter chicken, with Home-made Butter chicken sauce, Raita, capsicum, red onion and topped up with fresh coriander",
+Base Pizza,Featured items,Mushroom & Feta,27.00,"Olive oil, garlic, mushrooms, feta, mozzarella, fresh thyme. Vegetarian",Vegetarian
+Base Pizza,Featured items,Four Cheese,28.00,"Olive oil, garlic, fresh mozzarella, gorgonzola, parmesan, provolone caramelized onions & fresh thyme",
+Base Pizza,Featured items,Classic Cheese,23.00,Large Mozzarella Cheese Pizza With our Base tomato sauce. Simple but excellent,
+Base Pizza,Featured items,Vegan Margherita,26.00,"House made tomato sauce, olive oil, vegan mozzarella, vegan parmesan & Fresh Basil",Vegan
+Base Pizza,Featured items,Tiramisu,14.00,This Dessert Needs No Intro But To Say Its Creamy & Boozy,
+Base Pizza,Featured items,Oreo Cheese Cake,14.00,One slice of base's famous Oreo Cheesecake,
+Base Pizza,Featured items,Vegan Pepperoni,29.00,"House-made tomato sauce, jalapenos, capsicum, Red onion, House-made vegan pepperoni, vegan cheese, and topped up with Fresh Basil",Vegan
+Base Pizza,Featured items,Vegan Mushroom,28.00,"Olive Oil, confit garlic, field mushrooms, thyme, vegan parmesan, vegan mozzarella & Vegan Feta",Vegan
+Base Pizza,Large Pizzas,Sir George,30.00,"BBQ Sauce, bacon, pepperoni, red onion, pulled beef, mozzarella topped with your choice of Chipotle mayo or Aioli",
+Base Pizza,Large Pizzas,Margherita,25.00,"House-made tomato sauce, fresh mozzarella, basil, cracked pepper, and olive oil. Vegetarian",Vegetarian
+Base Pizza,Large Pizzas,Pepperoni,28.00,"House-made tomato sauce, mozzarella, locally made pepperoni",
+Base Pizza,Large Pizzas,BBQ Chicken,30.00,"BBQ Chicken, olive oil garlic, mozzarella, feta, fire roasted capsicum, red onion, jalapeno, topped with coriander",
+Base Pizza,Large Pizzas,Mushroom & Feta,27.00,"Olive oil, garlic, mushrooms, feta, mozzarella, fresh thyme. Vegetarian",Vegetarian
+Base Pizza,Large Pizzas,The King,28.00,"House made tomato sauce, mozzarella, Shaved ham & pineapple",
+Base Pizza,Large Pizzas,Four Cheese,28.00,"Olive oil, garlic, fresh mozzarella, gorgonzola, parmesan, provolone caramelized onions & fresh thyme",
+Base Pizza,Large Pizzas,Classic Cheese,23.00,Large Mozzarella Cheese Pizza With our Base tomato sauce. Simple but excellent,
+Base Pizza,Large Pizzas,Vegan Margherita,26.00,"House made tomato sauce, olive oil, vegan mozzarella, vegan parmesan & Fresh Basil",
+Base Pizza,Large Pizzas,Butter Chicken Pizza,30.00,"Butter chicken, with Home-made Butter chicken sauce, Raita, capsicum, red onion and topped up with fresh coriander",
+Base Pizza,Large Pizzas,Vegan Mushroom,28.00,"Olive Oil, confit garlic, field mushrooms, thyme, vegan parmesan, vegan mozzarella & Vegan Feta",
+Base Pizza,Large Pizzas,Vegan Pepperoni,29.00,"House-made tomato sauce, jalapenos, capsicum, Red onion, House-made vegan pepperoni, vegan cheese, and topped up with Fresh Basil",
+Base Pizza,Sides,Hand Cut Fries,11.00,Delicious & Hot Hand Cut Fries,
+Base Pizza,Sides,"Mac ""N"" Cheese Hashbrown",13.00,"Cheesy gooey Mac ""N"" Cheese, crumbed in panko breadcrumbs and deep fried, served with sweet chilli sauce (Vegetarian)",
+Base Pizza,Sides,Garlic Fries,13.00,Hand Cut Fries tossed in garlic butter,
+Base Pizza,Drinks,Coke,4.50,Carbonated Soft Drink,
+Base Pizza,Drinks,L&P,4.50,Carbonated Soft Drink,
+Base Pizza,Drinks,Sprite,4.50,Carbonated Soft Drink,
+Base Pizza,Drinks,Fanta,4.50,Carbonated Soft Drink,
+Base Pizza,Drinks,Coke Zero,4.50,Carbonated Soft Drink,

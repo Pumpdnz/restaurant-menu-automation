@@ -616,6 +616,105 @@ async function getRestaurantMenus(restaurantId) {
 }
 
 /**
+ * Get all menus with restaurant data
+ */
+async function getAllMenus() {
+  if (!isDatabaseAvailable()) return [];
+  
+  try {
+    const { data, error } = await supabase
+      .from('menus')
+      .select(`
+        *,
+        restaurants (id, name, slug, address),
+        platforms (name),
+        extraction_jobs (
+          job_id,
+          status,
+          created_at,
+          completed_at
+        )
+      `)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('[Database] Error getting all menus:', error);
+    return [];
+  }
+}
+
+/**
+ * Get menu by extraction job ID
+ */
+async function getMenuByExtractionJobId(extractionJobId) {
+  if (!isDatabaseAvailable()) return null;
+  
+  try {
+    const { data, error } = await supabase
+      .from('menus')
+      .select(`
+        *,
+        restaurants (id, name, slug, address),
+        platforms (name)
+      `)
+      .eq('extraction_job_id', extractionJobId)
+      .single();
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('[Database] Error getting menu by extraction job ID:', error);
+    return null;
+  }
+}
+
+/**
+ * Bulk reassign menus to a different restaurant
+ */
+async function reassignMenusToRestaurant(menuIds, restaurantId) {
+  if (!isDatabaseAvailable()) return { success: false, error: 'Database unavailable' };
+  
+  try {
+    // First verify the target restaurant exists
+    const { data: restaurant, error: restaurantError } = await supabase
+      .from('restaurants')
+      .select('id, name')
+      .eq('id', restaurantId)
+      .single();
+    
+    if (restaurantError || !restaurant) {
+      throw new Error('Target restaurant not found');
+    }
+    
+    // Update all menus with the new restaurant_id
+    const { data, error } = await supabase
+      .from('menus')
+      .update({ 
+        restaurant_id: restaurantId,
+        updated_at: new Date().toISOString()
+      })
+      .in('id', menuIds)
+      .select();
+    
+    if (error) throw error;
+    
+    return {
+      success: true,
+      updatedCount: data ? data.length : 0,
+      restaurant: restaurant
+    };
+  } catch (error) {
+    console.error('[Database] Error reassigning menus:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to reassign menus'
+    };
+  }
+}
+
+/**
  * Activate a specific menu version
  */
 async function activateMenu(menuId) {
@@ -652,6 +751,48 @@ async function activateMenu(menuId) {
     return data;
   } catch (error) {
     console.error('[Database] Error activating menu:', error);
+    return null;
+  }
+}
+
+/**
+ * Deactivate a specific menu
+ */
+async function deactivateMenu(menuId) {
+  if (!isDatabaseAvailable()) return null;
+  
+  try {
+    const { data, error } = await supabase
+      .from('menus')
+      .update({ is_active: false })
+      .eq('id', menuId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('[Database] Error deactivating menu:', error);
+    return null;
+  }
+}
+
+/**
+ * Toggle menu active status
+ */
+async function toggleMenuStatus(menuId, isActive) {
+  if (!isDatabaseAvailable()) return null;
+  
+  try {
+    if (isActive) {
+      // If activating, deactivate others and activate this one
+      return await activateMenu(menuId);
+    } else {
+      // If deactivating, just deactivate this one
+      return await deactivateMenu(menuId);
+    }
+  } catch (error) {
+    console.error('[Database] Error toggling menu status:', error);
     return null;
   }
 }
@@ -825,7 +966,8 @@ async function getExtractionJobs(filters = {}) {
       .select(`
         *,
         restaurants (name, slug),
-        platforms (name)
+        platforms (name),
+        menus!menus_extraction_job_id_fkey (id)
       `)
       .order('created_at', { ascending: false });
     
@@ -844,7 +986,15 @@ async function getExtractionJobs(filters = {}) {
     const { data, error } = await query;
     
     if (error) throw error;
-    return data;
+    
+    // Transform the data to include menu_id at the top level
+    const transformedData = data.map(job => ({
+      ...job,
+      menu_id: job.menus?.[0]?.id || null,
+      menus: undefined // Remove the nested menus array
+    }));
+    
+    return transformedData;
   } catch (error) {
     console.error('[Database] Error getting extraction jobs:', error);
     return [];
@@ -927,6 +1077,105 @@ async function updateRestaurant(restaurantId, updates) {
     return data;
   } catch (error) {
     console.error('[Database] Error updating restaurant:', error);
+    return null;
+  }
+}
+
+/**
+ * Get complete restaurant details including workflow fields
+ */
+async function getRestaurantDetails(restaurantId) {
+  if (!isDatabaseAvailable()) return null;
+  
+  try {
+    const { data, error } = await supabase
+      .from('restaurants')
+      .select(`
+        *,
+        restaurant_platforms (
+          url,
+          platform_id,
+          last_scraped_at,
+          platforms (name, id)
+        ),
+        menus (
+          id,
+          version,
+          is_active,
+          created_at,
+          platforms (name)
+        )
+      `)
+      .eq('id', restaurantId)
+      .single();
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('[Database] Error getting restaurant details:', error);
+    return null;
+  }
+}
+
+/**
+ * Update restaurant workflow fields
+ */
+async function updateRestaurantWorkflow(restaurantId, workflowData) {
+  if (!isDatabaseAvailable()) return null;
+  
+  try {
+    // Separate platform URLs if provided
+    const { ubereats_url, doordash_url, ...otherData } = workflowData;
+    
+    // Update main restaurant record
+    const { data, error } = await supabase
+      .from('restaurants')
+      .update({
+        ...otherData,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', restaurantId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    // Update platform URLs if provided
+    if (ubereats_url) {
+      const platform = await getPlatformByName('ubereats');
+      if (platform) {
+        await supabase
+          .from('restaurant_platforms')
+          .upsert({
+            restaurant_id: restaurantId,
+            platform_id: platform.id,
+            url: ubereats_url,
+            last_scraped_at: new Date().toISOString()
+          }, {
+            onConflict: 'restaurant_id,platform_id'
+          });
+      }
+    }
+    
+    if (doordash_url) {
+      const platform = await getPlatformByName('doordash');
+      if (platform) {
+        await supabase
+          .from('restaurant_platforms')
+          .upsert({
+            restaurant_id: restaurantId,
+            platform_id: platform.id,
+            url: doordash_url,
+            last_scraped_at: new Date().toISOString()
+          }, {
+            onConflict: 'restaurant_id,platform_id'
+          });
+      }
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('[Database] Error updating restaurant workflow:', error);
     return null;
   }
 }
@@ -1251,9 +1500,14 @@ module.exports = {
   upsertRestaurant,
   createRestaurant,
   updateRestaurant,
+  updateRestaurantWorkflow,
   getAllRestaurants,
   getRestaurantById,
+  getRestaurantDetails,
   getRestaurantMenus,
+  getAllMenus,
+  getMenuByExtractionJobId,
+  reassignMenusToRestaurant,
   
   // Extraction job operations
   createExtractionJob,
@@ -1265,6 +1519,8 @@ module.exports = {
   // Menu operations
   createMenu,
   activateMenu,
+  deactivateMenu,
+  toggleMenuStatus,
   deleteMenu,
   duplicateMenu,
   compareMenus,

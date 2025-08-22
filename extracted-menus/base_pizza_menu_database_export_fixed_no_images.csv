@@ -1,0 +1,38 @@
+menuID,menuName,menuDisplayName,menuDescription,categoryID,categoryName,categoryDisplayName,categoryDescription,dishID,dishName,dishPrice,dishType,dishDescription,displayName,printName,tags
+,Menu,,,,Featured items,,,,Sir George,30.00,standard,"BBQ Sauce, bacon, pepperoni, red onion, pulled beef, mozzarella topped with your choice of Chipotle mayo or Aioli",,,
+,Menu,,,,Featured items,,,,Pepperoni,28.00,standard,"House-made tomato sauce, mozzarella, locally made pepperoni",,,
+,Menu,,,,Featured items,,,,Margherita,25.00,standard,"House-made tomato sauce, fresh mozzarella, basil, cracked pepper, and olive oil. Vegetarian",,,Vegetarian
+,Menu,,,,Featured items,,,,BBQ Chicken,30.00,standard,"BBQ Chicken, olive oil garlic, mozzarella, feta, fire roasted capsicum, red onion, jalapeno, topped with coriander",,,
+,Menu,,,,Featured items,,,,Hand Cut Fries,11.00,standard,Delicious & Hot Hand Cut Fries,,,
+,Menu,,,,Featured items,,,,Garlic Fries,13.00,standard,Hand Cut Fries tossed in garlic butter,,,
+,Menu,,,,Featured items,,,,"Mac ""N"" Cheese Hashbrown",13.00,standard,"Cheesy gooey Mac ""N"" Cheese, crumbed in panko breadcrumbs and deep fried, served with sweet chilli sauce (Vegetarian)",,,Vegetarian
+,Menu,,,,Featured items,,,,The King,28.00,standard,"House made tomato sauce, Shaved ham & pineapple",,,
+,Menu,,,,Featured items,,,,Butter Chicken Pizza,30.00,standard,"Butter chicken, with Home-made Butter chicken sauce, Raita, capsicum, red onion and topped up with fresh coriander",,,
+,Menu,,,,Featured items,,,,Mushroom & Feta,27.00,standard,"Olive oil, garlic, mushrooms, feta, mozzarella, fresh thyme. Vegetarian",,,Vegetarian
+,Menu,,,,Featured items,,,,Four Cheese,28.00,standard,"Olive oil, garlic, fresh mozzarella, gorgonzola, parmesan, provolone caramelized onions & fresh thyme",,,
+,Menu,,,,Featured items,,,,Classic Cheese,23.00,standard,Large Mozzarella Cheese Pizza With our Base tomato sauce. Simple but excellent,,,
+,Menu,,,,Featured items,,,,Vegan Margherita,26.00,standard,"House made tomato sauce, olive oil, vegan mozzarella, vegan parmesan & Fresh Basil",,,Vegan
+,Menu,,,,Featured items,,,,Tiramisu,14.00,standard,This Dessert Needs No Intro But To Say Its Creamy & Boozy,,,
+,Menu,,,,Featured items,,,,Oreo Cheese Cake,14.00,standard,One slice of base's famous Oreo Cheesecake,,,
+,Menu,,,,Featured items,,,,Vegan Pepperoni,29.00,standard,"House-made tomato sauce, jalapenos, capsicum, Red onion, House-made vegan pepperoni, vegan cheese, and topped up with Fresh Basil",,,Vegan
+,Menu,,,,Featured items,,,,Vegan Mushroom,28.00,standard,"Olive Oil, confit garlic, field mushrooms, thyme, vegan parmesan, vegan mozzarella & Vegan Feta",,,Vegan
+,Menu,,,,Large Pizzas,,,,Sir George,30.00,standard,"BBQ Sauce, bacon, pepperoni, red onion, pulled beef, mozzarella topped with your choice of Chipotle mayo or Aioli",,,
+,Menu,,,,Large Pizzas,,,,Margherita,25.00,standard,"House-made tomato sauce, fresh mozzarella, basil, cracked pepper, and olive oil. Vegetarian",,,Vegetarian
+,Menu,,,,Large Pizzas,,,,Pepperoni,28.00,standard,"House-made tomato sauce, mozzarella, locally made pepperoni",,,
+,Menu,,,,Large Pizzas,,,,BBQ Chicken,30.00,standard,"BBQ Chicken, olive oil garlic, mozzarella, feta, fire roasted capsicum, red onion, jalapeno, topped with coriander",,,
+,Menu,,,,Large Pizzas,,,,Mushroom & Feta,27.00,standard,"Olive oil, garlic, mushrooms, feta, mozzarella, fresh thyme. Vegetarian",,,Vegetarian
+,Menu,,,,Large Pizzas,,,,The King,28.00,standard,"House made tomato sauce, mozzarella, Shaved ham & pineapple",,,
+,Menu,,,,Large Pizzas,,,,Four Cheese,28.00,standard,"Olive oil, garlic, fresh mozzarella, gorgonzola, parmesan, provolone caramelized onions & fresh thyme",,,
+,Menu,,,,Large Pizzas,,,,Classic Cheese,23.00,standard,Large Mozzarella Cheese Pizza With our Base tomato sauce. Simple but excellent,,,
+,Menu,,,,Large Pizzas,,,,Vegan Margherita,26.00,standard,"House made tomato sauce, olive oil, vegan mozzarella, vegan parmesan & Fresh Basil",,,
+,Menu,,,,Large Pizzas,,,,Butter Chicken Pizza,30.00,standard,"Butter chicken, with Home-made Butter chicken sauce, Raita, capsicum, red onion and topped up with fresh coriander",,,
+,Menu,,,,Large Pizzas,,,,Vegan Mushroom,28.00,standard,"Olive Oil, confit garlic, field mushrooms, thyme, vegan parmesan, vegan mozzarella & Vegan Feta",,,
+,Menu,,,,Large Pizzas,,,,Vegan Pepperoni,29.00,standard,"House-made tomato sauce, jalapenos, capsicum, Red onion, House-made vegan pepperoni, vegan cheese, and topped up with Fresh Basil",,,
+,Menu,,,,Sides,,,,Hand Cut Fries,11.00,standard,Delicious & Hot Hand Cut Fries,,,
+,Menu,,,,Sides,,,,"Mac ""N"" Cheese Hashbrown",13.00,standard,"Cheesy gooey Mac ""N"" Cheese, crumbed in panko breadcrumbs and deep fried, served with sweet chilli sauce (Vegetarian)",,,
+,Menu,,,,Sides,,,,Garlic Fries,13.00,standard,Hand Cut Fries tossed in garlic butter,,,
+,Menu,,,,Drinks,,,,Coke,4.50,standard,Carbonated Soft Drink,,,
+,Menu,,,,Drinks,,,,L&P,4.50,standard,Carbonated Soft Drink,,,
+,Menu,,,,Drinks,,,,Sprite,4.50,standard,Carbonated Soft Drink,,,
+,Menu,,,,Drinks,,,,Fanta,4.50,standard,Carbonated Soft Drink,,,
+,Menu,,,,Drinks,,,,Coke Zero,4.50,standard,Carbonated Soft Drink,,,

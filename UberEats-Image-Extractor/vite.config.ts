@@ -4,6 +4,9 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
+  define: {
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
+  },
   server: {
     port: 5007,
     proxy: {
