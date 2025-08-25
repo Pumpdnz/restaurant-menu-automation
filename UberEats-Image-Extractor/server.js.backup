@@ -20,12 +20,6 @@ const {
   CATEGORY_DETECTION_SCHEMA,
   UBEREATS_CATEGORY_PROMPT,
   DOORDASH_CATEGORY_PROMPT,
-  GENERIC_CATEGORY_PROMPT,
-  ORDERMEAL_CATEGORY_PROMPT,
-  MOBI2GO_CATEGORY_PROMPT,
-  NEXTORDER_CATEGORY_PROMPT,
-  DELIVEREASY_CATEGORY_PROMPT,
-  FOODHUB_CATEGORY_PROMPT,
   MENU_ITEMS_URL_SCHEMA,
   OPTION_SETS_SCHEMA,
   UBEREATS_MENU_ITEMS_URL_PROMPT,
@@ -451,13 +445,594 @@ function validateRestaurantUrl(url, res) {
   }
 }
 
-// Legacy endpoints removed during cleanup:
-// - POST /api/extract - Single-scrape method (deprecated)
-// - GET /api/extract-status/:id - Status checking for v1 extract (deprecated)
-// - GET /api/extract-results/:id - Results retrieval for v1 extract (deprecated)
-// - POST /api/scrape - Direct scraping endpoint (deprecated)
-// Only batch extraction method is now used
+// REMOVED: Extract endpoints have been deprecated in favor of scrape with v2 JSON extraction
+// The following endpoints were removed:
+// - POST /api/extract - Used v1 extract API which is being replaced by v2 scrape with JSON format
+// - GET /api/extract-status/:id - Status checking for v1 extract
+// - GET /api/extract-results/:id - Results retrieval for v1 extract
+// These have been replaced by the improved /api/scrape endpoint with v2 JSON extraction
 
+  const { url, prompt, schema } = req.body;
+  
+  // Validate URL
+  if (!validateRestaurantUrl(url, res)) {
+    return;
+  }
+  
+  // Check API key
+  if (!FIRECRAWL_API_KEY) {
+    return res.status(500).json({
+      success: false,
+      error: 'Firecrawl API key is not configured'
+    });
+  }
+  
+  console.log(`Starting complete extraction for URL: ${url}`);
+  console.log(`Using Firecrawl API URL: ${FIRECRAWL_API_URL}`);
+  console.log(`API Key present: ${FIRECRAWL_API_KEY ? 'Yes (length: ' + FIRECRAWL_API_KEY.length + ')' : 'No'}`);
+  
+  try {
+    // Prepare request payload for Firecrawl API according to documentation
+    const payload = {
+      urls: [url],
+      prompt: prompt || DEFAULT_PROMPT,
+      schema: schema || DEFAULT_SCHEMA,
+      enableWebSearch: false,  // Disable web search to prevent unnecessary URL scraping
+      includeSubdomains: false, // Don't scrape subdomains
+      agent: {
+        model: "FIRE-1",
+      },
+      // Add scrape options for better navigation
+      scrapeOptions: {
+        formats: ["json"],
+        onlyMainContent: true, 
+        jsonOptions: {
+          schema: schema || DEFAULT_SCHEMA,
+        }
+      }
+    };
+    
+    // Log request details (without API key)
+    console.log('Firecrawl API request payload:', JSON.stringify(payload, null, 2));
+    
+    // Make request to Firecrawl API
+    console.log('Making request to:', `${FIRECRAWL_API_URL}/v1/extract`);
+    console.log('With authorization header:', `Bearer ${FIRECRAWL_API_KEY.substring(0, 5)}...`);
+    
+    // Create a custom axios instance with longer timeout for extract completion
+    const axiosInstance = axios.create({
+      timeout: 300000, // 5 minute timeout for the complete extraction process
+      headers: {
+        'Authorization': `Bearer ${FIRECRAWL_API_KEY}`,
+        'Content-Type': 'application/json',
+      }
+    });
+    
+    // Step 1: Initiate the extraction
+    const initiateResponse = await axiosInstance.post(`${FIRECRAWL_API_URL}/v1/extract`, payload);
+    
+    console.log('Full Firecrawl API response:', JSON.stringify(initiateResponse.data, null, 2));
+    
+    if (!initiateResponse.data || !initiateResponse.data.id) {
+      console.log('Unexpected response format:', initiateResponse.data);
+      throw new Error('Invalid response from Firecrawl API: Missing extraction ID');
+    }
+    
+    const extractionId = initiateResponse.data.id;
+    console.log('Extraction initiated successfully, ID:', extractionId);
+    
+    // Step 2: Poll for extraction completion
+    const maxAttempts = 120; // Maximum 120 polling attempts (10 minutes with 5-second interval)
+    const pollingInterval = 20000; // 20 seconds between polling attempts
+    let attempt = 0;
+    let extractionCompleted = false;
+    let extractionData = null;
+    
+    while (!extractionCompleted && attempt < maxAttempts) {
+      attempt++;
+      console.log(`Polling for extraction results (attempt ${attempt}/${maxAttempts})...`);
+      
+      try {
+        // Get the current extraction status
+        const statusResponse = await axiosInstance.get(`${FIRECRAWL_API_URL}/v1/extract/${extractionId}`);
+        
+        // Log the full response for debugging
+        console.log(`Extraction status response (${attempt}):`, JSON.stringify(statusResponse.data, null, 2));
+        
+        if (!statusResponse.data) {
+          throw new Error('Invalid extraction status response');
+        }
+        
+        console.log(`Current extraction status: ${statusResponse.data.status}`);
+        
+        if (statusResponse.data.status === 'completed') {
+          console.log('Extraction completed successfully!');
+          extractionCompleted = true;
+          
+          // Check both possible data locations
+          if (statusResponse.data.data) {
+            extractionData = statusResponse.data.data;
+            console.log('Found data in statusResponse.data.data');
+          } else if (statusResponse.data.output) {
+            extractionData = statusResponse.data.output;
+            console.log('Found data in statusResponse.data.output');
+          } else {
+            console.log('No data found in the expected locations, searching deeper in the response...');
+            
+            // Try to find data in other possible locations
+            const responseString = JSON.stringify(statusResponse.data);
+            if (responseString.includes('menuItems')) {
+              console.log('Found menuItems in the response, but not in the expected location');
+              
+              // Try to extract the relevant sections
+              Object.keys(statusResponse.data).forEach(key => {
+                const value = statusResponse.data[key];
+                if (value && typeof value === 'object') {
+                  if (value.menuItems) {
+                    console.log(`Found menuItems in statusResponse.data.${key}`);
+                    extractionData = value;
+                  }
+                }
+              });
+            }
+            
+            if (!extractionData) {
+              console.error('Could not find menuItems in any part of the response');
+              throw new Error('Extraction completed but menuItems not found in response');
+            }
+          }
+          
+          break;
+        } else if (statusResponse.data.status === 'failed') {
+          throw new Error(`Extraction failed: ${statusResponse.data.error || 'Unknown error'}`);
+        } else {
+          // Still processing, wait before polling again
+          console.log(`Waiting ${pollingInterval/1000} seconds before next poll...`);
+          await new Promise(resolve => setTimeout(resolve, pollingInterval));
+        }
+      } catch (pollingError) {
+        console.error(`Error polling extraction status (attempt ${attempt}):`, pollingError.message);
+        
+        if (attempt >= maxAttempts) {
+          throw pollingError;
+        }
+        
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, pollingInterval));
+      }
+    }
+    
+    if (!extractionCompleted) {
+      throw new Error(`Extraction timed out after ${maxAttempts} polling attempts`);
+    }
+    
+    if (!extractionData) {
+      throw new Error('Extraction completed but no data was returned');
+    }
+    
+    // Log the extracted data for debugging
+    console.log('Extraction data summary:');
+    if (extractionData.menuItems) {
+      console.log(`Found ${extractionData.menuItems.length} menu items`);
+    } else {
+      console.log('No menuItems found in the extracted data');
+      console.log('Available keys:', Object.keys(extractionData));
+    }
+    
+    // Add some final validation before sending to the client
+    if (!extractionData.menuItems || !Array.isArray(extractionData.menuItems)) {
+      console.error('Invalid data structure: menuItems is not an array or is missing');
+      console.log('Data received:', JSON.stringify(extractionData, null, 2));
+      
+      // Try to transform the data if possible
+      if (typeof extractionData === 'object') {
+        // Look through all properties to find any array that might contain menu items
+        for (const key in extractionData) {
+          if (Array.isArray(extractionData[key]) && extractionData[key].length > 0) {
+            // Check if this array contains objects with dishName, menuName, etc.
+            const potentialMenuItems = extractionData[key];
+            if (potentialMenuItems[0] && 
+                (potentialMenuItems[0].dishName || potentialMenuItems[0].menuName || 
+                 potentialMenuItems[0].imageURL || potentialMenuItems[0].fullSizeImageURL)) {
+              console.log(`Found potential menu items in property "${key}"`);
+              // Transform the structure to match expected format
+              extractionData = {
+                menuItems: potentialMenuItems
+              };
+              break;
+            }
+          }
+        }
+      }
+      
+      // Final check after transformation attempts
+      if (!extractionData.menuItems || !Array.isArray(extractionData.menuItems)) {
+        throw new Error('Could not find valid menu items in the extraction result');
+      }
+    }
+    
+    console.log(`Successfully extracted ${extractionData.menuItems.length} menu items, sending to client`);
+    
+    // Return the completed and validated extraction data to the client
+    return res.json({
+      success: true,
+      data: extractionData
+    });
+  } catch (error) {
+    console.error('Extraction error:', error.message);
+    
+    // Log detailed error information if available
+    if (error.response) {
+      console.error('Error response status:', error.response.status);
+      console.error('Error response data:', error.response.data);
+      console.error('Error response headers:', error.response.headers);
+    }
+    
+    // Return error details
+    return res.status(error.response?.status || 500).json({
+      success: false,
+      error: `Extraction failed: ${error.message}`
+    });
+  }
+});
+*/
+
+/* REMOVED - Extract status endpoint deprecated
+app.get('/api/extract-status/:id', async (req, res) => {
+  const extractionId = req.params.id;
+  
+  if (!extractionId) {
+    return res.status(400).json({
+      success: false,
+      error: 'Extraction ID is required'
+    });
+  }
+  
+  // Check API key
+  if (!FIRECRAWL_API_KEY) {
+    return res.status(500).json({
+      success: false,
+      error: 'Firecrawl API key is not configured'
+    });
+  }
+  
+  console.log(`Checking extraction status for ID: ${extractionId}`);
+  
+  try {
+    // Query Firecrawl API for extraction status
+    const response = await axios.get(`${FIRECRAWL_API_URL}/v1/extract/${extractionId}`, {
+      headers: {
+        'Authorization': `Bearer ${FIRECRAWL_API_KEY}`
+      },
+      timeout: 15000
+    });
+    
+    // Process status response
+    if (response.data) {
+      return res.json({
+        success: true,
+        status: response.data.status,
+        progress: response.data.progress || 0,
+        error: response.data.error || null
+      });
+    } else {
+      throw new Error('Invalid response from Firecrawl API');
+    }
+  } catch (error) {
+    console.error('Status check error:', error.message);
+    
+    return res.status(500).json({
+      success: false,
+      error: `Status check failed: ${error.message}`
+    });
+  }
+});
+*/
+
+/* REMOVED - Extract results endpoint deprecated  
+app.get('/api/extract-results/:id', async (req, res) => {
+  const extractionId = req.params.id;
+  
+  if (!extractionId) {
+    return res.status(400).json({
+      success: false,
+      error: 'Extraction ID is required'
+    });
+  }
+  
+  // Check API key
+  if (!FIRECRAWL_API_KEY) {
+    return res.status(500).json({
+      success: false,
+      error: 'Firecrawl API key is not configured'
+    });
+  }
+  
+  console.log(`Getting extraction results for ID: ${extractionId}`);
+  
+  try {
+    // Query Firecrawl API for extraction results
+    const response = await axios.get(`${FIRECRAWL_API_URL}/v1/extract/${extractionId}`, {
+      headers: {
+        'Authorization': `Bearer ${FIRECRAWL_API_KEY}`
+      },
+      timeout: 30000
+    });
+    
+    // Ensure extraction is complete
+    if (response.data.status !== 'completed') {
+      return res.status(400).json({
+        success: false,
+        error: `Extraction is not completed (status: ${response.data.status})`
+      });
+    }
+    
+    // Process results - Looking for data in the correct location of the response
+    if (response.data && response.data.data) {
+      // Return the structured output data
+      return res.json({
+        success: true,
+        data: response.data.data
+      });
+    } else {
+      throw new Error('No data found in extraction results');
+    }
+  } catch (error) {
+    console.error('Results retrieval error:', error.message);
+    
+    // If there's a response object in the error, log its data for better debugging
+    if (error.response) {
+      console.error('Error response status:', error.response.status);
+      console.error('Error response data:', error.response.data);
+    }
+    
+    return res.status(500).json({
+      success: false,
+      error: `Results retrieval failed: ${error.message}`
+    });
+  }
+});
+*/
+
+/**
+ * API endpoint for direct scraping using Firecrawl's /v1/scrape endpoint
+ * Uses the FIRE-1 agent and JSON format for better menu extraction
+ */
+app.post('/api/scrape', async (req, res) => {
+  const { url, prompt, schema } = req.body;
+  
+  // Validate URL
+  if (!validateRestaurantUrl(url, res)) {
+    return;
+  }
+  
+  // Check API key
+  if (!FIRECRAWL_API_KEY) {
+    return res.status(500).json({
+      success: false,
+      error: 'Firecrawl API key is not configured'
+    });
+  }
+  
+  console.log(`Starting direct scrape with FIRE-1 for URL: ${url}`);
+  
+  try {
+    // Detect platform type
+    const platformInfo = detectPlatform(url);
+    
+    // Use platform-specific prompts if available
+    let extractionPrompt;
+    let extractionSchema;
+    
+    if (platformInfo.name === 'UberEats') {
+      console.log('Using UberEats-specific prompt and schema');
+      extractionPrompt = prompt || require('./src/services/firecrawl-service').UBEREATS_PROMPT;
+      extractionSchema = schema || UBEREATS_SCHEMA;
+    } else if (platformInfo.name === 'DoorDash') {
+      console.log('Using DoorDash-specific prompt and schema');
+      extractionPrompt = prompt || require('./src/services/firecrawl-service').DOORDASH_PROMPT;
+      extractionSchema = schema || DOORDASH_SCHEMA;
+    } else {
+      extractionPrompt = prompt || DEFAULT_PROMPT;
+      extractionSchema = schema || DEFAULT_SCHEMA;
+    }
+    
+    // Prepare v2 request payload
+    const payload = {
+      url: url,
+      formats: [{
+        type: 'json',
+        schema: extractionSchema,
+        prompt: extractionPrompt
+      }],
+      onlyMainContent: true,
+      waitFor: 2000, // Wait 2 seconds for page to load properly
+      blockAds: true, // Block ads and cookie popups
+      timeout: 300000, // 5 minute timeout
+      maxAge: parseInt(process.env.FIRECRAWL_CACHE_MAX_AGE || '172800'), // 2 days cache by default
+      skipTlsVerification: true,
+      removeBase64Images: true
+    };
+    
+    const apiEndpoint = `${FIRECRAWL_API_URL}/v2/scrape`;
+    
+    // Log request details (without API key)
+    console.log('Firecrawl direct scrape request payload:', JSON.stringify(payload, null, 2));
+    
+    // Create axios instance with longer timeout for scraping
+    const axiosInstance = axios.create({
+      timeout: 300000, // 5 minute timeout for comprehensive extraction
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${FIRECRAWL_API_KEY}`
+      }
+    });
+    
+    // Make single request to Firecrawl Scrape API
+    console.log('Making direct scrape request to:', apiEndpoint);
+    console.log('API key length:', FIRECRAWL_API_KEY?.length || 0);
+    console.log('Auth header:', `Bearer ${FIRECRAWL_API_KEY.substring(0, 5)}...`);
+    
+    const scrapeResponse = await axiosInstance.post(apiEndpoint, payload);
+    
+    // Log response summary for debugging
+    console.log('Direct scrape response status:', scrapeResponse.status);
+    console.log('Response data structure:', Object.keys(scrapeResponse.data));
+    
+    // Parse v2 response
+    const parsedResponse = scrapeResponse.data;
+    
+    // Check if response is successful
+    if (!parsedResponse.success) {
+      throw new Error(`API returned error: ${parsedResponse.error || 'Unknown error'}`);
+    }
+    
+    // In v2, JSON extracted data is in data.json
+    let extractionData = null;
+    
+    if (parsedResponse.data && parsedResponse.data.json) {
+      console.log('Found structured data in data.json');
+      extractionData = parsedResponse.data.json;
+      
+      // If the extractionData already has the expected structure, use it directly
+      if (extractionData.menuItems && Array.isArray(extractionData.menuItems)) {
+        console.log(`Found ${extractionData.menuItems.length} menu items directly in json response`);
+      } 
+      // If the response doesn't have menuItems but has the correct structure otherwise, wrap it
+      else if (!extractionData.menuItems && typeof extractionData === 'object') {
+        console.log('Response has correct structure but missing menuItems wrapper, adding it');
+        extractionData = { menuItems: [extractionData] };
+      }
+    } 
+    // Fallback for other potential response structures
+    else if (parsedResponse.data) {
+      console.log('Searching for menu data in response structure...');
+      
+      // Try to find menuItems in the response
+      const findMenuItems = (obj, path = '') => {
+        if (!obj || typeof obj !== 'object') return null;
+        
+        // Check if this object has menuItems
+        if (obj.menuItems && Array.isArray(obj.menuItems)) {
+          console.log(`Found menuItems at path: ${path}`);
+          return obj;
+        }
+        
+        // Check if this object resembles a menu item collection
+        if (Array.isArray(obj) && obj.length > 0) {
+          const sampleItem = obj[0];
+          if (sampleItem && typeof sampleItem === 'object' && 
+              (sampleItem.dishName || sampleItem.name || sampleItem.title || 
+               sampleItem.categoryName || sampleItem.price || sampleItem.dishPrice)) {
+            console.log(`Found array of menu-like items at path: ${path}`);
+            return { menuItems: obj };
+          }
+        }
+        
+        // Recursively check all child properties
+        for (const key in obj) {
+          const newPath = path ? `${path}.${key}` : key;
+          const result = findMenuItems(obj[key], newPath);
+          if (result) return result;
+        }
+        
+        return null;
+      };
+      
+      const foundData = findMenuItems(parsedResponse.data);
+      if (foundData) {
+        extractionData = foundData;
+      }
+    }
+    
+    // Final validation
+    if (!extractionData) {
+      console.error('Could not find valid data in the scrape response:', 
+                   JSON.stringify(parsedResponse.data).substring(0, 1000) + '...');
+      throw new Error('Direct scrape completed but no valid data structure was found');
+    }
+    
+    if (!extractionData.menuItems || !Array.isArray(extractionData.menuItems)) {
+      console.error('Invalid data structure: menuItems is not an array or is missing');
+      
+      // Try to adapt the data structure if possible
+      if (typeof extractionData === 'object') {
+        // Look for any array or object that might contain menu items
+        for (const key in extractionData) {
+          if (Array.isArray(extractionData[key]) && extractionData[key].length > 0) {
+            // Check if array contains objects with dish properties
+            const potentialItems = extractionData[key];
+            if (potentialItems[0] && typeof potentialItems[0] === 'object' &&
+                (potentialItems[0].dishName || potentialItems[0].name || 
+                 potentialItems[0].title || potentialItems[0].price ||
+                 potentialItems[0].imageURL || potentialItems[0].image)) {
+              console.log(`Found potential menu items in property "${key}"`);
+              // Transform to expected format
+              extractionData = {
+                menuItems: potentialItems.map(item => {
+                  // Normalize field names if needed
+                  return {
+                    dishName: item.dishName || item.name || item.title || '',
+                    dishPrice: parseFloat(item.dishPrice || item.price || 0),
+                    dishDescription: item.dishDescription || item.description || '',
+                    categoryName: item.categoryName || item.category || 'Uncategorized',
+                    menuName: item.menuName || item.menu || 'Menu',
+                    imageURL: item.imageURL || item.image || item.img || '',
+                    tags: item.tags || []
+                  };
+                })
+              };
+              break;
+            }
+          }
+        }
+      }
+    }
+    
+    // Final check after transformation attempts
+    if (!extractionData.menuItems || !Array.isArray(extractionData.menuItems)) {
+      throw new Error('Could not find or format valid menu items in the scrape result');
+    }
+    
+    // Post-process menu items to ensure consistent format
+    extractionData.menuItems = extractionData.menuItems.map(item => {
+      // Ensure all required fields exist with proper types
+      return {
+        dishName: item.dishName || item.name || item.title || '',
+        dishPrice: typeof item.dishPrice === 'number' ? item.dishPrice : 
+                  typeof item.price === 'number' ? item.price : 
+                  parseFloat(item.dishPrice || item.price || 0) || 0,
+        dishDescription: item.dishDescription || item.description || '',
+        categoryName: item.categoryName || item.category || 'Uncategorized',
+        menuName: item.menuName || item.menu || 'Menu',
+        imageURL: item.imageURL || item.image || item.img || '',
+        tags: Array.isArray(item.tags) ? item.tags : []
+      };
+    });
+    
+    console.log(`Successfully scraped ${extractionData.menuItems.length} menu items, sending to client`);
+    
+    // Return the data to the client
+    return res.json({
+      success: true,
+      data: extractionData
+    });
+  } catch (error) {
+    console.error('Direct scrape error:', error.message);
+    
+    // Log detailed error information if available
+    if (error.response) {
+      console.error('Error response status:', error.response.status);
+      console.error('Error response data:', error.response.data);
+    }
+    
+    // Return error details
+    return res.status(error.response?.status || 500).json({
+      success: false,
+      error: `Direct scrape failed: ${error.message}`
+    });
+  }
+});
 
 /**
  * API endpoint to generate CSV
@@ -878,31 +1453,13 @@ app.post('/api/scan-categories', async (req, res) => {
     
     if (platformInfo.name === 'UberEats') {
       console.log('Using UberEats-specific category detection prompt');
-      console.log('UBEREATS_CATEGORY_PROMPT exists:', !!UBEREATS_CATEGORY_PROMPT);
-      console.log('UBEREATS_CATEGORY_PROMPT first 100 chars:', UBEREATS_CATEGORY_PROMPT?.substring(0, 100));
       categoryPrompt = UBEREATS_CATEGORY_PROMPT;
     } else if (platformInfo.name === 'DoorDash') {
       console.log('Using DoorDash-specific category detection prompt');
       categoryPrompt = DOORDASH_CATEGORY_PROMPT;
-    } else if (platformInfo.name === 'OrderMeal') {
-      console.log('Using OrderMeal-specific category detection prompt');
-      categoryPrompt = ORDERMEAL_CATEGORY_PROMPT;
-    } else if (platformInfo.name === 'Mobi2Go') {
-      console.log('Using Mobi2Go-specific category detection prompt');
-      categoryPrompt = MOBI2GO_CATEGORY_PROMPT;
-    } else if (platformInfo.name === 'NextOrder') {
-      console.log('Using NextOrder-specific category detection prompt');
-      categoryPrompt = NEXTORDER_CATEGORY_PROMPT;
-    } else if (platformInfo.name === 'DeliverEasy') {
-      console.log('Using DeliverEasy-specific category detection prompt');
-      categoryPrompt = DELIVEREASY_CATEGORY_PROMPT;
-    } else if (platformInfo.name === 'FoodHub') {
-      console.log('Using FoodHub-specific category detection prompt');
-      categoryPrompt = FOODHUB_CATEGORY_PROMPT;
     } else {
-      // Use generic prompt as default for unknown platforms
-      console.log(`Using generic category detection prompt for platform: ${platformInfo.name}`);
-      categoryPrompt = GENERIC_CATEGORY_PROMPT;
+      // Use UberEats prompt as default for unknown platforms
+      categoryPrompt = UBEREATS_CATEGORY_PROMPT;
     }
     
     // Prepare v2 request payload for category detection
@@ -3275,25 +3832,34 @@ app.post('/api/extractions/start', async (req, res) => {
       
       console.log(`[Extraction] Using restaurant: ${existingRestaurant.name} (${existingRestaurant.id})`);
     } else {
-      // Auto-detect mode: Use platform detector for all platforms
-      const platformInfo = detectPlatform(url);
+      // Auto-detect mode: extract restaurant name from URL
+      let restaurantName = req.body.restaurantName || 'Unknown Restaurant';
       
-      // Get the platform name (lowercase for database)
-      if (platformInfo && platformInfo.name) {
-        platformName = platformInfo.name.toLowerCase();
-      }
-      
-      // Extract restaurant name using platform-specific logic
-      let restaurantName = req.body.restaurantName;
-      if (!restaurantName) {
-        restaurantName = extractRestaurantName(url, platformInfo);
-        if (!restaurantName) {
-          restaurantName = 'Unknown Restaurant';
-        } else {
-          // Capitalize first letter of each word
-          restaurantName = restaurantName.split(/[\s-_]+/).map(word => 
-            word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-          ).join(' ');
+      // Auto-detect platform and restaurant name from URL if not provided
+      if (url.includes('ubereats.com')) {
+        platformName = 'ubereats';
+        // Only extract restaurant name if not provided
+        if (!req.body.restaurantName) {
+          const match = url.match(/\/store\/([^\/\?]+)/);
+          if (match) {
+            restaurantName = match[1].replace(/-/g, ' ').replace(/_/g, ' ');
+            // Capitalize first letter of each word
+            restaurantName = restaurantName.split(' ').map(word => 
+              word.charAt(0).toUpperCase() + word.slice(1)
+            ).join(' ');
+          }
+        }
+      } else if (url.includes('doordash.com')) {
+        platformName = 'doordash';
+        // Only extract restaurant name if not provided
+        if (!req.body.restaurantName) {
+          const match = url.match(/\/store\/([^\/\?]+)/);
+          if (match) {
+            restaurantName = match[1].replace(/-/g, ' ').replace(/_/g, ' ');
+            restaurantName = restaurantName.split(' ').map(word => 
+              word.charAt(0).toUpperCase() + word.slice(1)
+            ).join(' ');
+          }
         }
       }
       
@@ -3357,25 +3923,10 @@ app.post('/api/extractions/start', async (req, res) => {
         } else if (platformInfo.name === 'DoorDash') {
           console.log(`[Job ${jobId}] Using DoorDash-specific category detection`);
           categoryPrompt = DOORDASH_CATEGORY_PROMPT;
-        } else if (platformInfo.name === 'OrderMeal') {
-          console.log(`[Job ${jobId}] Using OrderMeal-specific category detection`);
-          categoryPrompt = ORDERMEAL_CATEGORY_PROMPT;
-        } else if (platformInfo.name === 'Mobi2Go') {
-          console.log(`[Job ${jobId}] Using Mobi2Go-specific category detection`);
-          categoryPrompt = MOBI2GO_CATEGORY_PROMPT;
-        } else if (platformInfo.name === 'NextOrder') {
-          console.log(`[Job ${jobId}] Using NextOrder-specific category detection`);
-          categoryPrompt = NEXTORDER_CATEGORY_PROMPT;
-        } else if (platformInfo.name === 'DeliverEasy') {
-          console.log(`[Job ${jobId}] Using DeliverEasy-specific category detection`);
-          categoryPrompt = DELIVEREASY_CATEGORY_PROMPT;
-        } else if (platformInfo.name === 'FoodHub') {
-          console.log(`[Job ${jobId}] Using FoodHub-specific category detection`);
-          categoryPrompt = FOODHUB_CATEGORY_PROMPT;
         } else {
           console.log(`[Job ${jobId}] Using generic category detection for platform: ${platformInfo.name}`);
-          // Use generic prompt for unknown platforms
-          categoryPrompt = GENERIC_CATEGORY_PROMPT;
+          // Default to UberEats prompt for unknown platforms
+          categoryPrompt = UBEREATS_CATEGORY_PROMPT;
         }
         
         const scanPayload = {
@@ -4158,44 +4709,6 @@ app.patch('/api/restaurants/:id', async (req, res) => {
 });
 
 /**
- * PATCH /api/restaurants/:id/workflow
- * Update restaurant workflow fields
- */
-app.patch('/api/restaurants/:id/workflow', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const workflowData = req.body;
-    
-    if (!db.isDatabaseAvailable()) {
-      return res.status(503).json({
-        success: false,
-        error: 'Database service unavailable'
-      });
-    }
-    
-    const restaurant = await db.updateRestaurantWorkflow(id, workflowData);
-    
-    if (!restaurant) {
-      return res.status(404).json({
-        success: false,
-        error: 'Restaurant not found or update failed'
-      });
-    }
-    
-    return res.json({
-      success: true,
-      restaurant: restaurant
-    });
-  } catch (error) {
-    console.error('[API] Error updating restaurant workflow:', error);
-    return res.status(500).json({
-      success: false,
-      error: error.message || 'Failed to update restaurant workflow'
-    });
-  }
-});
-
-/**
  * DELETE /api/restaurants/:id
  * Hard delete a restaurant and all associated data
  */
@@ -4306,339 +4819,6 @@ app.patch('/api/restaurants/:id/workflow', async (req, res) => {
     });
   }
 });
-
-/**
- * POST /api/google-business-search
- * Search for business information using Firecrawl
- */
-app.post('/api/google-business-search', async (req, res) => {
-  try {
-    const { restaurantName, city, restaurantId } = req.body;
-    
-    if (!restaurantName || !city) {
-      return res.status(400).json({
-        success: false,
-        error: 'Restaurant name and city are required'
-      });
-    }
-    
-    console.log(`[Google Business Search] Searching for: ${restaurantName} in ${city}`);
-    
-    // Build search query
-    const searchQuery = `"${restaurantName}" "${city}" New Zealand opening hours contact`;
-    
-    try {
-      // Step 1: Search with Firecrawl
-      const searchResponse = await axios.post(
-        `${FIRECRAWL_API_URL}/v2/search`,
-        {
-          query: searchQuery,
-          limit: 5,
-          scrapeOptions: {
-            formats: ["markdown"],
-            onlyMainContent: true
-          }
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${FIRECRAWL_API_KEY}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-      
-      // Debug log the response
-      if (process.env.DEBUG_MODE === 'true' || true) {
-        console.log('[Google Business Search] Response:', JSON.stringify(searchResponse.data, null, 2).substring(0, 1000));
-      }
-      
-      // Get search results from the correct path
-      const searchResults = searchResponse.data?.data?.web || searchResponse.data?.data || [];
-      console.log(`[Google Business Search] Found ${searchResults.length} results`);
-      
-      // Step 2: Process search results
-      const extractedData = {
-        restaurantName: restaurantName,
-        openingHours: [],
-        address: null,
-        phone: null,
-        websiteUrl: null,
-        instagramUrl: null,
-        facebookUrl: null,
-        imageUrls: [],
-        cuisine: [],
-        searchQuery: searchQuery,
-        extractionNotes: []
-      };
-      
-      // Parse each result for business information
-      if (searchResults && Array.isArray(searchResults)) {
-        for (const result of searchResults) {
-          // Combine all available text content
-          const content = (result.markdown || '') + ' ' + (result.description || '') + ' ' + (result.title || '');
-          const metadata = result.metadata || {};
-          
-          // Extract phone numbers (NZ format)
-          // First, find potential phone numbers with very broad patterns
-          // Then clean and validate them
-          const potentialPhonePatterns = [
-            // Any sequence that looks like a phone number with country code
-            /\+64[\s\-\(\)]?[\d\s\-\(\)]{8,12}/g,
-            // Any sequence starting with 0 followed by digits/spaces/dashes
-            /\b0[\d\s\-\(\)]{8,11}\b/g,
-            // Specifically catch numbers in "PHONE. XXXXX" format
-            /(?:phone|PHONE|Phone|Tel|TEL|tel|Contact|contact)[\s:.]*?([\d\s\-\(\)+]{8,15})/gi
-          ];
-          
-          // Helper function to clean and validate NZ phone numbers
-          const cleanAndValidateNZPhone = (phoneStr) => {
-            // Remove all non-digit characters except +
-            let cleaned = phoneStr.replace(/[^\d+]/g, '');
-            
-            // Skip if too short or too long
-            if (cleaned.length < 9 || cleaned.length > 15) return null;
-            
-            // Check for valid NZ patterns (after cleaning)
-            const validPatterns = [
-              /^\+64[2-9]\d{7,9}$/,        // +64 format
-              /^0[3-9]\d{7}$/,              // Landlines 03-09
-              /^02[0-9]\d{7,8}$/,           // Mobiles 020-029
-              /^0800\d{6,7}$/,              // 0800 numbers
-              /^0508\d{6}$/                 // 0508 numbers
-            ];
-            
-            const isValid = validPatterns.some(pattern => pattern.test(cleaned));
-            if (!isValid) return null;
-            
-            // Convert to +64 format
-            if (!cleaned.startsWith('+64')) {
-              if (cleaned.startsWith('0')) {
-                cleaned = '+64' + cleaned.substring(1);
-              }
-            }
-            
-            return cleaned;
-          };
-          
-          let foundPhone = null;
-          const allPhoneMatches = [];
-          
-          // Collect all potential phone numbers
-          for (const pattern of potentialPhonePatterns) {
-            const matches = content.match(pattern);
-            if (matches) {
-              // For the PHONE/Contact pattern, extract just the number part
-              if (pattern.source.includes('phone|PHONE')) {
-                matches.forEach(match => {
-                  const numberPart = match.replace(/(?:phone|PHONE|Phone|Tel|TEL|tel|Contact|contact)[\s:.]*?/gi, '');
-                  allPhoneMatches.push(numberPart);
-                });
-              } else {
-                allPhoneMatches.push(...matches);
-              }
-            }
-          }
-          
-          // Clean and validate each potential phone number
-          for (const potentialPhone of allPhoneMatches) {
-            const cleaned = cleanAndValidateNZPhone(potentialPhone);
-            if (cleaned) {
-              foundPhone = cleaned;
-              console.log('Found valid NZ phone:', foundPhone, 'from:', potentialPhone);
-              break;
-            }
-          }
-          
-          if (foundPhone && !extractedData.phone) {
-            extractedData.phone = foundPhone;
-          }
-          
-          // Extract addresses - improved regex to avoid matching time/day strings
-          // Look for patterns like "123 Street Name" with better filtering
-          const addressPatterns = [
-            // Standard address format: number + street name + street type
-            /(?<![:\d])\b\d{1,5}\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2}\s+(?:Street|St|Road|Rd|Avenue|Ave|Drive|Dr|Lane|Ln|Place|Pl|Boulevard|Blvd|Way|Court|Ct|Terrace|Tce|Square|Sq)\b/gi,
-            // Address with unit/level: Unit X, 123 Street Name
-            /(?:Unit|Level|Suite|Shop)\s+\w+[,\s]+\d{1,5}\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2}\s+(?:Street|St|Road|Rd|Avenue|Ave|Drive|Dr|Lane|Ln|Place|Pl|Boulevard|Blvd|Way|Court|Ct|Terrace|Tce|Square|Sq)\b/gi,
-            // Address with suburb/city
-            /\b\d{1,5}\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2}\s+(?:Street|St|Road|Rd|Avenue|Ave|Drive|Dr|Lane|Ln|Place|Pl|Boulevard|Blvd|Way|Court|Ct|Terrace|Tce|Square|Sq)[,\s]+[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2}\b/gi
-          ];
-          
-          const addressMatches = [];
-          for (const pattern of addressPatterns) {
-            let addressMatch;
-            while ((addressMatch = pattern.exec(content)) !== null) {
-              const match = addressMatch[0];
-              // Filter out matches that look like time patterns or contain day names
-              if (!match.match(/\d{1,2}:\d{2}/) && 
-                  !match.match(/\b(am|pm|AM|PM)\b/) &&
-                  !match.match(/\b(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b/i)) {
-                addressMatches.push(match.trim());
-              }
-            }
-          }
-          
-          // Debug logging
-          if (addressMatches.length > 0) {
-            console.log('Address candidates found:', addressMatches);
-          }
-          
-          if (addressMatches.length > 0 && !extractedData.address) {
-            extractedData.address = addressMatches[0];
-          }
-          
-          // Extract opening hours
-          const hoursRegex = /(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)[:\s]+(\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?)\s*[-–]\s*(\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?)/gi;
-          let match;
-          while ((match = hoursRegex.exec(content)) !== null) {
-            const existingDay = extractedData.openingHours.find(h => h.day === match[1]);
-            if (!existingDay) {
-              extractedData.openingHours.push({
-                day: match[1],
-                open: match[2],
-                close: match[3]
-              });
-            }
-          }
-          
-          // Extract website URL from result URL or metadata
-          if (!extractedData.websiteUrl) {
-            const urlToCheck = result.url || metadata.sourceURL;
-            if (urlToCheck) {
-              try {
-                const url = new URL(urlToCheck);
-                if (!url.hostname.includes('google') && !url.hostname.includes('facebook')) {
-                  extractedData.websiteUrl = `${url.protocol}//${url.hostname}`;
-                }
-              } catch (e) {
-                // Invalid URL, skip
-              }
-            }
-          }
-          
-          // Extract social media URLs
-          const instagramRegex = /(?:https?:\/\/)?(?:www\.)?instagram\.com\/[\w.]+/gi;
-          const instagramMatches = content.match(instagramRegex);
-          if (instagramMatches && !extractedData.instagramUrl) {
-            extractedData.instagramUrl = instagramMatches[0];
-          }
-          
-          const facebookRegex = /(?:https?:\/\/)?(?:www\.)?facebook\.com\/[\w.]+/gi;
-          const facebookMatches = content.match(facebookRegex);
-          if (facebookMatches && !extractedData.facebookUrl) {
-            extractedData.facebookUrl = facebookMatches[0];
-          }
-          
-          // Extract image URLs from metadata
-          if (metadata.ogImage) extractedData.imageUrls.push(metadata.ogImage);
-          if (metadata.favicon) extractedData.imageUrls.push(metadata.favicon);
-        }
-      }
-      
-      // Format opening hours for midnight crossings
-      const formattedHours = [];
-      extractedData.openingHours.forEach(hours => {
-        const openTime = parseTime(hours.open);
-        const closeTime = parseTime(hours.close);
-        
-        if (closeTime < openTime) {
-          // Midnight crossing detected
-          formattedHours.push({
-            day: hours.day,
-            hours: { open: hours.open, close: "23:59" }
-          });
-          
-          const nextDay = getNextDay(hours.day);
-          formattedHours.push({
-            day: nextDay,
-            hours: { open: "00:00", close: hours.close }
-          });
-        } else {
-          formattedHours.push({
-            day: hours.day,
-            hours: { open: hours.open, close: hours.close }
-          });
-        }
-      });
-      
-      // Update restaurant if ID provided
-      if (restaurantId && db.isDatabaseAvailable()) {
-        const updateData = {};
-        
-        if (extractedData.address) updateData.address = extractedData.address;
-        if (extractedData.phone) updateData.phone = extractedData.phone;
-        if (extractedData.websiteUrl) updateData.website_url = extractedData.websiteUrl;
-        if (extractedData.instagramUrl) updateData.instagram_url = extractedData.instagramUrl;
-        if (extractedData.facebookUrl) updateData.facebook_url = extractedData.facebookUrl;
-        if (formattedHours.length > 0) updateData.opening_hours = formattedHours;
-        
-        // Log extracted data for debugging
-        console.log('[Google Business Search] Extracted data:', {
-          address: extractedData.address || 'Not found',
-          phone: extractedData.phone || 'Not found',
-          website: extractedData.websiteUrl || 'Not found',
-          instagram: extractedData.instagramUrl || 'Not found',
-          facebook: extractedData.facebookUrl || 'Not found',
-          hoursCount: formattedHours.length
-        });
-        
-        await db.updateRestaurantWorkflow(restaurantId, updateData);
-        console.log(`[Google Business Search] Updated restaurant ${restaurantId} with extracted data`);
-      }
-      
-      return res.json({
-        success: true,
-        data: {
-          ...extractedData,
-          openingHours: formattedHours
-        }
-      });
-      
-    } catch (firecrawlError) {
-      console.error('[Google Business Search] Firecrawl error:', firecrawlError.message);
-      if (firecrawlError.response) {
-        console.error('Error response:', firecrawlError.response.data);
-      }
-      
-      return res.status(500).json({
-        success: false,
-        error: `Search failed: ${firecrawlError.message}`
-      });
-    }
-    
-  } catch (error) {
-    console.error('[Google Business Search] Error:', error);
-    return res.status(500).json({
-      success: false,
-      error: error.message || 'Failed to search for business information'
-    });
-  }
-});
-
-// Helper function to parse time strings
-function parseTime(timeStr) {
-  const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)?/);
-  if (!match) return 0;
-  
-  let hours = parseInt(match[1]);
-  const minutes = parseInt(match[2]);
-  const period = match[3];
-  
-  if (period && period.toLowerCase() === 'pm' && hours !== 12) {
-    hours += 12;
-  } else if (period && period.toLowerCase() === 'am' && hours === 12) {
-    hours = 0;
-  }
-  
-  return hours * 60 + minutes;
-}
-
-// Helper function to get next day
-function getNextDay(day) {
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  const index = days.indexOf(day);
-  return days[(index + 1) % 7];
-}
 
 /**
  * POST /api/menus/:id/duplicate
@@ -5162,6 +5342,7 @@ app.listen(PORT, () => {
   }
   console.log('\n[Server] Available endpoints:');
   console.log('\n  === Extraction Endpoints ===');
+  console.log(`  POST   /api/scrape                    - Direct page scraping`);
   console.log(`  POST   /api/scan-categories           - Scan for menu categories`);
   console.log(`  POST   /api/batch-extract-categories  - Extract full menu data`);
   console.log(`  GET    /api/batch-extract-status/:id  - Check extraction status`);

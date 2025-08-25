@@ -32,6 +32,62 @@ Do not include frequently asked questions or promotional content.
 Ensure proper formatting of prices (numerical values, not text).
 For items with multiple size options, extract the default or smallest size.`;
 
+// UberEats-specific prompt enhanced for FIRE-1 agent navigation
+export const UBEREATS_PROMPT = `I need you to extract the complete menu data from this UberEats restaurant page. Follow these specific steps for UberEats:
+
+1. Scroll slowly from top to bottom initially to load all content
+2. If there's a "View more" button for menu categories, click it to expand
+3. Check for different menu tabs (like "Lunch", "Dinner", etc.) at the top of the menu and click each one
+4. For each menu section or category, make sure all items are visible
+5. IMPORTANT: Be sure to include any "Featured Items" or "Popular Items" sections - do not skip these
+6. If there are image carousels, navigate through them to see all options
+7. Pay special attention to capturing accurate prices and descriptions
+
+Extract all menu items with their category, name, price, description, and image URLs.
+IMPORTANT: Include "Featured Items" categories with their proper category name.
+For "Popular" or "Featured" items that also appear elsewhere in the menu, include them in both places.
+Do not include frequently asked questions or promotional banners.
+Do not include thumbs up ratings in the tags data.
+Make sure to normalize price values to numbers (e.g., "$12.99" should be 12.99).`;
+
+// DoorDash-specific prompt with enhanced navigation for FIRE-1 agent
+export const DOORDASH_PROMPT = `I need you to extract the complete menu data from this DoorDash restaurant page. Follow these DoorDash-specific steps:
+
+1. Scroll slowly through the entire page first to load all content
+2. Look for and click on any "See more" or "View more" buttons to expand all categories
+3. For each menu category, ensure all items are fully loaded
+4. IMPORTANT: Be sure to extract "Most Liked" or "Popular Items" sections at the top of the menu
+5. For items with images, click on each item to open its detail view
+6. In the item detail view, extract the highest-resolution image URL (check data-src attributes and background styles)
+7. Look for any menu tabs or sections at the top of the page and click through each one
+8. Check for any size or variant options within items and capture the default size
+
+Extract all menu items with their category, name, price, description, and image URLs.
+IMPORTANT: Include "Most Liked", "Popular Items", or "Featured Items" categories with their proper names.
+For popular items that also appear elsewhere in the menu, include them in both places.
+Prioritize extracting full-size image URLs, not thumbnails.
+DoorDash sometimes hides detailed descriptions behind clicks - make sure to capture these.
+Do not include promotional banners or frequently asked questions.
+Make sure to normalize price values to numbers (e.g., "$12.99" should be 12.99).`;
+
+// DoorDash-specific prompt focused on images with enhanced navigation
+export const DOORDASH_IMAGES_PROMPT = `I need you to focus on extracting all menu item images from this DoorDash restaurant page. Follow these steps specifically for DoorDash images:
+
+1. Scroll through the entire menu slowly to ensure all images load
+2. For EVERY menu item with an image, click on it to open the full details view
+3. In the detail view, inspect the DOM to find the highest-resolution image URL
+4. Look specifically for:
+   - data-src attributes on img tags
+   - srcset attributes with multiple resolution options (choose the largest)
+   - background-image styles in CSS that contain image URLs
+5. Extract both the dish name and its corresponding highest-quality image URL
+6. If an item has multiple images, collect all of them
+7. Navigate through all menu categories and tabs
+
+Prioritize extracting the largest, full-size versions of images rather than thumbnails.
+Make sure to match each image URL with the correct dish name.
+Pay attention to lazy-loaded images that might only appear when scrolling to them.`;
+
 // Default extraction schema (full menu data) - Enhanced with better property descriptions for FIRE-1
 export const DEFAULT_SCHEMA = {
   "type": "object",
@@ -72,6 +128,173 @@ export const DEFAULT_SCHEMA = {
           "imageURL": {
             "type": "string",
             "description": "The URL to the highest resolution image of the dish available"
+          }
+        },
+        "required": ["dishName", "dishPrice", "categoryName"]
+      }
+    }
+  },
+  "required": [
+    "menuItems"
+  ]
+};
+
+// Images-focused schema for DoorDash - Enhanced with better explanations for image extraction
+export const IMAGES_SCHEMA = {
+  "type": "object",
+  "properties": {
+    "menuItems": {
+      "type": "array",
+      "description": "Complete list of all menu items with a focus on extracting high-quality images",
+      "items": {
+        "type": "object",
+        "properties": {
+          "dishName": {
+            "type": "string",
+            "description": "The exact name of the dish as displayed on the menu"
+          },
+          "menuName": {
+            "type": "string",
+            "description": "The menu tab or section this dish appears in (e.g., 'Lunch', 'Dinner')"
+          },
+          "categoryName": {
+            "type": "string",
+            "description": "The category this dish belongs to on the menu"
+          },
+          "imageURL": {
+            "type": "string",
+            "description": "The highest resolution image URL for this dish. IMPORTANT: For DoorDash, you must click on menu items to open the detailed view, then look in data-src attributes, srcsets (choose largest option), and CSS background-image styles for the highest quality image."
+          },
+          "fullSizeImageURL": {
+            "type": "string",
+            "description": "The URL for the full-sized version of the image. This is often found in the detailed item view after clicking on a menu item."
+          },
+          "dishPrice": {
+            "type": "number",
+            "description": "The price of the dish as a numerical value (without currency symbols)"
+          }
+        },
+        "required": ["dishName", "imageURL"]
+      }
+    }
+  },
+  "required": [
+    "menuItems"
+  ]
+};
+
+// DoorDash-specific schema - Enhanced with detailed navigation instructions
+export const DOORDASH_SCHEMA = {
+  "type": "object",
+  "properties": {
+    "menuItems": {
+      "type": "array",
+      "description": "Complete list of all menu items from the DoorDash restaurant page. IMPORTANT: For complete data extraction, you must click on each menu item to see its full details, including high-resolution images and complete descriptions.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "menuName": {
+            "type": "string",
+            "description": "The menu tab or section name (e.g., 'Lunch', 'Dinner')"
+          },
+          "categoryName": {
+            "type": "string",
+            "description": "The category this dish belongs to on the menu (e.g., 'Appetizers', 'Main Courses')"
+          },
+          "dishName": {
+            "type": "string",
+            "description": "The exact name of the dish as displayed on the menu"
+          },
+          "dishPrice": {
+            "type": "number",
+            "description": "The price of the dish as a numerical value (without currency symbols)"
+          },
+          "dishDescription": {
+            "type": "string",
+            "description": "Full description of the dish including ingredients and preparation style. On DoorDash, this information is often only visible after clicking on an item."
+          },
+          "tags": {
+            "type": "array",
+            "description": "Any tags or attributes for this dish (e.g., 'Spicy', 'Vegetarian', 'Popular')",
+            "items": {
+              "type": "string"
+            }
+          },
+          "imageURL": {
+            "type": "string",
+            "description": "The highest resolution image URL for this dish. You MUST click on each menu item to open its detailed view and extract the highest quality images from data-src attributes, srcset attributes, or CSS background-image styles."
+          },
+          "thumbnailURL": {
+            "type": "string",
+            "description": "The thumbnail image URL shown in the menu listing (if different from the main image)"
+          },
+          "options": {
+            "type": "array",
+            "description": "Any available options for this dish (e.g., sizes, variants)",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Name of the option"
+                },
+                "price": {
+                  "type": "number",
+                  "description": "Price adjustment for this option"
+                }
+              }
+            }
+          }
+        },
+        "required": ["dishName", "dishPrice", "categoryName"]
+      }
+    }
+  },
+  "required": [
+    "menuItems"
+  ]
+};
+
+// UberEats-specific schema with enhanced navigation instructions
+export const UBEREATS_SCHEMA = {
+  "type": "object",
+  "properties": {
+    "menuItems": {
+      "type": "array",
+      "description": "Complete list of all menu items from the UberEats restaurant page. IMPORTANT: Scroll through all sections and ensure all items are loaded. Look for 'View more' buttons to expand categories.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "menuName": {
+            "type": "string",
+            "description": "The menu tab or section name if multiple menus exist (e.g., 'Lunch', 'Dinner')"
+          },
+          "categoryName": {
+            "type": "string",
+            "description": "The category heading this dish is listed under"
+          },
+          "dishName": {
+            "type": "string",
+            "description": "The exact name of the dish as displayed on the menu"
+          },
+          "dishPrice": {
+            "type": "number",
+            "description": "The price of the dish as a numerical value (without currency symbols)"
+          },
+          "dishDescription": {
+            "type": "string",
+            "description": "Full description of the dish including ingredients and preparation style. DO NOT include tags related to 'most liked' or 'Plus small'"
+          },
+          "tags": {
+            "type": "array",
+            "description": "Any tags or attributes for this dish (e.g., 'Popular', 'Vegetarian'). DO NOT include tags related to 'Thumb up outline' or percentages. DO NOT include tags related to 'most liked' or 'Plus small'",
+            "items": {
+              "type": "string"
+            }
+          },
+          "imageURL": {
+            "type": "string",
+            "description": "The URL to the highest resolution image of the dish available. For UberEats, these are typically in img tags with src attributes."
           }
         },
         "required": ["dishName", "dishPrice", "categoryName"]
@@ -143,134 +366,35 @@ export const DOORDASH_CATEGORY_PROMPT = `I need you to identify all menu categor
 IMPORTANT: Focus ONLY on identifying the category names and their positions. DO NOT extract individual menu items at this stage.
 IMPORTANT: Do not skip "Most Liked", "Popular Items", or "Featured Items" categories - these must be included.`;
 
-// Generic category detection prompt for unknown/general platforms
-export const GENERIC_CATEGORY_PROMPT = `I need you to identify all menu categories on this restaurant ordering page. This is a general-purpose prompt for various platforms. Follow these steps:
-
-1. Scroll through the entire page slowly to ensure all content loads completely
-2. Look for any menu sections, categories, or groupings of food items
-3. Common category indicators to look for:
-   - Section headers (h1, h2, h3 tags)
-   - Tabs or navigation items for different menu sections
-   - Dividers or cards that group similar items
-   - Text like "Starters", "Mains", "Desserts", "Beverages", etc.
-4. Check for expandable/collapsible sections and expand them
-5. Look for special sections like "Popular", "Featured", "Specials", "Combos", or "Deals"
-6. If the page has multiple menus (Lunch, Dinner, etc.), note each as a separate category
-7. Record the exact name of each category as displayed
-8. Note the order/position of categories on the page
-
-IMPORTANT: Focus ONLY on identifying category names. DO NOT extract individual menu items.
-IMPORTANT: Include ALL sections that group menu items, even if they have non-standard names.`;
-
-// OrderMeal-specific category detection prompt
-export const ORDERMEAL_CATEGORY_PROMPT = `I need you to identify all menu categories on this OrderMeal restaurant page. Follow these OrderMeal-specific steps:
-
-1. Look for the menu navigation on the left side of the page (desktop) or dropdown menu (mobile)
-2. OrderMeal typically displays categories as a vertical list or sidebar navigation
-3. Common OrderMeal categories include:
-   - "Starters" or "Entrées"
-   - "Mains" or "Main Courses"
-   - "Sides"
-   - "Desserts"
-   - "Beverages" or "Drinks"
-   - "Specials" or "Chef's Specials"
-4. Check for any "View All" or expandable sections
-5. Some restaurants may have meal-based categories like "Breakfast", "Lunch", "Dinner"
-6. Look for combo or meal deal sections
-7. Record each category name exactly as shown
-8. Note the display order from top to bottom
-
-IMPORTANT: Focus ONLY on category names, not individual items.
-IMPORTANT: OrderMeal may use icons next to categories - record the text name only.`;
-
-// Mobi2Go-specific category detection prompt
-export const MOBI2GO_CATEGORY_PROMPT = `I need you to identify all menu categories on this Mobi2Go restaurant page. Follow these Mobi2Go-specific steps:
-
-1. Mobi2Go typically displays categories as cards or tiles on the main page
-2. Look for the category grid layout that's common on Mobi2Go sites
-3. Each category usually has an image tile with the category name below or overlaid
-4. Common Mobi2Go category patterns:
-   - Image-based category cards
-   - Categories may be in a horizontal scroll on mobile
-   - May have "View Menu" buttons on each category
-5. Click into each category if needed to confirm it contains menu items
-6. Look for special categories like "Deals", "Combos", or "Family Packs"
-7. Check for time-based menus (Breakfast, Lunch, Dinner)
-8. Record the exact category name from each tile/card
-
-IMPORTANT: Focus on the main category divisions, not subcategories within.
-IMPORTANT: Mobi2Go may paginate categories - ensure you check all pages.`;
-
-// NextOrder-specific category detection prompt
-export const NEXTORDER_CATEGORY_PROMPT = `I need you to identify all menu categories on this NextOrder restaurant page. Follow these NextOrder-specific steps:
-
-1. NextOrder typically uses a clean, modern layout with clear category sections
-2. Look for the category menu which is often:
-   - A horizontal tab bar at the top of the menu area
-   - A sticky navigation that follows as you scroll
-   - Left sidebar navigation on desktop
-3. NextOrder categories are usually clearly labeled sections
-4. Common patterns on NextOrder:
-   - Bold category headers
-   - Sections separated by spacing or divider lines
-   - May have category descriptions under the name
-5. Check for "Popular Items" or "Recommended" sections at the top
-6. Look for any collapsed categories that need expanding
-7. NextOrder often has clear visual hierarchy - main categories are prominent
-8. Record each category exactly as displayed
-
-IMPORTANT: NextOrder may have subcategories - focus on main categories only.
-IMPORTANT: Don't miss featured or promotional sections at the top of the page.`;
-
-// DeliverEasy-specific category detection prompt
-export const DELIVEREASY_CATEGORY_PROMPT = `I need you to identify all menu categories on this DeliverEasy restaurant page. Follow these DeliverEasy-specific steps:
-
-1. DeliverEasy uses a traditional layout with clear menu sections
-2. Look for the main menu area which typically shows:
-   - Category buttons or tabs at the top
-   - Vertical list of categories in the menu section
-   - May have a category dropdown selector
-3. DeliverEasy category patterns:
-   - Often uses ALL CAPS for category names
-   - Categories may be numbered (1. STARTERS, 2. MAINS, etc.)
-   - Clear section breaks between categories
-4. Check for special sections:
-   - "MEAL DEALS"
-   - "COMBOS"
-   - "SPECIALS"
-5. Some restaurants have multiple menus - check for menu switcher
-6. Expand any collapsed sections or "Show more" buttons
-7. Categories might be in a sidebar that scrolls independently
-8. Record the exact formatting of each category name
-
-IMPORTANT: DeliverEasy may repeat popular items - record each unique category once.
-IMPORTANT: Include delivery-specific categories like "Family Packs" if present.`;
-
-// FoodHub-specific category detection prompt  
-export const FOODHUB_CATEGORY_PROMPT = `I need you to identify all menu categories on this FoodHub restaurant page. Follow these FoodHub-specific steps:
-
-1. FoodHub typically displays categories in a vertical layout
-2. Look for the menu structure which usually includes:
-   - Accordion-style expandable categories
-   - Category headers with item counts
-   - Icons or images next to category names
-3. FoodHub specific patterns:
-   - Categories may show number of items in parentheses
-   - Often has a search bar above categories
-   - May group categories under broader sections
-4. Common FoodHub categories:
-   - "Most Popular"
-   - "Starters & Sides"
-   - "Mains"
-   - "Kids Menu"
-   - "Beverages"
-5. Click to expand each category to verify it contains items
-6. Check for meal deal or combo sections
-7. Look for any dietary-specific categories (Vegetarian, Halal, etc.)
-8. Record the category name without the item count
-
-IMPORTANT: FoodHub may nest subcategories - record all levels as separate categories.
-IMPORTANT: Don't skip collapsed categories - expand and record all.`;
+// Menu Items URL Schema - for extracting menu item URLs from base store page
+export const MENU_ITEMS_URL_SCHEMA = {
+  "type": "object",
+  "properties": {
+    "menuItemUrls": {
+      "type": "array",
+      "description": "Complete list of all menu item landing page URLs found on the restaurant page",
+      "items": {
+        "type": "object",
+        "properties": {
+          "itemName": {
+            "type": "string",
+            "description": "The name of the menu item as displayed on the main menu page"
+          },
+          "itemUrl": {
+            "type": "string",
+            "description": "The full URL to the individual menu item page (e.g., base-url/category-id/menu-item-id)"
+          },
+          "categoryName": {
+            "type": "string",
+            "description": "The category this menu item belongs to"
+          }
+        },
+        "required": ["itemName", "itemUrl"]
+      }
+    }
+  },
+  "required": ["menuItemUrls"]
+};
 
 // Option Sets Schema - for extracting option sets from individual menu item pages
 export const OPTION_SETS_SCHEMA = {
@@ -332,6 +456,19 @@ export const OPTION_SETS_SCHEMA = {
   "required": ["optionSets", "menuItemName"]
 };
 
+// UberEats-specific prompt for extracting menu item URLs
+export const UBEREATS_MENU_ITEMS_URL_PROMPT = `I need you to extract all menu item landing page URLs from this UberEats restaurant page. Follow these steps:
+
+1. Scroll through the entire menu page to ensure all sections load
+2. Look for clickable menu items throughout all categories
+3. For each menu item, identify if it has a clickable link that leads to a detailed item page
+4. Extract the full URL for each menu item's individual page (these typically follow the pattern: base-url/category-id/menu-item-id)
+5. Also capture the item name and category as displayed on the main menu
+6. IMPORTANT: Only include items that have individual landing pages - not items that just show a popup or modal
+7. Make sure to check all menu sections including "Featured Items", "Popular Items", etc.
+
+Focus on finding actual URLs to individual menu item pages where option sets and detailed customization would be displayed.`;
+
 // UberEats-specific prompt for extracting option sets from menu item pages
 export const UBEREATS_OPTION_SETS_PROMPT = `I need you to extract all option sets and customization options from this UberEats menu item page. Follow these steps:
 
@@ -354,22 +491,19 @@ Extract the complete customization structure that customers would see when order
 // Define schema options for UI dropdown
 export const SCHEMA_OPTIONS = [
   { id: 'default', name: 'Standard (Full Menu)', schema: DEFAULT_SCHEMA },
-  { id: 'categories', name: 'Category Detection', schema: CATEGORY_DETECTION_SCHEMA },
-  { id: 'option_sets', name: 'Option Sets', schema: OPTION_SETS_SCHEMA }
+  { id: 'doordash', name: 'DoorDash Optimized', schema: DOORDASH_SCHEMA },
+  { id: 'images', name: 'Images Focused', schema: IMAGES_SCHEMA },
+  { id: 'categories', name: 'Category Detection', schema: CATEGORY_DETECTION_SCHEMA }
 ];
 
 // Define prompt options for UI dropdown
 export const PROMPT_OPTIONS = [
   { id: 'default', name: 'Standard (General)', prompt: DEFAULT_PROMPT },
-  { id: 'generic_categories', name: 'Generic Category Detection', prompt: GENERIC_CATEGORY_PROMPT },
+  { id: 'ubereats', name: 'UberEats Optimized', prompt: UBEREATS_PROMPT },
+  { id: 'doordash', name: 'DoorDash Optimized', prompt: DOORDASH_PROMPT },
+  { id: 'doordash_images', name: 'DoorDash Images Focus', prompt: DOORDASH_IMAGES_PROMPT },
   { id: 'ubereats_categories', name: 'UberEats Category Detection', prompt: UBEREATS_CATEGORY_PROMPT },
-  { id: 'doordash_categories', name: 'DoorDash Category Detection', prompt: DOORDASH_CATEGORY_PROMPT },
-  { id: 'ordermeal_categories', name: 'OrderMeal Category Detection', prompt: ORDERMEAL_CATEGORY_PROMPT },
-  { id: 'mobi2go_categories', name: 'Mobi2Go Category Detection', prompt: MOBI2GO_CATEGORY_PROMPT },
-  { id: 'nextorder_categories', name: 'NextOrder Category Detection', prompt: NEXTORDER_CATEGORY_PROMPT },
-  { id: 'delivereasy_categories', name: 'DeliverEasy Category Detection', prompt: DELIVEREASY_CATEGORY_PROMPT },
-  { id: 'foodhub_categories', name: 'FoodHub Category Detection', prompt: FOODHUB_CATEGORY_PROMPT },
-  { id: 'ubereats_option_sets', name: 'UberEats Option Sets', prompt: UBEREATS_OPTION_SETS_PROMPT }
+  { id: 'doordash_categories', name: 'DoorDash Category Detection', prompt: DOORDASH_CATEGORY_PROMPT }
 ];
 
 // Define extraction method options for UI dropdown

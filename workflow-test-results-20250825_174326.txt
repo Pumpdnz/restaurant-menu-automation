@@ -1,0 +1,33 @@
+=====================================
+Workflow Testing Report - Mon Aug 25 17:43:26 NZST 2025
+=====================================
+
+UberEats - Agent: FALLBACK (All Items only)
+UberEats - UI: NO CATEGORIES (0 found)
+DoorDash - Agent: FALLBACK (All Items only)
+DoorDash - UI: NO CATEGORIES (0 found)
+OrderMeal - Agent: FALLBACK (All Items only)
+OrderMeal - UI: FAILED (Failed to create restaurant in database)
+DeliverEasy - Agent: SUCCESS (8 categories)
+DeliverEasy - UI: FAILED (Failed to create restaurant in database)
+Mobi2Go - Agent: SUCCESS (9 categories)
+Mobi2Go - UI: FAILED (Failed to create restaurant in database)
+NextOrder - Agent: SUCCESS (11 categories)
+NextOrder - UI: FAILED (Failed to create restaurant in database)
+Generic - Agent: FALLBACK (All Items only)
+Generic - UI: FAILED (Failed to create restaurant in database)
+[0;32m═══════════════════════════════════════[0m
+[0;32m           TEST SUMMARY[0m
+[0;32m═══════════════════════════════════════[0m
+
+AGENT WORKFLOW (/api/scan-categories):
+  ✅ Success: 3
+  ⚠️  Fallback: 4
+  ❌ Failed: 0
+
+UI WORKFLOW (/api/extractions/start):
+  ✅ Success: 0
+  ⚠️  No Categories: 2
+  ❌ Failed: 5
+
+[0;32m═══════════════════════════════════════[0m

@@ -7,7 +7,8 @@ import {
   Clock,
   RefreshCw,
   Download,
-  Eye
+  Eye,
+  Trash2
 } from 'lucide-react';
 import {
   Table,
@@ -20,12 +21,21 @@ import {
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { cn } from '../lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog';
 
 export default function Extractions() {
   const navigate = useNavigate();
   const [extractions, setExtractions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState({ open: false, jobId: null, restaurantName: null });
 
   useEffect(() => {
     fetchExtractions();
@@ -165,6 +175,25 @@ export default function Extractions() {
     }
   };
 
+  const handleDeleteExtraction = async () => {
+    if (!deleteConfirm.jobId) return;
+    
+    try {
+      const response = await api.delete(`/extractions/${deleteConfirm.jobId}`);
+      
+      if (response.data.success) {
+        // Refresh the extractions list
+        await fetchExtractions();
+        console.log('Extraction deleted successfully');
+      }
+    } catch (err) {
+      console.error('Failed to delete extraction:', err);
+      // You could add error toast here
+    } finally {
+      setDeleteConfirm({ open: false, jobId: null, restaurantName: null });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -277,6 +306,19 @@ export default function Extractions() {
                             <RefreshCw className="h-4 w-4" />
                           </Button>
                         )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setDeleteConfirm({ 
+                            open: true, 
+                            jobId: extraction.job_id, 
+                            restaurantName: extraction.restaurants?.name || 'Unknown' 
+                          })}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          title="Delete extraction"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -287,6 +329,34 @@ export default function Extractions() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirm.open} onOpenChange={(open) => !open && setDeleteConfirm({ open: false, jobId: null, restaurantName: null })}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Delete Extraction</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete the extraction for <span className="font-semibold">{deleteConfirm.restaurantName}</span>? 
+              This will also delete all associated menus and menu items. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteConfirm({ open: false, jobId: null, restaurantName: null })}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteExtraction}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete Extraction
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

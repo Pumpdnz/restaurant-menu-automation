@@ -1,12 +1,568 @@
-import React from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import api, { menuItemAPI } from '../services/api';
+import { 
+  ArrowLeftIcon,
+  DocumentArrowDownIcon,
+  PhotoIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  PencilIcon,
+  CheckIcon,
+  XMarkIcon,
+  ClockIcon,
+  BuildingStorefrontIcon,
+  TagIcon,
+  ChevronDownIcon
+} from '@heroicons/react/24/outline';
+import EditableMenuItem from '../components/menu/EditableMenuItem';
+import { validateMenuItem, validateMenuItems, getChangedItems } from '../components/menu/MenuItemValidator';
+import { useToast } from '../hooks/use-toast';
+import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu';
 
 export default function MenuDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [menu, setMenu] = useState(null);
+  const [menuData, setMenuData] = useState(null);
+  const [originalMenuData, setOriginalMenuData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editedItems, setEditedItems] = useState({});
+  const [validationErrors, setValidationErrors] = useState({});
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    fetchMenuDetails();
+  }, [id]);
+
+  const fetchMenuDetails = async () => {
+    try {
+      const response = await api.get(`/menus/${id}`);
+      if (response.data.success && response.data.menu) {
+        const dbMenu = response.data.menu;
+        setMenu(dbMenu);
+        
+        // Transform database structure to component format
+        const transformedData = {};
+        
+        dbMenu.categories.forEach(category => {
+          transformedData[category.name] = category.menu_items.map(item => ({
+            id: item.id,
+            name: item.name,
+            price: item.price,
+            description: item.description,
+            tags: item.tags || [],
+            imageURL: item.item_images?.[0]?.url || null,
+            categoryId: category.id,
+            categoryName: category.name
+          }));
+        });
+        
+        setMenuData(transformedData);
+        setOriginalMenuData(JSON.parse(JSON.stringify(transformedData)));
+        
+        // Set first category as selected by default
+        const categories = Object.keys(transformedData);
+        if (categories.length > 0) {
+          setSelectedCategory(categories[0]);
+        }
+      }
+      setError(null);
+    } catch (err) {
+      console.error('Failed to fetch menu details:', err);
+      setError('Failed to load menu details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDownloadCSV = async (includeImages = true) => {
+    try {
+      const response = await api.post(`/menus/${id}/export`, {
+        includeImages: includeImages
+      });
+      
+      if (response.data.success && response.data.csvData) {
+        // Create a Blob from the CSV string
+        const blob = new Blob([response.data.csvData], { type: 'text/csv;charset=utf-8;' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        const filename = response.data.filename || `menu_${id}_export.csv`;
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        
+        toast({
+          title: "CSV exported successfully",
+          description: `Exported ${response.data.stats?.rowCount || 'all'} items to ${filename}`,
+        });
+      }
+    } catch (err) {
+      console.error('Failed to export CSV:', err);
+      toast({
+        title: "Export failed",
+        description: err.response?.data?.error || 'Failed to export menu to CSV',
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDownloadImages = async () => {
+    try {
+      toast({
+        title: "Preparing images...",
+        description: "This may take a few moments",
+      });
+      
+      const response = await api.get(`/menus/${id}/download-images-zip`, {
+        responseType: 'blob'
+      });
+      
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `menu_${id}_images.zip`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Images downloaded successfully",
+        description: "Check your downloads folder for the ZIP file",
+      });
+    } catch (err) {
+      console.error('Failed to download images:', err);
+      toast({
+        title: "Download failed",
+        description: 'Failed to download menu images',
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleItemChange = (itemId, updatedItem) => {
+    const errors = validateMenuItem(updatedItem);
+    
+    setEditedItems(prev => ({
+      ...prev,
+      [itemId]: updatedItem
+    }));
+    
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [itemId]: errors
+      }));
+    } else {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[itemId];
+        return newErrors;
+      });
+    }
+    
+    // Update the menuData state to reflect the changes
+    setMenuData(prev => {
+      const newData = { ...prev };
+      Object.keys(newData).forEach(category => {
+        newData[category] = newData[category].map(item => 
+          item.id === itemId ? updatedItem : item
+        );
+      });
+      return newData;
+    });
+  };
+
+  const handleCancelEdit = () => {
+    if (Object.keys(editedItems).length > 0) {
+      if (!window.confirm('You have unsaved changes. Are you sure you want to cancel?')) {
+        return;
+      }
+    }
+    setIsEditMode(false);
+    setEditedItems({});
+    setValidationErrors({});
+    setMenuData(JSON.parse(JSON.stringify(originalMenuData)));
+  };
+
+  const handleSaveChanges = async () => {
+    // Validate all edited items
+    const allErrors = validateMenuItems(Object.values(editedItems));
+    if (Object.keys(allErrors).length > 0) {
+      setValidationErrors(allErrors);
+      toast({
+        title: "Validation errors",
+        description: "Please fix the errors before saving",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsSaving(true);
+    
+    try {
+      // Get only the changed items
+      const changedItems = getChangedItems(editedItems, originalMenuData);
+      
+      if (changedItems.length === 0) {
+        toast({
+          title: "No changes to save",
+          description: "No items have been modified",
+        });
+        setIsEditMode(false);
+        setEditedItems({});
+        setIsSaving(false);
+        return;
+      }
+      
+      // Save all changed items
+      const response = await menuItemAPI.bulkUpdate(changedItems);
+      
+      if (response.data.success) {
+        toast({
+          title: "Changes saved successfully",
+          description: `Updated ${response.data.updatedCount} menu items`,
+        });
+        
+        // Update original data to reflect saved changes
+        setOriginalMenuData(JSON.parse(JSON.stringify(menuData)));
+        setIsEditMode(false);
+        setEditedItems({});
+        setValidationErrors({});
+        
+        // Refresh menu data
+        await fetchMenuDetails();
+      }
+    } catch (err) {
+      console.error('Failed to save changes:', err);
+      toast({
+        title: "Save failed",
+        description: err.response?.data?.error || 'Failed to save menu changes',
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const toggleEditMode = () => {
+    if (isEditMode) {
+      handleCancelEdit();
+    } else {
+      setIsEditMode(true);
+    }
+  };
+
+  const getStatusBadge = () => {
+    if (!menu) return null;
+    
+    if (menu.is_active) {
+      return (
+        <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+          <CheckCircleIcon className="h-3 w-3 mr-1" />
+          Active
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">
+        <XCircleIcon className="h-3 w-3 mr-1" />
+        Inactive
+      </Badge>
+    );
+  };
+
+  const getPlatformBadge = () => {
+    if (!menu?.platforms) return null;
+    
+    const platformColors = {
+      ubereats: 'bg-green-100 text-green-800 border-green-200',
+      doordash: 'bg-red-100 text-red-800 border-red-200',
+      unknown: 'bg-gray-100 text-gray-800 border-gray-200'
+    };
+    
+    const platform = menu.platforms.name?.toLowerCase() || 'unknown';
+    
+    return (
+      <Badge 
+        variant="outline"
+        className={`capitalize ${platformColors[platform] || platformColors.unknown}`}
+      >
+        {menu.platforms.name || 'Unknown'}
+      </Badge>
+    );
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-lg bg-red-50 p-4">
+        <p className="text-sm text-red-800">{error}</p>
+      </div>
+    );
+  }
+
+  if (!menu || !menuData) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-500">Menu not found</p>
+      </div>
+    );
+  }
+
+  const categories = Object.keys(menuData);
+  const totalItems = Object.values(menuData).reduce((sum, items) => sum + items.length, 0);
+  const editedItemCount = Object.keys(editedItems).length;
+  const hasErrors = Object.keys(validationErrors).length > 0;
+
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-gray-900">Menu Detail</h1>
-      <p className="mt-1 text-sm text-gray-500">Menu ID: {id}</p>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => navigate('/menus')}
+              className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900"
+            >
+              <ArrowLeftIcon className="h-4 w-4 mr-1" />
+              Back to Menus
+            </button>
+          </div>
+          <div className="flex items-center space-x-3">
+            {!isEditMode ? (
+              <>
+                <Button
+                  onClick={toggleEditMode}
+                  variant="outline"
+                  size="sm"
+                >
+                  <PencilIcon className="h-4 w-4 mr-1.5" />
+                  Edit Menu
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <DocumentArrowDownIcon className="h-4 w-4 mr-1.5" />
+                      Export CSV
+                      <ChevronDownIcon className="h-3 w-3 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleDownloadCSV(true)}>
+                      <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
+                      CSV with Images
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleDownloadCSV(false)}>
+                      <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
+                      CSV without Images
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button
+                  onClick={handleDownloadImages}
+                  variant="outline"
+                  size="sm"
+                >
+                  <PhotoIcon className="h-4 w-4 mr-1.5" />
+                  Download Images
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  onClick={handleSaveChanges}
+                  disabled={isSaving || hasErrors}
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  <CheckIcon className="h-4 w-4 mr-1.5" />
+                  {isSaving ? 'Saving...' : `Save Changes (${editedItemCount})`}
+                </Button>
+                <Button
+                  onClick={handleCancelEdit}
+                  disabled={isSaving}
+                  variant="outline"
+                  size="sm"
+                >
+                  <XMarkIcon className="h-4 w-4 mr-1.5" />
+                  Cancel
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Menu Info Card */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <BuildingStorefrontIcon className="h-6 w-6 text-gray-600" />
+              <span>{menu.restaurants?.name || 'Unknown Restaurant'}</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              {getStatusBadge()}
+              {getPlatformBadge()}
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <p className="text-sm text-gray-500">Version</p>
+              <p className="font-medium">v{menu.version || '1.0'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Total Items</p>
+              <p className="font-medium">{totalItems}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Created</p>
+              <p className="font-medium text-sm">{formatDate(menu.created_at)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Last Updated</p>
+              <p className="font-medium text-sm">{formatDate(menu.updated_at)}</p>
+            </div>
+          </div>
+          {menu.is_merged && (
+            <div className="mt-4 p-3 bg-purple-50 rounded-lg">
+              <p className="text-sm text-purple-800">
+                <Badge variant="secondary" className="mr-2">Merged Menu</Badge>
+                Created from multiple menu sources
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Edit Mode Notification */}
+      {isEditMode && (
+        <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <PencilIcon className="h-5 w-5 text-blue-600 mt-0.5 mr-2" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-blue-900">Edit Mode Active</p>
+              <p className="text-sm text-blue-700 mt-1">
+                Click on any menu item field to edit. Changes will be highlighted in yellow.
+                {editedItemCount > 0 && (
+                  <span className="ml-2 font-medium">
+                    {editedItemCount} item{editedItemCount !== 1 ? 's' : ''} modified
+                  </span>
+                )}
+              </p>
+              {hasErrors && (
+                <p className="text-sm text-red-600 mt-1">
+                  Please fix validation errors before saving
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Categories and Items */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Category List */}
+        <div className="lg:col-span-1">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">Categories</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="space-y-1">
+                {categories.map((category) => (
+                  <button
+                    key={category}
+                    onClick={() => setSelectedCategory(category)}
+                    className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                      selectedCategory === category
+                        ? 'bg-blue-50 text-blue-700 border-l-2 border-blue-600'
+                        : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium">{category}</span>
+                      <span className="text-xs text-gray-500">
+                        {menuData[category].length}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Menu Items */}
+        <div className="lg:col-span-3">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>{selectedCategory}</span>
+                <Badge variant="secondary">
+                  {menuData[selectedCategory]?.length || 0} items
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {selectedCategory && menuData[selectedCategory]?.map((item) => {
+                  // Get the current item state (edited or original)
+                  const currentItem = editedItems[item.id] || item;
+                  
+                  return (
+                    <EditableMenuItem
+                      key={item.id}
+                      item={currentItem}
+                      isEditMode={isEditMode}
+                      onUpdate={handleItemChange}
+                      validationErrors={validationErrors[item.id] || {}}
+                    />
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,0 +1,732 @@
+{
+  "restaurant": "Mexicali Fresh Wigram",
+  "downloadDate": "2025-08-24T01:39:25.153Z",
+  "stats": {
+    "total": 102,
+    "downloaded": 96,
+    "failed": 6,
+    "noImage": 0
+  },
+  "items": [
+    {
+      "dishName": "Americano Burrito",
+      "categoryName": "Burritos",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/0b6e776f96f96ca581dc19685698d168/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "burritos/americano_burrito.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Bandito Burrito",
+      "categoryName": "Burritos",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/6554464c5e6e09cb677dd719cbde6c0c/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "burritos/bandito_burrito.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Bueno Burrito",
+      "categoryName": "Burritos",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6cb56a4c-6ca7-4d0a-99e4-e22da612da2e-retina-large.jpg",
+      "localPath": "burritos/bueno_burrito.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "California Burrito",
+      "categoryName": "Burritos",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/93531cc1c4252079c06dfdd708fcb259/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "burritos/california_burrito.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chicken Fajita Burrito",
+      "categoryName": "Burritos",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/e434fb792f5f12b0eee50758ba55d00d/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "burritos/chicken_fajita_burrito.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Jack Burrito (V)",
+      "categoryName": "Burritos",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/37f2dabce41ccf5ad97762567686d388/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "burritos/jack_burrito_v_.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Longboard Burrito",
+      "categoryName": "Burritos",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/328f0defeeacf185aaf6b2f89084c34a/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "burritos/longboard_burrito.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Macho Burrito",
+      "categoryName": "Burritos",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/4be42b972f0cc8f9655e590fe02d77fd/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "burritos/macho_burrito.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Burrito (Build Your Own)",
+      "categoryName": "Burritos",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/bc8b03ae98c9ada1ba61178fb8e40d7b/c67fc65e9b4e16a553eb7574fba090f1.jpeg",
+      "localPath": "burritos/burrito_build_your_own_.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Americano Nachos",
+      "categoryName": "Nachos",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/55a529d2143e51c9504eb636ed6e4529/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "nachos/americano_nachos.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Bueno Nachos",
+      "categoryName": "Nachos",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/620797b7-6674-57f7-a258-0cee8f2f21b2/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "Request failed with status code 404"
+    },
+    {
+      "dishName": "California Nachos",
+      "categoryName": "Nachos",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/7216614907004b7e2e8e1ef06b568e92/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "nachos/california_nachos.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Jack Nachos",
+      "categoryName": "Nachos",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/a7c55e91-fff4-5ee9-8e87-11bbed836e71/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "Request failed with status code 404"
+    },
+    {
+      "dishName": "The Notorious P.I.G",
+      "categoryName": "Nachos",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/48b82d13-e8cb-508b-ac32-7d4337753287/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "Request failed with status code 404"
+    },
+    {
+      "dishName": "Macho Nachos",
+      "categoryName": "Nachos",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/848d72c9-adb7-4ec5-b47e-2c382eba1b21-retina-large.jpg",
+      "localPath": "nachos/macho_nachos.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Americano Taco Salad",
+      "categoryName": "Taco Salad",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/55a529d2143e51c9504eb636ed6e4529/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "taco_salad/americano_taco_salad.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Bueno Taco Salad",
+      "categoryName": "Taco Salad",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/b9cec9c4dc11fd672dc9808528ebd5d7/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "taco_salad/bueno_taco_salad.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "California Taco Salad",
+      "categoryName": "Taco Salad",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/9499724933c22e98f32bc8c5943e2a8d/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "taco_salad/california_taco_salad.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chicken Fajita Taco Salad",
+      "categoryName": "Taco Salad",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/b9cec9c4dc11fd672dc9808528ebd5d7/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "taco_salad/chicken_fajita_taco_salad.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Jack Taco Salad",
+      "categoryName": "Taco Salad",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/2ca043ca45205f57138dcb71e809f8ff/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "taco_salad/jack_taco_salad.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Longboard Taco Salad",
+      "categoryName": "Taco Salad",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/c729c58ac40844878238c519f6038650/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "taco_salad/longboard_taco_salad.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Bean & Cheese Burrito",
+      "categoryName": "Sides & Snacks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6912c4ee-f8ad-4caa-a419-c31addb34d5f-retina-large.jpg",
+      "localPath": "sides_snacks/bean_cheese_burrito.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Cheese Quesadilla",
+      "categoryName": "Sides & Snacks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/2c053e6b-2c6b-4272-8c22-82e2dc27a7af-retina-large.jpg",
+      "localPath": "sides_snacks/cheese_quesadilla.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Hot Tots",
+      "categoryName": "Sides & Snacks",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/d1c3074e3a77b90887a3140cee165499/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "sides_snacks/hot_tots.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Mexi Fries",
+      "categoryName": "Sides & Snacks",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/5f3f900386547123cac2266f5f813b9d/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "sides_snacks/mexi_fries.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "El Dippo",
+      "categoryName": "Sides & Snacks",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/7216614907004b7e2e8e1ef06b568e92/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "sides_snacks/el_dippo.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chips & Guac",
+      "categoryName": "Sides & Snacks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/a939fe81-6ac3-441d-80c3-7d82d53fb986-retina-large.png",
+      "localPath": "sides_snacks/chips_guac.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Spicy Street Corn",
+      "categoryName": "Sides & Snacks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/0f71096b-488a-4107-a50c-036b49726dc6-retina-large.png",
+      "localPath": "sides_snacks/spicy_street_corn.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chips & Salsa",
+      "categoryName": "Sides & Snacks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/e33624f9-b05f-431e-8c8c-b1eafe6ee598-retina-large.png",
+      "localPath": "sides_snacks/chips_salsa.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Extra Sauce",
+      "categoryName": "Sides & Snacks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/2c053e6b-2c6b-4272-8c22-82e2dc27a7af-retina-large.jpg",
+      "localPath": "sides_snacks/extra_sauce.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Bueno Quesadilla",
+      "categoryName": "Quesadilla",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/9333ecc0414d5266aa9634c249c6dedf/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "Request failed with status code 404"
+    },
+    {
+      "dishName": "California Quesadilla",
+      "categoryName": "Quesadilla",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/e2ecbdbad024a42b165f6125a10f93bc/0fb376d1da56c05644450062d25c5c84.jpeg",
+      "localPath": "quesadilla/california_quesadilla.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Jalapeno Chicken Quesadilla",
+      "categoryName": "Quesadilla",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/924a50ad601440aeae1858ed6aa865e9/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "quesadilla/jalapeno_chicken_quesadilla.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Longboard Quesadilla",
+      "categoryName": "Quesadilla",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/2849c71d43b43017283b0e051527b072/0fb376d1da56c05644450062d25c5c84.jpeg",
+      "localPath": "quesadilla/longboard_quesadilla.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Bandito Quesadilla",
+      "categoryName": "Quesadilla",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/5cc297d7235d02aad005486af75c156e/0fb376d1da56c05644450062d25c5c84.jpeg",
+      "localPath": "quesadilla/bandito_quesadilla.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "BBQ Jackfruit Quesadilla",
+      "categoryName": "Quesadilla",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6cb56a4c-6ca7-4d0a-99e4-e22da612da2e-retina-large.jpg",
+      "localPath": "quesadilla/bbq_jackfruit_quesadilla.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Slow Roasted Beef Barbacoa Quesadilla",
+      "categoryName": "Quesadilla",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6cb56a4c-6ca7-4d0a-99e4-e22da612da2e-retina-large.jpg",
+      "localPath": "quesadilla/slow_roasted_beef_barbacoa_quesadilla.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Lil’ Nachos",
+      "categoryName": "Kids",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/dd245493b8d06a09ae6c586722c2c2eb/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "kids/lil_nachos.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Lil’ Quesadilla",
+      "categoryName": "Kids",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/f2bf8c5bee46a665187c3c6895cced53/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "kids/lil_quesadilla.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Lil’ Burrito",
+      "categoryName": "Kids",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/1ff78c7a-a9f8-55a2-bb2d-20ac366d73d0/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "Request failed with status code 404"
+    },
+    {
+      "dishName": "Lil’ Taco",
+      "categoryName": "Kids",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/eb27396d-9502-55d3-bc37-4c17ea1c18ef/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "Request failed with status code 404"
+    },
+    {
+      "dishName": "Churros",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/8573b3980ce3f36549cca7beaef8d36a/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "featured_items/churros.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Bandito Quesadilla",
+      "categoryName": "Featured Items",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/5cc297d7235d02aad005486af75c156e/0fb376d1da56c05644450062d25c5c84.jpeg",
+      "localPath": "featured_items/bandito_quesadilla.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "*New* Jalapeño Ranch Chicken Salad",
+      "categoryName": "Green Salads",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/b9cec9c4dc11fd672dc9808528ebd5d7/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "green_salads/_new_jalape_o_ranch_chicken_salad.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Mango Chicken Salad",
+      "categoryName": "Green Salads",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/c729c58ac40844878238c519f6038650/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "green_salads/mango_chicken_salad.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Paleo Salad",
+      "categoryName": "Green Salads",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/2ca043ca45205f57138dcb71e809f8ff/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "green_salads/paleo_salad.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Churros",
+      "categoryName": "Sweet",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/8573b3980ce3f36549cca7beaef8d36a/5143f1e218c67c20fe5a4cd33d90b07b.jpeg",
+      "localPath": "sweet/churros.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Churro",
+      "categoryName": "Sweet",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6cb56a4c-6ca7-4d0a-99e4-e22da612da2e-retina-large.jpg",
+      "localPath": "sweet/churro.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Notorious P.I.G. Loaded Fries",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/143401b1-e971-4d33-b7b8-67ecb9301047-retina-large.png",
+      "localPath": "most_ordered/notorious_p_i_g_loaded_fries.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Macho Nachos",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/848d72c9-adb7-4ec5-b47e-2c382eba1b21-retina-large.jpg",
+      "localPath": "most_ordered/macho_nachos.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "BBQ Jackfruit Quesadilla",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/2c053e6b-2c6b-4272-8c22-82e2dc27a7af-retina-large.jpg",
+      "localPath": "most_ordered/bbq_jackfruit_quesadilla.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Slow Roasted Beef Barbacoa Quesadilla",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/2c053e6b-2c6b-4272-8c22-82e2dc27a7af-retina-large.jpg",
+      "localPath": "most_ordered/slow_roasted_beef_barbacoa_quesadilla.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chips & Guac",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/a939fe81-6ac3-441d-80c3-7d82d53fb986-retina-large.png",
+      "localPath": "most_ordered/chips_guac.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Spicy Street Corn",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/0f71096b-488a-4107-a50c-036b49726dc6-retina-large.png",
+      "localPath": "most_ordered/spicy_street_corn.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chips & Salsa",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/e33624f9-b05f-431e-8c8c-b1eafe6ee598-retina-large.png",
+      "localPath": "most_ordered/chips_salsa.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Churro",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6cb56a4c-6ca7-4d0a-99e4-e22da612da2e-retina-large.jpg",
+      "localPath": "most_ordered/churro.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Pepsi Max 300ml",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/d6cfb5a9-536d-4d85-80df-f5bc77992ca4-retina-large.jpg",
+      "localPath": "most_ordered/pepsi_max_300ml.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Mountain Dew Can",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/81cd2096-cf38-4df8-912a-95ba3571972e-retina-large.jpg",
+      "localPath": "most_ordered/mountain_dew_can.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Pepsi Max Can",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/f2748364-e87b-459e-b441-e851232edf40-retina-large.jpg",
+      "localPath": "most_ordered/pepsi_max_can.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "7 Up 300ml",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/83cfcd5d-0000-4170-9ffb-ab18e8564eb9-retina-large.jpg",
+      "localPath": "most_ordered/7_up_300ml.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Pepsi Can",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/056581b3-0695-4e57-a889-94af3271e02e-retina-large.jpg",
+      "localPath": "most_ordered/pepsi_can.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Allganics Ginger Beer",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6cb56a4c-6ca7-4d0a-99e4-e22da612da2e-retina-large.jpg",
+      "localPath": "most_ordered/allganics_ginger_beer.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Allganics Lemon Lime Bitters",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6cb56a4c-6ca7-4d0a-99e4-e22da612da2e-retina-large.jpg",
+      "localPath": "most_ordered/allganics_lemon_lime_bitters.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Boss Iced Vanilla Latte",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6cb56a4c-6ca7-4d0a-99e4-e22da612da2e-retina-large.jpg",
+      "localPath": "most_ordered/boss_iced_vanilla_latte.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Boss Iced Caramel",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6cb56a4c-6ca7-4d0a-99e4-e22da612da2e-retina-large.jpg",
+      "localPath": "most_ordered/boss_iced_caramel.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Just Juice Splash Tropical",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/2e79c161-06fa-472c-9cde-2a03f46836be-retina-large.png",
+      "localPath": "most_ordered/just_juice_splash_tropical.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Just Juice Splash Orange Mango",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6f67dbab-bd78-4a2b-862f-075d365811a9-retina-large.png",
+      "localPath": "most_ordered/just_juice_splash_orange_mango.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "McCoy 500ml",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6cb56a4c-6ca7-4d0a-99e4-e22da612da2e-retina-large.jpg",
+      "localPath": "most_ordered/mccoy_500ml.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "V Energy Green 250mL",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/69a828b1-ac40-4b14-993d-6891a2f2b2e2-retina-large.png",
+      "localPath": "most_ordered/v_energy_green_250ml.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "V Energy Blue 250mL",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/dc06c927-56b5-4481-8332-9c558b848b51-retina-large.png",
+      "localPath": "most_ordered/v_energy_blue_250ml.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "7 Up Zero Sugar Can",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/8ff4729f-26dc-4baf-87e7-7b426ea944fb-retina-large.jpg",
+      "localPath": "most_ordered/7_up_zero_sugar_can.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Boss Long Black",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6cb56a4c-6ca7-4d0a-99e4-e22da612da2e-retina-large.jpg",
+      "localPath": "most_ordered/boss_long_black.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Boss Double Espresso",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6cb56a4c-6ca7-4d0a-99e4-e22da612da2e-retina-large.jpg",
+      "localPath": "most_ordered/boss_double_espresso.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Boss Iced Latte",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6cb56a4c-6ca7-4d0a-99e4-e22da612da2e-retina-large.jpg",
+      "localPath": "most_ordered/boss_iced_latte.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Just Juice Splash Blackcurrent",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/96d3933c-dc04-44c1-aa14-8f6f60131d9a-retina-large.png",
+      "localPath": "most_ordered/just_juice_splash_blackcurrent.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "H2Go 425ml Spring Water",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/5b14abf1-c261-4c41-ba25-6be3df60c13f-retina-large.jpg",
+      "localPath": "most_ordered/h2go_425ml_spring_water.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "V Zero Original 250mL",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/a7cd8232-bf73-4805-bd3d-f4f09d98a50f-retina-large.png",
+      "localPath": "most_ordered/v_zero_original_250ml.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Jarritos",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6cb56a4c-6ca7-4d0a-99e4-e22da612da2e-retina-large.jpg",
+      "localPath": "most_ordered/jarritos.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Pepsi 300ml",
+      "categoryName": "Most Ordered",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/983b47f8-50f4-4d3b-a212-33849cba5c42-retina-large.jpg",
+      "localPath": "most_ordered/pepsi_300ml.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Pepsi Max 300ml",
+      "categoryName": "Drinks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/d6cfb5a9-536d-4d85-80df-f5bc77992ca4-retina-large.jpg",
+      "localPath": "drinks/pepsi_max_300ml.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Mountain Dew Can",
+      "categoryName": "Drinks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/81cd2096-cf38-4df8-912a-95ba3571972e-retina-large.jpg",
+      "localPath": "drinks/mountain_dew_can.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Pepsi Max Can",
+      "categoryName": "Drinks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/f2748364-e87b-459e-b441-e851232edf40-retina-large.jpg",
+      "localPath": "drinks/pepsi_max_can.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "7 Up 300ml",
+      "categoryName": "Drinks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/83cfcd5d-0000-4170-9ffb-ab18e8564eb9-retina-large.jpg",
+      "localPath": "drinks/7_up_300ml.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Pepsi Can",
+      "categoryName": "Drinks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/056581b3-0695-4e57-a889-94af3271e02e-retina-large.jpg",
+      "localPath": "drinks/pepsi_can.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Allganics Ginger Beer",
+      "categoryName": "Drinks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/5b14abf1-c261-4c41-ba25-6be3df60c13f-retina-large.jpg",
+      "localPath": "drinks/allganics_ginger_beer.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Allganics Lemon Lime Bitters",
+      "categoryName": "Drinks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/5b14abf1-c261-4c41-ba25-6be3df60c13f-retina-large.jpg",
+      "localPath": "drinks/allganics_lemon_lime_bitters.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Boss Iced Vanilla Latte",
+      "categoryName": "Drinks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/5b14abf1-c261-4c41-ba25-6be3df60c13f-retina-large.jpg",
+      "localPath": "drinks/boss_iced_vanilla_latte.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Boss Iced Caramel",
+      "categoryName": "Drinks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/5b14abf1-c261-4c41-ba25-6be3df60c13f-retina-large.jpg",
+      "localPath": "drinks/boss_iced_caramel.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Just Juice Splash Tropical",
+      "categoryName": "Drinks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/2e79c161-06fa-472c-9cde-2a03f46836be-retina-large.png",
+      "localPath": "drinks/just_juice_splash_tropical.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Just Juice Splash Orange Mango",
+      "categoryName": "Drinks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/6f67dbab-bd78-4a2b-862f-075d365811a9-retina-large.png",
+      "localPath": "drinks/just_juice_splash_orange_mango.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "McCoy 500ml",
+      "categoryName": "Drinks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/5b14abf1-c261-4c41-ba25-6be3df60c13f-retina-large.jpg",
+      "localPath": "drinks/mccoy_500ml.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "V Energy Green 250mL",
+      "categoryName": "Drinks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/69a828b1-ac40-4b14-993d-6891a2f2b2e2-retina-large.png",
+      "localPath": "drinks/v_energy_green_250ml.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "V Energy Blue 250mL",
+      "categoryName": "Drinks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/dc06c927-56b5-4481-8332-9c558b848b51-retina-large.png",
+      "localPath": "drinks/v_energy_blue_250ml.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "7 Up Zero Sugar Can",
+      "categoryName": "Drinks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/8ff4729f-26dc-4baf-87e7-7b426ea944fb-retina-large.jpg",
+      "localPath": "drinks/7_up_zero_sugar_can.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Boss Long Black",
+      "categoryName": "Drinks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/5b14abf1-c261-4c41-ba25-6be3df60c13f-retina-large.jpg",
+      "localPath": "drinks/boss_long_black.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Boss Double Espresso",
+      "categoryName": "Drinks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/5b14abf1-c261-4c41-ba25-6be3df60c13f-retina-large.jpg",
+      "localPath": "drinks/boss_double_espresso.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Boss Iced Latte",
+      "categoryName": "Drinks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/5b14abf1-c261-4c41-ba25-6be3df60c13f-retina-large.jpg",
+      "localPath": "drinks/boss_iced_latte.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Just Juice Splash Blackcurrent",
+      "categoryName": "Drinks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/96d3933c-dc04-44c1-aa14-8f6f60131d9a-retina-large.png",
+      "localPath": "drinks/just_juice_splash_blackcurrent.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "H2Go 425ml Spring Water",
+      "categoryName": "Drinks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/5b14abf1-c261-4c41-ba25-6be3df60c13f-retina-large.jpg",
+      "localPath": "drinks/h2go_425ml_spring_water.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "V Zero Original 250mL",
+      "categoryName": "Drinks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/a7cd8232-bf73-4805-bd3d-f4f09d98a50f-retina-large.png",
+      "localPath": "drinks/v_zero_original_250ml.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Jarritos",
+      "categoryName": "Drinks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/5b14abf1-c261-4c41-ba25-6be3df60c13f-retina-large.jpg",
+      "localPath": "drinks/jarritos.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Pepsi 300ml",
+      "categoryName": "Drinks",
+      "originalUrl": "https://img.cdn4dd.com/p/fit=cover,width=1200,height=1200,format=auto,quality=90/media/photosV2/983b47f8-50f4-4d3b-a212-33849cba5c42-retina-large.jpg",
+      "localPath": "drinks/pepsi_300ml.jpg",
+      "status": "success"
+    }
+  ]
+}

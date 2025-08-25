@@ -9,7 +9,8 @@ import {
   Phone,
   Mail,
   Calendar,
-  ExternalLink
+  ExternalLink,
+  Trash2
 } from 'lucide-react';
 import {
   Table,
@@ -22,12 +23,21 @@ import {
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { cn } from '../lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog';
 
 export default function Restaurants() {
   const navigate = useNavigate();
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState({ open: false, restaurantId: null, restaurantName: null });
 
   useEffect(() => {
     fetchRestaurants();
@@ -85,6 +95,25 @@ export default function Restaurants() {
     // Navigate to menus page with restaurant filter
     // TODO: Add filtering support in Menus component
     navigate(`/menus?restaurant=${restaurantId}`);
+  };
+
+  const handleDeleteRestaurant = async () => {
+    if (!deleteConfirm.restaurantId) return;
+    
+    try {
+      const response = await api.delete(`/restaurants/${deleteConfirm.restaurantId}`);
+      
+      if (response.data.success) {
+        // Refresh the restaurants list
+        await fetchRestaurants();
+        console.log('Restaurant deleted successfully');
+      }
+    } catch (err) {
+      console.error('Failed to delete restaurant:', err);
+      // You could add error toast here
+    } finally {
+      setDeleteConfirm({ open: false, restaurantId: null, restaurantName: null });
+    }
   };
 
   if (loading) {
@@ -243,6 +272,19 @@ export default function Restaurants() {
                               </Button>
                             </a>
                           )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setDeleteConfirm({ 
+                              open: true, 
+                              restaurantId: restaurant.id, 
+                              restaurantName: restaurant.name 
+                            })}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            title="Delete restaurant"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -315,6 +357,34 @@ export default function Restaurants() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirm.open} onOpenChange={(open) => !open && setDeleteConfirm({ open: false, restaurantId: null, restaurantName: null })}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Delete Restaurant</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <span className="font-semibold">{deleteConfirm.restaurantName}</span>? 
+              This will also delete all associated extractions, menus, and menu items. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteConfirm({ open: false, restaurantId: null, restaurantName: null })}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteRestaurant}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete Restaurant
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

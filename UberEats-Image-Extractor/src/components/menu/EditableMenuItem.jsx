@@ -3,7 +3,7 @@ import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { X, Plus } from 'lucide-react';
+import { X, Plus, Trash2 } from 'lucide-react';
 
 export default function EditableMenuItem({ 
   item, 
@@ -27,7 +27,8 @@ export default function EditableMenuItem({
       editedItem.name !== item.name ||
       editedItem.price !== item.price ||
       editedItem.description !== item.description ||
-      JSON.stringify(editedItem.tags || []) !== JSON.stringify(item.tags || []);
+      JSON.stringify(editedItem.tags || []) !== JSON.stringify(item.tags || []) ||
+      editedItem.imageURL !== item.imageURL;
     setHasChanges(changed);
   }, [editedItem, item]);
 
@@ -64,6 +65,10 @@ export default function EditableMenuItem({
   const handleRemoveTag = (tagToRemove) => {
     const currentTags = editedItem.tags || [];
     handleFieldChange('tags', currentTags.filter(tag => tag !== tagToRemove));
+  };
+
+  const handleRemoveImage = () => {
+    handleFieldChange('imageURL', null);
   };
 
   const handleKeyPress = (e) => {
@@ -125,15 +130,31 @@ export default function EditableMenuItem({
   return (
     <div className={`border rounded-lg p-4 ${hasChanges ? 'border-blue-500 bg-blue-50/50' : ''}`}>
       <div className="flex">
-        {item.imageURL && (
-          <img
-            src={item.imageURL}
-            alt={editedItem.name}
-            className="h-24 w-24 rounded-lg object-cover mr-4"
-            onError={(e) => {
-              e.target.style.display = 'none';
-            }}
-          />
+        {editedItem.imageURL && (
+          <div className="relative mr-4">
+            <img
+              src={editedItem.imageURL}
+              alt={editedItem.name}
+              className="h-24 w-24 rounded-lg object-cover"
+              onError={(e) => {
+                e.target.style.display = 'none';
+              }}
+            />
+            <Button
+              onClick={handleRemoveImage}
+              size="sm"
+              variant="destructive"
+              className="absolute -top-2 -right-2 h-6 w-6 p-0 rounded-full"
+              title="Remove image"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+        {!editedItem.imageURL && item.imageURL && (
+          <div className="mr-4 h-24 w-24 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-xs text-center p-2">
+            Image removed
+          </div>
         )}
         <div className="flex-1 space-y-3">
           {/* Name and Price */}

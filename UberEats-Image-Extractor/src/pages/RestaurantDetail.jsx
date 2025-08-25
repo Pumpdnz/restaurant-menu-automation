@@ -22,7 +22,9 @@ import {
   AlertCircle,
   Calendar,
   Link2,
-  Hash
+  Hash,
+  Search,
+  RefreshCw
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -46,9 +48,33 @@ export default function RestaurantDetail() {
   const [isEditing, setIsEditing] = useState(false);
   const [editedData, setEditedData] = useState({});
   const [activeTab, setActiveTab] = useState('overview');
+  const [searchingGoogle, setSearchingGoogle] = useState(false);
+  const isNewRestaurant = id === 'new';
 
   useEffect(() => {
-    fetchRestaurantDetails();
+    if (isNewRestaurant) {
+      // Initialize empty restaurant for creation
+      const emptyRestaurant = {
+        name: '',
+        email: '',
+        phone: '',
+        address: '',
+        city: '',
+        organisation_name: '',
+        contact_name: '',
+        contact_email: '',
+        contact_phone: '',
+        opening_hours: [],
+        cuisine: [],
+        onboarding_status: 'lead'
+      };
+      setRestaurant(emptyRestaurant);
+      setEditedData(emptyRestaurant);
+      setIsEditing(true);
+      setLoading(false);
+    } else {
+      fetchRestaurantDetails();
+    }
   }, [id]);
 
   const fetchRestaurantDetails = async () => {
@@ -71,23 +97,40 @@ export default function RestaurantDetail() {
     setSuccess(null);
 
     try {
-      const response = await api.patch(`/restaurants/${id}/workflow`, editedData);
-      setRestaurant(response.data.restaurant);
-      setIsEditing(false);
-      setSuccess('Restaurant details updated successfully');
-      setTimeout(() => setSuccess(null), 5000);
+      let response;
+      if (isNewRestaurant) {
+        // Create new restaurant
+        response = await api.post('/restaurants', editedData);
+        const newRestaurantId = response.data.restaurant.id;
+        setSuccess('Restaurant created successfully');
+        // Navigate to the new restaurant's detail page
+        setTimeout(() => {
+          navigate(`/restaurants/${newRestaurantId}`);
+        }, 1500);
+      } else {
+        // Update existing restaurant
+        response = await api.patch(`/restaurants/${id}/workflow`, editedData);
+        setRestaurant(response.data.restaurant);
+        setIsEditing(false);
+        setSuccess('Restaurant details updated successfully');
+        setTimeout(() => setSuccess(null), 5000);
+      }
     } catch (err) {
-      console.error('Failed to update restaurant:', err);
-      setError(err.response?.data?.error || 'Failed to update restaurant details');
+      console.error('Failed to save restaurant:', err);
+      setError(err.response?.data?.error || `Failed to ${isNewRestaurant ? 'create' : 'update'} restaurant`);
     } finally {
       setSaving(false);
     }
   };
 
   const handleCancel = () => {
-    setEditedData(restaurant);
-    setIsEditing(false);
-    setError(null);
+    if (isNewRestaurant) {
+      navigate('/restaurants');
+    } else {
+      setEditedData(restaurant);
+      setIsEditing(false);
+      setError(null);
+    }
   };
 
   const handleFieldChange = (field, value) => {
@@ -97,18 +140,281 @@ export default function RestaurantDetail() {
     }));
   };
 
-  const handleOpeningHoursChange = (day, field, value) => {
+  const handleGoogleSearch = async () => {
+    if (!restaurant?.name) {
+      setError('Restaurant name is required for search');
+      return;
+    }
+
+    // Use city field if available, otherwise try to extract from address
+    const city = restaurant?.city || (() => {
+      if (restaurant?.address) {
+        const cityMatch = restaurant.address.match(/([A-Za-z\s]+),?\s*(?:New Zealand)?$/);
+        return cityMatch ? cityMatch[1].trim() : 'New Zealand';
+      }
+      return 'New Zealand';
+    })();
+
+    setSearchingGoogle(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await api.post('/google-business-search', {
+        restaurantName: restaurant.name,
+        city: city,
+        restaurantId: id
+      });
+
+      if (response.data.success) {
+        const data = response.data.data;
+        
+        // Update local state with extracted data
+        const updates = {};
+        if (data.address) updates.address = data.address;
+        if (data.phone) updates.phone = data.phone;
+        if (data.websiteUrl) updates.website_url = data.websiteUrl;
+        if (data.instagramUrl) updates.instagram_url = data.instagramUrl;
+        if (data.facebookUrl) updates.facebook_url = data.facebookUrl;
+        if (data.openingHours && data.openingHours.length > 0) {
+          updates.opening_hours = data.openingHours;
+        }
+
+        // Merge with existing data
+        setRestaurant(prev => ({
+          ...prev,
+          ...updates
+        }));
+
+        setSuccess(`Found business information: ${Object.keys(updates).length} fields updated`);
+        
+        // Refresh data from server
+        setTimeout(() => {
+          fetchRestaurantDetails();
+        }, 1500);
+      }
+    } catch (err) {
+      console.error('Google search error:', err);
+      setError(err.response?.data?.error || 'Failed to search for business information');
+    } finally {
+      setSearchingGoogle(false);
+    }
+  };
+
+  const handleOpeningHoursChange = (day, field, value, index = null) => {
     const currentHours = editedData.opening_hours || {};
-    setEditedData(prev => ({
-      ...prev,
-      opening_hours: {
-        ...currentHours,
-        [day]: {
-          ...currentHours[day],
-          [field]: value
+    
+    // Handle array format (multiple time slots per day)
+    if (Array.isArray(currentHours)) {
+      const updatedHours = [...currentHours];
+      if (index !== null) {
+        // Update specific slot
+        const slotIndex = updatedHours.findIndex((slot, i) => 
+          slot.day === day && i === index
+        );
+        if (slotIndex !== -1) {
+          updatedHours[slotIndex].hours[field] = value;
         }
       }
-    }));
+      setEditedData(prev => ({
+        ...prev,
+        opening_hours: updatedHours
+      }));
+    } else {
+      // Handle object format (single time slot per day)
+      setEditedData(prev => ({
+        ...prev,
+        opening_hours: {
+          ...currentHours,
+          [day]: {
+            ...currentHours[day],
+            [field]: value
+          }
+        }
+      }));
+    }
+  };
+
+  const addOpeningHoursSlot = (day) => {
+    const currentHours = editedData.opening_hours || [];
+    if (!Array.isArray(currentHours)) {
+      // Convert object to array format
+      const arrayFormat = [];
+      Object.keys(currentHours).forEach(d => {
+        if (currentHours[d]) {
+          arrayFormat.push({
+            day: d,
+            hours: currentHours[d]
+          });
+        }
+      });
+      setEditedData(prev => ({
+        ...prev,
+        opening_hours: [...arrayFormat, {
+          day: day,
+          hours: { open: '09:00', close: '17:00' }
+        }]
+      }));
+    } else {
+      setEditedData(prev => ({
+        ...prev,
+        opening_hours: [...currentHours, {
+          day: day,
+          hours: { open: '09:00', close: '17:00' }
+        }]
+      }));
+    }
+  };
+
+  const removeOpeningHoursSlot = (day, index) => {
+    const currentHours = editedData.opening_hours || [];
+    if (Array.isArray(currentHours)) {
+      const updatedHours = currentHours.filter((slot, i) => 
+        !(slot.day === day && i === index)
+      );
+      setEditedData(prev => ({
+        ...prev,
+        opening_hours: updatedHours
+      }));
+    }
+  };
+
+  const renderOpeningHours = () => {
+    const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const hours = isEditing ? editedData.opening_hours : restaurant?.opening_hours;
+    
+    if (!hours) {
+      return daysOfWeek.map(day => (
+        <div key={day} className="flex items-center justify-between">
+          <span className="text-sm font-medium w-24">{day}</span>
+          {isEditing ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => addOpeningHoursSlot(day)}
+            >
+              Add Hours
+            </Button>
+          ) : (
+            <span className="text-sm text-gray-500">Closed</span>
+          )}
+        </div>
+      ));
+    }
+
+    // Handle array format (multiple time slots per day)
+    if (Array.isArray(hours)) {
+      const groupedHours = {};
+      hours.forEach((slot, index) => {
+        if (!groupedHours[slot.day]) {
+          groupedHours[slot.day] = [];
+        }
+        groupedHours[slot.day].push({ ...slot.hours, index });
+      });
+
+      return daysOfWeek.map(day => {
+        const daySlots = groupedHours[day] || [];
+        
+        return (
+          <div key={day} className="space-y-2 mb-3">
+            <div className="flex items-start gap-4">
+              <span className="text-sm font-medium w-24 pt-2">{day}</span>
+              <div className="flex-1 space-y-2">
+                {daySlots.length === 0 ? (
+                  isEditing ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addOpeningHoursSlot(day)}
+                      className="mt-1"
+                    >
+                      Add Hours
+                    </Button>
+                  ) : (
+                    <span className="text-sm text-gray-500 inline-block pt-2">Closed</span>
+                  )
+                ) : (
+                  daySlots.map((slot, slotIndex) => (
+                    <div key={slotIndex} className="flex items-center gap-2">
+                      {isEditing ? (
+                        <>
+                          <Input
+                            type="time"
+                            value={slot.open || ''}
+                            onChange={(e) => handleOpeningHoursChange(day, 'open', e.target.value, slot.index)}
+                            className="w-32"
+                          />
+                          <span className="text-gray-500">-</span>
+                          <Input
+                            type="time"
+                            value={slot.close || ''}
+                            onChange={(e) => handleOpeningHoursChange(day, 'close', e.target.value, slot.index)}
+                            className="w-32"
+                          />
+                          {daySlots.length > 1 && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeOpeningHoursSlot(day, slot.index)}
+                              className="h-8 w-8 flex-shrink-0"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-sm">
+                          {slot.open} - {slot.close}
+                        </span>
+                      )}
+                    </div>
+                  ))
+                )}
+                {isEditing && daySlots.length > 0 && daySlots.length < 2 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addOpeningHoursSlot(day)}
+                  >
+                    Add Time Slot
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      });
+    }
+
+    // Handle object format (single time slot per day)
+    return daysOfWeek.map(day => (
+      <div key={day} className="flex items-center gap-4 mb-2">
+        <span className="text-sm font-medium w-24">{day}</span>
+        {isEditing ? (
+          <div className="flex items-center gap-2">
+            <Input
+              type="time"
+              value={hours[day]?.open || ''}
+              onChange={(e) => handleOpeningHoursChange(day, 'open', e.target.value)}
+              className="w-32"
+            />
+            <span className="text-gray-500">-</span>
+            <Input
+              type="time"
+              value={hours[day]?.close || ''}
+              onChange={(e) => handleOpeningHoursChange(day, 'close', e.target.value)}
+              className="w-32"
+            />
+          </div>
+        ) : (
+          <span className="text-sm">
+            {hours[day] 
+              ? `${hours[day].open} - ${hours[day].close}`
+              : 'Closed'}
+          </span>
+        )}
+      </div>
+    ));
   };
 
   const getStatusBadge = (status) => {
@@ -159,16 +465,37 @@ export default function RestaurantDetail() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-foreground">
-              {restaurant?.name || 'Restaurant Details'}
+              {isNewRestaurant ? 'Add New Restaurant' : (restaurant?.name || 'Restaurant Details')}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {restaurant?.address || 'No address provided'}
+              {isNewRestaurant ? 'Fill in the details below' : (restaurant?.address || 'No address provided')}
             </p>
           </div>
-          {getStatusBadge(restaurant?.onboarding_status)}
+          {!isNewRestaurant && getStatusBadge(restaurant?.onboarding_status)}
         </div>
         <div className="flex gap-2">
-          {!isEditing ? (
+          {!isNewRestaurant && (
+            <Button
+              onClick={handleGoogleSearch}
+              variant="outline"
+              disabled={searchingGoogle || !restaurant?.name}
+              title="Search Google for business information"
+            >
+              {searchingGoogle ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Searching...
+                </>
+              ) : (
+                <>
+                  <Search className="h-4 w-4 mr-2" />
+                  Google Search
+                </>
+              )}
+            </Button>
+          )}
+          
+          {!isEditing && !isNewRestaurant ? (
             <Button onClick={() => setIsEditing(true)}>
               <Edit className="h-4 w-4 mr-2" />
               Edit Details
@@ -189,7 +516,7 @@ export default function RestaurantDetail() {
                 className="bg-gradient-to-r from-brand-blue to-brand-green"
               >
                 <Save className="h-4 w-4 mr-2" />
-                {saving ? 'Saving...' : 'Save Changes'}
+                {saving ? 'Saving...' : (isNewRestaurant ? 'Create Restaurant' : 'Save Changes')}
               </Button>
             </>
           )}
@@ -251,6 +578,19 @@ export default function RestaurantDetail() {
                     />
                   ) : (
                     <p className="text-sm mt-1">{restaurant?.organisation_name || '-'}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>City</Label>
+                  {isEditing ? (
+                    <Input
+                      value={editedData.city || ''}
+                      onChange={(e) => handleFieldChange('city', e.target.value)}
+                      placeholder="e.g., Wellington, Auckland, Christchurch"
+                    />
+                  ) : (
+                    <p className="text-sm mt-1">{restaurant?.city || '-'}</p>
                   )}
                 </div>
 
@@ -341,34 +681,7 @@ export default function RestaurantDetail() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
-                    <div key={day} className="flex items-center justify-between">
-                      <span className="text-sm font-medium w-24">{day}</span>
-                      {isEditing ? (
-                        <div className="flex gap-2">
-                          <Input
-                            type="time"
-                            value={editedData.opening_hours?.[day]?.open || ''}
-                            onChange={(e) => handleOpeningHoursChange(day, 'open', e.target.value)}
-                            className="w-24"
-                          />
-                          <span>-</span>
-                          <Input
-                            type="time"
-                            value={editedData.opening_hours?.[day]?.close || ''}
-                            onChange={(e) => handleOpeningHoursChange(day, 'close', e.target.value)}
-                            className="w-24"
-                          />
-                        </div>
-                      ) : (
-                        <span className="text-sm">
-                          {restaurant?.opening_hours?.[day] 
-                            ? `${restaurant.opening_hours[day].open} - ${restaurant.opening_hours[day].close}`
-                            : 'Closed'}
-                        </span>
-                      )}
-                    </div>
-                  ))}
+                  {renderOpeningHours()}
                 </div>
                 
                 {isEditing && (

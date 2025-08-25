@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
-import { Download, AlertCircle, CheckCircle, Building2, Search } from 'lucide-react';
+import { Download, AlertCircle, CheckCircle, Building2, Search, Loader2, Check } from 'lucide-react';
 import { extractionAPI, restaurantAPI } from '../services/api';
 
 export default function NewExtraction() {
@@ -11,8 +11,7 @@ export default function NewExtraction() {
   const [restaurantName, setRestaurantName] = useState('');
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  const [includeImages, setIncludeImages] = useState(true);
-  const [generateCSV, setGenerateCSV] = useState(true);
+  const [isExtracting, setIsExtracting] = useState(false); // Local loading state for immediate feedback
   
   // Restaurant selection state
   const [restaurantMode, setRestaurantMode] = useState('auto'); // 'auto' or 'manual'
@@ -52,39 +51,61 @@ export default function NewExtraction() {
     setError(null);
     
     // Auto-detect platform
-    if (value.includes('ubereats.com')) {
-      setPlatform('ubereats');
+    let detectedPlatform = '';
+    
+    try {
+      const urlObj = new URL(value);
+      const hostname = urlObj.hostname.toLowerCase();
       
-      // Only extract restaurant name if in auto mode
+      if (hostname.includes('ubereats.com')) {
+        detectedPlatform = 'ubereats';
+      } else if (hostname.includes('doordash.com')) {
+        detectedPlatform = 'doordash';
+      } else if (hostname.includes('ordermeal.co.nz')) {
+        detectedPlatform = 'ordermeal';
+      } else if (hostname.includes('nextorder.co.nz')) {
+        detectedPlatform = 'nextorder';
+      } else if (hostname.includes('foodhub.co.nz')) {
+        detectedPlatform = 'foodhub';
+      } else if (hostname.includes('mobi2go.com')) {
+        detectedPlatform = 'mobi2go';
+      } else if (hostname.includes('menulog.co.nz')) {
+        detectedPlatform = 'menulog';
+      } else if (hostname.includes('delivereasy.co.nz')) {
+        detectedPlatform = 'delivereasy';
+      } else {
+        detectedPlatform = 'website';
+      }
+      
+      setPlatform(detectedPlatform);
+      
+      // Extract restaurant name if in auto mode
       if (restaurantMode === 'auto') {
-        const match = value.match(/\/store\/([^\/\?]+)/);
-        if (match) {
-          const name = match[1]
+        const pathParts = urlObj.pathname.split('/').filter(part => part);
+        let extractedName = '';
+        
+        if (detectedPlatform === 'ubereats' || detectedPlatform === 'doordash') {
+          const storeIndex = pathParts.indexOf('store');
+          if (storeIndex !== -1 && pathParts[storeIndex + 1]) {
+            extractedName = pathParts[storeIndex + 1];
+          }
+        } else if (pathParts[0]) {
+          extractedName = pathParts[0];
+        }
+        
+        if (extractedName) {
+          const formattedName = extractedName
             .replace(/-/g, ' ')
             .replace(/_/g, ' ')
             .split(' ')
             .map(word => word.charAt(0).toUpperCase() + word.slice(1))
             .join(' ');
-          setRestaurantName(name);
+          setRestaurantName(formattedName);
+        } else {
+          setRestaurantName('');
         }
       }
-    } else if (value.includes('doordash.com')) {
-      setPlatform('doordash');
-      
-      // Only extract restaurant name if in auto mode
-      if (restaurantMode === 'auto') {
-        const match = value.match(/\/store\/([^\/\?]+)/);
-        if (match) {
-          const name = match[1]
-            .replace(/-/g, ' ')
-            .replace(/_/g, ' ')
-            .split(' ')
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' ');
-          setRestaurantName(name);
-        }
-      }
-    } else {
+    } catch (e) {
       setPlatform('');
       if (restaurantMode === 'auto') {
         setRestaurantName('');
@@ -95,6 +116,7 @@ export default function NewExtraction() {
   // Mutation for starting extraction
   const startExtraction = useMutation({
     mutationFn: async (data) => {
+      setIsExtracting(true); // Set loading immediately
       let extractionData = { ...data };
       
       if (restaurantMode === 'manual' && selectedRestaurantId) {
@@ -106,26 +128,30 @@ export default function NewExtraction() {
         // In auto mode, extract restaurant name from URL
         let restaurantName = 'Unknown Restaurant';
         
-        if (data.url.includes('ubereats.com')) {
-          const match = data.url.match(/\/store\/([^\/\?]+)/);
-          if (match) {
-            restaurantName = match[1]
+        try {
+          const urlObj = new URL(data.url);
+          const pathParts = urlObj.pathname.split('/').filter(part => part);
+          
+          if (data.url.includes('ubereats.com') || data.url.includes('doordash.com')) {
+            const storeIndex = pathParts.indexOf('store');
+            if (storeIndex !== -1 && pathParts[storeIndex + 1]) {
+              restaurantName = pathParts[storeIndex + 1]
+                .replace(/-/g, ' ')
+                .replace(/_/g, ' ')
+                .split(' ')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
+            }
+          } else if (pathParts[0]) {
+            restaurantName = pathParts[0]
               .replace(/-/g, ' ')
               .replace(/_/g, ' ')
               .split(' ')
               .map(word => word.charAt(0).toUpperCase() + word.slice(1))
               .join(' ');
           }
-        } else if (data.url.includes('doordash.com')) {
-          const match = data.url.match(/\/store\/([^\/\?]+)/);
-          if (match) {
-            restaurantName = match[1]
-              .replace(/-/g, ' ')
-              .replace(/_/g, ' ')
-              .split(' ')
-              .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-              .join(' ');
-          }
+        } catch (e) {
+          console.error('Error parsing URL:', e);
         }
         
         extractionData.restaurantName = restaurantName;
@@ -135,13 +161,21 @@ export default function NewExtraction() {
     },
     onSuccess: (response) => {
       setSuccess(true);
-      // Navigate to extraction detail page after 2 seconds
+      // Small delay to show success state before navigating
       setTimeout(() => {
-        navigate(`/extractions/${response.data.jobId}`);
-      }, 2000);
+        navigate(`/extractions/${response.data.jobId}?poll=true`);
+      }, 500);
     },
     onError: (error) => {
+      setIsExtracting(false); // Reset loading state on error
       setError(error.response?.data?.error || error.message || 'Failed to start extraction');
+    },
+    onSettled: () => {
+      // This runs after success or error
+      // But we handle navigation in onSuccess, so just ensure state cleanup
+      setTimeout(() => {
+        setIsExtracting(false);
+      }, 1000);
     }
   });
 
@@ -155,7 +189,7 @@ export default function NewExtraction() {
     }
     
     if (!platform) {
-      setError('Could not detect platform. Please enter a valid UberEats or DoorDash URL');
+      setError('Could not detect platform from URL');
       return;
     }
     
@@ -165,14 +199,15 @@ export default function NewExtraction() {
       return;
     }
     
+    // Set loading state immediately for instant feedback
+    setIsExtracting(true);
+    setError(null);
+    
     // Start extraction with user-selected options
     startExtraction.mutate({
       url,
       platform,
-      options: {
-        includeImages: includeImages,
-        generateCSV: generateCSV
-      }
+      options: {}
     });
   };
 
@@ -182,7 +217,7 @@ export default function NewExtraction() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">New Menu Extraction</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Extract menu data from UberEats or DoorDash restaurants
+            Extract menu data from restaurant websites and delivery platforms
           </p>
         </div>
 
@@ -197,9 +232,9 @@ export default function NewExtraction() {
                 id="url"
                 value={url}
                 onChange={(e) => handleUrlChange(e.target.value)}
-                placeholder="https://www.ubereats.com/store/..."
+                placeholder="Enter restaurant URL..."
                 className="shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border"
-                disabled={startExtraction.isLoading}
+                disabled={isExtracting}
               />
             </div>
             {platform && (
@@ -341,67 +376,48 @@ export default function NewExtraction() {
             </div>
           )}
 
-          {/* Advanced Options (collapsed by default) */}
-          <details className="border border-gray-200 rounded-lg p-4">
-            <summary className="cursor-pointer text-sm font-medium text-gray-700">
-              Advanced Options
-            </summary>
-            <div className="mt-4 space-y-4">
-              <div className="flex items-center">
-                <input
-                  id="includeImages"
-                  type="checkbox"
-                  checked={includeImages}
-                  onChange={(e) => setIncludeImages(e.target.checked)}
-                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                />
-                <label htmlFor="includeImages" className="ml-2 block text-sm text-gray-700">
-                  Download menu images
-                  <span className="block text-xs text-gray-500">
-                    {includeImages ? 'Images will be downloaded and stored' : 'Only text data will be extracted (faster)'}
-                  </span>
-                </label>
-              </div>
-              <div className="flex items-center">
-                <input
-                  id="generateCSV"
-                  type="checkbox"
-                  checked={generateCSV}
-                  onChange={(e) => setGenerateCSV(e.target.checked)}
-                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                />
-                <label htmlFor="generateCSV" className="ml-2 block text-sm text-gray-700">
-                  Generate CSV export
-                  <span className="block text-xs text-gray-500">
-                    {generateCSV ? 'CSV file will be generated for download' : 'Data stored in database only'}
-                  </span>
-                </label>
-              </div>
-            </div>
-          </details>
 
           {/* Submit Button */}
           <div className="flex justify-end space-x-3">
             <button
               type="button"
               onClick={() => navigate('/extractions')}
-              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+              className="px-5 py-2.5 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-200"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={startExtraction.isLoading || !url || success}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isExtracting || !url || success}
+              className={`
+                inline-flex items-center justify-center px-6 py-2.5 
+                border border-transparent rounded-lg shadow-md 
+                text-sm font-medium transition-all duration-200 transform
+                focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue 
+                ${!url 
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : isExtracting 
+                    ? 'bg-gradient-to-r from-brand-blue to-brand-green text-white cursor-wait scale-105 opacity-90' 
+                    : success
+                      ? 'bg-gradient-to-r from-green-500 to-green-600 text-white'
+                      : 'bg-gradient-to-r from-brand-blue to-brand-green text-white hover:shadow-lg hover:scale-105 active:scale-100'
+                }
+                disabled:cursor-not-allowed disabled:transform-none disabled:hover:scale-100
+              `}
             >
-              {startExtraction.isLoading ? (
+              {isExtracting ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Starting...
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                  <span className="animate-pulse">Initializing Extraction...</span>
+                </>
+              ) : success ? (
+                <>
+                  <Check className="h-5 w-5 mr-2" />
+                  Extraction Started
                 </>
               ) : (
                 <>
-                  <Download className="h-4 w-4 mr-2" />
+                  <Download className="h-5 w-5 mr-2" />
                   Start Extraction
                 </>
               )}
@@ -409,11 +425,41 @@ export default function NewExtraction() {
           </div>
         </form>
 
+        {/* Enhanced Loading Overlay */}
+        {isExtracting && (
+          <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-2xl p-8 max-w-sm w-full mx-4 transform scale-100 animate-fadeIn">
+              <div className="flex flex-col items-center">
+                <div className="relative mb-6">
+                  <div className="absolute inset-0 bg-primary-100 rounded-full animate-ping opacity-75"></div>
+                  <Loader2 className="h-16 w-16 text-primary-600 animate-spin relative z-10" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                  Starting Extraction
+                </h3>
+                <div className="space-y-2 text-center">
+                  <p className="text-sm text-gray-600">
+                    Initializing menu extraction job...
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    You'll be automatically redirected once the job is created.
+                  </p>
+                </div>
+                <div className="mt-4 flex space-x-1">
+                  <div className="w-2 h-2 bg-primary-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                  <div className="w-2 h-2 bg-primary-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                  <div className="w-2 h-2 bg-primary-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Quick Tips */}
         <div className="mt-8 border-t border-gray-200 pt-6">
           <h3 className="text-sm font-medium text-gray-900">Quick Tips</h3>
           <ul className="mt-2 text-sm text-gray-500 space-y-1">
-            <li>• Make sure to use the full restaurant URL from UberEats or DoorDash</li>
+            <li>• Make sure to use the full restaurant URL from any supported platform</li>
             <li>• The extraction will automatically detect menu categories and items</li>
             <li>• Images will be downloaded and organized by category</li>
             <li>• You can track the extraction progress in real-time</li>

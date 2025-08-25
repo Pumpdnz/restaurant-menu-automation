@@ -1,0 +1,55 @@
+{
+  "restaurant": "Mexicali Fresh Wigram",
+  "downloadDate": "2025-08-24T01:07:46.413Z",
+  "stats": {
+    "total": 102,
+    "downloaded": 96,
+    "failed": 6
+  },
+  "categories": [
+    {
+      "name": "Burritos",
+      "itemCount": 9
+    },
+    {
+      "name": "Nachos",
+      "itemCount": 6
+    },
+    {
+      "name": "Taco Salad",
+      "itemCount": 6
+    },
+    {
+      "name": "Sides & Snacks",
+      "itemCount": 9
+    },
+    {
+      "name": "Quesadilla",
+      "itemCount": 7
+    },
+    {
+      "name": "Kids",
+      "itemCount": 4
+    },
+    {
+      "name": "Featured Items",
+      "itemCount": 2
+    },
+    {
+      "name": "Green Salads",
+      "itemCount": 3
+    },
+    {
+      "name": "Sweet",
+      "itemCount": 2
+    },
+    {
+      "name": "Most Ordered",
+      "itemCount": 31
+    },
+    {
+      "name": "Drinks",
+      "itemCount": 23
+    }
+  ]
+}

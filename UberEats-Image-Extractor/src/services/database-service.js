@@ -592,7 +592,7 @@ async function getRestaurantMenus(restaurantId) {
   if (!isDatabaseAvailable()) return [];
   
   try {
-    const { data, error } = await supabase
+    const { data: menus, error } = await supabase
       .from('menus')
       .select(`
         *,
@@ -602,13 +602,29 @@ async function getRestaurantMenus(restaurantId) {
           status,
           created_at,
           completed_at
-        )
+        ),
+        menu_items (id)
       `)
       .eq('restaurant_id', restaurantId)
       .order('created_at', { ascending: false });
     
     if (error) throw error;
-    return data;
+    
+    // Add item count to each menu
+    const menusWithCounts = menus.map(menu => {
+      const itemCount = menu.menu_items ? menu.menu_items.length : 0;
+      const { menu_items, ...menuWithoutItems } = menu;
+      
+      // For backward compatibility, also check menu_data
+      const menuDataCount = menu.menu_data?.menuItems?.length || 0;
+      
+      return {
+        ...menuWithoutItems,
+        item_count: itemCount || menuDataCount
+      };
+    });
+    
+    return menusWithCounts;
   } catch (error) {
     console.error('[Database] Error getting restaurant menus:', error);
     return [];
@@ -622,7 +638,7 @@ async function getAllMenus() {
   if (!isDatabaseAvailable()) return [];
   
   try {
-    const { data, error } = await supabase
+    const { data: menus, error } = await supabase
       .from('menus')
       .select(`
         *,
@@ -633,12 +649,28 @@ async function getAllMenus() {
           status,
           created_at,
           completed_at
-        )
+        ),
+        menu_items (id)
       `)
       .order('created_at', { ascending: false });
     
     if (error) throw error;
-    return data;
+    
+    // Add item count to each menu
+    const menusWithCounts = menus.map(menu => {
+      const itemCount = menu.menu_items ? menu.menu_items.length : 0;
+      const { menu_items, ...menuWithoutItems } = menu;
+      
+      // For backward compatibility, also check menu_data
+      const menuDataCount = menu.menu_data?.menuItems?.length || 0;
+      
+      return {
+        ...menuWithoutItems,
+        item_count: itemCount || menuDataCount
+      };
+    });
+    
+    return menusWithCounts;
   } catch (error) {
     console.error('[Database] Error getting all menus:', error);
     return [];
@@ -798,23 +830,54 @@ async function toggleMenuStatus(menuId, isActive) {
 }
 
 /**
- * Soft delete a menu
+ * Hard delete a menu and all associated records
  */
 async function deleteMenu(menuId) {
   if (!isDatabaseAvailable()) return false;
   
   try {
-    // We'll mark it as inactive rather than hard delete
-    const { error } = await supabase
-      .from('menus')
-      .update({ 
-        is_active: false,
-        deleted_at: new Date().toISOString()
-      })
-      .eq('id', menuId);
+    // First, get all menu_items for this menu to delete associated images
+    const { data: menuItems, error: itemsError } = await supabase
+      .from('menu_items')
+      .select('id')
+      .eq('menu_id', menuId);
     
-    if (error) throw error;
-    return true;
+    if (itemsError) throw itemsError;
+    
+    // Delete associated item_images if there are menu items
+    if (menuItems && menuItems.length > 0) {
+      const itemIds = menuItems.map(item => item.id);
+      
+      const { error: imagesError } = await supabase
+        .from('item_images')
+        .delete()
+        .in('menu_item_id', itemIds);
+      
+      if (imagesError) {
+        console.error('[Database] Error deleting item images:', imagesError);
+        // Continue with deletion even if images fail
+      }
+    }
+    
+    // Delete all menu_items for this menu
+    const { error: deleteItemsError } = await supabase
+      .from('menu_items')
+      .delete()
+      .eq('menu_id', menuId);
+    
+    if (deleteItemsError) throw deleteItemsError;
+    
+    // Finally, delete the menu itself
+    const { data, error: deleteMenuError } = await supabase
+      .from('menus')
+      .delete()
+      .eq('id', menuId)
+      .select();
+    
+    if (deleteMenuError) throw deleteMenuError;
+    
+    // Return true if a menu was deleted
+    return data && data.length > 0;
   } catch (error) {
     console.error('[Database] Error deleting menu:', error);
     return false;
@@ -1026,32 +1089,161 @@ async function cancelExtractionJob(jobId) {
 }
 
 /**
+ * Hard delete an extraction job and all associated data
+ */
+async function deleteExtraction(jobId) {
+  if (!isDatabaseAvailable()) return false;
+  
+  try {
+    // First, get the extraction job to find its UUID id
+    const { data: extractionJob, error: jobError } = await supabase
+      .from('extraction_jobs')
+      .select('id')
+      .eq('job_id', jobId)
+      .single();
+    
+    if (jobError || !extractionJob) {
+      console.error('[Database] Extraction job not found:', jobId);
+      return false;
+    }
+    
+    const extractionUuid = extractionJob.id;
+    
+    // Find all menus associated with this extraction job (using UUID)
+    const { data: menus, error: menuError } = await supabase
+      .from('menus')
+      .select('id')
+      .eq('extraction_job_id', extractionUuid);
+    
+    if (menuError) throw menuError;
+    
+    // Delete all associated menus (which will cascade delete menu_items and item_images)
+    if (menus && menus.length > 0) {
+      for (const menu of menus) {
+        await deleteMenu(menu.id);
+      }
+    }
+    
+    // Delete extraction logs associated with this job
+    const { error: logsError } = await supabase
+      .from('extraction_logs')
+      .delete()
+      .eq('job_id', jobId);
+    
+    if (logsError) {
+      console.error('[Database] Error deleting extraction logs:', logsError);
+      // Continue even if logs deletion fails
+    }
+    
+    // Finally, delete the extraction job itself
+    const { data, error: deleteError } = await supabase
+      .from('extraction_jobs')
+      .delete()
+      .eq('job_id', jobId)
+      .select();
+    
+    if (deleteError) throw deleteError;
+    
+    // Return true if an extraction was deleted
+    return data && data.length > 0;
+  } catch (error) {
+    console.error('[Database] Error deleting extraction:', error);
+    return false;
+  }
+}
+
+/**
  * Create a new restaurant
  */
 async function createRestaurant(restaurantData) {
-  if (!isDatabaseAvailable()) return null;
+  if (!isDatabaseAvailable()) {
+    console.error('[Database] Database not available for createRestaurant');
+    return null;
+  }
+  
+  console.log('[Database] Creating restaurant with data:', {
+    name: restaurantData.name,
+    fields: Object.keys(restaurantData),
+    dataPreview: JSON.stringify(restaurantData).substring(0, 200)
+  });
   
   try {
+    // Generate base slug if not provided
+    let baseSlug = restaurantData.slug || restaurantData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    let slug = baseSlug;
+    let slugSuffix = 1;
+    
+    // Check for existing slugs and append number if needed
+    let slugExists = true;
+    while (slugExists) {
+      const { data: existing } = await supabase
+        .from('restaurants')
+        .select('id')
+        .eq('slug', slug)
+        .single();
+      
+      if (existing) {
+        slug = `${baseSlug}-${slugSuffix}`;
+        slugSuffix++;
+      } else {
+        slugExists = false;
+      }
+    }
+    
+    // Remove any relation fields that might be passed in
+    const { 
+      menus,
+      restaurant_platforms,
+      restaurants,
+      platforms,
+      menu_items,
+      extraction_jobs,
+      ...cleanData 
+    } = restaurantData;
+    
+    const insertData = {
+      ...cleanData,
+      slug: slug,
+      metadata: restaurantData.metadata || {},
+      onboarding_status: restaurantData.onboarding_status || 'lead',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    console.log('[Database] Insert data prepared:', {
+      slug: insertData.slug,
+      hasMetadata: !!insertData.metadata,
+      fieldsCount: Object.keys(insertData).length
+    });
+    
     const { data, error } = await supabase
       .from('restaurants')
-      .insert({
-        name: restaurantData.name,
-        slug: restaurantData.slug || restaurantData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-        address: restaurantData.address,
-        phone: restaurantData.phone,
-        email: restaurantData.email,
-        website: restaurantData.website,
-        logo_url: restaurantData.logo_url,
-        brand_colors: restaurantData.brand_colors,
-        metadata: restaurantData.metadata || {}
-      })
+      .insert(insertData)
       .select()
       .single();
     
-    if (error) throw error;
+    if (error) {
+      console.error('[Database] Supabase insert error:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
+      throw error;
+    }
+    
+    console.log('[Database] Successfully created restaurant:', {
+      id: data.id,
+      name: data.name,
+      slug: data.slug
+    });
+    
     return data;
   } catch (error) {
-    console.error('[Database] Error creating restaurant:', error);
+    console.error('[Database] Error creating restaurant:', {
+      error: error.message || error,
+      stack: error.stack
+    });
     return null;
   }
 }
@@ -1078,6 +1270,59 @@ async function updateRestaurant(restaurantId, updates) {
   } catch (error) {
     console.error('[Database] Error updating restaurant:', error);
     return null;
+  }
+}
+
+/**
+ * Hard delete a restaurant and all associated data
+ */
+async function deleteRestaurant(restaurantId) {
+  if (!isDatabaseAvailable()) return false;
+  
+  try {
+    // First, find all extraction jobs for this restaurant
+    const { data: extractions, error: extractionError } = await supabase
+      .from('extraction_jobs')
+      .select('job_id')
+      .eq('restaurant_id', restaurantId);
+    
+    if (extractionError) throw extractionError;
+    
+    // Delete all associated extractions (which will cascade delete menus, menu_items, and item_images)
+    if (extractions && extractions.length > 0) {
+      for (const extraction of extractions) {
+        await deleteExtraction(extraction.job_id);
+      }
+    }
+    
+    // Find and delete any remaining menus that might not have extraction_job_id
+    const { data: menus, error: menuError } = await supabase
+      .from('menus')
+      .select('id')
+      .eq('restaurant_id', restaurantId);
+    
+    if (menuError) throw menuError;
+    
+    if (menus && menus.length > 0) {
+      for (const menu of menus) {
+        await deleteMenu(menu.id);
+      }
+    }
+    
+    // Finally, delete the restaurant itself
+    const { data, error: deleteError } = await supabase
+      .from('restaurants')
+      .delete()
+      .eq('id', restaurantId)
+      .select();
+    
+    if (deleteError) throw deleteError;
+    
+    // Return true if a restaurant was deleted
+    return data && data.length > 0;
+  } catch (error) {
+    console.error('[Database] Error deleting restaurant:', error);
+    return false;
   }
 }
 
@@ -1121,11 +1366,30 @@ async function getRestaurantDetails(restaurantId) {
  * Update restaurant workflow fields
  */
 async function updateRestaurantWorkflow(restaurantId, workflowData) {
-  if (!isDatabaseAvailable()) return null;
+  if (!isDatabaseAvailable()) {
+    console.error('[Database] Database not available for updateRestaurantWorkflow');
+    return null;
+  }
+  
+  console.log('[Database] Updating restaurant workflow:', {
+    restaurantId,
+    fields: Object.keys(workflowData),
+    dataPreview: JSON.stringify(workflowData).substring(0, 200)
+  });
   
   try {
-    // Separate platform URLs if provided
-    const { ubereats_url, doordash_url, ...otherData } = workflowData;
+    // Separate platform URLs and remove any relation fields
+    const { 
+      ubereats_url, 
+      doordash_url, 
+      menus,                  // Remove relation field
+      restaurant_platforms,   // Remove relation field
+      restaurants,            // Remove relation field
+      platforms,              // Remove relation field
+      menu_items,             // Remove relation field
+      extraction_jobs,        // Remove relation field
+      ...otherData 
+    } = workflowData;
     
     // Update main restaurant record
     const { data, error } = await supabase
@@ -1138,7 +1402,14 @@ async function updateRestaurantWorkflow(restaurantId, workflowData) {
       .select()
       .single();
     
-    if (error) throw error;
+    if (error) {
+      console.error('[Database] Supabase update error:', {
+        error: error,
+        restaurantId: restaurantId,
+        updateData: otherData
+      });
+      throw error;
+    }
     
     // Update platform URLs if provided
     if (ubereats_url) {
@@ -1173,9 +1444,17 @@ async function updateRestaurantWorkflow(restaurantId, workflowData) {
       }
     }
     
+    console.log('[Database] Successfully updated restaurant workflow:', {
+      restaurantId: data.id,
+      name: data.name
+    });
     return data;
   } catch (error) {
-    console.error('[Database] Error updating restaurant workflow:', error);
+    console.error('[Database] Error updating restaurant workflow:', {
+      error: error.message || error,
+      restaurantId: restaurantId,
+      stack: error.stack
+    });
     return null;
   }
 }
@@ -1309,7 +1588,9 @@ async function bulkUpdateMenuItems(updates) {
     const results = [];
     
     for (const update of updates) {
-      const { id, ...data } = update;
+      const { id, imageURL, ...data } = update;
+      
+      // Update the menu item (excluding imageURL as it's handled separately)
       const { data: updated, error } = await supabase
         .from('menu_items')
         .update({
@@ -1321,7 +1602,40 @@ async function bulkUpdateMenuItems(updates) {
         .single();
       
       if (!error && updated) {
-        results.push(updated);
+        // Handle image updates separately
+        if (imageURL !== undefined) {
+          // If imageURL is null, delete the image association
+          if (imageURL === null) {
+            // Delete existing image associations
+            await supabase
+              .from('item_images')
+              .delete()
+              .eq('menu_item_id', id);
+          } else if (imageURL) {
+            // First delete existing images
+            await supabase
+              .from('item_images')
+              .delete()
+              .eq('menu_item_id', id);
+            
+            // Then add the new image
+            await supabase
+              .from('item_images')
+              .insert({
+                menu_item_id: id,
+                url: imageURL
+              });
+          }
+        }
+        
+        // Fetch the updated item with its images
+        const { data: itemWithImages } = await supabase
+          .from('menu_items')
+          .select('*, item_images(url)')
+          .eq('id', id)
+          .single();
+        
+        results.push(itemWithImages || updated);
       }
     }
     
@@ -1490,6 +1804,7 @@ async function getExtractionStats() {
 
 // Export all functions
 module.exports = {
+  get supabase() { return supabase; },
   initializeDatabase,
   isDatabaseAvailable,
   
@@ -1500,6 +1815,7 @@ module.exports = {
   upsertRestaurant,
   createRestaurant,
   updateRestaurant,
+  deleteRestaurant,
   updateRestaurantWorkflow,
   getAllRestaurants,
   getRestaurantById,
@@ -1515,6 +1831,7 @@ module.exports = {
   getExtractionJob,
   getExtractionJobs,
   cancelExtractionJob,
+  deleteExtraction,
   
   // Menu operations
   createMenu,

@@ -72,6 +72,7 @@ export function hasItemChanges(original, edited) {
   if (original.name !== edited.name) return true;
   if (original.price !== edited.price) return true;
   if (original.description !== edited.description) return true;
+  if (original.imageURL !== edited.imageURL) return true;
   
   // Check tags array
   const originalTags = JSON.stringify(original.tags || []);
@@ -87,17 +88,32 @@ export function hasItemChanges(original, edited) {
  * @param {Object} editedItems - Edited items object (keyed by ID)
  * @returns {Array} - Array of changed item objects with their IDs
  */
-export function getChangedItems(originalItems, editedItems) {
+export function getChangedItems(editedItems, originalMenuData) {
   const changes = [];
   
+  // First flatten the original menu data into a lookup by ID
+  const originalLookup = {};
+  if (originalMenuData) {
+    Object.values(originalMenuData).forEach(categoryItems => {
+      categoryItems.forEach(item => {
+        originalLookup[item.id] = item;
+      });
+    });
+  }
+  
+  // Now compare edited items with originals
   Object.keys(editedItems).forEach(itemId => {
-    const original = originalItems[itemId];
+    const original = originalLookup[itemId];
     const edited = editedItems[itemId];
     
     if (original && edited && hasItemChanges(original, edited)) {
       changes.push({
         id: itemId,
-        ...edited
+        name: edited.name,
+        price: edited.price,
+        description: edited.description,
+        tags: edited.tags,
+        imageURL: edited.imageURL
       });
     }
   });

@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import Layout from './components/layout/Layout';
+import LayoutNew from './components/layout/LayoutNew';
 import Dashboard from './pages/Dashboard';
 import Restaurants from './pages/Restaurants';
 import RestaurantDetail from './pages/RestaurantDetail';
@@ -10,6 +10,7 @@ import ExtractionDetail from './pages/ExtractionDetail';
 import NewExtraction from './pages/NewExtraction';
 import Menus from './pages/Menus';
 import MenuDetail from './pages/MenuDetail';
+import MenuMerge from './pages/MenuMerge';
 import Analytics from './pages/Analytics';
 import History from './pages/History';
 import Settings from './pages/Settings';
@@ -31,7 +32,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <Router>
         <Routes>
-          <Route path="/" element={<Layout />}>
+          <Route path="/" element={<LayoutNew />}>
             <Route index element={<Dashboard />} />
             <Route path="restaurants" element={<Restaurants />} />
             <Route path="restaurants/:id" element={<RestaurantDetail />} />
@@ -39,6 +40,7 @@ function App() {
             <Route path="extractions/new" element={<NewExtraction />} />
             <Route path="extractions/:jobId" element={<ExtractionDetail />} />
             <Route path="menus" element={<Menus />} />
+            <Route path="menus/merge" element={<MenuMerge />} />
             <Route path="menus/:id" element={<MenuDetail />} />
             <Route path="analytics" element={<Analytics />} />
             <Route path="history" element={<History />} />

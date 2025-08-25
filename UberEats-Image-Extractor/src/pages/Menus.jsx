@@ -13,7 +13,9 @@ import {
   Database,
   MoveHorizontal,
   ToggleLeft,
-  ToggleRight
+  ToggleRight,
+  GitMerge,
+  Trash2
 } from 'lucide-react';
 import {
   Table,
@@ -28,6 +30,14 @@ import { Badge } from '../components/ui/badge';
 import { Checkbox } from '../components/ui/checkbox';
 import { cn } from '../lib/utils';
 import MoveMenusDialog from '../components/MoveMenusDialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog';
 
 export default function Menus() {
   const navigate = useNavigate();
@@ -37,6 +47,7 @@ export default function Menus() {
   const [error, setError] = useState(null);
   const [selectedMenus, setSelectedMenus] = useState(new Set());
   const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState({ open: false, menuId: null, menuName: null });
   
   const restaurantFilter = searchParams.get('restaurant');
 
@@ -112,8 +123,8 @@ export default function Menus() {
   };
 
   const handleEditMenu = (menuId) => {
-    // Navigate to edit page (to be implemented)
-    navigate(`/menus/${menuId}/edit`);
+    // Navigate to menu detail page which has edit functionality
+    navigate(`/menus/${menuId}`);
   };
 
   const handleSelectMenu = (menu) => {
@@ -164,6 +175,47 @@ export default function Menus() {
     }
   };
 
+  const handleDeleteMenu = async () => {
+    if (!deleteConfirm.menuId) return;
+    
+    try {
+      const response = await api.delete(`/menus/${deleteConfirm.menuId}`);
+      
+      if (response.data.success) {
+        // Refresh the menus list
+        await fetchMenus();
+        // Clear selection if this menu was selected
+        setSelectedMenus(prev => {
+          const newSet = new Set(prev);
+          newSet.forEach(menu => {
+            if (menu.id === deleteConfirm.menuId) {
+              newSet.delete(menu);
+            }
+          });
+          return newSet;
+        });
+        console.log('Menu deleted successfully');
+      }
+    } catch (err) {
+      console.error('Failed to delete menu:', err);
+      // You could add error toast here
+    } finally {
+      setDeleteConfirm({ open: false, menuId: null, menuName: null });
+    }
+  };
+
+  const handleMergeMenus = () => {
+    // Get IDs of selected menus
+    const menuIds = Array.from(selectedMenus).map(menu => menu.id);
+    
+    // Navigate to merge interface with selected menu IDs
+    const queryParams = new URLSearchParams({
+      menuIds: menuIds.join(',')
+    });
+    
+    navigate(`/menus/merge?${queryParams.toString()}`);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -205,6 +257,16 @@ export default function Menus() {
             >
               <MoveHorizontal className="h-4 w-4 mr-2" />
               Move {selectedMenus.size} Menu{selectedMenus.size > 1 ? 's' : ''}
+            </Button>
+          )}
+          {selectedMenus.size >= 2 && (
+            <Button
+              variant="outline"
+              onClick={() => handleMergeMenus()}
+              className="border-purple-600 text-purple-600 hover:bg-purple-600/10"
+            >
+              <GitMerge className="h-4 w-4 mr-2" />
+              Merge {selectedMenus.size} Menus
             </Button>
           )}
           {restaurantFilter && (
@@ -294,7 +356,7 @@ export default function Menus() {
                       </TableCell>
                       <TableCell>
                         <span className="font-semibold">
-                          {menu.menu_data?.menuItems?.length || 0}
+                          {menu.item_count || menu.menu_data?.menuItems?.length || 0}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -346,6 +408,15 @@ export default function Menus() {
                             title="Edit menu"
                           >
                             <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setDeleteConfirm({ open: true, menuId: menu.id, menuName: menu.restaurants?.name || 'this menu' })}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            title="Delete menu"
+                          >
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </TableCell>
@@ -424,6 +495,34 @@ export default function Menus() {
         selectedMenus={selectedMenus}
         onSuccess={handleMoveSuccess}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirm.open} onOpenChange={(open) => !open && setDeleteConfirm({ open: false, menuId: null, menuName: null })}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Delete Menu</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete the menu for <span className="font-semibold">{deleteConfirm.menuName}</span>? 
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteConfirm({ open: false, menuId: null, menuName: null })}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteMenu}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete Menu
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

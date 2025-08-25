@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import api, { menuItemAPI } from '../services/api';
 import { 
   ArrowLeftIcon,
@@ -9,7 +9,8 @@ import {
   XCircleIcon,
   PencilIcon,
   CheckIcon,
-  XMarkIcon
+  XMarkIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import EditableMenuItem from '../components/menu/EditableMenuItem';
 import { validateMenuItem, validateMenuItems, getChangedItems } from '../components/menu/MenuItemValidator';
@@ -18,6 +19,7 @@ import { useToast } from '../hooks/use-toast';
 export default function ExtractionDetail() {
   const { jobId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [job, setJob] = useState(null);
   const [menuData, setMenuData] = useState(null);
@@ -29,12 +31,21 @@ export default function ExtractionDetail() {
   const [editedItems, setEditedItems] = useState({});
   const [validationErrors, setValidationErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
+  const [isPolling, setIsPolling] = useState(false);
+  const pollingInterval = useRef(null);
 
   useEffect(() => {
-    fetchJobDetails();
+    const shouldPoll = searchParams.get('poll') === 'true';
+    fetchJobDetails(shouldPoll);
+    
+    return () => {
+      if (pollingInterval.current) {
+        clearInterval(pollingInterval.current);
+      }
+    };
   }, [jobId]);
 
-  const fetchJobDetails = async () => {
+  const fetchJobDetails = async (shouldStartPolling = false) => {
     try {
       // Get job details
       const jobResponse = await api.get(`/extractions/${jobId}`);
@@ -42,8 +53,42 @@ export default function ExtractionDetail() {
       const jobData = jobResponse.data.job || jobResponse.data;
       setJob(jobData);
 
+      // Check job status
+      const status = jobData.state || jobData.status;
+      const isInProgress = status === 'running' || status === 'pending' || status === 'processing';
+      
+      // Start polling if job is in progress and we should poll
+      if (isInProgress && shouldStartPolling && !pollingInterval.current) {
+        setIsPolling(true);
+        pollingInterval.current = setInterval(() => {
+          fetchJobDetails(false); // Don't restart polling in recursive calls
+        }, 3000); // Poll every 3 seconds
+      }
+      
+      // Stop polling if job is complete or failed
+      if (!isInProgress && pollingInterval.current) {
+        clearInterval(pollingInterval.current);
+        pollingInterval.current = null;
+        setIsPolling(false);
+        
+        // Show completion toast
+        if (status === 'completed') {
+          toast({
+            title: "Extraction Complete!",
+            description: "Menu data has been successfully extracted.",
+            variant: "success"
+          });
+        } else if (status === 'failed') {
+          toast({
+            title: "Extraction Failed",
+            description: jobData.error || "An error occurred during extraction.",
+            variant: "destructive"
+          });
+        }
+      }
+
       // If completed, get the menu data
-      if (jobData.state === 'completed' || jobData.status === 'completed') {
+      if (status === 'completed') {
         if (jobData.menuId) {
           // Use database API for new extractions
           const menuResponse = await api.get(`/menus/${jobData.menuId}`);
@@ -470,6 +515,68 @@ export default function ExtractionDetail() {
                  'Invalid Date'}
               </dd>
             </div>
+            {/* Progress Indicator for Running Jobs */}
+            {(job.state === 'running' || job.status === 'running' || job.state === 'processing' || job.status === 'processing') && (
+              <div className="sm:col-span-3">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center mb-3">
+                    <ArrowPathIcon className="h-5 w-5 text-blue-600 animate-spin mr-2" />
+                    <h4 className="text-sm font-medium text-blue-900">
+                      Extraction in Progress
+                    </h4>
+                    {isPolling && (
+                      <span className="ml-auto text-xs text-blue-600">
+                        Auto-refreshing every 3 seconds
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center text-sm text-blue-700">
+                      <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse mr-2"></span>
+                      Scanning menu categories and items...
+                    </div>
+                    <div className="text-xs text-blue-600 mt-2">
+                      This process typically takes 1-3 minutes depending on menu size.
+                    </div>
+                  </div>
+                  {!isPolling && (
+                    <button
+                      onClick={() => fetchJobDetails(true)}
+                      className="mt-3 text-xs text-blue-600 hover:text-blue-800 underline"
+                    >
+                      Enable auto-refresh
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Failed Job Indicator */}
+            {(job.state === 'failed' || job.status === 'failed') && (
+              <div className="sm:col-span-3">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <div className="flex items-start">
+                    <XCircleIcon className="h-5 w-5 text-red-600 mt-0.5 mr-2" />
+                    <div className="flex-1">
+                      <h4 className="text-sm font-medium text-red-900 mb-1">
+                        Extraction Failed
+                      </h4>
+                      <p className="text-sm text-red-700">
+                        {job.error || 'An error occurred during the extraction process.'}
+                      </p>
+                      <button
+                        onClick={() => navigate('/extractions/new')}
+                        className="mt-3 text-sm text-red-600 hover:text-red-800 underline"
+                      >
+                        Try a new extraction
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Download Buttons for Completed Jobs */}
             {(job.state === 'completed' || job.status === 'completed') && (
               <div className="sm:col-span-3">
                 <div className="flex flex-wrap gap-3">
