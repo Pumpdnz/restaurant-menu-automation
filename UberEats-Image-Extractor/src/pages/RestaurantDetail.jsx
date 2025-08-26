@@ -80,8 +80,10 @@ export default function RestaurantDetail() {
   const fetchRestaurantDetails = async () => {
     try {
       const response = await api.get(`/restaurants/${id}/details`);
-      setRestaurant(response.data.restaurant);
-      setEditedData(response.data.restaurant);
+      const restaurantData = response.data.restaurant;
+      setRestaurant(restaurantData);
+      // Data is already in 24-hour format from database
+      setEditedData(restaurantData);
       setError(null);
     } catch (err) {
       console.error('Failed to fetch restaurant details:', err);
@@ -97,6 +99,7 @@ export default function RestaurantDetail() {
     setSuccess(null);
 
     try {
+      // Save data with 24-hour format opening hours
       let response;
       if (isNewRestaurant) {
         // Create new restaurant
@@ -121,6 +124,86 @@ export default function RestaurantDetail() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const convertTo24Hour = (time12h) => {
+    if (!time12h) return '';
+    
+    // Normalize the input by trimming and converting to uppercase for matching
+    const normalizedTime = time12h.trim();
+    
+    // Already in 24-hour format (HH:MM with no AM/PM)
+    if (/^\d{1,2}:\d{2}$/.test(normalizedTime) && !normalizedTime.match(/am|pm/i)) {
+      return normalizedTime;
+    }
+    
+    // Parse various 12-hour formats
+    // Matches: "5:00 pm", "5:00pm", "5:00 PM", "5:00PM", "5 pm", "5PM", etc.
+    const match = normalizedTime.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i);
+    if (!match) {
+      console.warn(`Could not parse time: ${time12h}`);
+      return time12h; // Return original if we can't parse it
+    }
+    
+    let hours = parseInt(match[1]);
+    const minutes = match[2] || '00';
+    const period = match[3].toUpperCase();
+    
+    if (period === 'PM' && hours !== 12) {
+      hours += 12;
+    } else if (period === 'AM' && hours === 12) {
+      hours = 0;
+    }
+    
+    return `${hours.toString().padStart(2, '0')}:${minutes.padStart(2, '0')}`;
+  };
+
+  const convertTo12Hour = (time24h) => {
+    if (!time24h) return '';
+    
+    // Already in 12-hour format
+    if (time24h.match(/AM|PM/i)) {
+      return time24h;
+    }
+    
+    const [hours24, minutes = '00'] = time24h.split(':');
+    let hours = parseInt(hours24);
+    const period = hours >= 12 ? 'PM' : 'AM';
+    
+    if (hours > 12) {
+      hours -= 12;
+    } else if (hours === 0) {
+      hours = 12;
+    }
+    
+    return `${hours}:${minutes.padStart(2, '0')} ${period}`;
+  };
+
+  const normalizeOpeningHours = (hours) => {
+    if (!hours) return hours;
+    
+    if (Array.isArray(hours)) {
+      return hours.map(slot => ({
+        ...slot,
+        hours: {
+          open: convertTo24Hour(slot.hours.open),
+          close: convertTo24Hour(slot.hours.close)
+        }
+      }));
+    } else if (typeof hours === 'object') {
+      const normalized = {};
+      Object.keys(hours).forEach(day => {
+        if (hours[day]) {
+          normalized[day] = {
+            open: convertTo24Hour(hours[day].open),
+            close: convertTo24Hour(hours[day].close)
+          };
+        }
+      });
+      return normalized;
+    }
+    
+    return hours;
   };
 
   const handleCancel = () => {
@@ -236,26 +319,53 @@ export default function RestaurantDetail() {
   };
 
   const addOpeningHoursSlot = (day) => {
-    const currentHours = editedData.opening_hours || [];
-    if (!Array.isArray(currentHours)) {
-      // Convert object to array format
-      const arrayFormat = [];
-      Object.keys(currentHours).forEach(d => {
-        if (currentHours[d]) {
-          arrayFormat.push({
-            day: d,
-            hours: currentHours[d]
-          });
-        }
-      });
+    const currentHours = editedData.opening_hours;
+    
+    // If no hours exist yet, create object format by default
+    if (!currentHours || (typeof currentHours === 'object' && Object.keys(currentHours).length === 0)) {
       setEditedData(prev => ({
         ...prev,
-        opening_hours: [...arrayFormat, {
+        opening_hours: {
+          [day]: { open: '09:00', close: '17:00' }
+        }
+      }));
+      return;
+    }
+    
+    if (!Array.isArray(currentHours)) {
+      // Object format - check if we need to convert to array (for multiple slots)
+      if (currentHours[day]) {
+        // Day already has hours, convert to array format for multiple slots
+        const arrayFormat = [];
+        Object.keys(currentHours).forEach(d => {
+          if (currentHours[d]) {
+            arrayFormat.push({
+              day: d,
+              hours: currentHours[d]
+            });
+          }
+        });
+        // Add the new slot for this day
+        arrayFormat.push({
           day: day,
           hours: { open: '09:00', close: '17:00' }
-        }]
-      }));
+        });
+        setEditedData(prev => ({
+          ...prev,
+          opening_hours: arrayFormat
+        }));
+      } else {
+        // Just add to object format
+        setEditedData(prev => ({
+          ...prev,
+          opening_hours: {
+            ...currentHours,
+            [day]: { open: '09:00', close: '17:00' }
+          }
+        }));
+      }
     } else {
+      // Array format - just add new slot
       setEditedData(prev => ({
         ...prev,
         opening_hours: [...currentHours, {
@@ -272,6 +382,27 @@ export default function RestaurantDetail() {
       const updatedHours = currentHours.filter((slot, i) => 
         !(slot.day === day && i === index)
       );
+      setEditedData(prev => ({
+        ...prev,
+        opening_hours: updatedHours
+      }));
+    }
+  };
+
+  const deleteOpeningHours = (day) => {
+    const currentHours = editedData.opening_hours || {};
+    
+    if (Array.isArray(currentHours)) {
+      // Remove all slots for this day from array format
+      const updatedHours = currentHours.filter(slot => slot.day !== day);
+      setEditedData(prev => ({
+        ...prev,
+        opening_hours: updatedHours
+      }));
+    } else {
+      // Remove the day from object format
+      const updatedHours = { ...currentHours };
+      delete updatedHours[day];
       setEditedData(prev => ({
         ...prev,
         opening_hours: updatedHours
@@ -364,20 +495,32 @@ export default function RestaurantDetail() {
                         </>
                       ) : (
                         <span className="text-sm">
-                          {slot.open} - {slot.close}
+                          {convertTo12Hour(slot.open)} - {convertTo12Hour(slot.close)}
                         </span>
                       )}
                     </div>
                   ))
                 )}
-                {isEditing && daySlots.length > 0 && daySlots.length < 2 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => addOpeningHoursSlot(day)}
-                  >
-                    Add Time Slot
-                  </Button>
+                {isEditing && daySlots.length > 0 && (
+                  <div className="flex gap-2">
+                    {daySlots.length < 2 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => addOpeningHoursSlot(day)}
+                      >
+                        Add Time Slot
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => deleteOpeningHours(day)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      Delete All Hours
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>
@@ -388,31 +531,79 @@ export default function RestaurantDetail() {
 
     // Handle object format (single time slot per day)
     return daysOfWeek.map(day => (
-      <div key={day} className="flex items-center gap-4 mb-2">
-        <span className="text-sm font-medium w-24">{day}</span>
-        {isEditing ? (
-          <div className="flex items-center gap-2">
-            <Input
-              type="time"
-              value={hours[day]?.open || ''}
-              onChange={(e) => handleOpeningHoursChange(day, 'open', e.target.value)}
-              className="w-32"
-            />
-            <span className="text-gray-500">-</span>
-            <Input
-              type="time"
-              value={hours[day]?.close || ''}
-              onChange={(e) => handleOpeningHoursChange(day, 'close', e.target.value)}
-              className="w-32"
-            />
+      <div key={day} className="space-y-2 mb-3">
+        <div className="flex items-start gap-4">
+          <span className="text-sm font-medium w-24 pt-2">{day}</span>
+          <div className="flex-1 space-y-2">
+            {!hours[day] ? (
+              isEditing ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addOpeningHoursSlot(day)}
+                  className="mt-1"
+                >
+                  Add Hours
+                </Button>
+              ) : (
+                <span className="text-sm text-gray-500 inline-block pt-2">Closed</span>
+              )
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  {isEditing ? (
+                    <>
+                      <Input
+                        type="time"
+                        value={hours[day]?.open || ''}
+                        onChange={(e) => handleOpeningHoursChange(day, 'open', e.target.value)}
+                        className="w-32"
+                      />
+                      <span className="text-gray-500">-</span>
+                      <Input
+                        type="time"
+                        value={hours[day]?.close || ''}
+                        onChange={(e) => handleOpeningHoursChange(day, 'close', e.target.value)}
+                        className="w-32"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deleteOpeningHours(day)}
+                        className="h-8 w-8 flex-shrink-0"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </>
+                  ) : (
+                    <span className="text-sm">
+                      {convertTo12Hour(hours[day].open)} - {convertTo12Hour(hours[day].close)}
+                    </span>
+                  )}
+                </div>
+                {isEditing && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addOpeningHoursSlot(day)}
+                    >
+                      Add Time Slot
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => deleteOpeningHours(day)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      Delete All Hours
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
           </div>
-        ) : (
-          <span className="text-sm">
-            {hours[day] 
-              ? `${hours[day].open} - ${hours[day].close}`
-              : 'Closed'}
-          </span>
-        )}
+        </div>
       </div>
     ));
   };
@@ -496,7 +687,10 @@ export default function RestaurantDetail() {
           )}
           
           {!isEditing && !isNewRestaurant ? (
-            <Button onClick={() => setIsEditing(true)}>
+            <Button onClick={() => {
+              setEditedData(restaurant);
+              setIsEditing(true);
+            }}>
               <Edit className="h-4 w-4 mr-2" />
               Edit Details
             </Button>

@@ -1378,24 +1378,22 @@ async function updateRestaurantWorkflow(restaurantId, workflowData) {
   });
   
   try {
-    // Separate platform URLs and remove any relation fields
+    // Remove only relation fields, keep platform URLs
     const { 
-      ubereats_url, 
-      doordash_url, 
       menus,                  // Remove relation field
       restaurant_platforms,   // Remove relation field
       restaurants,            // Remove relation field
       platforms,              // Remove relation field
       menu_items,             // Remove relation field
       extraction_jobs,        // Remove relation field
-      ...otherData 
+      ...cleanData 
     } = workflowData;
     
-    // Update main restaurant record
+    // Update main restaurant record including platform URLs
     const { data, error } = await supabase
       .from('restaurants')
       .update({
-        ...otherData,
+        ...cleanData,
         updated_at: new Date().toISOString()
       })
       .eq('id', restaurantId)
@@ -1406,42 +1404,9 @@ async function updateRestaurantWorkflow(restaurantId, workflowData) {
       console.error('[Database] Supabase update error:', {
         error: error,
         restaurantId: restaurantId,
-        updateData: otherData
+        updateData: cleanData
       });
       throw error;
-    }
-    
-    // Update platform URLs if provided
-    if (ubereats_url) {
-      const platform = await getPlatformByName('ubereats');
-      if (platform) {
-        await supabase
-          .from('restaurant_platforms')
-          .upsert({
-            restaurant_id: restaurantId,
-            platform_id: platform.id,
-            url: ubereats_url,
-            last_scraped_at: new Date().toISOString()
-          }, {
-            onConflict: 'restaurant_id,platform_id'
-          });
-      }
-    }
-    
-    if (doordash_url) {
-      const platform = await getPlatformByName('doordash');
-      if (platform) {
-        await supabase
-          .from('restaurant_platforms')
-          .upsert({
-            restaurant_id: restaurantId,
-            platform_id: platform.id,
-            url: doordash_url,
-            last_scraped_at: new Date().toISOString()
-          }, {
-            onConflict: 'restaurant_id,platform_id'
-          });
-      }
     }
     
     console.log('[Database] Successfully updated restaurant workflow:', {
