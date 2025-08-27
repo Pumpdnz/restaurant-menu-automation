@@ -13,6 +13,7 @@ const cors = require('cors');
 const axios = require('axios');
 const path = require('path');
 const archiver = require('archiver');
+const sharp = require('sharp');
 const { 
   DEFAULT_SCHEMA,
   UBEREATS_SCHEMA,
@@ -4356,7 +4357,7 @@ app.post('/api/google-business-search', async (req, res) => {
     console.log('[Google Business Search] Searching for platform URLs...');
     
     // Combine into a single search query to avoid rate limits
-    const combinedQuery = `"${restaurantName}" "${city}" New Zealand (website OR ubereats OR doordash OR facebook OR instagram OR menu OR order online)`;
+    const combinedQuery = `"${restaurantName}" "${city}" New Zealand (website OR ubereats OR doordash OR delivereasy OR facebook OR instagram OR menu OR order online)`;
     
     try {
       const searchResponse = await axios.post(
@@ -4438,7 +4439,7 @@ app.post('/api/google-business-search', async (req, res) => {
             `${FIRECRAWL_API_URL}/v2/search`,
             {
               query: `"${restaurantName}" "${city}" New Zealand`,
-              limit: 5,
+              limit: 10,
               lang: 'en',
               country: 'nz',
               sources: [{ type: 'web' }]
@@ -4937,6 +4938,12 @@ app.post('/api/google-business-search', async (req, res) => {
       if (extractedData.doordashUrl) updateData.doordash_url = extractedData.doordashUrl;
       if (extractedData.instagramUrl) updateData.instagram_url = extractedData.instagramUrl;
       if (extractedData.facebookUrl) updateData.facebook_url = extractedData.facebookUrl;
+      if (extractedData.meandyouUrl) updateData.meandyou_url = extractedData.meandyouUrl;
+      if (extractedData.mobi2goUrl) updateData.mobi2go_url = extractedData.mobi2goUrl;
+      if (extractedData.delivereasyUrl) updateData.delivereasy_url = extractedData.delivereasyUrl;
+      if (extractedData.nextorderUrl) updateData.nextorder_url = extractedData.nextorderUrl;
+      if (extractedData.foodhubUrl) updateData.foodhub_url = extractedData.foodhubUrl;
+      if (extractedData.ordermealUrl) updateData.ordermeal_url = extractedData.ordermealUrl;
       if (formattedHours.length > 0) updateData.opening_hours = formattedHours;
       
       // Log extracted data for debugging
@@ -4948,6 +4955,12 @@ app.post('/api/google-business-search', async (req, res) => {
         doordash: extractedData.doordashUrl || 'Not found',
         instagram: extractedData.instagramUrl || 'Not found',
         facebook: extractedData.facebookUrl || 'Not found',
+        meandyou: extractedData.meandyouUrl || 'Not found',
+        mobi2go: extractedData.mobi2goUrl || 'Not found',
+        delivereasy: extractedData.delivereasyUrl || 'Not found',
+        nextorder: extractedData.nextorderUrl || 'Not found',
+        foodhub: extractedData.foodhubUrl || 'Not found',
+        ordermeal: extractedData.ordermealUrl || 'Not found',
         hoursCount: formattedHours.length,
         platformsFound: Object.entries(foundUrls).filter(([k, v]) => v).map(([k]) => k)
       });
@@ -5048,6 +5061,321 @@ function getNextDay(day) {
   const index = days.indexOf(day);
   return days[(index + 1) % 7];
 }
+
+/**
+ * POST /api/website-extraction/logo
+ * Extract logo and brand colors from restaurant website
+ */
+app.post('/api/website-extraction/logo', async (req, res) => {
+  try {
+    const { restaurantId, websiteUrl, additionalImages = [] } = req.body;
+    
+    if (!restaurantId || !websiteUrl) {
+      return res.status(400).json({
+        success: false,
+        error: 'Restaurant ID and website URL are required'
+      });
+    }
+    
+    console.log('[API] Starting logo extraction for:', websiteUrl);
+    
+    // Import the logo extraction service
+    const logoService = require('./src/services/logo-extraction-service');
+    
+    // Extract logo and colors
+    const result = await logoService.extractLogoAndColors(websiteUrl);
+    
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        error: result.error || 'Failed to extract logo'
+      });
+    }
+    
+    // Process additional images if provided
+    let savedImages = [];
+    if (additionalImages.length > 0) {
+      console.log('[API] Processing additional images for storage...');
+      
+      savedImages = await Promise.all(additionalImages.map(async (imageData) => {
+        try {
+          const imageBuffer = await logoService.downloadImageToBuffer(imageData.url, websiteUrl);
+          const metadata = await sharp(imageBuffer).metadata();
+          
+          // Convert to base64 for storage
+          const base64 = `data:image/${metadata.format};base64,${imageBuffer.toString('base64')}`;
+          
+          return {
+            url: imageData.url,
+            base64: base64,
+            width: metadata.width,
+            height: metadata.height,
+            format: metadata.format,
+            description: imageData.description || '',
+            confidence: imageData.confidence || 0,
+            location: imageData.location || '',
+            savedAt: new Date().toISOString()
+          };
+        } catch (error) {
+          console.error('[API] Failed to process additional image:', imageData.url, error.message);
+          return null;
+        }
+      }));
+      
+      // Filter out failed images
+      savedImages = savedImages.filter(img => img !== null);
+      console.log('[API] Successfully processed', savedImages.length, 'additional images');
+    }
+    
+    // Update restaurant in database if extraction successful
+    if (db.isDatabaseAvailable()) {
+      const updateData = {
+        logo_url: result.logoVersions?.original,
+        logo_nobg_url: result.logoVersions?.nobg,
+        logo_standard_url: result.logoVersions?.standard,
+        logo_thermal_url: result.logoVersions?.thermal,
+        logo_thermal_alt_url: result.logoVersions?.thermal_alt,
+        logo_thermal_contrast_url: result.logoVersions?.thermal_contrast,
+        logo_thermal_adaptive_url: result.logoVersions?.thermal_adaptive,
+        logo_favicon_url: result.logoVersions?.favicon,
+        primary_color: result.colors?.primaryColor,
+        secondary_color: result.colors?.secondaryColor,
+        tertiary_color: result.colors?.tertiaryColor,
+        accent_color: result.colors?.accentColor,
+        background_color: result.colors?.backgroundColor,
+        theme: result.colors?.theme,
+        brand_colors: result.colors?.brandColors || []
+      };
+      
+      // Add saved images if any
+      if (savedImages.length > 0) {
+        updateData.saved_images = savedImages;
+      }
+      
+      await db.updateRestaurantWorkflow(restaurantId, updateData);
+      console.log('[API] Updated restaurant with logo, colors, and', savedImages.length, 'additional images');
+    }
+    
+    return res.json({
+      success: true,
+      data: {
+        logoVersions: result.logoVersions,
+        colors: result.colors,
+        savedImages: savedImages.length,
+        extractedAt: result.extractedAt
+      }
+    });
+    
+  } catch (error) {
+    console.error('[API] Logo extraction error:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to extract logo and colors'
+    });
+  }
+});
+
+/**
+ * POST /api/website-extraction/logo-candidates
+ * Extract multiple logo candidates for user selection
+ */
+app.post('/api/website-extraction/logo-candidates', async (req, res) => {
+  try {
+    const { websiteUrl } = req.body;
+    
+    if (!websiteUrl) {
+      return res.status(400).json({
+        success: false,
+        error: 'Website URL is required'
+      });
+    }
+    
+    console.log('[API] Finding logo candidates for:', websiteUrl);
+    
+    // Import logo service locally
+    const logoService = require('./src/services/logo-extraction-service');
+    
+    // Get logo candidates
+    const candidates = await logoService.extractLogoCandidatesWithFirecrawl(websiteUrl);
+    
+    if (!candidates || candidates.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'No logo candidates found on website'
+      });
+    }
+    
+    // Process and validate each candidate
+    const processedCandidates = await Promise.all(candidates.map(async (candidate, index) => {
+      try {
+        // Test if the URL is actually accessible
+        const imageBuffer = await logoService.downloadImageToBuffer(candidate.url, websiteUrl);
+        
+        // For small images or favicons, create a preview
+        if (candidate.confidence < 50 || candidate.format === 'ico' || !candidate.url.startsWith('http')) {
+          const previewBuffer = await sharp(imageBuffer)
+            .resize(100, 100, {
+              fit: 'contain',
+              background: { r: 255, g: 255, b: 255, alpha: 0 }
+            })
+            .png()
+            .toBuffer();
+          
+          candidate.preview = `data:image/png;base64,${previewBuffer.toString('base64')}`;
+        }
+        
+        // Mark as valid since download succeeded
+        candidate.valid = true;
+        return candidate;
+      } catch (error) {
+        console.log(`[API] Could not create preview for candidate ${index}:`, error.message);
+        // Mark as invalid - the URL doesn't work
+        candidate.valid = false;
+        return candidate;
+      }
+    }));
+    
+    // Filter out invalid candidates (404s, etc)
+    const validCandidates = processedCandidates.filter(c => c.valid);
+    
+    // Remove the 'valid' flag before sending to frontend
+    validCandidates.forEach(c => delete c.valid);
+    
+    if (validCandidates.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'No valid logo images found on website (all URLs returned 404)'
+      });
+    }
+    
+    return res.json({
+      success: true,
+      data: {
+        websiteUrl,
+        candidates: validCandidates,
+        extractedAt: new Date().toISOString()
+      }
+    });
+    
+  } catch (error) {
+    console.error('[API] Logo candidates extraction error:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to extract logo candidates'
+    });
+  }
+});
+
+/**
+ * POST /api/website-extraction/process-selected-logo
+ * Process a selected logo candidate into all required formats
+ */
+app.post('/api/website-extraction/process-selected-logo', async (req, res) => {
+  try {
+    const { logoUrl, websiteUrl, restaurantId, additionalImages = [] } = req.body;
+    
+    if (!logoUrl) {
+      return res.status(400).json({
+        success: false,
+        error: 'Logo URL is required'
+      });
+    }
+    
+    console.log('[API] Processing selected logo:', logoUrl);
+    console.log('[API] Additional images to save:', additionalImages.length);
+    
+    // Import logo service locally
+    const logoService = require('./src/services/logo-extraction-service');
+    
+    // Download and process the selected logo
+    // Use websiteUrl if provided, otherwise use the logo URL's origin as referrer
+    const referrerUrl = websiteUrl || new URL(logoUrl).origin;
+    const logoBuffer = await logoService.downloadImageToBuffer(logoUrl, referrerUrl);
+    const colors = await logoService.extractColorsFromLogo(logoBuffer);
+    const logoVersions = await logoService.processLogoVersions(logoBuffer);
+    
+    // Process additional images if provided
+    let savedImages = [];
+    if (additionalImages.length > 0) {
+      console.log('[API] Processing additional images for storage...');
+      
+      savedImages = await Promise.all(additionalImages.map(async (imageData) => {
+        try {
+          const imageBuffer = await logoService.downloadImageToBuffer(imageData.url, referrerUrl);
+          const metadata = await sharp(imageBuffer).metadata();
+          
+          // Convert to base64 for storage
+          const base64 = `data:image/${metadata.format};base64,${imageBuffer.toString('base64')}`;
+          
+          return {
+            url: imageData.url,
+            base64: base64,
+            width: metadata.width,
+            height: metadata.height,
+            format: metadata.format,
+            description: imageData.description || '',
+            confidence: imageData.confidence || 0,
+            location: imageData.location || '',
+            savedAt: new Date().toISOString()
+          };
+        } catch (error) {
+          console.error('[API] Failed to process additional image:', imageData.url, error.message);
+          return null;
+        }
+      }));
+      
+      // Filter out failed images
+      savedImages = savedImages.filter(img => img !== null);
+      console.log('[API] Successfully processed', savedImages.length, 'additional images');
+    }
+    
+    // Update restaurant if ID provided
+    if (restaurantId && db.isDatabaseAvailable()) {
+      const updateData = {
+        logo_url: logoVersions?.original,
+        logo_nobg_url: logoVersions?.nobg,
+        logo_standard_url: logoVersions?.standard,
+        logo_thermal_url: logoVersions?.thermal,
+        logo_thermal_alt_url: logoVersions?.thermal_alt,
+        logo_thermal_contrast_url: logoVersions?.thermal_contrast,
+        logo_thermal_adaptive_url: logoVersions?.thermal_adaptive,
+        logo_favicon_url: logoVersions?.favicon,
+        primary_color: colors?.primaryColor,
+        secondary_color: colors?.secondaryColor,
+        tertiary_color: colors?.tertiaryColor,
+        accent_color: colors?.accentColor,
+        background_color: colors?.backgroundColor,
+        theme: colors?.theme,
+        brand_colors: colors?.brandColors || []
+      };
+      
+      // Add saved images if any
+      if (savedImages.length > 0) {
+        updateData.saved_images = savedImages;
+      }
+      
+      await db.updateRestaurantWorkflow(restaurantId, updateData);
+      console.log('[API] Updated restaurant with selected logo, colors, and', savedImages.length, 'additional images');
+    }
+    
+    return res.json({
+      success: true,
+      data: {
+        logoVersions,
+        colors,
+        savedImages: savedImages.length,
+        processedAt: new Date().toISOString()
+      }
+    });
+    
+  } catch (error) {
+    console.error('[API] Logo processing error:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to process selected logo'
+    });
+  }
+});
 
 /**
  * POST /api/menus/:id/duplicate

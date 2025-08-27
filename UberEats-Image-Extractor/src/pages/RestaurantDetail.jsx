@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from '../hooks/use-toast';
 import { 
   Building2, 
   Mail, 
@@ -24,7 +25,8 @@ import {
   Link2,
   Hash,
   Search,
-  RefreshCw
+  RefreshCw,
+  ExternalLink
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -35,6 +37,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
+} from '../components/ui/dialog';
+import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
+import { Checkbox } from '../components/ui/checkbox';
+import { cn } from '../lib/utils';
 import api from '../services/api';
 
 export default function RestaurantDetail() {
@@ -49,6 +62,26 @@ export default function RestaurantDetail() {
   const [editedData, setEditedData] = useState({});
   const [activeTab, setActiveTab] = useState('overview');
   const [searchingGoogle, setSearchingGoogle] = useState(false);
+  const [extractingLogo, setExtractingLogo] = useState(false);
+  const [logoDialogOpen, setLogoDialogOpen] = useState(false);
+  const [logoCandidates, setLogoCandidates] = useState([]);
+  const [selectedLogoCandidate, setSelectedLogoCandidate] = useState(null);
+  const [selectedAdditionalImages, setSelectedAdditionalImages] = useState([]);
+  const [loadingCandidates, setLoadingCandidates] = useState(false);
+  const [processingLogo, setProcessingLogo] = useState(false);
+  const [processLogoDialogOpen, setProcessLogoDialogOpen] = useState(false);
+  const [processMode, setProcessMode] = useState('manual'); // 'extract', 'manual', 'reprocess', 'replace'
+  const [newLogoUrl, setNewLogoUrl] = useState('');
+  const [versionsToUpdate, setVersionsToUpdate] = useState({
+    logo_url: false,
+    logo_nobg_url: true,
+    logo_standard_url: false,
+    logo_thermal_url: true,
+    logo_thermal_alt_url: true,
+    logo_thermal_contrast_url: false,
+    logo_thermal_adaptive_url: false,
+    logo_favicon_url: true
+  });
   const isNewRestaurant = id === 'new';
 
   useEffect(() => {
@@ -99,11 +132,71 @@ export default function RestaurantDetail() {
     setSuccess(null);
 
     try {
+      let dataToSave = {};
+      
+      if (isNewRestaurant) {
+        // For new restaurants, send all data
+        dataToSave = { ...editedData };
+      } else {
+        // For updates, only send changed fields
+        Object.keys(editedData).forEach(key => {
+          // Compare with original restaurant data
+          // Use JSON.stringify for deep comparison of objects/arrays
+          const originalValue = restaurant[key];
+          const editedValue = editedData[key];
+          
+          // Check if value has changed
+          let hasChanged = false;
+          
+          if (originalValue === undefined && editedValue !== undefined) {
+            // New field added
+            hasChanged = true;
+          } else if (typeof originalValue === 'object' && originalValue !== null) {
+            // For objects and arrays, do deep comparison
+            hasChanged = JSON.stringify(originalValue) !== JSON.stringify(editedValue);
+          } else {
+            // For primitive values
+            hasChanged = originalValue !== editedValue;
+          }
+          
+          // Only include changed fields
+          if (hasChanged) {
+            // Special handling for base64 logo fields - skip if they're base64
+            const logoFields = [
+              'logo_url', 'logo_nobg_url', 'logo_standard_url', 
+              'logo_thermal_url', 'logo_thermal_alt_url',
+              'logo_thermal_contrast_url', 'logo_thermal_adaptive_url',
+              'logo_favicon_url'
+            ];
+            
+            // Skip base64 data unless it's actually a new/different value
+            if (logoFields.includes(key) && editedValue?.startsWith('data:')) {
+              // Only skip if it's the same base64 data
+              if (originalValue !== editedValue) {
+                console.log(`Including changed logo field: ${key}`);
+                dataToSave[key] = editedValue;
+              }
+            } else {
+              dataToSave[key] = editedValue;
+            }
+          }
+        });
+        
+        console.log('Fields being updated:', Object.keys(dataToSave));
+      }
+      
+      // Only proceed if there are changes to save
+      if (!isNewRestaurant && Object.keys(dataToSave).length === 0) {
+        setError('No changes to save');
+        setSaving(false);
+        return;
+      }
+      
       // Save data with 24-hour format opening hours
       let response;
       if (isNewRestaurant) {
         // Create new restaurant
-        response = await api.post('/restaurants', editedData);
+        response = await api.post('/restaurants', dataToSave);
         const newRestaurantId = response.data.restaurant.id;
         setSuccess('Restaurant created successfully');
         // Navigate to the new restaurant's detail page
@@ -111,8 +204,8 @@ export default function RestaurantDetail() {
           navigate(`/restaurants/${newRestaurantId}`);
         }, 1500);
       } else {
-        // Update existing restaurant
-        response = await api.patch(`/restaurants/${id}/workflow`, editedData);
+        // Update existing restaurant with only changed fields
+        response = await api.patch(`/restaurants/${id}/workflow`, dataToSave);
         setRestaurant(response.data.restaurant);
         setIsEditing(false);
         setSuccess('Restaurant details updated successfully');
@@ -315,6 +408,357 @@ export default function RestaurantDetail() {
           }
         }
       }));
+    }
+  };
+
+  const handleExtractLogo = async () => {
+    if (!restaurant?.website_url) {
+      setError('Website URL is required for logo extraction');
+      return;
+    }
+
+    setLogoDialogOpen(true);
+    setLoadingCandidates(true);
+    setLogoCandidates([]);
+    setSelectedLogoCandidate(null);
+    setSelectedAdditionalImages([]);
+    setError(null);
+
+    try {
+      const response = await api.post('/website-extraction/logo-candidates', {
+        websiteUrl: restaurant.website_url
+      });
+
+      if (response.data.success && response.data.data?.candidates) {
+        setLogoCandidates(response.data.data.candidates);
+        // Pre-select the highest confidence candidate
+        if (response.data.data.candidates.length > 0) {
+          const topCandidate = response.data.data.candidates.reduce((prev, current) => 
+            (current.confidence > prev.confidence) ? current : prev
+          );
+          setSelectedLogoCandidate(topCandidate.url);
+        }
+      } else {
+        setError('No logo candidates found on the website');
+        setLogoDialogOpen(false);
+      }
+    } catch (err) {
+      console.error('Logo candidate extraction error:', err);
+      setError(err.response?.data?.error || 'Failed to find logo candidates');
+      setLogoDialogOpen(false);
+    } finally {
+      setLoadingCandidates(false);
+    }
+  };
+
+  const handleProcessSelectedLogo = async () => {
+    if (!selectedLogoCandidate) {
+      setError('Please select a logo candidate');
+      return;
+    }
+
+    setProcessingLogo(true);
+    setError(null);
+
+    try {
+      // Prepare additional images data
+      const additionalImages = selectedAdditionalImages.map(url => {
+        const candidate = logoCandidates.find(c => c.url === url);
+        return {
+          url: url,
+          confidence: candidate?.confidence || 0,
+          location: candidate?.location || '',
+          description: candidate?.reason || ''
+        };
+      });
+
+      const response = await api.post('/website-extraction/process-selected-logo', {
+        logoUrl: selectedLogoCandidate,
+        websiteUrl: restaurant.website_url,
+        restaurantId: id,
+        additionalImages
+      });
+
+      if (response.data.success) {
+        const data = response.data.data;
+        
+        // Update local state with extracted logo and colors
+        const updates = {};
+        
+        if (data.logoVersions?.original) {
+          updates.logo_url = data.logoVersions.original;
+        }
+        if (data.logoVersions?.nobg) {
+          updates.logo_nobg_url = data.logoVersions.nobg;
+        }
+        if (data.logoVersions?.standard) {
+          updates.logo_standard_url = data.logoVersions.standard;
+        }
+        if (data.logoVersions?.thermal) {
+          updates.logo_thermal_url = data.logoVersions.thermal;
+        }
+        if (data.logoVersions?.thermal_alt) {
+          updates.logo_thermal_alt_url = data.logoVersions.thermal_alt;
+        }
+        if (data.logoVersions?.thermal_contrast) {
+          updates.logo_thermal_contrast_url = data.logoVersions.thermal_contrast;
+        }
+        if (data.logoVersions?.thermal_adaptive) {
+          updates.logo_thermal_adaptive_url = data.logoVersions.thermal_adaptive;
+        }
+        if (data.logoVersions?.favicon) {
+          updates.logo_favicon_url = data.logoVersions.favicon;
+        }
+        if (data.colors?.primaryColor) {
+          updates.primary_color = data.colors.primaryColor;
+        }
+        if (data.colors?.secondaryColor) {
+          updates.secondary_color = data.colors.secondaryColor;
+        }
+        if (data.colors?.tertiaryColor) {
+          updates.tertiary_color = data.colors.tertiaryColor;
+        }
+        if (data.colors?.accentColor) {
+          updates.accent_color = data.colors.accentColor;
+        }
+        if (data.colors?.backgroundColor) {
+          updates.background_color = data.colors.backgroundColor;
+        }
+        if (data.colors?.theme) {
+          updates.theme = data.colors.theme;
+        }
+
+        // Update both restaurant and editedData
+        setRestaurant(prev => ({
+          ...prev,
+          ...updates
+        }));
+        
+        setEditedData(prev => ({
+          ...prev,
+          ...updates
+        }));
+        
+        setSuccess('Logo and colors extracted successfully');
+        setLogoDialogOpen(false);
+        
+        // Refresh restaurant data after a short delay
+        setTimeout(() => {
+          fetchRestaurantDetails();
+        }, 1000);
+      } else {
+        setError(response.data.error || 'Failed to process logo');
+      }
+    } catch (err) {
+      console.error('Logo processing error:', err);
+      setError(err.response?.data?.error || 'Failed to process selected logo');
+    } finally {
+      setProcessingLogo(false);
+    }
+  };
+
+  const handleProcessLogo = async () => {
+    if (processMode === 'extract') {
+      // Close Process Logo dialog and open Extract Logo dialog
+      setProcessLogoDialogOpen(false);
+      handleExtractLogo();
+      return;
+    }
+
+    if (processMode === 'manual' || processMode === 'replace') {
+      // Process the provided URL
+      if (!newLogoUrl) {
+        toast({
+          title: "Error",
+          description: "Please provide a logo URL",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setProcessingLogo(true);
+      setError(null);
+
+      try {
+        // Build versionsToUpdate array based on checkboxes
+        const versions = Object.keys(versionsToUpdate)
+          .filter(key => versionsToUpdate[key]);
+
+        const response = await api.post('/website-extraction/process-selected-logo', {
+          logoUrl: newLogoUrl,
+          websiteUrl: restaurant.website_url || '',
+          restaurantId: id,
+          versionsToUpdate: processMode === 'replace' ? versions : undefined
+        });
+
+        if (response.data.success) {
+          const data = response.data.data;
+          
+          // Update local state with processed logo and colors
+          const updates = {};
+          
+          if (data.logoVersions?.original) {
+            updates.logo_url = data.logoVersions.original;
+          }
+          if (data.logoVersions?.nobg) {
+            updates.logo_nobg_url = data.logoVersions.nobg;
+          }
+          if (data.logoVersions?.standard) {
+            updates.logo_standard_url = data.logoVersions.standard;
+          }
+          if (data.logoVersions?.thermal) {
+            updates.logo_thermal_url = data.logoVersions.thermal;
+          }
+          if (data.logoVersions?.thermal_alt) {
+            updates.logo_thermal_alt_url = data.logoVersions.thermal_alt;
+          }
+          if (data.logoVersions?.thermal_contrast) {
+            updates.logo_thermal_contrast_url = data.logoVersions.thermal_contrast;
+          }
+          if (data.logoVersions?.thermal_adaptive) {
+            updates.logo_thermal_adaptive_url = data.logoVersions.thermal_adaptive;
+          }
+          if (data.logoVersions?.favicon) {
+            updates.logo_favicon_url = data.logoVersions.favicon;
+          }
+          if (data.colors?.primaryColor) {
+            updates.primary_color = data.colors.primaryColor;
+          }
+          if (data.colors?.secondaryColor) {
+            updates.secondary_color = data.colors.secondaryColor;
+          }
+          if (data.colors?.tertiaryColor) {
+            updates.tertiary_color = data.colors.tertiaryColor;
+          }
+          if (data.colors?.accentColor) {
+            updates.accent_color = data.colors.accentColor;
+          }
+          if (data.colors?.backgroundColor) {
+            updates.background_color = data.colors.backgroundColor;
+          }
+          if (data.colors?.theme) {
+            updates.theme = data.colors.theme;
+          }
+
+          // Update both restaurant and editedData
+          setRestaurant(prev => ({
+            ...prev,
+            ...updates
+          }));
+
+          setEditedData(prev => ({
+            ...prev,
+            ...updates
+          }));
+
+          toast({
+            title: "Success",
+            description: "Logo processed successfully"
+          });
+
+          // Close dialog and reset state
+          setProcessLogoDialogOpen(false);
+          setNewLogoUrl('');
+          setProcessMode('manual');
+          setError(null);
+        } else {
+          setError(response.data.error || 'Failed to process logo');
+        }
+      } catch (err) {
+        console.error('Error processing logo:', err);
+        setError(err.response?.data?.error || 'Failed to process logo');
+      } finally {
+        setProcessingLogo(false);
+      }
+    } else if (processMode === 'reprocess') {
+      // Reprocess existing logo
+      if (!restaurant?.logo_url) {
+        toast({
+          title: "Error",
+          description: "No existing logo to reprocess",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setProcessingLogo(true);
+      setError(null);
+
+      try {
+        // Build versionsToUpdate array based on checkboxes
+        const versions = Object.keys(versionsToUpdate)
+          .filter(key => versionsToUpdate[key]);
+
+        // For reprocessing, use the existing logo URL
+        const logoUrl = restaurant.logo_url;
+
+        const response = await api.post('/website-extraction/process-selected-logo', {
+          logoUrl: logoUrl,
+          websiteUrl: restaurant.website_url || '',
+          restaurantId: id,
+          versionsToUpdate: versions,
+          sourceVersion: 'original'
+        });
+
+        if (response.data.success) {
+          const data = response.data.data;
+          
+          // Update local state with processed logo versions
+          const updates = {};
+          
+          // Only update the versions that were selected for reprocessing
+          if (versionsToUpdate.logo_nobg_url && data.logoVersions?.nobg) {
+            updates.logo_nobg_url = data.logoVersions.nobg;
+          }
+          if (versionsToUpdate.logo_standard_url && data.logoVersions?.standard) {
+            updates.logo_standard_url = data.logoVersions.standard;
+          }
+          if (versionsToUpdate.logo_thermal_url && data.logoVersions?.thermal) {
+            updates.logo_thermal_url = data.logoVersions.thermal;
+          }
+          if (versionsToUpdate.logo_thermal_alt_url && data.logoVersions?.thermal_alt) {
+            updates.logo_thermal_alt_url = data.logoVersions.thermal_alt;
+          }
+          if (versionsToUpdate.logo_thermal_contrast_url && data.logoVersions?.thermal_contrast) {
+            updates.logo_thermal_contrast_url = data.logoVersions.thermal_contrast;
+          }
+          if (versionsToUpdate.logo_thermal_adaptive_url && data.logoVersions?.thermal_adaptive) {
+            updates.logo_thermal_adaptive_url = data.logoVersions.thermal_adaptive;
+          }
+          if (versionsToUpdate.logo_favicon_url && data.logoVersions?.favicon) {
+            updates.logo_favicon_url = data.logoVersions.favicon;
+          }
+
+          // Update both restaurant and editedData
+          setRestaurant(prev => ({
+            ...prev,
+            ...updates
+          }));
+
+          setEditedData(prev => ({
+            ...prev,
+            ...updates
+          }));
+
+          toast({
+            title: "Success",
+            description: "Logo versions regenerated successfully"
+          });
+
+          // Close dialog and reset state
+          setProcessLogoDialogOpen(false);
+          setNewLogoUrl('');
+          setProcessMode('manual');
+          setError(null);
+        } else {
+          setError(response.data.error || 'Failed to reprocess logo');
+        }
+      } catch (err) {
+        console.error('Error reprocessing logo:', err);
+        setError(err.response?.data?.error || 'Failed to reprocess logo');
+      } finally {
+        setProcessingLogo(false);
+      }
     }
   };
 
@@ -1075,9 +1519,136 @@ export default function RestaurantDetail() {
                     </div>
                   )}
                 </div>
+
+                <div>
+                  <Label>Tertiary Color</Label>
+                  {isEditing ? (
+                    <div className="flex gap-2">
+                      <Input
+                        type="color"
+                        value={editedData.tertiary_color || '#000000'}
+                        onChange={(e) => handleFieldChange('tertiary_color', e.target.value)}
+                        className="w-16 h-9"
+                      />
+                      <Input
+                        value={editedData.tertiary_color || ''}
+                        onChange={(e) => handleFieldChange('tertiary_color', e.target.value)}
+                        placeholder="#000000"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 mt-1">
+                      {restaurant?.tertiary_color && (
+                        <div 
+                          className="w-6 h-6 rounded border"
+                          style={{ backgroundColor: restaurant.tertiary_color }}
+                        />
+                      )}
+                      <span className="text-sm">{restaurant?.tertiary_color || '-'}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <Label>Accent Color</Label>
+                  {isEditing ? (
+                    <div className="flex gap-2">
+                      <Input
+                        type="color"
+                        value={editedData.accent_color || '#000000'}
+                        onChange={(e) => handleFieldChange('accent_color', e.target.value)}
+                        className="w-16 h-9"
+                      />
+                      <Input
+                        value={editedData.accent_color || ''}
+                        onChange={(e) => handleFieldChange('accent_color', e.target.value)}
+                        placeholder="#000000"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 mt-1">
+                      {restaurant?.accent_color && (
+                        <div 
+                          className="w-6 h-6 rounded border"
+                          style={{ backgroundColor: restaurant.accent_color }}
+                        />
+                      )}
+                      <span className="text-sm">{restaurant?.accent_color || '-'}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <Label>Background Color</Label>
+                  {isEditing ? (
+                    <div className="flex gap-2">
+                      <Input
+                        type="color"
+                        value={editedData.background_color || '#FFFFFF'}
+                        onChange={(e) => handleFieldChange('background_color', e.target.value)}
+                        className="w-16 h-9"
+                      />
+                      <Input
+                        value={editedData.background_color || ''}
+                        onChange={(e) => handleFieldChange('background_color', e.target.value)}
+                        placeholder="#FFFFFF"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 mt-1">
+                      {restaurant?.background_color && (
+                        <div 
+                          className="w-6 h-6 rounded border"
+                          style={{ backgroundColor: restaurant.background_color }}
+                        />
+                      )}
+                      <span className="text-sm">{restaurant?.background_color || '-'}</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div className="space-y-4">
+              {/* Logo Management Actions */}
+              <div className="flex items-center justify-between mb-4">
+                <Label className="text-base font-semibold">Logo Management</Label>
+                {!isNewRestaurant && (
+                  <div className="flex gap-2">
+                    {restaurant?.website_url && (
+                      <Button
+                        onClick={handleExtractLogo}
+                        variant="outline"
+                        size="sm"
+                        disabled={extractingLogo}
+                        title="Extract logo from website"
+                      >
+                        {extractingLogo ? (
+                          <>
+                            <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                            Extracting...
+                          </>
+                        ) : (
+                          <>
+                            <Palette className="h-3 w-3 mr-1" />
+                            Extract Logo
+                          </>
+                        )}
+                      </Button>
+                    )}
+                    <Button
+                      onClick={() => setProcessLogoDialogOpen(true)}
+                      variant="outline"
+                      size="sm"
+                      title="Process logo manually or reprocess existing"
+                    >
+                      <Settings className="h-3 w-3 mr-1" />
+                      Process Logo
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Main Logos Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <Label>Logo URL</Label>
                   {isEditing ? (
@@ -1085,14 +1656,15 @@ export default function RestaurantDetail() {
                       value={editedData.logo_url || ''}
                       onChange={(e) => handleFieldChange('logo_url', e.target.value)}
                       placeholder="https://..."
+                      className="mt-2"
                     />
                   ) : (
-                    <div className="mt-1">
+                    <div className="mt-2">
                       {restaurant?.logo_url ? (
                         <img 
                           src={restaurant.logo_url} 
                           alt="Logo" 
-                          className="h-20 object-contain"
+                          className="h-20 w-auto object-contain bg-gray-100 rounded p-2"
                         />
                       ) : (
                         <span className="text-sm">-</span>
@@ -1102,41 +1674,158 @@ export default function RestaurantDetail() {
                 </div>
 
                 <div>
-                  <Label>Logo (No Background) URL</Label>
+                  <Label>Logo (No Background)</Label>
                   {isEditing ? (
                     <Input
                       value={editedData.logo_nobg_url || ''}
                       onChange={(e) => handleFieldChange('logo_nobg_url', e.target.value)}
                       placeholder="https://..."
+                      className="mt-2"
                     />
+                  ) : restaurant?.logo_nobg_url ? (
+                    <div className="mt-2">
+                      <img 
+                        src={restaurant.logo_nobg_url} 
+                        alt="Logo (No Background)"
+                        className="h-20 w-auto object-contain bg-gray-100 rounded p-2"
+                      />
+                    </div>
                   ) : (
-                    <p className="text-sm mt-1">{restaurant?.logo_nobg_url || '-'}</p>
+                    <p className="text-sm mt-2">-</p>
                   )}
                 </div>
 
                 <div>
-                  <Label>Logo (Standard) URL</Label>
+                  <Label>Logo (Standard)</Label>
                   {isEditing ? (
                     <Input
                       value={editedData.logo_standard_url || ''}
                       onChange={(e) => handleFieldChange('logo_standard_url', e.target.value)}
                       placeholder="https://..."
+                      className="mt-2"
                     />
+                  ) : restaurant?.logo_standard_url ? (
+                    <div className="mt-2">
+                      <img 
+                        src={restaurant.logo_standard_url} 
+                        alt="Logo (Standard)"
+                        className="h-20 w-auto object-contain bg-white rounded border p-2"
+                      />
+                    </div>
                   ) : (
-                    <p className="text-sm mt-1">{restaurant?.logo_standard_url || '-'}</p>
+                    <p className="text-sm mt-2">-</p>
                   )}
                 </div>
 
                 <div>
-                  <Label>Logo (Thermal) URL</Label>
+                  <Label>Logo (Favicon)</Label>
+                  {isEditing ? (
+                    <Input
+                      value={editedData.logo_favicon_url || ''}
+                      onChange={(e) => handleFieldChange('logo_favicon_url', e.target.value)}
+                      placeholder="https://..."
+                      className="mt-2"
+                    />
+                  ) : restaurant?.logo_favicon_url ? (
+                    <div className="mt-2">
+                      <img 
+                        src={restaurant.logo_favicon_url} 
+                        alt="Logo (Favicon)"
+                        className="h-8 w-8 object-contain bg-gray-100 rounded border p-1"
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-sm mt-2">-</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Thermal Logos Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6 pt-6 border-t">
+                <div>
+                  <Label>Thermal (Inverted)</Label>
                   {isEditing ? (
                     <Input
                       value={editedData.logo_thermal_url || ''}
                       onChange={(e) => handleFieldChange('logo_thermal_url', e.target.value)}
                       placeholder="https://..."
+                      className="mt-2"
                     />
+                  ) : restaurant?.logo_thermal_url ? (
+                    <div className="mt-2">
+                      <img 
+                        src={restaurant.logo_thermal_url} 
+                        alt="Thermal (Inverted)"
+                        className="h-20 w-auto object-contain bg-white rounded border border-gray-300 p-2"
+                      />
+                    </div>
                   ) : (
-                    <p className="text-sm mt-1">{restaurant?.logo_thermal_url || '-'}</p>
+                    <p className="text-sm mt-2">-</p>
+                  )}
+                </div>
+                <div>
+                  <Label>Thermal Alt (Dark Logos)</Label>
+                  {isEditing ? (
+                    <Input
+                      value={editedData.logo_thermal_alt_url || ''}
+                      onChange={(e) => handleFieldChange('logo_thermal_alt_url', e.target.value)}
+                      placeholder="https://..."
+                      className="mt-2"
+                    />
+                  ) : restaurant?.logo_thermal_alt_url ? (
+                    <div className="mt-2">
+                      <img 
+                        src={restaurant.logo_thermal_alt_url} 
+                        alt="Thermal Alt"
+                        className="h-20 w-auto object-contain bg-white rounded border border-gray-300 p-2"
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-sm mt-2">-</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>Thermal High Contrast</Label>
+                  {isEditing ? (
+                    <Input
+                      value={editedData.logo_thermal_contrast_url || ''}
+                      onChange={(e) => handleFieldChange('logo_thermal_contrast_url', e.target.value)}
+                      placeholder="https://..."
+                      className="mt-2"
+                    />
+                  ) : restaurant?.logo_thermal_contrast_url ? (
+                    <div className="mt-2">
+                      <img 
+                        src={restaurant.logo_thermal_contrast_url} 
+                        alt="Thermal High Contrast"
+                        className="h-20 w-auto object-contain bg-white rounded border border-gray-300 p-2"
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-sm mt-2">-</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>Thermal Adaptive</Label>
+                  {isEditing ? (
+                    <Input
+                      value={editedData.logo_thermal_adaptive_url || ''}
+                      onChange={(e) => handleFieldChange('logo_thermal_adaptive_url', e.target.value)}
+                      placeholder="https://..."
+                      className="mt-2"
+                    />
+                  ) : restaurant?.logo_thermal_adaptive_url ? (
+                    <div className="mt-2">
+                      <img 
+                        src={restaurant.logo_thermal_adaptive_url} 
+                        alt="Thermal Adaptive"
+                        className="h-20 w-auto object-contain bg-white rounded border border-gray-300 p-2"
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-sm mt-2">-</p>
                   )}
                 </div>
               </div>
@@ -1348,6 +2037,151 @@ export default function RestaurantDetail() {
                   </p>
                 )}
               </div>
+
+              {/* NZ-specific ordering platforms */}
+              <div>
+                <Label>OrderMeal URL</Label>
+                {isEditing ? (
+                  <Input
+                    value={editedData.ordermeal_url || ''}
+                    onChange={(e) => handleFieldChange('ordermeal_url', e.target.value)}
+                    placeholder="https://ordermeal.co.nz/..."
+                  />
+                ) : (
+                  <p className="text-sm mt-1">
+                    {restaurant?.ordermeal_url ? (
+                      <a 
+                        href={restaurant.ordermeal_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-brand-blue hover:underline"
+                      >
+                        {restaurant.ordermeal_url}
+                      </a>
+                    ) : '-'}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <Label>Me&U URL</Label>
+                {isEditing ? (
+                  <Input
+                    value={editedData.meandyou_url || ''}
+                    onChange={(e) => handleFieldChange('meandyou_url', e.target.value)}
+                    placeholder="https://meandyou.co.nz/..."
+                  />
+                ) : (
+                  <p className="text-sm mt-1">
+                    {restaurant?.meandyou_url ? (
+                      <a 
+                        href={restaurant.meandyou_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-brand-blue hover:underline"
+                      >
+                        {restaurant.meandyou_url}
+                      </a>
+                    ) : '-'}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <Label>Mobi2go URL</Label>
+                {isEditing ? (
+                  <Input
+                    value={editedData.mobi2go_url || ''}
+                    onChange={(e) => handleFieldChange('mobi2go_url', e.target.value)}
+                    placeholder="https://mobi2go.com/..."
+                  />
+                ) : (
+                  <p className="text-sm mt-1">
+                    {restaurant?.mobi2go_url ? (
+                      <a 
+                        href={restaurant.mobi2go_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-brand-blue hover:underline"
+                      >
+                        {restaurant.mobi2go_url}
+                      </a>
+                    ) : '-'}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <Label>Delivereasy URL</Label>
+                {isEditing ? (
+                  <Input
+                    value={editedData.delivereasy_url || ''}
+                    onChange={(e) => handleFieldChange('delivereasy_url', e.target.value)}
+                    placeholder="https://delivereasy.co.nz/..."
+                  />
+                ) : (
+                  <p className="text-sm mt-1">
+                    {restaurant?.delivereasy_url ? (
+                      <a 
+                        href={restaurant.delivereasy_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-brand-blue hover:underline"
+                      >
+                        {restaurant.delivereasy_url}
+                      </a>
+                    ) : '-'}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <Label>NextOrder URL</Label>
+                {isEditing ? (
+                  <Input
+                    value={editedData.nextorder_url || ''}
+                    onChange={(e) => handleFieldChange('nextorder_url', e.target.value)}
+                    placeholder="https://nextorder.co.nz/..."
+                  />
+                ) : (
+                  <p className="text-sm mt-1">
+                    {restaurant?.nextorder_url ? (
+                      <a 
+                        href={restaurant.nextorder_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-brand-blue hover:underline"
+                      >
+                        {restaurant.nextorder_url}
+                      </a>
+                    ) : '-'}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <Label>Foodhub URL</Label>
+                {isEditing ? (
+                  <Input
+                    value={editedData.foodhub_url || ''}
+                    onChange={(e) => handleFieldChange('foodhub_url', e.target.value)}
+                    placeholder="https://foodhub.co.nz/..."
+                  />
+                ) : (
+                  <p className="text-sm mt-1">
+                    {restaurant?.foodhub_url ? (
+                      <a 
+                        href={restaurant.foodhub_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-brand-blue hover:underline"
+                      >
+                        {restaurant.foodhub_url}
+                      </a>
+                    ) : '-'}
+                  </p>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -1468,6 +2302,602 @@ export default function RestaurantDetail() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Logo Candidate Selection Dialog */}
+      <Dialog open={logoDialogOpen} onOpenChange={setLogoDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Select Restaurant Logo</DialogTitle>
+            <DialogDescription>
+              Choose the correct logo for your restaurant from the candidates found on the website.
+              {logoCandidates.length > 0 && (
+                <span className="block mt-1 text-xs">
+                  Found {logoCandidates.length} potential logo{logoCandidates.length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {loadingCandidates ? (
+            <div className="flex items-center justify-center py-8">
+              <RefreshCw className="h-8 w-8 animate-spin text-brand-blue" />
+              <span className="ml-3">Finding logo candidates...</span>
+            </div>
+          ) : logoCandidates.length > 0 ? (
+            <div className="space-y-4">
+              <div className="text-sm text-muted-foreground">
+                <p>• Click radio button to select the main logo (click again to deselect)</p>
+                <p>• Check boxes to save additional images for future use (social media, marketing, etc.)</p>
+                <p>• You can save images without selecting a main logo when using manual URL entry</p>
+              </div>
+              <RadioGroup value={selectedLogoCandidate} onValueChange={setSelectedLogoCandidate}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {logoCandidates.map((candidate, index) => (
+                    <div 
+                      key={index}
+                      className={cn(
+                        "relative border rounded-lg p-4 transition-all",
+                        selectedLogoCandidate === candidate.url 
+                          ? "border-brand-blue bg-blue-50/50" 
+                          : "border-gray-200 hover:border-gray-300"
+                      )}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex flex-col gap-2">
+                          <RadioGroupItem 
+                            value={candidate.url}
+                            className="mt-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Allow deselecting by clicking again
+                              if (selectedLogoCandidate === candidate.url) {
+                                setSelectedLogoCandidate(null);
+                              } else {
+                                setSelectedLogoCandidate(candidate.url);
+                              }
+                            }}
+                          />
+                          <Checkbox
+                            checked={selectedAdditionalImages.includes(candidate.url)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedAdditionalImages([...selectedAdditionalImages, candidate.url]);
+                              } else {
+                                setSelectedAdditionalImages(selectedAdditionalImages.filter(url => url !== candidate.url));
+                              }
+                            }}
+                            disabled={selectedLogoCandidate === candidate.url}
+                            className="ml-0.5"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <div className="mb-2">
+                            <img 
+                              src={candidate.preview || candidate.url}
+                              alt={`Logo candidate ${index + 1}`}
+                              className="max-h-32 max-w-full object-contain mx-auto border rounded bg-white p-2"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = candidate.url;
+                              }}
+                            />
+                          </div>
+                          <div className="text-xs space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium">Confidence:</span>
+                              <Badge variant={candidate.confidence >= 70 ? "default" : candidate.confidence >= 40 ? "secondary" : "outline"}>
+                                {candidate.confidence}%
+                              </Badge>
+                            </div>
+                            {candidate.width && candidate.height && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground">Size:</span>
+                                <span>{candidate.width} × {candidate.height}px</span>
+                              </div>
+                            )}
+                            {candidate.location && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground">Location:</span>
+                                <span className="capitalize">{candidate.location}</span>
+                              </div>
+                            )}
+                            {candidate.format && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground">Format:</span>
+                                <span className="uppercase">{candidate.format}</span>
+                              </div>
+                            )}
+                            {candidate.reason && (
+                              <div className="mt-2 pt-2 border-t">
+                                <p className="text-muted-foreground leading-tight">{candidate.reason}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </RadioGroup>
+
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No logo candidates found</p>
+              {restaurant?.website_url && (
+                <div className="mt-4">
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Visit the website to find the logo:
+                  </p>
+                  <a 
+                    href={restaurant.website_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-brand-blue hover:underline inline-flex items-center gap-1"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    {restaurant.website_url}
+                  </a>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Right-click on the logo image and select "Copy Image Address"
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="flex justify-between">
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setLogoDialogOpen(false)}
+                disabled={processingLogo}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  const url = prompt('Enter the direct URL to the logo image:');
+                  if (url) {
+                    setSelectedLogoCandidate(url);
+                    // Process immediately after setting the URL
+                    setProcessingLogo(true);
+                    setError('');
+                    
+                    try {
+                      // Prepare additional images data  
+                      const additionalImages = selectedAdditionalImages.map(imageUrl => {
+                        const candidate = logoCandidates.find(c => c.url === imageUrl);
+                        return {
+                          url: imageUrl,
+                          confidence: candidate?.confidence || 0,
+                          location: candidate?.location || '',
+                          description: candidate?.reason || ''
+                        };
+                      });
+
+                      const response = await api.post('/website-extraction/process-selected-logo', {
+                        restaurantId: id,
+                        logoUrl: url,
+                        websiteUrl: restaurant.website_url,
+                        additionalImages
+                      });
+                      
+                      if (response.data.success) {
+                        const data = response.data.data;
+                        
+                        // Update local state with extracted logo and colors
+                        const updates = {};
+                        
+                        if (data.logoVersions?.original) {
+                          updates.logo_url = data.logoVersions.original;
+                        }
+                        if (data.logoVersions?.nobg) {
+                          updates.logo_nobg_url = data.logoVersions.nobg;
+                        }
+                        if (data.logoVersions?.standard) {
+                          updates.logo_standard_url = data.logoVersions.standard;
+                        }
+                        if (data.logoVersions?.thermal) {
+                          updates.logo_thermal_url = data.logoVersions.thermal;
+                        }
+                        if (data.logoVersions?.thermal_alt) {
+                          updates.logo_thermal_alt_url = data.logoVersions.thermal_alt;
+                        }
+                        if (data.logoVersions?.thermal_contrast) {
+                          updates.logo_thermal_contrast_url = data.logoVersions.thermal_contrast;
+                        }
+                        if (data.logoVersions?.thermal_adaptive) {
+                          updates.logo_thermal_adaptive_url = data.logoVersions.thermal_adaptive;
+                        }
+                        if (data.logoVersions?.favicon) {
+                          updates.logo_favicon_url = data.logoVersions.favicon;
+                        }
+                        if (data.colors?.primaryColor) {
+                          updates.primary_color = data.colors.primaryColor;
+                        }
+                        if (data.colors?.secondaryColor) {
+                          updates.secondary_color = data.colors.secondaryColor;
+                        }
+                        if (data.colors?.tertiaryColor) {
+                          updates.tertiary_color = data.colors.tertiaryColor;
+                        }
+                        if (data.colors?.accentColor) {
+                          updates.accent_color = data.colors.accentColor;
+                        }
+                        if (data.colors?.backgroundColor) {
+                          updates.background_color = data.colors.backgroundColor;
+                        }
+                        if (data.colors?.theme) {
+                          updates.theme = data.colors.theme;
+                        }
+                        
+                        // Update both restaurant and editedData
+                        setRestaurant(prev => ({
+                          ...prev,
+                          ...updates
+                        }));
+                        
+                        setEditedData(prev => ({
+                          ...prev,
+                          ...updates
+                        }));
+                        
+                        toast({
+                          title: "Success",
+                          description: "Logo and brand colors extracted successfully",
+                        });
+                        
+                        // Close dialog and reset state
+                        setLogoDialogOpen(false);
+                        setSelectedLogoCandidate('');
+                        setLogoCandidates([]);
+                        setError(null);
+                      } else {
+                        setError(response.data.error || 'Failed to process logo');
+                      }
+                    } catch (err) {
+                      console.error('Error processing logo:', err);
+                      setError(err.response?.data?.error || 'Failed to process logo');
+                    } finally {
+                      setProcessingLogo(false);
+                    }
+                  }
+                }}
+                disabled={processingLogo}
+              >
+                Enter URL Manually
+              </Button>
+            </div>
+            <Button
+              onClick={handleProcessSelectedLogo}
+              disabled={!selectedLogoCandidate || processingLogo}
+            >
+              {processingLogo ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  Use Selected Logo
+                  {selectedAdditionalImages.length > 0 && (
+                    <span className="ml-1 text-xs">
+                      (+{selectedAdditionalImages.length} images)
+                    </span>
+                  )}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+          
+          {restaurant?.website_url && logoCandidates.length > 0 && (
+            <div className="text-center pt-4 mt-4 border-t">
+              <p className="text-sm text-muted-foreground mb-2">
+                Don't see the correct logo? Visit the website:
+              </p>
+              <a 
+                href={restaurant.website_url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-brand-blue hover:underline inline-flex items-center gap-1"
+              >
+                <ExternalLink className="h-4 w-4" />
+                {restaurant.website_url}
+              </a>
+              <p className="text-xs text-muted-foreground mt-2">
+                Right-click on the logo and select "Copy Image Address", then use "Enter URL Manually" above
+              </p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Process Logo Dialog */}
+      <Dialog open={processLogoDialogOpen} onOpenChange={setProcessLogoDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto scrollbar-hide">
+          <DialogHeader>
+            <DialogTitle>Process Restaurant Logo</DialogTitle>
+            <DialogDescription>
+              {!restaurant?.logo_url 
+                ? "Choose how to add and process your restaurant logo"
+                : "Update or reprocess your restaurant logo"}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {!restaurant?.logo_url ? (
+            // Mode A: No Existing Logo
+            <div className="space-y-4">
+              <RadioGroup value={processMode} onValueChange={setProcessMode}>
+                <div className="flex items-start space-x-2">
+                  <RadioGroupItem value="extract" id="extract" />
+                  <label htmlFor="extract" className="cursor-pointer">
+                    <div>
+                      <p className="font-medium">Extract logo from website</p>
+                      <p className="text-sm text-muted-foreground">
+                        Automatically find and extract logo from your website
+                      </p>
+                    </div>
+                  </label>
+                </div>
+                
+                <div className="flex items-start space-x-2 mt-3">
+                  <RadioGroupItem value="manual" id="manual" />
+                  <label htmlFor="manual" className="cursor-pointer">
+                    <div>
+                      <p className="font-medium">Enter logo URL manually</p>
+                      <p className="text-sm text-muted-foreground">
+                        Provide a direct link to your logo image
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              </RadioGroup>
+
+              {processMode === 'manual' && (
+                <div className="space-y-2">
+                  <Label htmlFor="manualLogoUrl">Logo URL</Label>
+                  <Input
+                    id="manualLogoUrl"
+                    value={newLogoUrl}
+                    onChange={(e) => setNewLogoUrl(e.target.value)}
+                    placeholder="https://example.com/logo.png"
+                  />
+                </div>
+              )}
+
+              {restaurant?.website_url && (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-sm text-muted-foreground mb-2">Visit website to find logo:</p>
+                  <a 
+                    href={restaurant.website_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-brand-blue hover:underline inline-flex items-center gap-1"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    {restaurant.website_url}
+                  </a>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Right-click on logo and select "Copy Image Address"
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            // Mode B: Existing Logo Present
+            <div className="space-y-4">
+              {/* Show current logo */}
+              <div>
+                <p className="font-medium mb-2">Current Logo:</p>
+                <img 
+                  src={restaurant.logo_url} 
+                  alt="Current logo" 
+                  className="h-20 object-contain border rounded p-2"
+                />
+              </div>
+
+              <RadioGroup value={processMode} onValueChange={setProcessMode}>
+                <div className="flex items-start space-x-2">
+                  <RadioGroupItem value="reprocess" id="reprocess" />
+                  <label htmlFor="reprocess" className="cursor-pointer">
+                    <div>
+                      <p className="font-medium">Reprocess existing logo</p>
+                      <p className="text-sm text-muted-foreground">
+                        Generate updated versions from current logo
+                      </p>
+                    </div>
+                  </label>
+                </div>
+                
+                <div className="flex items-start space-x-2 mt-3">
+                  <RadioGroupItem value="replace" id="replace" />
+                  <label htmlFor="replace" className="cursor-pointer">
+                    <div>
+                      <p className="font-medium">Replace with new logo URL</p>
+                      <p className="text-sm text-muted-foreground">
+                        Provide a different logo image
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              </RadioGroup>
+
+              {processMode === 'replace' && (
+                <div className="space-y-2">
+                  <Label htmlFor="replaceLogoUrl">New Logo URL</Label>
+                  <Input
+                    id="replaceLogoUrl"
+                    value={newLogoUrl}
+                    onChange={(e) => setNewLogoUrl(e.target.value)}
+                    placeholder="https://example.com/new-logo.png"
+                  />
+                </div>
+              )}
+
+              {/* Version selection checkboxes */}
+              <div className="space-y-2">
+                <p className="font-medium">
+                  {processMode === 'reprocess' 
+                    ? 'Select versions to regenerate:' 
+                    : processMode === 'replace' 
+                      ? 'Select which versions to replace:' 
+                      : ''}
+                </p>
+                
+                {(processMode === 'reprocess' || processMode === 'replace') && (
+                  <div className="space-y-2 pl-4">
+                    {processMode === 'replace' && (
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={versionsToUpdate.logo_url}
+                          onChange={(e) => setVersionsToUpdate(prev => ({
+                            ...prev,
+                            logo_url: e.target.checked
+                          }))}
+                        />
+                        <span className="text-sm">Logo URL (Original)</span>
+                      </label>
+                    )}
+                    
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={versionsToUpdate.logo_nobg_url}
+                        onChange={(e) => setVersionsToUpdate(prev => ({
+                          ...prev,
+                          logo_nobg_url: e.target.checked
+                        }))}
+                      />
+                      <span className="text-sm">Logo (No Background) - Remove/update background</span>
+                    </label>
+                    
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={versionsToUpdate.logo_standard_url}
+                        onChange={(e) => setVersionsToUpdate(prev => ({
+                          ...prev,
+                          logo_standard_url: e.target.checked
+                        }))}
+                      />
+                      <span className="text-sm">Logo (Standard) - 500x500 optimized version</span>
+                    </label>
+                    
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={versionsToUpdate.logo_thermal_url}
+                        onChange={(e) => setVersionsToUpdate(prev => ({
+                          ...prev,
+                          logo_thermal_url: e.target.checked
+                        }))}
+                      />
+                      <span className="text-sm">Logo (Thermal - Inverted) - For light background logos</span>
+                    </label>
+                    
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={versionsToUpdate.logo_thermal_alt_url}
+                        onChange={(e) => setVersionsToUpdate(prev => ({
+                          ...prev,
+                          logo_thermal_alt_url: e.target.checked
+                        }))}
+                      />
+                      <span className="text-sm">Logo (Thermal - Standard) - For dark background logos</span>
+                    </label>
+                    
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={versionsToUpdate.logo_thermal_contrast_url}
+                        onChange={(e) => setVersionsToUpdate(prev => ({
+                          ...prev,
+                          logo_thermal_contrast_url: e.target.checked
+                        }))}
+                      />
+                      <span className="text-sm">Logo (Thermal - High Contrast) - Binary black/white</span>
+                    </label>
+                    
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={versionsToUpdate.logo_thermal_adaptive_url}
+                        onChange={(e) => setVersionsToUpdate(prev => ({
+                          ...prev,
+                          logo_thermal_adaptive_url: e.target.checked
+                        }))}
+                      />
+                      <span className="text-sm">Logo (Thermal - Adaptive) - Preserves mid-tones</span>
+                    </label>
+                    
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={versionsToUpdate.logo_favicon_url}
+                        onChange={(e) => setVersionsToUpdate(prev => ({
+                          ...prev,
+                          logo_favicon_url: e.target.checked
+                        }))}
+                      />
+                      <span className="text-sm">Logo (Favicon) - 32x32 browser icon</span>
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              {restaurant?.website_url && (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-sm text-muted-foreground mb-2">Visit website:</p>
+                  <a 
+                    href={restaurant.website_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-brand-blue hover:underline inline-flex items-center gap-1"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    {restaurant.website_url}
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setProcessLogoDialogOpen(false);
+              setNewLogoUrl('');
+              setProcessMode('manual');
+            }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => handleProcessLogo()}
+              disabled={processingLogo || (processMode === 'manual' && !newLogoUrl) || (processMode === 'replace' && !newLogoUrl)}
+            >
+              {processingLogo ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : processMode === 'extract' ? (
+                'Continue'
+              ) : (
+                'Process Logo'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
