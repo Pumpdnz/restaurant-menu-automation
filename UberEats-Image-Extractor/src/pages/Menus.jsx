@@ -15,7 +15,9 @@ import {
   ToggleLeft,
   ToggleRight,
   GitMerge,
-  Trash2
+  Trash2,
+  Search,
+  X
 } from 'lucide-react';
 import {
   Table,
@@ -28,6 +30,7 @@ import {
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Checkbox } from '../components/ui/checkbox';
+import { Input } from '../components/ui/input';
 import { cn } from '../lib/utils';
 import MoveMenusDialog from '../components/MoveMenusDialog';
 import {
@@ -43,17 +46,31 @@ export default function Menus() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [menus, setMenus] = useState([]);
+  const [filteredMenus, setFilteredMenus] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedMenus, setSelectedMenus] = useState(new Set());
   const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, menuId: null, menuName: null });
+  const [restaurantNameFilter, setRestaurantNameFilter] = useState('');
   
   const restaurantFilter = searchParams.get('restaurant');
 
   useEffect(() => {
     fetchMenus();
   }, [restaurantFilter]);
+
+  useEffect(() => {
+    // Filter menus by restaurant name
+    if (restaurantNameFilter) {
+      const filtered = menus.filter(menu => 
+        menu.restaurants?.name?.toLowerCase().includes(restaurantNameFilter.toLowerCase())
+      );
+      setFilteredMenus(filtered);
+    } else {
+      setFilteredMenus(menus);
+    }
+  }, [menus, restaurantNameFilter]);
 
   const fetchMenus = async () => {
     try {
@@ -63,7 +80,9 @@ export default function Menus() {
       }
       
       const response = await api.get('/menus', { params });
-      setMenus(response.data.menus || []);
+      const menusData = response.data.menus || [];
+      setMenus(menusData);
+      setFilteredMenus(menusData);
       setError(null);
     } catch (err) {
       console.error('Failed to fetch menus:', err);
@@ -138,10 +157,10 @@ export default function Menus() {
   };
 
   const handleSelectAll = () => {
-    if (selectedMenus.size === menus.length) {
+    if (selectedMenus.size === filteredMenus.length) {
       setSelectedMenus(new Set());
     } else {
-      setSelectedMenus(new Set(menus));
+      setSelectedMenus(new Set(filteredMenus));
     }
   };
 
@@ -286,7 +305,34 @@ export default function Menus() {
         </div>
       </div>
 
-      <div className="mt-8">
+      {/* Restaurant Name Filter */}
+      <div className="mt-4">
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Filter by restaurant name..."
+            value={restaurantNameFilter}
+            onChange={(e) => setRestaurantNameFilter(e.target.value)}
+            className="pl-9 pr-9"
+          />
+          {restaurantNameFilter && (
+            <button
+              onClick={() => setRestaurantNameFilter('')}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        {restaurantNameFilter && (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Showing {filteredMenus.length} of {menus.length} menus
+          </p>
+        )}
+      </div>
+
+      <div className="mt-4">
         <div className="rounded-lg border bg-card overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
@@ -294,7 +340,7 @@ export default function Menus() {
                 <TableRow>
                   <TableHead className="w-[50px]">
                     <Checkbox
-                      checked={menus.length > 0 && selectedMenus.size === menus.length}
+                      checked={filteredMenus.length > 0 && selectedMenus.size === filteredMenus.length}
                       onCheckedChange={handleSelectAll}
                       aria-label="Select all"
                     />
@@ -310,16 +356,18 @@ export default function Menus() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {menus.length === 0 ? (
+                {filteredMenus.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="text-center text-muted-foreground">
-                      {restaurantFilter 
-                        ? 'No menus found for this restaurant.' 
-                        : 'No menus found. Extract a menu to get started.'}
+                      {restaurantNameFilter 
+                        ? `No menus found matching "${restaurantNameFilter}"`
+                        : restaurantFilter 
+                          ? 'No menus found for this restaurant.' 
+                          : 'No menus found. Extract a menu to get started.'}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  menus.map((menu) => (
+                  filteredMenus.map((menu) => (
                     <TableRow key={menu.id}>
                       <TableCell>
                         <Checkbox
@@ -438,7 +486,7 @@ export default function Menus() {
             </div>
             <div className="ml-3">
               <p className="text-sm font-medium text-muted-foreground">Total Menus</p>
-              <p className="text-2xl font-semibold text-foreground">{menus.length}</p>
+              <p className="text-2xl font-semibold text-foreground">{filteredMenus.length}</p>
             </div>
           </div>
         </div>
@@ -451,7 +499,7 @@ export default function Menus() {
             <div className="ml-3">
               <p className="text-sm font-medium text-muted-foreground">Active Menus</p>
               <p className="text-2xl font-semibold text-foreground">
-                {menus.filter(m => m.is_active).length}
+                {filteredMenus.filter(m => m.is_active).length}
               </p>
             </div>
           </div>
@@ -465,7 +513,7 @@ export default function Menus() {
             <div className="ml-3">
               <p className="text-sm font-medium text-muted-foreground">Total Items</p>
               <p className="text-2xl font-semibold text-foreground">
-                {menus.reduce((sum, m) => sum + (m.menu_data?.menuItems?.length || 0), 0)}
+                {filteredMenus.reduce((sum, m) => sum + (m.menu_data?.menuItems?.length || 0), 0)}
               </p>
             </div>
           </div>
@@ -479,8 +527,8 @@ export default function Menus() {
             <div className="ml-3">
               <p className="text-sm font-medium text-muted-foreground">Latest Update</p>
               <p className="text-sm font-semibold text-foreground">
-                {menus.length > 0 
-                  ? formatDate(Math.max(...menus.map(m => new Date(m.updated_at))))
+                {filteredMenus.length > 0 
+                  ? formatDate(Math.max(...filteredMenus.map(m => new Date(m.updated_at))))
                   : '-'}
               </p>
             </div>

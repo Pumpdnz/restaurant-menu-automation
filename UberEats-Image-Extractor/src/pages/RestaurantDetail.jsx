@@ -26,7 +26,8 @@ import {
   Hash,
   Search,
   RefreshCw,
-  ExternalLink
+  ExternalLink,
+  FileSearch
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -82,6 +83,11 @@ export default function RestaurantDetail() {
     logo_thermal_adaptive_url: false,
     logo_favicon_url: true
   });
+  
+  // Platform extraction states
+  const [extractionDialogOpen, setExtractionDialogOpen] = useState(false);
+  const [extractionConfig, setExtractionConfig] = useState(null);
+  const [isExtracting, setIsExtracting] = useState(false);
   const isNewRestaurant = id === 'new';
 
   useEffect(() => {
@@ -759,6 +765,75 @@ export default function RestaurantDetail() {
       } finally {
         setProcessingLogo(false);
       }
+    }
+  };
+
+  // Platform extraction functions
+  const detectPlatformFromUrl = (url) => {
+    if (!url) return 'website';
+    
+    if (url.includes('ubereats.com')) return 'ubereats';
+    if (url.includes('doordash.com')) return 'doordash';
+    if (url.includes('ordermeal.co.nz')) return 'ordermeal';
+    if (url.includes('meandyou.co.nz')) return 'meandyou';
+    if (url.includes('mobi2go.com')) return 'mobi2go';
+    if (url.includes('delivereasy.co.nz')) return 'delivereasy';
+    if (url.includes('nextorder.co.nz')) return 'nextorder';
+    if (url.includes('foodhub.co.nz')) return 'foodhub';
+    
+    return 'website';
+  };
+
+  const handlePlatformExtraction = (url, platformName) => {
+    const platform = detectPlatformFromUrl(url);
+    setExtractionConfig({
+      url,
+      platform,
+      platformName,
+      restaurantId: id,
+      restaurantName: restaurant?.name || 'Unknown Restaurant'
+    });
+    setExtractionDialogOpen(true);
+  };
+
+  const startPlatformExtraction = async () => {
+    if (!extractionConfig) return;
+    
+    setIsExtracting(true);
+    setError(null);
+    
+    try {
+      // Use the proper extraction start endpoint that creates database job
+      const response = await api.post('/extractions/start', {
+        url: extractionConfig.url,
+        restaurantId: extractionConfig.restaurantId,
+        extractionType: 'batch',
+        options: {
+          includeImages: true,
+          generateCSV: true
+        }
+      });
+
+      if (response.data.success) {
+        toast({
+          title: "Extraction started",
+          description: `Extracting menu from ${extractionConfig.platformName}`,
+        });
+        
+        // Navigate to extraction detail page
+        navigate(`/extractions/${response.data.jobId}?poll=true`);
+      }
+    } catch (error) {
+      console.error('Extraction error:', error);
+      setError(error.response?.data?.error || error.message || 'Failed to start extraction');
+      toast({
+        title: "Extraction failed",
+        description: error.response?.data?.error || error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsExtracting(false);
+      setExtractionDialogOpen(false);
     }
   };
 
@@ -1919,12 +1994,26 @@ export default function RestaurantDetail() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label>UberEats URL</Label>
+                <div className="flex items-center justify-between">
+                  <Label>UberEats URL</Label>
+                  {!isEditing && restaurant?.ubereats_url && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handlePlatformExtraction(restaurant.ubereats_url, 'UberEats')}
+                      disabled={isExtracting}
+                    >
+                      <FileSearch className="h-3 w-3 mr-1" />
+                      Extract Menu
+                    </Button>
+                  )}
+                </div>
                 {isEditing ? (
                   <Input
                     value={editedData.ubereats_url || ''}
                     onChange={(e) => handleFieldChange('ubereats_url', e.target.value)}
                     placeholder="https://www.ubereats.com/..."
+                    className="mt-2"
                   />
                 ) : (
                   <p className="text-sm mt-1">
@@ -1943,12 +2032,26 @@ export default function RestaurantDetail() {
               </div>
 
               <div>
-                <Label>DoorDash URL</Label>
+                <div className="flex items-center justify-between">
+                  <Label>DoorDash URL</Label>
+                  {!isEditing && restaurant?.doordash_url && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handlePlatformExtraction(restaurant.doordash_url, 'DoorDash')}
+                      disabled={isExtracting}
+                    >
+                      <FileSearch className="h-3 w-3 mr-1" />
+                      Extract Menu
+                    </Button>
+                  )}
+                </div>
                 {isEditing ? (
                   <Input
                     value={editedData.doordash_url || ''}
                     onChange={(e) => handleFieldChange('doordash_url', e.target.value)}
                     placeholder="https://www.doordash.com/..."
+                    className="mt-2"
                   />
                 ) : (
                   <p className="text-sm mt-1">
@@ -1967,12 +2070,26 @@ export default function RestaurantDetail() {
               </div>
 
               <div>
-                <Label>Website URL</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Website URL</Label>
+                  {!isEditing && restaurant?.website_url && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handlePlatformExtraction(restaurant.website_url, 'Website')}
+                      disabled={isExtracting}
+                    >
+                      <FileSearch className="h-3 w-3 mr-1" />
+                      Extract Menu
+                    </Button>
+                  )}
+                </div>
                 {isEditing ? (
                   <Input
                     value={editedData.website_url || ''}
                     onChange={(e) => handleFieldChange('website_url', e.target.value)}
                     placeholder="https://..."
+                    className="mt-2"
                   />
                 ) : (
                   <p className="text-sm mt-1">
@@ -2040,12 +2157,26 @@ export default function RestaurantDetail() {
 
               {/* NZ-specific ordering platforms */}
               <div>
-                <Label>OrderMeal URL</Label>
+                <div className="flex items-center justify-between">
+                  <Label>OrderMeal URL</Label>
+                  {!isEditing && restaurant?.ordermeal_url && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handlePlatformExtraction(restaurant.ordermeal_url, 'OrderMeal')}
+                      disabled={isExtracting}
+                    >
+                      <FileSearch className="h-3 w-3 mr-1" />
+                      Extract Menu
+                    </Button>
+                  )}
+                </div>
                 {isEditing ? (
                   <Input
                     value={editedData.ordermeal_url || ''}
                     onChange={(e) => handleFieldChange('ordermeal_url', e.target.value)}
                     placeholder="https://ordermeal.co.nz/..."
+                    className="mt-2"
                   />
                 ) : (
                   <p className="text-sm mt-1">
@@ -2064,12 +2195,26 @@ export default function RestaurantDetail() {
               </div>
 
               <div>
-                <Label>Me&U URL</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Me&U URL</Label>
+                  {!isEditing && restaurant?.meandyou_url && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handlePlatformExtraction(restaurant.meandyou_url, 'Me&U')}
+                      disabled={isExtracting}
+                    >
+                      <FileSearch className="h-3 w-3 mr-1" />
+                      Extract Menu
+                    </Button>
+                  )}
+                </div>
                 {isEditing ? (
                   <Input
                     value={editedData.meandyou_url || ''}
                     onChange={(e) => handleFieldChange('meandyou_url', e.target.value)}
                     placeholder="https://meandyou.co.nz/..."
+                    className="mt-2"
                   />
                 ) : (
                   <p className="text-sm mt-1">
@@ -2088,12 +2233,26 @@ export default function RestaurantDetail() {
               </div>
 
               <div>
-                <Label>Mobi2go URL</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Mobi2go URL</Label>
+                  {!isEditing && restaurant?.mobi2go_url && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handlePlatformExtraction(restaurant.mobi2go_url, 'Mobi2go')}
+                      disabled={isExtracting}
+                    >
+                      <FileSearch className="h-3 w-3 mr-1" />
+                      Extract Menu
+                    </Button>
+                  )}
+                </div>
                 {isEditing ? (
                   <Input
                     value={editedData.mobi2go_url || ''}
                     onChange={(e) => handleFieldChange('mobi2go_url', e.target.value)}
                     placeholder="https://mobi2go.com/..."
+                    className="mt-2"
                   />
                 ) : (
                   <p className="text-sm mt-1">
@@ -2112,12 +2271,26 @@ export default function RestaurantDetail() {
               </div>
 
               <div>
-                <Label>Delivereasy URL</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Delivereasy URL</Label>
+                  {!isEditing && restaurant?.delivereasy_url && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handlePlatformExtraction(restaurant.delivereasy_url, 'Delivereasy')}
+                      disabled={isExtracting}
+                    >
+                      <FileSearch className="h-3 w-3 mr-1" />
+                      Extract Menu
+                    </Button>
+                  )}
+                </div>
                 {isEditing ? (
                   <Input
                     value={editedData.delivereasy_url || ''}
                     onChange={(e) => handleFieldChange('delivereasy_url', e.target.value)}
                     placeholder="https://delivereasy.co.nz/..."
+                    className="mt-2"
                   />
                 ) : (
                   <p className="text-sm mt-1">
@@ -2136,12 +2309,26 @@ export default function RestaurantDetail() {
               </div>
 
               <div>
-                <Label>NextOrder URL</Label>
+                <div className="flex items-center justify-between">
+                  <Label>NextOrder URL</Label>
+                  {!isEditing && restaurant?.nextorder_url && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handlePlatformExtraction(restaurant.nextorder_url, 'NextOrder')}
+                      disabled={isExtracting}
+                    >
+                      <FileSearch className="h-3 w-3 mr-1" />
+                      Extract Menu
+                    </Button>
+                  )}
+                </div>
                 {isEditing ? (
                   <Input
                     value={editedData.nextorder_url || ''}
                     onChange={(e) => handleFieldChange('nextorder_url', e.target.value)}
                     placeholder="https://nextorder.co.nz/..."
+                    className="mt-2"
                   />
                 ) : (
                   <p className="text-sm mt-1">
@@ -2160,12 +2347,26 @@ export default function RestaurantDetail() {
               </div>
 
               <div>
-                <Label>Foodhub URL</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Foodhub URL</Label>
+                  {!isEditing && restaurant?.foodhub_url && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handlePlatformExtraction(restaurant.foodhub_url, 'Foodhub')}
+                      disabled={isExtracting}
+                    >
+                      <FileSearch className="h-3 w-3 mr-1" />
+                      Extract Menu
+                    </Button>
+                  )}
+                </div>
                 {isEditing ? (
                   <Input
                     value={editedData.foodhub_url || ''}
                     onChange={(e) => handleFieldChange('foodhub_url', e.target.value)}
                     placeholder="https://foodhub.co.nz/..."
+                    className="mt-2"
                   />
                 ) : (
                   <p className="text-sm mt-1">
@@ -2893,6 +3094,70 @@ export default function RestaurantDetail() {
                 'Continue'
               ) : (
                 'Process Logo'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Platform Extraction Dialog */}
+      <Dialog open={extractionDialogOpen} onOpenChange={setExtractionDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Start Menu Extraction</DialogTitle>
+            <DialogDescription>
+              Confirm extraction configuration before proceeding
+            </DialogDescription>
+          </DialogHeader>
+          
+          {extractionConfig && (
+            <div className="space-y-4">
+              <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Restaurant</Label>
+                  <p className="font-medium">{extractionConfig.restaurantName}</p>
+                </div>
+                
+                <div>
+                  <Label className="text-xs text-muted-foreground">Platform</Label>
+                  <p className="font-medium">{extractionConfig.platformName}</p>
+                </div>
+                
+                <div>
+                  <Label className="text-xs text-muted-foreground">URL</Label>
+                  <p className="text-sm text-gray-600 break-all">{extractionConfig.url}</p>
+                </div>
+              </div>
+              
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  This will scan the menu categories and extract all menu items from the {extractionConfig.platformName} page. 
+                  The process may take several minutes depending on the menu size.
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setExtractionDialogOpen(false)}
+              disabled={isExtracting}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={startPlatformExtraction}
+              disabled={isExtracting || !extractionConfig}
+            >
+              {isExtracting ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Starting extraction...
+                </>
+              ) : (
+                'Start Extraction'
               )}
             </Button>
           </DialogFooter>

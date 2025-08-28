@@ -60,10 +60,13 @@ async function getPlatformByName(platformName) {
 /**
  * Restaurant Operations
  */
-async function upsertRestaurant(restaurantData) {
+async function upsertRestaurant(restaurantData, organisationId = null) {
   if (!isDatabaseAvailable()) return null;
   
   const { name, url, platformName } = restaurantData;
+  
+  // Use provided org ID or fall back to default
+  const orgId = organisationId || '00000000-0000-0000-0000-000000000000';
   
   try {
     // Get platform
@@ -75,11 +78,12 @@ async function upsertRestaurant(restaurantData) {
     // Generate slug from name
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     
-    // Try to find existing restaurant by slug
+    // Try to find existing restaurant by slug within organization
     let restaurant = await supabase
       .from('restaurants')
       .select('*')
       .eq('slug', slug)
+      .eq('organisation_id', orgId)
       .single();
     
     if (restaurant.error && restaurant.error.code === 'PGRST116') {
@@ -89,6 +93,7 @@ async function upsertRestaurant(restaurantData) {
         .insert({
           name,
           slug,
+          organisation_id: orgId,
           metadata: restaurantData.metadata || {}
         })
         .select()
@@ -127,8 +132,11 @@ async function upsertRestaurant(restaurantData) {
 /**
  * Extraction Job Operations
  */
-async function createExtractionJob(jobData) {
+async function createExtractionJob(jobData, organisationId = null) {
   if (!isDatabaseAvailable()) return null;
+  
+  // Use provided org ID or fall back to default
+  const orgId = organisationId || '00000000-0000-0000-0000-000000000000';
   
   try {
     const { data, error } = await supabase
@@ -141,6 +149,7 @@ async function createExtractionJob(jobData) {
         job_type: jobData.jobType || 'full_menu',
         status: 'pending',
         config: jobData.config || {},
+        organisation_id: orgId,
         created_at: new Date().toISOString()
       })
       .select()
@@ -201,8 +210,11 @@ async function getExtractionJob(jobId) {
 /**
  * Menu Operations
  */
-async function createMenu(menuData) {
+async function createMenu(menuData, organisationId = null) {
   if (!isDatabaseAvailable()) return null;
+  
+  // Use provided org ID or fall back to default
+  const orgId = organisationId || '00000000-0000-0000-0000-000000000000';
   
   try {
     // Get the latest version for this restaurant
@@ -211,6 +223,7 @@ async function createMenu(menuData) {
       .select('version')
       .eq('restaurant_id', menuData.restaurantId)
       .eq('platform_id', menuData.platformId)
+      .eq('organisation_id', orgId)
       .order('version', { ascending: false })
       .limit(1)
       .single();
@@ -223,7 +236,8 @@ async function createMenu(menuData) {
         .from('menus')
         .update({ is_active: false })
         .eq('restaurant_id', menuData.restaurantId)
-        .eq('platform_id', menuData.platformId);
+        .eq('platform_id', menuData.platformId)
+        .eq('organisation_id', orgId);
     }
     
     // Create new menu
@@ -233,6 +247,7 @@ async function createMenu(menuData) {
         restaurant_id: menuData.restaurantId,
         extraction_job_id: menuData.extractionJobId,
         platform_id: menuData.platformId,
+        organisation_id: orgId,
         version: newVersion,
         is_active: true,
         menu_data: menuData.rawData || {}
@@ -1549,17 +1564,94 @@ async function updateMenuItem(itemId, updates) {
 async function bulkUpdateMenuItems(updates) {
   if (!isDatabaseAvailable()) return [];
   
+  console.log('[Database] Bulk update called with', updates.length, 'items');
+  
   try {
     const results = [];
     
     for (const update of updates) {
-      const { id, imageURL, ...data } = update;
+      const { id, imageURL, is_deleted, ...data } = update;
+      
+      // Check if item should be deleted
+      if (is_deleted) {
+        console.log('[Database] Deleting item:', id);
+        
+        // Delete the menu item and its associations
+        // First delete image associations
+        await supabase
+          .from('item_images')
+          .delete()
+          .eq('menu_item_id', id);
+        
+        // Then delete the menu item itself
+        const { error } = await supabase
+          .from('menu_items')
+          .delete()
+          .eq('id', id);
+        
+        if (!error) {
+          console.log('[Database] Successfully deleted item:', id);
+          results.push({ id, deleted: true });
+        } else {
+          console.error('[Database] Error deleting item:', id, error);
+        }
+        continue; // Skip to next item
+      }
+      
+      // Handle category rename if category field is present
+      let updateData = { ...data };
+      if (data.category) {
+        // Remove category name from update data as it's not a column
+        const { category, ...restData } = updateData;
+        updateData = restData;
+        
+        // Find or create the category with the new name
+        // First, get the menu_id from the existing item
+        const { data: existingItem } = await supabase
+          .from('menu_items')
+          .select('menu_id')
+          .eq('id', id)
+          .single();
+          
+        if (existingItem) {
+          // Check if category with new name exists
+          let { data: existingCategory } = await supabase
+            .from('categories')
+            .select('id')
+            .eq('menu_id', existingItem.menu_id)
+            .eq('name', category)
+            .single();
+          
+          if (!existingCategory) {
+            // Create new category
+            const { data: newCategory } = await supabase
+              .from('categories')
+              .insert({
+                menu_id: existingItem.menu_id,
+                name: category,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              })
+              .select()
+              .single();
+            
+            existingCategory = newCategory;
+          }
+          
+          if (existingCategory) {
+            // Update item with new category_id
+            updateData.category_id = existingCategory.id;
+          }
+        }
+      }
       
       // Update the menu item (excluding imageURL as it's handled separately)
+      console.log('[Database] Updating item:', id, 'with data:', updateData);
+      
       const { data: updated, error } = await supabase
         .from('menu_items')
         .update({
-          ...data,
+          ...updateData,
           updated_at: new Date().toISOString()
         })
         .eq('id', id)
@@ -1567,6 +1659,7 @@ async function bulkUpdateMenuItems(updates) {
         .single();
       
       if (!error && updated) {
+        console.log('[Database] Successfully updated item:', id);
         // Handle image updates separately
         if (imageURL !== undefined) {
           // If imageURL is null, delete the image association
@@ -1601,9 +1694,14 @@ async function bulkUpdateMenuItems(updates) {
           .single();
         
         results.push(itemWithImages || updated);
+      } else if (error) {
+        console.error('[Database] Error updating item:', id, error);
+      } else {
+        console.log('[Database] No update performed for item:', id);
       }
     }
     
+    console.log('[Database] Bulk update completed. Results:', results.length);
     return results;
   } catch (error) {
     console.error('[Database] Error bulk updating menu items:', error);

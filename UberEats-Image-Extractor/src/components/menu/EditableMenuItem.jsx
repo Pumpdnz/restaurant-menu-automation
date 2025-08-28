@@ -8,7 +8,8 @@ import { X, Plus, Trash2 } from 'lucide-react';
 export default function EditableMenuItem({ 
   item, 
   isEditMode, 
-  onUpdate, 
+  onUpdate,
+  onDelete,
   validationErrors = {} 
 }) {
   const [editedItem, setEditedItem] = useState(item);
@@ -128,7 +129,18 @@ export default function EditableMenuItem({
 
   // Edit mode
   return (
-    <div className={`border rounded-lg p-4 ${hasChanges ? 'border-blue-500 bg-blue-50/50' : ''}`}>
+    <div className={`border rounded-lg p-4 ${hasChanges ? 'border-blue-500 bg-blue-50/50' : ''} relative group`}>
+      {onDelete && (
+        <Button
+          onClick={onDelete}
+          size="sm"
+          variant="destructive"
+          className="absolute bottom-2 left-2 h-8 w-8 p-0 z-10"
+          title="Delete item"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      )}
       <div className="flex">
         {editedItem.imageURL && (
           <div className="relative mr-4">

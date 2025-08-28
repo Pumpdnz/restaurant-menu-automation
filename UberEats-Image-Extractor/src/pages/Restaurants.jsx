@@ -10,7 +10,11 @@ import {
   Mail,
   Calendar,
   ExternalLink,
-  Trash2
+  Trash2,
+  User,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import {
   Table,
@@ -38,6 +42,8 @@ export default function Restaurants() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, restaurantId: null, restaurantName: null });
+  const [sortField, setSortField] = useState('created_at');
+  const [sortDirection, setSortDirection] = useState('desc');
 
   useEffect(() => {
     fetchRestaurants();
@@ -46,7 +52,14 @@ export default function Restaurants() {
   const fetchRestaurants = async () => {
     try {
       const response = await api.get('/restaurants');
-      setRestaurants(response.data.restaurants || []);
+      const data = response.data.restaurants || [];
+      // Sort by created date by default (newest first)
+      const sorted = [...data].sort((a, b) => {
+        const dateA = new Date(a.created_at);
+        const dateB = new Date(b.created_at);
+        return dateB - dateA;
+      });
+      setRestaurants(sorted);
       setError(null);
     } catch (err) {
       console.error('Failed to fetch restaurants:', err);
@@ -54,6 +67,47 @@ export default function Restaurants() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSort = (field) => {
+    let direction = 'asc';
+    if (sortField === field && sortDirection === 'asc') {
+      direction = 'desc';
+    }
+    setSortField(field);
+    setSortDirection(direction);
+
+    const sorted = [...restaurants].sort((a, b) => {
+      let valueA, valueB;
+      
+      if (field === 'created_at') {
+        valueA = new Date(a.created_at);
+        valueB = new Date(b.created_at);
+      } else if (field === 'last_scraped') {
+        // Use the most recent extraction date
+        const aExtractions = a.extractions || [];
+        const bExtractions = b.extractions || [];
+        valueA = aExtractions.length > 0 ? new Date(aExtractions[0].created_at) : new Date(0);
+        valueB = bExtractions.length > 0 ? new Date(bExtractions[0].created_at) : new Date(0);
+      }
+
+      if (direction === 'asc') {
+        return valueA - valueB;
+      } else {
+        return valueB - valueA;
+      }
+    });
+    
+    setRestaurants(sorted);
+  };
+
+  const getSortIcon = (field) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-4 w-4 ml-1 inline" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="h-4 w-4 ml-1 inline" />
+      : <ArrowDown className="h-4 w-4 ml-1 inline" />;
   };
 
   const getPlatformBadge = (platforms) => {
@@ -158,18 +212,28 @@ export default function Restaurants() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="min-w-[200px]">Name</TableHead>
-                  <TableHead className="min-w-[100px]">Platform</TableHead>
-                  <TableHead className="min-w-[150px]">Contact</TableHead>
-                  <TableHead className="min-w-[100px]">Website</TableHead>
-                  <TableHead className="min-w-[120px]">Last Scraped</TableHead>
-                  <TableHead className="min-w-[100px]">Created</TableHead>
+                  <TableHead className="min-w-[200px]">Lead Contact</TableHead>
+                  <TableHead 
+                    className="min-w-[120px] cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('last_scraped')}
+                  >
+                    Last Scraped
+                    {getSortIcon('last_scraped')}
+                  </TableHead>
+                  <TableHead 
+                    className="min-w-[100px] cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleSort('created_at')}
+                  >
+                    Created
+                    {getSortIcon('created_at')}
+                  </TableHead>
                   <TableHead className="text-right min-w-[120px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {restaurants.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground">
+                    <TableCell colSpan={5} className="text-center text-muted-foreground">
                       No restaurants found. Add a restaurant to get started.
                     </TableCell>
                   </TableRow>
@@ -188,41 +252,29 @@ export default function Restaurants() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {getPlatformBadge(restaurant.restaurant_platforms)}
-                      </TableCell>
-                      <TableCell>
                         <div className="space-y-1">
-                          {restaurant.phone && (
+                          {restaurant.contact_name && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <User className="h-3 w-3" />
+                              {restaurant.contact_name}
+                            </div>
+                          )}
+                          {restaurant.contact_phone && (
                             <div className="flex items-center gap-1 text-xs text-muted-foreground">
                               <Phone className="h-3 w-3" />
-                              {restaurant.phone}
+                              {restaurant.contact_phone}
                             </div>
                           )}
-                          {restaurant.email && (
+                          {restaurant.contact_email && (
                             <div className="flex items-center gap-1 text-xs text-muted-foreground">
                               <Mail className="h-3 w-3" />
-                              {restaurant.email}
+                              {restaurant.contact_email}
                             </div>
                           )}
-                          {!restaurant.phone && !restaurant.email && (
-                            <span className="text-xs text-muted-foreground">-</span>
+                          {!restaurant.contact_name && !restaurant.contact_phone && !restaurant.contact_email && (
+                            <span className="text-xs text-muted-foreground">No lead contact</span>
                           )}
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        {restaurant.website ? (
-                          <a 
-                            href={restaurant.website} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-xs text-brand-blue hover:underline"
-                          >
-                            <Globe className="h-3 w-3" />
-                            Visit
-                          </a>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">-</span>
-                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">

@@ -13,7 +13,8 @@ import {
   ClockIcon,
   BuildingStorefrontIcon,
   TagIcon,
-  ChevronDownIcon
+  ChevronDownIcon,
+  TrashIcon
 } from '@heroicons/react/24/outline';
 import EditableMenuItem from '../components/menu/EditableMenuItem';
 import { validateMenuItem, validateMenuItems, getChangedItems } from '../components/menu/MenuItemValidator';
@@ -42,6 +43,11 @@ export default function MenuDetail() {
   const [editedItems, setEditedItems] = useState({});
   const [validationErrors, setValidationErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
+  const [editingCategoryName, setEditingCategoryName] = useState(null);
+  const [tempCategoryName, setTempCategoryName] = useState('');
+  const [deletedItems, setDeletedItems] = useState(new Set());
+  const [deletedCategories, setDeletedCategories] = useState(new Set());
+  const [categoryNameChanges, setCategoryNameChanges] = useState({});
 
   useEffect(() => {
     fetchMenuDetails();
@@ -58,16 +64,19 @@ export default function MenuDetail() {
         const transformedData = {};
         
         dbMenu.categories.forEach(category => {
-          transformedData[category.name] = category.menu_items.map(item => ({
-            id: item.id,
-            name: item.name,
-            price: item.price,
-            description: item.description,
-            tags: item.tags || [],
-            imageURL: item.item_images?.[0]?.url || null,
-            categoryId: category.id,
-            categoryName: category.name
-          }));
+          // Only include categories that have items
+          if (category.menu_items && category.menu_items.length > 0) {
+            transformedData[category.name] = category.menu_items.map(item => ({
+              id: item.id,
+              name: item.name,
+              price: item.price,
+              description: item.description,
+              tags: item.tags || [],
+              imageURL: item.item_images?.[0]?.url || null,
+              categoryId: category.id,
+              categoryName: category.name
+            }));
+          }
         });
         
         setMenuData(transformedData);
@@ -191,7 +200,7 @@ export default function MenuDetail() {
   };
 
   const handleCancelEdit = () => {
-    if (Object.keys(editedItems).length > 0) {
+    if (Object.keys(editedItems).length > 0 || deletedItems.size > 0 || deletedCategories.size > 0 || Object.keys(categoryNameChanges).length > 0) {
       if (!window.confirm('You have unsaved changes. Are you sure you want to cancel?')) {
         return;
       }
@@ -199,12 +208,79 @@ export default function MenuDetail() {
     setIsEditMode(false);
     setEditedItems({});
     setValidationErrors({});
+    setDeletedItems(new Set());
+    setDeletedCategories(new Set());
+    setCategoryNameChanges({});
+    setEditingCategoryName(null);
     setMenuData(JSON.parse(JSON.stringify(originalMenuData)));
   };
 
+  const handleDeleteItem = (itemId) => {
+    setDeletedItems(prev => new Set([...prev, itemId]));
+    
+    // Remove from editedItems if it was being edited
+    setEditedItems(prev => {
+      const newEdited = { ...prev };
+      delete newEdited[itemId];
+      return newEdited;
+    });
+    
+    // Remove from validation errors
+    setValidationErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[itemId];
+      return newErrors;
+    });
+  };
+
+  const handleDeleteCategory = (categoryName) => {
+    if (window.confirm(`Are you sure you want to delete the entire "${categoryName}" category and all its items?`)) {
+      setDeletedCategories(prev => new Set([...prev, categoryName]));
+      
+      // If this was the selected category, select another one
+      if (selectedCategory === categoryName) {
+        const remainingCategories = Object.keys(menuData).filter(
+          cat => cat !== categoryName && !deletedCategories.has(cat)
+        );
+        if (remainingCategories.length > 0) {
+          setSelectedCategory(remainingCategories[0]);
+        }
+      }
+    }
+  };
+
+  const handleStartEditCategoryName = (categoryName) => {
+    setEditingCategoryName(categoryName);
+    setTempCategoryName(categoryNameChanges[categoryName] || categoryName);
+    // Automatically switch to the category being edited
+    setSelectedCategory(categoryName);
+  };
+
+  const handleSaveCategoryName = () => {
+    if (tempCategoryName && tempCategoryName !== editingCategoryName) {
+      setCategoryNameChanges(prev => ({
+        ...prev,
+        [editingCategoryName]: tempCategoryName
+      }));
+      
+      // If this was the selected category, update the selection
+      if (selectedCategory === editingCategoryName) {
+        setSelectedCategory(tempCategoryName);
+      }
+    }
+    setEditingCategoryName(null);
+    setTempCategoryName('');
+  };
+
+  const handleCancelEditCategoryName = () => {
+    setEditingCategoryName(null);
+    setTempCategoryName('');
+  };
+
   const handleSaveChanges = async () => {
-    // Validate all edited items
-    const allErrors = validateMenuItems(Object.values(editedItems));
+    // Validate all edited items that aren't deleted
+    const itemsToValidate = Object.values(editedItems).filter(item => !deletedItems.has(item.id));
+    const allErrors = validateMenuItems(itemsToValidate);
     if (Object.keys(allErrors).length > 0) {
       setValidationErrors(allErrors);
       toast({
@@ -218,38 +294,128 @@ export default function MenuDetail() {
     setIsSaving(true);
     
     try {
-      // Get only the changed items
-      const changedItems = getChangedItems(editedItems, originalMenuData);
+      let hasChanges = false;
+      const changesSummary = [];
       
-      if (changedItems.length === 0) {
+      // Collect all items to delete (individual deletions + category deletions)
+      const itemsToDelete = new Set(deletedItems);
+      
+      // Add items from deleted categories
+      if (deletedCategories.size > 0) {
+        for (const categoryName of deletedCategories) {
+          const itemsInCategory = menuData[categoryName] || [];
+          for (const item of itemsInCategory) {
+            itemsToDelete.add(item.id);
+          }
+        }
+        changesSummary.push(`${deletedCategories.size} categories deleted`);
+        hasChanges = true;
+      }
+      
+      // Mark items for deletion by setting deleted flag
+      const deletionUpdates = [];
+      if (itemsToDelete.size > 0) {
+        for (const itemId of itemsToDelete) {
+          // Find the original item to get all its data
+          let originalItem = null;
+          for (const category of Object.values(menuData)) {
+            const found = category.find(item => item.id === itemId);
+            if (found) {
+              originalItem = found;
+              break;
+            }
+          }
+          
+          if (originalItem) {
+            deletionUpdates.push({
+              id: itemId,
+              name: originalItem.name,
+              price: originalItem.price,
+              category: originalItem.category,
+              description: originalItem.description,
+              is_deleted: true  // Mark as deleted
+            });
+          }
+        }
+        changesSummary.push(`${itemsToDelete.size} items deleted`);
+        hasChanges = true;
+      }
+      
+      // Handle category name changes by updating items with new category name
+      const categoryRenamedItems = [];
+      if (Object.keys(categoryNameChanges).length > 0) {
+        for (const [oldName, newName] of Object.entries(categoryNameChanges)) {
+          const itemsInCategory = menuData[oldName] || [];
+          for (const item of itemsInCategory) {
+            // Skip if item is deleted
+            if (itemsToDelete.has(item.id)) continue;
+            
+            // Get the current state of the item (edited or original)
+            const currentItem = editedItems[item.id] || item;
+            
+            // Create update with all required fields
+            const updatedItem = {
+              id: item.id,
+              name: currentItem.name,
+              price: currentItem.price,
+              category: newName,  // Use the new category name
+              description: currentItem.description || null,
+              tags: currentItem.tags || null,
+              imageURL: currentItem.imageURL || null
+            };
+            
+            categoryRenamedItems.push(updatedItem);
+          }
+        }
+        changesSummary.push(`${Object.keys(categoryNameChanges).length} categories renamed`);
+        hasChanges = true;
+      }
+      
+      // Get only the changed items that aren't deleted and weren't renamed
+      const changedItems = getChangedItems(editedItems, originalMenuData).filter(
+        item => !itemsToDelete.has(item.id) && 
+                !categoryRenamedItems.some(renamed => renamed.id === item.id)
+      );
+      
+      // Combine all updates: deletions, category renames, and other changes
+      const allItemsToUpdate = [...deletionUpdates, ...categoryRenamedItems, ...changedItems];
+      
+      if (allItemsToUpdate.length > 0) {
+        const response = await menuItemAPI.bulkUpdate(allItemsToUpdate);
+        if (response.data.success) {
+          if (changedItems.length > 0 && !deletedItems.size) {
+            changesSummary.push(`${changedItems.length} items updated`);
+          }
+          hasChanges = true;
+        }
+      }
+      
+      if (!hasChanges) {
         toast({
           title: "No changes to save",
           description: "No items have been modified",
         });
         setIsEditMode(false);
-        setEditedItems({});
         setIsSaving(false);
         return;
       }
       
-      // Save all changed items
-      const response = await menuItemAPI.bulkUpdate(changedItems);
+      // Update the original data to reflect saved changes
+      setOriginalMenuData(JSON.parse(JSON.stringify(menuData)));
+      setIsEditMode(false);
+      setEditedItems({});
+      setDeletedItems(new Set());
+      setDeletedCategories(new Set());
+      setCategoryNameChanges({});
+      setValidationErrors({});
       
-      if (response.data.success) {
-        toast({
-          title: "Changes saved successfully",
-          description: `Updated ${response.data.updatedCount} menu items`,
-        });
-        
-        // Update original data to reflect saved changes
-        setOriginalMenuData(JSON.parse(JSON.stringify(menuData)));
-        setIsEditMode(false);
-        setEditedItems({});
-        setValidationErrors({});
-        
-        // Refresh menu data
-        await fetchMenuDetails();
-      }
+      toast({
+        title: "Changes saved",
+        description: changesSummary.join(', '),
+      });
+      
+      // Refresh the menu data
+      await fetchMenuDetails();
     } catch (err) {
       console.error('Failed to save changes:', err);
       toast({
@@ -345,10 +511,22 @@ export default function MenuDetail() {
     );
   }
 
-  const categories = Object.keys(menuData);
-  const totalItems = Object.values(menuData).reduce((sum, items) => sum + items.length, 0);
+  const categories = Object.keys(menuData).filter(cat => {
+    // Filter out deleted categories
+    if (deletedCategories.has(cat)) return false;
+    
+    // Filter out categories with no items (all items deleted)
+    const itemsInCategory = menuData[cat] || [];
+    const hasActiveItems = itemsInCategory.some(item => !deletedItems.has(item.id));
+    return hasActiveItems;
+  });
+  const totalItems = Object.values(menuData).reduce((sum, items) => {
+    const activeItems = items.filter(item => !deletedItems.has(item.id));
+    return sum + activeItems.length;
+  }, 0);
   const editedItemCount = Object.keys(editedItems).length;
   const hasErrors = Object.keys(validationErrors).length > 0;
+  const totalChanges = editedItemCount + deletedItems.size + deletedCategories.size + Object.keys(categoryNameChanges).length;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -407,12 +585,12 @@ export default function MenuDetail() {
               <>
                 <Button
                   onClick={handleSaveChanges}
-                  disabled={isSaving || hasErrors}
+                  disabled={isSaving || hasErrors || totalChanges === 0}
                   size="sm"
                   className="bg-green-600 hover:bg-green-700 text-white"
                 >
                   <CheckIcon className="h-4 w-4 mr-1.5" />
-                  {isSaving ? 'Saving...' : `Save Changes (${editedItemCount})`}
+                  {isSaving ? 'Saving...' : `Save Changes (${totalChanges})`}
                 </Button>
                 <Button
                   onClick={handleCancelEdit}
@@ -508,24 +686,59 @@ export default function MenuDetail() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="space-y-1">
-                {categories.map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => setSelectedCategory(category)}
-                    className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                      selectedCategory === category
-                        ? 'bg-blue-50 text-blue-700 border-l-2 border-blue-600'
-                        : 'hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">{category}</span>
-                      <span className="text-xs text-gray-500">
-                        {menuData[category].length}
-                      </span>
+                {categories.map((category) => {
+                  const displayName = categoryNameChanges[category] || category;
+                  const itemCount = menuData[category].filter(item => !deletedItems.has(item.id)).length;
+                  
+                  return (
+                    <div
+                      key={category}
+                      className={`group relative ${
+                        selectedCategory === category
+                          ? 'bg-blue-50 text-blue-700 border-l-2 border-blue-600'
+                          : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      <button
+                        onClick={() => setSelectedCategory(category)}
+                        className="w-full text-left px-4 py-2 text-sm transition-colors"
+                      >
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium flex-1 pr-2">{displayName}</span>
+                          <div className="flex items-center gap-2">
+                            {isEditMode && (
+                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleStartEditCategoryName(category);
+                                  }}
+                                  className="p-1 hover:bg-gray-200 rounded"
+                                  title="Edit category name"
+                                >
+                                  <PencilIcon className="h-3 w-3 text-gray-600" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteCategory(category);
+                                  }}
+                                  className="p-1 hover:bg-red-100 rounded"
+                                  title="Delete category"
+                                >
+                                  <TrashIcon className="h-3 w-3 text-red-600" />
+                                </button>
+                              </div>
+                            )}
+                            <span className="text-xs text-gray-500 min-w-[20px] text-right">
+                              {itemCount}
+                            </span>
+                          </div>
+                        </div>
+                      </button>
                     </div>
-                  </button>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -536,28 +749,73 @@ export default function MenuDetail() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
-                <span>{selectedCategory}</span>
+                {editingCategoryName === selectedCategory ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={tempCategoryName}
+                      onChange={(e) => setTempCategoryName(e.target.value)}
+                      className="px-2 py-1 border rounded"
+                      autoFocus
+                    />
+                    <button
+                      onClick={handleSaveCategoryName}
+                      className="p-1 hover:bg-gray-200 rounded"
+                    >
+                      <CheckIcon className="h-4 w-4 text-green-600" />
+                    </button>
+                    <button
+                      onClick={handleCancelEditCategoryName}
+                      className="p-1 hover:bg-gray-200 rounded"
+                    >
+                      <XMarkIcon className="h-4 w-4 text-red-600" />
+                    </button>
+                  </div>
+                ) : (
+                  <span>{categoryNameChanges[selectedCategory] || selectedCategory}</span>
+                )}
                 <Badge variant="secondary">
-                  {menuData[selectedCategory]?.length || 0} items
+                  {(() => {
+                    const originalCategoryName = Object.entries(categoryNameChanges).find(
+                      ([original, renamed]) => renamed === selectedCategory
+                    )?.[0] || selectedCategory;
+                    return menuData[originalCategoryName]?.filter(item => !deletedItems.has(item.id)).length || 0;
+                  })()} items
                 </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {selectedCategory && menuData[selectedCategory]?.map((item) => {
-                  // Get the current item state (edited or original)
-                  const currentItem = editedItems[item.id] || item;
+                {selectedCategory && (() => {
+                  // Find the original category name if it was renamed
+                  const originalCategoryName = Object.entries(categoryNameChanges).find(
+                    ([original, renamed]) => renamed === selectedCategory
+                  )?.[0] || selectedCategory;
                   
-                  return (
-                    <EditableMenuItem
-                      key={item.id}
-                      item={currentItem}
-                      isEditMode={isEditMode}
-                      onUpdate={handleItemChange}
-                      validationErrors={validationErrors[item.id] || {}}
-                    />
-                  );
-                })}
+                  const items = menuData[originalCategoryName];
+                  if (!items) return null;
+                  
+                  return items.map((item) => {
+                    // Skip deleted items
+                    if (deletedItems.has(item.id)) {
+                      return null;
+                    }
+                    
+                    // Get the current item state (edited or original)
+                    const currentItem = editedItems[item.id] || item;
+                  
+                    return (
+                      <EditableMenuItem
+                        key={item.id}
+                        item={currentItem}
+                        isEditMode={isEditMode}
+                        onUpdate={handleItemChange}
+                        onDelete={() => handleDeleteItem(item.id)}
+                        validationErrors={validationErrors[item.id] || {}}
+                      />
+                    );
+                  });
+                })()}
               </div>
             </CardContent>
           </Card>

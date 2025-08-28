@@ -8,7 +8,9 @@ import {
   RefreshCw,
   Download,
   Eye,
-  Trash2
+  Trash2,
+  FileDown,
+  ImageDown
 } from 'lucide-react';
 import {
   Table,
@@ -107,14 +109,52 @@ export default function Extractions() {
     }
   };
 
+  const handleDownloadImages = async (extraction) => {
+    try {
+      // Check if the extraction has a menuId (database-driven)
+      if (extraction.menu_id) {
+        // Use database menu image download endpoint
+        const response = await api.get(`/menus/${extraction.menu_id}/download-images-zip`, {
+          responseType: 'blob'
+        });
+        
+        // Create download link
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `menu_${extraction.menu_id}_images.zip`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+      } else {
+        // Fall back to old method for legacy extractions
+        const response = await api.get(`/batch-extract-results/${extraction.job_id}`);
+        if (response.data.success && response.data.data) {
+          const imagesResponse = await api.post('/download-images', {
+            data: response.data.data,
+            groupByCategory: true
+          });
+          
+          if (imagesResponse.data.success) {
+            console.log('Images download initiated:', imagesResponse.data);
+            // The download-images endpoint typically triggers a download directly
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to download images:', err);
+    }
+  };
+
   const handleDownloadCSV = async (extraction) => {
     try {
       // Check if the extraction has a menuId (database-driven)
       if (extraction.menu_id) {
-        // Use direct CSV download endpoint for database menus
+        // Use direct CSV download endpoint for database menus (no images)
         const response = await api.get(`/menus/${extraction.menu_id}/csv`, {
           responseType: 'blob',
-          params: { format: 'full' }
+          params: { format: 'no_images' }
         });
         
         // Create download link
@@ -138,23 +178,26 @@ export default function Extractions() {
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
       } else {
-        // Fall back to old method for legacy extractions
+        // Fall back to old method for legacy extractions (generate clean CSV)
         const response = await api.get(`/batch-extract-results/${extraction.job_id}`);
         if (response.data.success && response.data.data) {
-          const csvResponse = await api.post('/generate-csv', {
+          const csvResponse = await api.post('/generate-clean-csv', {
             data: response.data.data
           });
           
-          if (csvResponse.data.success && csvResponse.data.csv) {
-            const blob = new Blob([csvResponse.data.csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `menu-${extraction.job_id}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
+          if (csvResponse.data.success) {
+            const csvData = csvResponse.data.csvDataNoImages || csvResponse.data.csv;
+            if (csvData) {
+              const blob = new Blob([csvData], { type: 'text/csv' });
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = csvResponse.data.filenameNoImages || `menu-${extraction.job_id}_no_images.csv`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              window.URL.revokeObjectURL(url);
+            }
           }
         }
       }
@@ -235,39 +278,52 @@ export default function Extractions() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[120px]">Job ID</TableHead>
                   <TableHead className="min-w-[150px]">Restaurant</TableHead>
+                  <TableHead className="min-w-[100px]">Platform</TableHead>
                   <TableHead className="min-w-[100px]">Status</TableHead>
-                  <TableHead className="min-w-[80px]">Items</TableHead>
                   <TableHead className="min-w-[150px]">Started</TableHead>
-                  <TableHead className="text-right min-w-[120px]">Actions</TableHead>
+                  <TableHead className="text-right min-w-[180px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
               {extractions.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
                     No extractions found. Start a new extraction to get started.
                   </TableCell>
                 </TableRow>
               ) : (
-                extractions.map((extraction) => (
+                extractions.map((extraction) => {
+                  // Detect platform from URL
+                  const getPlatform = (url) => {
+                    if (!url) return 'Unknown';
+                    try {
+                      const hostname = new URL(url).hostname.toLowerCase();
+                      if (hostname.includes('ubereats.com')) return 'UberEats';
+                      if (hostname.includes('doordash.com')) return 'DoorDash';
+                      if (hostname.includes('delivereasy.co.nz')) return 'Delivereasy';
+                      if (hostname.includes('ordermeal.co.nz')) return 'OrderMeal';
+                      if (hostname.includes('menulog.co.nz')) return 'Menulog';
+                      if (hostname.includes('mobi2go.com')) return 'Mobi2Go';
+                      if (hostname.includes('foodhub.co.nz')) return 'FoodHub';
+                      return 'Website';
+                    } catch {
+                      return 'Unknown';
+                    }
+                  };
+                  
+                  return (
                   <TableRow key={extraction.job_id}>
-                    <TableCell>
-                      <div className="font-medium">
-                        {extraction.job_id.split('_').pop().substring(0, 8)}...
-                      </div>
-                    </TableCell>
                     <TableCell className="text-muted-foreground">
                       {extraction.restaurants?.name || 'Unknown'}
                     </TableCell>
                     <TableCell>
-                      {getStatusBadge(extraction.status)}
+                      <Badge variant="outline" className="capitalize">
+                        {getPlatform(extraction.source_url || extraction.url)}
+                      </Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {extraction.progress?.totalItems || 
-                       (extraction.status === 'completed' && extraction.menu ? 
-                        `${extraction.menu.item_count || 0} items` : '-')}
+                    <TableCell>
+                      {getStatusBadge(extraction.status)}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {extraction.started_at ? 
@@ -291,8 +347,18 @@ export default function Extractions() {
                               variant="ghost"
                               onClick={() => handleDownloadCSV(extraction)}
                               className="text-brand-green hover:text-brand-green hover:bg-brand-green/10"
+                              title="Download CSV (No Images)"
                             >
-                              <Download className="h-4 w-4" />
+                              <FileDown className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDownloadImages(extraction)}
+                              className="text-brand-blue hover:text-brand-blue hover:bg-brand-blue/10"
+                              title="Download Images ZIP"
+                            >
+                              <ImageDown className="h-4 w-4" />
                             </Button>
                           </>
                         )}
@@ -322,7 +388,8 @@ export default function Extractions() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
+                  );
+                })
               )}
             </TableBody>
           </Table>

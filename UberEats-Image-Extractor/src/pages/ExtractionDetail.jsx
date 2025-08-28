@@ -10,7 +10,8 @@ import {
   PencilIcon,
   CheckIcon,
   XMarkIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  TrashIcon
 } from '@heroicons/react/24/outline';
 import EditableMenuItem from '../components/menu/EditableMenuItem';
 import { validateMenuItem, validateMenuItems, getChangedItems } from '../components/menu/MenuItemValidator';
@@ -33,6 +34,13 @@ export default function ExtractionDetail() {
   const [isSaving, setIsSaving] = useState(false);
   const [isPolling, setIsPolling] = useState(false);
   const pollingInterval = useRef(null);
+  
+  // New state for deletion and category management
+  const [deletedItems, setDeletedItems] = useState(new Set());
+  const [deletedCategories, setDeletedCategories] = useState(new Set());
+  const [categoryNameChanges, setCategoryNameChanges] = useState({});
+  const [editingCategoryName, setEditingCategoryName] = useState(null);
+  const [tempCategoryName, setTempCategoryName] = useState('');
 
   useEffect(() => {
     const shouldPoll = searchParams.get('poll') === 'true';
@@ -98,16 +106,19 @@ export default function ExtractionDetail() {
             const transformedData = {};
             
             dbMenu.categories.forEach(category => {
-              transformedData[category.name] = category.menu_items.map(item => ({
-                id: item.id,
-                name: item.name,
-                price: item.price,
-                description: item.description,
-                tags: item.tags || [],
-                imageURL: item.item_images?.[0]?.url || null,
-                categoryId: category.id,
-                categoryName: category.name
-              }));
+              // Only include categories that have items
+              if (category.menu_items && category.menu_items.length > 0) {
+                transformedData[category.name] = category.menu_items.map(item => ({
+                  id: item.id,
+                  name: item.name,
+                  price: item.price,
+                  description: item.description,
+                  tags: item.tags || [],
+                  imageURL: item.item_images?.[0]?.url || null,
+                  categoryId: category.id,
+                  categoryName: category.name
+                }));
+              }
             });
             
             setMenuData(transformedData);
@@ -254,7 +265,12 @@ export default function ExtractionDetail() {
   };
 
   const handleCancelEdit = () => {
-    if (Object.keys(editedItems).length > 0) {
+    const hasChanges = Object.keys(editedItems).length > 0 || 
+                       deletedItems.size > 0 || 
+                       deletedCategories.size > 0 || 
+                       Object.keys(categoryNameChanges).length > 0;
+    
+    if (hasChanges) {
       if (!window.confirm('You have unsaved changes. Are you sure you want to cancel?')) {
         return;
       }
@@ -262,6 +278,94 @@ export default function ExtractionDetail() {
     setIsEditMode(false);
     setEditedItems({});
     setValidationErrors({});
+    setDeletedItems(new Set());
+    setDeletedCategories(new Set());
+    setCategoryNameChanges({});
+    setEditingCategoryName(null);
+    setTempCategoryName('');
+  };
+
+  const handleItemChange = (itemId, updatedItem) => {
+    setEditedItems(prev => ({
+      ...prev,
+      [itemId]: updatedItem
+    }));
+    
+    // Validate the updated item
+    const errors = validateMenuItem(updatedItem);
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [itemId]: errors
+      }));
+    } else {
+      // Clear errors for this item if valid
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[itemId];
+        return newErrors;
+      });
+    }
+  };
+
+  const handleDeleteItem = (itemId) => {
+    setDeletedItems(prev => new Set([...prev, itemId]));
+    
+    // Remove from edited items
+    setEditedItems(prev => {
+      const newEdited = { ...prev };
+      delete newEdited[itemId];
+      return newEdited;
+    });
+    
+    // Remove from validation errors
+    setValidationErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[itemId];
+      return newErrors;
+    });
+  };
+
+  const handleDeleteCategory = (categoryName) => {
+    if (window.confirm(`Are you sure you want to delete the entire "${categoryName}" category and all its items?`)) {
+      setDeletedCategories(prev => new Set([...prev, categoryName]));
+      
+      // If this was the selected category, select another one
+      if (selectedCategory === categoryName) {
+        const remainingCategories = Object.keys(menuData).filter(
+          cat => cat !== categoryName && !deletedCategories.has(cat)
+        );
+        if (remainingCategories.length > 0) {
+          setSelectedCategory(remainingCategories[0]);
+        }
+      }
+    }
+  };
+
+  const handleStartEditCategoryName = (categoryName) => {
+    setEditingCategoryName(categoryName);
+    setTempCategoryName(categoryNameChanges[categoryName] || categoryName);
+    // Automatically switch to the category being edited
+    setSelectedCategory(categoryName);
+  };
+
+  const handleSaveCategoryName = () => {
+    if (tempCategoryName && tempCategoryName !== editingCategoryName) {
+      setCategoryNameChanges(prev => ({
+        ...prev,
+        [editingCategoryName]: tempCategoryName
+      }));
+      
+      // Keep the selected category as the original name (since that's what exists in menuData)
+      // The display will show the new name via categoryNameChanges
+    }
+    setEditingCategoryName(null);
+    setTempCategoryName('');
+  };
+
+  const handleCancelEditCategoryName = () => {
+    setEditingCategoryName(null);
+    setTempCategoryName('');
   };
 
   const handleSaveChanges = async () => {
@@ -277,66 +381,134 @@ export default function ExtractionDetail() {
       return;
     }
 
-    // Build a map of original items by ID
-    const originalItemsMap = {};
-    Object.values(originalMenuData).forEach(categoryItems => {
-      categoryItems.forEach(item => {
-        originalItemsMap[item.id] = item;
-      });
-    });
-
-    // Get only changed items
-    const changedItems = getChangedItems(originalItemsMap, editedItems);
-
-    if (changedItems.length === 0) {
-      toast({
-        title: "No Changes",
-        description: "No items have been modified.",
-      });
-      return;
-    }
-
     setIsSaving(true);
     try {
-      // Bulk update all changed items
-      const updatePromises = changedItems.map(item => 
-        menuItemAPI.update(item.id, {
-          name: item.name,
-          price: item.price,
-          description: item.description,
-          tags: item.tags
-        })
-      );
+      // Collect all items to delete (individual deletions + items from deleted categories)
+      const itemsToDelete = new Set(deletedItems);
+      
+      // Add items from deleted categories
+      deletedCategories.forEach(categoryName => {
+        const originalCategoryName = Object.keys(categoryNameChanges).find(
+          oldName => categoryNameChanges[oldName] === categoryName
+        ) || categoryName;
+        
+        const itemsInCategory = menuData[originalCategoryName] || [];
+        itemsInCategory.forEach(item => itemsToDelete.add(item.id));
+      });
 
-      await Promise.all(updatePromises);
-
-      // Update local state with saved changes
-      const updatedMenuData = { ...menuData };
-      changedItems.forEach(item => {
-        const category = Object.keys(updatedMenuData).find(cat =>
-          updatedMenuData[cat].some(menuItem => menuItem.id === item.id)
-        );
-        if (category) {
-          const itemIndex = updatedMenuData[category].findIndex(menuItem => menuItem.id === item.id);
-          if (itemIndex !== -1) {
-            updatedMenuData[category][itemIndex] = {
-              ...updatedMenuData[category][itemIndex],
-              ...item
-            };
-          }
+      // Create deletion updates
+      const deletionUpdates = Array.from(itemsToDelete).map(itemId => {
+        // Find the original item to get all its data
+        let originalItem = null;
+        Object.values(menuData).forEach(categoryItems => {
+          const found = categoryItems.find(item => item.id === itemId);
+          if (found) originalItem = found;
+        });
+        
+        if (!originalItem) {
+          console.warn(`Could not find item ${itemId} for deletion`);
+          return null;
         }
+
+        return {
+          id: itemId,
+          name: originalItem.name,
+          price: originalItem.price,
+          description: originalItem.description,
+          tags: originalItem.tags || [],
+          category: originalItem.categoryName,
+          is_deleted: true // Mark for deletion
+        };
+      }).filter(Boolean);
+
+      // Handle category renames - update all items in renamed categories
+      const categoryRenamedItems = [];
+      Object.entries(categoryNameChanges).forEach(([oldCategory, newCategory]) => {
+        const itemsInCategory = menuData[oldCategory] || [];
+        itemsInCategory.forEach(item => {
+          // Skip if item is deleted
+          if (itemsToDelete.has(item.id)) return;
+          
+          // Check if this item has other edits
+          const hasOtherEdits = editedItems[item.id];
+          
+          categoryRenamedItems.push({
+            id: item.id,
+            name: hasOtherEdits?.name || item.name,
+            price: hasOtherEdits?.price || item.price,
+            description: hasOtherEdits?.description || item.description,
+            tags: hasOtherEdits?.tags || item.tags || [],
+            category: newCategory, // New category name
+            imageURL: item.imageURL
+          });
+        });
       });
 
-      setMenuData(updatedMenuData);
-      setOriginalMenuData(JSON.parse(JSON.stringify(updatedMenuData)));
-      setIsEditMode(false);
-      setEditedItems({});
-      setValidationErrors({});
-
-      toast({
-        title: "Success",
-        description: `Updated ${changedItems.length} menu item${changedItems.length > 1 ? 's' : ''}.`,
+      // Get regular edited items (not deleted, not in renamed categories)
+      const changedItems = [];
+      Object.entries(editedItems).forEach(([itemId, editedItem]) => {
+        // Skip if item is deleted
+        if (itemsToDelete.has(itemId)) return;
+        
+        // Skip if item is in a renamed category (already handled)
+        const itemCategory = Object.keys(menuData).find(cat =>
+          menuData[cat].some(item => item.id === itemId)
+        );
+        if (itemCategory && categoryNameChanges[itemCategory]) return;
+        
+        changedItems.push({
+          id: itemId,
+          name: editedItem.name,
+          price: editedItem.price,
+          description: editedItem.description,
+          tags: editedItem.tags || [],
+          category: editedItem.categoryName,
+          imageURL: editedItem.imageURL
+        });
       });
+
+      // Combine all updates
+      const allItemsToUpdate = [...deletionUpdates, ...categoryRenamedItems, ...changedItems];
+
+      if (allItemsToUpdate.length === 0) {
+        toast({
+          title: "No Changes",
+          description: "No items have been modified.",
+        });
+        setIsSaving(false);
+        return;
+      }
+
+      console.log('Sending bulk update with', allItemsToUpdate.length, 'items');
+      console.log('Updates:', allItemsToUpdate);
+
+      // Use bulk update endpoint
+      const response = await menuItemAPI.bulkUpdate(allItemsToUpdate);
+
+      if (response.updated > 0 || deletionUpdates.length > 0 || categoryRenamedItems.length > 0 || allItemsToUpdate.length > 0) {
+        // Refresh the menu data
+        await fetchJobDetails(false);
+        
+        // Reset edit mode
+        setIsEditMode(false);
+        setEditedItems({});
+        setValidationErrors({});
+        setDeletedItems(new Set());
+        setDeletedCategories(new Set());
+        setCategoryNameChanges({});
+        setEditingCategoryName(null);
+
+        toast({
+          title: "Success",
+          description: `Successfully updated ${response.updated || allItemsToUpdate.length} items.`,
+        });
+      } else {
+        toast({
+          title: "Warning",
+          description: "No items were updated. Please check the data.",
+          variant: "warning"
+        });
+      }
     } catch (error) {
       console.error('Failed to save changes:', error);
       toast({
@@ -657,10 +829,29 @@ export default function ExtractionDetail() {
                 </div>
               )}
             </div>
-            {isEditMode && Object.keys(editedItems).length > 0 && (
-              <p className="mt-2 text-sm text-blue-600">
-                {Object.keys(editedItems).length} item{Object.keys(editedItems).length > 1 ? 's' : ''} modified
-              </p>
+            {isEditMode && (Object.keys(editedItems).length > 0 || deletedItems.size > 0 || deletedCategories.size > 0 || Object.keys(categoryNameChanges).length > 0) && (
+              <div className="mt-2 space-y-1">
+                {Object.keys(editedItems).length > 0 && (
+                  <p className="text-sm text-blue-600">
+                    {Object.keys(editedItems).length} item{Object.keys(editedItems).length > 1 ? 's' : ''} modified
+                  </p>
+                )}
+                {deletedItems.size > 0 && (
+                  <p className="text-sm text-red-600">
+                    {deletedItems.size} item{deletedItems.size > 1 ? 's' : ''} marked for deletion
+                  </p>
+                )}
+                {deletedCategories.size > 0 && (
+                  <p className="text-sm text-red-600">
+                    {deletedCategories.size} categor{deletedCategories.size > 1 ? 'ies' : 'y'} marked for deletion
+                  </p>
+                )}
+                {Object.keys(categoryNameChanges).length > 0 && (
+                  <p className="text-sm text-green-600">
+                    {Object.keys(categoryNameChanges).length} categor{Object.keys(categoryNameChanges).length > 1 ? 'ies' : 'y'} renamed
+                  </p>
+                )}
+              </div>
             )}
           </div>
           <div className="border-t border-gray-200">
@@ -668,23 +859,87 @@ export default function ExtractionDetail() {
               {/* Category Sidebar */}
               <div className="w-64 bg-gray-50 border-r border-gray-200">
                 <ul className="divide-y divide-gray-200">
-                  {Object.keys(menuData).map((category) => (
-                    <li key={category}>
-                      <button
-                        onClick={() => setSelectedCategory(category)}
-                        className={`w-full text-left px-4 py-3 hover:bg-gray-100 ${
-                          selectedCategory === category ? 'bg-white font-medium' : ''
-                        }`}
-                      >
-                        <div className="flex justify-between">
-                          <span>{category}</span>
-                          <span className="text-sm text-gray-500">
-                            {menuData[category].length}
-                          </span>
-                        </div>
-                      </button>
-                    </li>
-                  ))}
+                  {Object.keys(menuData)
+                    .filter(category => {
+                      // Filter out deleted categories
+                      if (deletedCategories.has(category)) return false;
+                      // Filter out categories with all items deleted
+                      const itemsInCategory = menuData[category] || [];
+                      const hasActiveItems = itemsInCategory.some(item => !deletedItems.has(item.id));
+                      return hasActiveItems;
+                    })
+                    .map((category) => {
+                      const displayName = categoryNameChanges[category] || category;
+                      const itemCount = menuData[category].filter(item => !deletedItems.has(item.id)).length;
+                      
+                      return (
+                        <li key={category}>
+                          {editingCategoryName === category ? (
+                            <div className="px-4 py-3 bg-white">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={tempCategoryName}
+                                  onChange={(e) => setTempCategoryName(e.target.value)}
+                                  className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                  autoFocus
+                                />
+                                <button
+                                  onClick={handleSaveCategoryName}
+                                  className="p-1 text-green-600 hover:text-green-700"
+                                >
+                                  <CheckIcon className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={handleCancelEditCategoryName}
+                                  className="p-1 text-red-600 hover:text-red-700"
+                                >
+                                  <XMarkIcon className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setSelectedCategory(category)}
+                              className={`w-full text-left px-4 py-3 hover:bg-gray-100 ${
+                                selectedCategory === category ? 'bg-white font-medium' : ''
+                              }`}
+                            >
+                              <div className="flex justify-between items-center">
+                                <span>{displayName}</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm text-gray-500">
+                                    {itemCount}
+                                  </span>
+                                  {isEditMode && (
+                                    <div className="flex items-center gap-1">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleStartEditCategoryName(category);
+                                        }}
+                                        className="p-1 text-gray-600 hover:text-blue-600 opacity-60"
+                                      >
+                                        <PencilIcon className="h-3 w-3" />
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeleteCategory(category);
+                                        }}
+                                        className="p-1 text-red-600 hover:text-red-700 opacity-60"
+                                      >
+                                        <TrashIcon className="h-3 w-3" />
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </button>
+                          )}
+                        </li>
+                      );
+                    })}
                 </ul>
               </div>
 
@@ -693,23 +948,26 @@ export default function ExtractionDetail() {
                 {selectedCategory && (
                   <div>
                     <h4 className="text-lg font-medium text-gray-900 mb-4">
-                      {selectedCategory}
+                      {categoryNameChanges[selectedCategory] || selectedCategory}
                     </h4>
                     <div className="space-y-4">
-                      {menuData[selectedCategory].map((item, index) => {
-                        // Get the current item state (edited or original)
-                        const currentItem = editedItems[item.id] || item;
-                        
-                        return (
-                          <EditableMenuItem
-                            key={item.id || index}
-                            item={currentItem}
-                            isEditMode={isEditMode}
-                            onUpdate={handleUpdateItem}
-                            validationErrors={validationErrors[item.id] || {}}
-                          />
-                        );
-                      })}
+                      {menuData[selectedCategory]
+                        .filter(item => !deletedItems.has(item.id))
+                        .map((item, index) => {
+                          // Get the current item state (edited or original)
+                          const currentItem = editedItems[item.id] || item;
+                          
+                          return (
+                            <EditableMenuItem
+                              key={item.id || index}
+                              item={currentItem}
+                              isEditMode={isEditMode}
+                              onUpdate={handleItemChange}
+                              onDelete={() => handleDeleteItem(item.id)}
+                              validationErrors={validationErrors[item.id] || {}}
+                            />
+                          );
+                        })}
                     </div>
                   </div>
                 )}
