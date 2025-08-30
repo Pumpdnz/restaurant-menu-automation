@@ -1,8 +1,24 @@
 # Authentication Pages Implementation Plan
 ## For UberEats Image Extractor Application
 
+### ✅ Implementation Status: Core Auth Pages Complete!
+
 ### Overview
-Comprehensive authentication system with Google OAuth 2.0, email authentication, and password management.
+We have successfully implemented the core authentication pages with email authentication and password management. Google OAuth 2.0 is pending configuration.
+
+### Completed Pages:
+- ✅ Login Page (`/login`) - Working perfectly
+- ✅ Signup Page (`/signup`) - Creates users and organizations
+- ✅ Forgot Password (`/forgot-password`) - Sends reset emails
+- ✅ Reset Password (`/reset-password`) - Updates passwords
+- ✅ Auth Callback (`/auth/callback`) - Ready for OAuth
+
+### Pending Implementation:
+- ⏳ Google OAuth configuration in Supabase
+- ⏳ Organization settings page
+- ⏳ Member invitation system
+- ⏳ Super admin dashboard
+- ⏳ Stripe billing integration (see detailed plan below)
 
 ---
 
@@ -917,14 +933,23 @@ describe('Auth User Journey', () => {
 
 ---
 
-## Billing Integration Strategy
+## Billing Integration Strategy (Based on pumpd-webhook Success)
+
+### Reference Implementation: pumpd-webhook
+The pumpd-webhook app successfully implements Stripe billing with:
+- Meter-based usage tracking for SMS credits
+- Organization-linked Stripe customers
+- Real-time usage monitoring
+- Automatic invoice generation
+
+We'll adapt this proven pattern for extraction credits:
 
 ### Phase 1: Build with Billing in Mind (Current)
 ```typescript
 // Every extraction component should have usage awareness
 interface ExtractionButtonProps {
   onExtract: () => Promise<void>;
-  // Prepare for future billing
+  // Prepare for future billing (like pumpd-webhook's SMS tracking)
   beforeExtract?: () => Promise<boolean>; // Check credits
   afterExtract?: (result: any) => Promise<void>; // Track usage
 }
@@ -935,22 +960,29 @@ interface ExtractionButtonProps {
 </AppHeader>
 ```
 
-### Phase 2: Billing Implementation (After Auth)
+### Phase 2: Billing Implementation (After Auth) - Adapt from pumpd-webhook
 ```javascript
-// 1. Add Stripe SDK
+// 1. Add Stripe SDK (same as pumpd-webhook)
 npm install stripe @stripe/stripe-js
 
-// 2. Create billing service
+// 2. Copy and adapt meter-management.js from pumpd-webhook
+// Source: /pumpd-webhook/server/services/stripe/meter-management.js
+// Changes needed:
+//   - Replace 'sms_credits' with 'extraction_credits'
+//   - Replace 'SMS Credits' with 'Extraction Credits'
+//   - Keep the same meter creation and tracking pattern
+
+// 3. Create billing service (adapted from pumpd-webhook pattern)
 class BillingService {
   async trackExtraction(orgId, itemCount) {
-    // Record to database
+    // Record to database (like pumpd-webhook tracks SMS)
     await supabase.from('usage_events').insert({
       organisation_id: orgId,
       event_type: 'extraction',
       quantity: itemCount
     });
     
-    // Send to Stripe Meters API
+    // Send to Stripe Meters API (exact pattern from pumpd-webhook)
     await stripe.billing.meterEvents.create({
       event_name: 'extraction_credits',
       payload: {

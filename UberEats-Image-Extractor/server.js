@@ -36,6 +36,9 @@ const {
 // Import database service
 const db = require('./src/services/database-service');
 
+// Import auth middleware
+const { authMiddleware } = require('./middleware/auth');
+
 // Import platform detector
 const { detectPlatform, extractRestaurantName, getExtractionConfig } = require('./src/utils/platform-detector');
 
@@ -420,6 +423,10 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'dist')));
+
+// Add organization middleware for all API routes
+const organizationMiddleware = require('./middleware/organization-middleware');
+app.use('/api/*', organizationMiddleware);
 
 // Add request logging middleware
 app.use((req, res, next) => {
@@ -2744,7 +2751,7 @@ app.get('/api/menus/:id/download-images-zip', async (req, res) => {
  * GET /api/restaurants
  * List all restaurants in the database
  */
-app.get('/api/restaurants', async (req, res) => {
+app.get('/api/restaurants', authMiddleware, async (req, res) => {
   try {
     if (!db.isDatabaseAvailable()) {
       return res.status(503).json({
@@ -2773,7 +2780,7 @@ app.get('/api/restaurants', async (req, res) => {
  * GET /api/restaurants/:id/menus
  * Get all menus for a specific restaurant
  */
-app.get('/api/restaurants/:id/menus', async (req, res) => {
+app.get('/api/restaurants/:id/menus', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -3806,7 +3813,7 @@ app.delete('/api/menus/:id', async (req, res) => {
  * GET /api/menus
  * Get all menus with optional restaurant filter
  */
-app.get('/api/menus', async (req, res) => {
+app.get('/api/menus', authMiddleware, async (req, res) => {
   try {
     const { restaurant } = req.query;
     
@@ -4003,7 +4010,7 @@ app.get('/api/search/items', async (req, res) => {
  * GET /api/extractions
  * List all extraction jobs with optional filters
  */
-app.get('/api/extractions', async (req, res) => {
+app.get('/api/extractions', authMiddleware, async (req, res) => {
   try {
     const { status, restaurantId, limit } = req.query;
     
@@ -4043,7 +4050,7 @@ app.get('/api/extractions', async (req, res) => {
  * GET /api/restaurants/:id
  * Get a specific restaurant by ID
  */
-app.get('/api/restaurants/:id', async (req, res) => {
+app.get('/api/restaurants/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -4080,7 +4087,7 @@ app.get('/api/restaurants/:id', async (req, res) => {
  * POST /api/restaurants
  * Create a new restaurant
  */
-app.post('/api/restaurants', async (req, res) => {
+app.post('/api/restaurants', authMiddleware, async (req, res) => {
   try {
     const restaurantData = req.body;
     
@@ -4124,7 +4131,7 @@ app.post('/api/restaurants', async (req, res) => {
  * PATCH /api/restaurants/:id
  * Update a restaurant
  */
-app.patch('/api/restaurants/:id', async (req, res) => {
+app.patch('/api/restaurants/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
@@ -4162,7 +4169,7 @@ app.patch('/api/restaurants/:id', async (req, res) => {
  * PATCH /api/restaurants/:id/workflow
  * Update restaurant workflow fields
  */
-app.patch('/api/restaurants/:id/workflow', async (req, res) => {
+app.patch('/api/restaurants/:id/workflow', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const workflowData = req.body;
@@ -4200,7 +4207,7 @@ app.patch('/api/restaurants/:id/workflow', async (req, res) => {
  * DELETE /api/restaurants/:id
  * Hard delete a restaurant and all associated data
  */
-app.delete('/api/restaurants/:id', async (req, res) => {
+app.delete('/api/restaurants/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -4237,7 +4244,7 @@ app.delete('/api/restaurants/:id', async (req, res) => {
  * GET /api/restaurants/:id/details
  * Get complete restaurant details including all workflow fields
  */
-app.get('/api/restaurants/:id/details', async (req, res) => {
+app.get('/api/restaurants/:id/details', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -4274,7 +4281,7 @@ app.get('/api/restaurants/:id/details', async (req, res) => {
  * PATCH /api/restaurants/:id/workflow
  * Update restaurant workflow fields
  */
-app.patch('/api/restaurants/:id/workflow', async (req, res) => {
+app.patch('/api/restaurants/:id/workflow', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const workflowData = req.body;
@@ -5423,7 +5430,7 @@ app.post('/api/menus/:id/duplicate', async (req, res) => {
  * PATCH /api/menu-items/:id
  * Update a single menu item
  */
-app.patch('/api/menu-items/:id', async (req, res) => {
+app.patch('/api/menu-items/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
@@ -5461,9 +5468,15 @@ app.patch('/api/menu-items/:id', async (req, res) => {
  * POST /api/menu-items/bulk-update
  * Bulk update menu items
  */
-app.post('/api/menu-items/bulk-update', async (req, res) => {
+app.post('/api/menu-items/bulk-update', authMiddleware, async (req, res) => {
   try {
     const { updates } = req.body;
+    
+    // Log the raw request to see what's being received
+    console.log('[Server] Bulk update request received with', updates?.length, 'items');
+    if (updates && updates.length > 0) {
+      console.log('[Server] First update item:', JSON.stringify(updates[0], null, 2));
+    }
     
     if (!updates || !Array.isArray(updates)) {
       return res.status(400).json({
@@ -5592,7 +5605,7 @@ app.get('/api/menus/compare', async (req, res) => {
  * GET /api/restaurants/:id/price-history
  * Get price history for a restaurant
  */
-app.get('/api/restaurants/:id/price-history', async (req, res) => {
+app.get('/api/restaurants/:id/price-history', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const { itemId, startDate, endDate } = req.query;
@@ -5636,7 +5649,7 @@ app.get('/api/restaurants/:id/price-history', async (req, res) => {
  * GET /api/analytics/extraction-stats
  * Get extraction statistics
  */
-app.get('/api/analytics/extraction-stats', async (req, res) => {
+app.get('/api/analytics/extraction-stats', authMiddleware, async (req, res) => {
   try {
     if (!db.isDatabaseAvailable()) {
       return res.status(503).json({

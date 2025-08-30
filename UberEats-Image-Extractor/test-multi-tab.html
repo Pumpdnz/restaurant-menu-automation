@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Tab Auth Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .logged-in {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .logged-out {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .button-group {
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            margin-right: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: opacity 0.2s;
+        }
+        button:hover {
+            opacity: 0.8;
+        }
+        .login-btn {
+            background: #4CAF50;
+            color: white;
+        }
+        .logout-btn {
+            background: #f44336;
+            color: white;
+        }
+        .refresh-btn {
+            background: #2196F3;
+            color: white;
+        }
+        .info {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .log {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        .log-entry {
+            padding: 2px 0;
+            border-bottom: 1px solid #ddd;
+        }
+        .tab-id {
+            font-weight: bold;
+            color: #4CAF50;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Multi-Tab Authentication Test</h1>
+        
+        <div class="info">
+            <strong>Tab ID:</strong> <span class="tab-id" id="tabId"></span><br>
+            <strong>Instructions:</strong> Open this page in multiple tabs to test cross-tab authentication synchronization.
+        </div>
+        
+        <div id="status" class="status logged-out">
+            Loading...
+        </div>
+        
+        <div class="button-group">
+            <button class="login-btn" onclick="simulateLogin()">Simulate Login</button>
+            <button class="logout-btn" onclick="simulateLogout()">Simulate Logout</button>
+            <button class="refresh-btn" onclick="checkAuthState()">Refresh Status</button>
+        </div>
+        
+        <div class="log" id="log">
+            <div class="log-entry">Waiting for events...</div>
+        </div>
+    </div>
+
+    <script>
+        // Generate unique tab ID
+        const tabId = Math.random().toString(36).substring(2, 9);
+        document.getElementById('tabId').textContent = tabId;
+        
+        // Log function
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            const time = new Date().toLocaleTimeString();
+            entry.innerHTML = `<strong>[${time}]</strong> ${message}`;
+            logDiv.insertBefore(entry, logDiv.firstChild);
+            
+            // Keep only last 20 entries
+            while (logDiv.children.length > 20) {
+                logDiv.removeChild(logDiv.lastChild);
+            }
+        }
+        
+        // Check current auth state
+        function checkAuthState() {
+            const authData = localStorage.getItem('auth_state_change');
+            const statusDiv = document.getElementById('status');
+            
+            if (authData) {
+                try {
+                    const data = JSON.parse(authData);
+                    const age = Date.now() - data.timestamp;
+                    const ageSeconds = Math.floor(age / 1000);
+                    
+                    if (data.event === 'SIGNED_IN') {
+                        statusDiv.className = 'status logged-in';
+                        statusDiv.innerHTML = `
+                            ✅ <strong>Logged In</strong><br>
+                            User ID: ${data.userId || 'unknown'}<br>
+                            <small>Last change: ${ageSeconds}s ago</small>
+                        `;
+                    } else if (data.event === 'SIGNED_OUT') {
+                        statusDiv.className = 'status logged-out';
+                        statusDiv.innerHTML = `
+                            ❌ <strong>Logged Out</strong><br>
+                            <small>Last change: ${ageSeconds}s ago</small>
+                        `;
+                    }
+                } catch (e) {
+                    statusDiv.className = 'status logged-out';
+                    statusDiv.textContent = '⚠️ Error reading auth state';
+                }
+            } else {
+                statusDiv.className = 'status logged-out';
+                statusDiv.innerHTML = '❌ <strong>No Auth State</strong><br><small>Not logged in</small>';
+            }
+        }
+        
+        // Simulate login
+        function simulateLogin() {
+            const userId = 'user_' + Math.random().toString(36).substring(2, 9);
+            const authData = {
+                event: 'SIGNED_IN',
+                userId: userId,
+                timestamp: Date.now()
+            };
+            localStorage.setItem('auth_state_change', JSON.stringify(authData));
+            log(`<span style="color: green;">✅ Simulated login from tab ${tabId} (User: ${userId})</span>`);
+            checkAuthState();
+        }
+        
+        // Simulate logout (matching the actual app's logout mechanism)
+        function simulateLogout() {
+            // Use the same signal mechanism as the actual app
+            localStorage.setItem('auth_logout_signal', Date.now().toString());
+            localStorage.removeItem('auth_logout_signal');
+            
+            // Also update the auth_state_change for display purposes
+            const authData = {
+                event: 'SIGNED_OUT',
+                timestamp: Date.now()
+            };
+            localStorage.setItem('auth_state_change', JSON.stringify(authData));
+            log(`<span style="color: red;">❌ Simulated logout from tab ${tabId}</span>`);
+            checkAuthState();
+        }
+        
+        // Listen for storage events
+        window.addEventListener('storage', (e) => {
+            // Listen for the logout signal (key removal)
+            if (e.key === 'auth_logout_signal' && e.newValue === null) {
+                log(`<span style="color: purple;">🚪 Received LOGOUT SIGNAL from another tab (key removed)</span>`);
+                // Update our local state to reflect logout
+                const authData = {
+                    event: 'SIGNED_OUT',
+                    timestamp: Date.now()
+                };
+                localStorage.setItem('auth_state_change', JSON.stringify(authData));
+                checkAuthState();
+            }
+            // Also listen for auth_state_change events
+            else if (e.key === 'auth_state_change' && e.newValue) {
+                try {
+                    const data = JSON.parse(e.newValue);
+                    if (data.event === 'SIGNED_IN') {
+                        log(`<span style="color: blue;">📨 Received SIGN IN event from another tab (User: ${data.userId})</span>`);
+                    } else if (data.event === 'SIGNED_OUT') {
+                        log(`<span style="color: orange;">📨 Received SIGN OUT event from another tab</span>`);
+                    }
+                    checkAuthState();
+                } catch (error) {
+                    log(`<span style="color: red;">❌ Error parsing storage event</span>`);
+                }
+            }
+            // Listen for Supabase auth token changes
+            else if (e.key && e.key.startsWith('sb-') && e.key.endsWith('-auth-token')) {
+                if (e.newValue) {
+                    log(`<span style="color: teal;">🔑 Supabase auth token changed (session active)</span>`);
+                } else {
+                    log(`<span style="color: maroon;">🔑 Supabase auth token removed (session cleared)</span>`);
+                }
+            }
+        });
+        
+        // Initial check
+        checkAuthState();
+        log(`Tab ${tabId} initialized and listening for auth changes...`);
+    </script>
+</body>
+</html>

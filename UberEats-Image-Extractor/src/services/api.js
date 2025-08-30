@@ -8,13 +8,30 @@ const api = axios.create({
   },
 });
 
-// Add request interceptor for auth token (will be used later)
+// Import supabase to get the session
+import { supabase } from '../lib/supabase';
+
+// Add request interceptor for auth token and organization ID
 api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+  async (config) => {
+    // Get the current session from Supabase
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    // Add auth token from Supabase session
+    if (session?.access_token) {
+      config.headers.Authorization = `Bearer ${session.access_token}`;
+      console.log('Sending request with auth token');
+    } else {
+      console.warn('No auth session found for API request');
     }
+    
+    // Add organization ID header for API filtering (as backup)
+    const orgId = localStorage.getItem('currentOrgId');
+    if (orgId) {
+      config.headers['X-Organization-ID'] = orgId;
+      console.log('Sending request with org ID:', orgId);
+    }
+    
     return config;
   },
   (error) => Promise.reject(error)
@@ -59,7 +76,11 @@ export const extractionAPI = {
 // Menu Item APIs
 export const menuItemAPI = {
   update: (id, data) => api.patch(`/menu-items/${id}`, data),
-  bulkUpdate: (updates) => api.post('/menu-items/bulk-update', { updates }),
+  bulkUpdate: (updates) => {
+    console.log('[API Service] Sending bulk update with', updates.length, 'items');
+    console.log('[API Service] Updates being sent:', JSON.stringify(updates, null, 2));
+    return api.post('/menu-items/bulk-update', { updates });
+  },
   addToCategory: (categoryId, data) => api.post(`/categories/${categoryId}/items`, data),
 };
 

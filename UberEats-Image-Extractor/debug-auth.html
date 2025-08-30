@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auth Debug Tool</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #666;
+            margin-top: 20px;
+        }
+        .key-value {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            word-break: break-all;
+        }
+        .key {
+            font-weight: bold;
+            color: #2196F3;
+        }
+        .value {
+            color: #666;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        .json {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: opacity 0.2s;
+        }
+        button:hover {
+            opacity: 0.8;
+        }
+        .refresh-btn {
+            background: #2196F3;
+            color: white;
+        }
+        .clear-btn {
+            background: #f44336;
+            color: white;
+        }
+        .found {
+            background: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .not-found {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .tab-id {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: #4CAF50;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="tab-id" id="tabId"></div>
+    
+    <div class="container">
+        <h1>🔍 Supabase Auth Debug Tool</h1>
+        
+        <div>
+            <button class="refresh-btn" onclick="checkAuth()">Refresh</button>
+            <button class="clear-btn" onclick="clearAuth()">Clear All Auth Data</button>
+        </div>
+        
+        <h2>Supabase Session Keys in localStorage:</h2>
+        <div id="supabaseKeys"></div>
+        
+        <h2>Auth State Change Key:</h2>
+        <div id="authStateChange"></div>
+        
+        <h2>Logout Signal Status:</h2>
+        <div id="logoutSignal"></div>
+        
+        <h2>All localStorage Keys:</h2>
+        <div id="allKeys"></div>
+    </div>
+
+    <script>
+        // Generate unique tab ID
+        const tabId = 'tab_' + Math.random().toString(36).substring(2, 9);
+        document.getElementById('tabId').textContent = tabId;
+        
+        function checkAuth() {
+            const supabaseKeysDiv = document.getElementById('supabaseKeys');
+            const authStateDiv = document.getElementById('authStateChange');
+            const logoutSignalDiv = document.getElementById('logoutSignal');
+            const allKeysDiv = document.getElementById('allKeys');
+            
+            // Clear previous content
+            supabaseKeysDiv.innerHTML = '';
+            authStateDiv.innerHTML = '';
+            logoutSignalDiv.innerHTML = '';
+            allKeysDiv.innerHTML = '';
+            
+            // Check for Supabase session keys
+            const supabaseKeys = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && (key.includes('supabase') || key.includes('sb-'))) {
+                    supabaseKeys.push(key);
+                }
+            }
+            
+            if (supabaseKeys.length > 0) {
+                supabaseKeysDiv.innerHTML = '<div class="found">✅ Found ' + supabaseKeys.length + ' Supabase keys</div>';
+                supabaseKeys.forEach(key => {
+                    const value = localStorage.getItem(key);
+                    let displayValue = value;
+                    
+                    // Try to parse and format JSON
+                    try {
+                        const parsed = JSON.parse(value);
+                        displayValue = JSON.stringify(parsed, null, 2);
+                        
+                        // Extract useful info
+                        if (parsed.access_token) {
+                            displayValue = `Token present (${parsed.access_token.substring(0, 20)}...)`;
+                        }
+                        if (parsed.user) {
+                            displayValue += `\nUser: ${parsed.user.email || parsed.user.id}`;
+                        }
+                    } catch (e) {
+                        // Not JSON, show as is
+                    }
+                    
+                    supabaseKeysDiv.innerHTML += `
+                        <div class="key-value">
+                            <div class="key">${key}</div>
+                            <div class="value">${displayValue}</div>
+                        </div>
+                    `;
+                });
+            } else {
+                supabaseKeysDiv.innerHTML = '<div class="not-found">❌ No Supabase session keys found</div>';
+            }
+            
+            // Check auth_state_change
+            const authStateChange = localStorage.getItem('auth_state_change');
+            if (authStateChange) {
+                try {
+                    const parsed = JSON.parse(authStateChange);
+                    const age = Date.now() - parsed.timestamp;
+                    authStateDiv.innerHTML = `
+                        <div class="found">
+                            ✅ Auth state: ${parsed.event}<br>
+                            Age: ${Math.floor(age / 1000)}s ago<br>
+                            ${parsed.userId ? 'User ID: ' + parsed.userId : ''}
+                        </div>
+                    `;
+                } catch (e) {
+                    authStateDiv.innerHTML = '<div class="key-value">Invalid JSON: ' + authStateChange + '</div>';
+                }
+            } else {
+                authStateDiv.innerHTML = '<div class="not-found">❌ No auth_state_change key found</div>';
+            }
+            
+            // Check for logout signal (should not persist)
+            const logoutSignal = localStorage.getItem('auth_logout_signal');
+            if (logoutSignal) {
+                logoutSignalDiv.innerHTML = `
+                    <div class="not-found">
+                        ⚠️ Logout signal present (should be removed immediately):<br>
+                        Value: ${logoutSignal}
+                    </div>
+                `;
+            } else {
+                logoutSignalDiv.innerHTML = `
+                    <div class="found">
+                        ✅ No logout signal (expected - it's removed immediately after setting)
+                    </div>
+                `;
+            }
+            
+            // Show all keys
+            const allKeys = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key) {
+                    allKeys.push(key);
+                }
+            }
+            
+            if (allKeys.length > 0) {
+                allKeysDiv.innerHTML = '<div class="found">Total keys in localStorage: ' + allKeys.length + '</div>';
+                allKeysDiv.innerHTML += '<div class="json"><pre>' + JSON.stringify(allKeys, null, 2) + '</pre></div>';
+            } else {
+                allKeysDiv.innerHTML = '<div class="not-found">❌ localStorage is empty</div>';
+            }
+            
+            console.log(`[${tabId}] Auth check complete at`, new Date().toISOString());
+        }
+        
+        function clearAuth() {
+            if (confirm('Are you sure you want to clear all auth data?')) {
+                const keysToRemove = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && (key.includes('supabase') || key.includes('sb-') || key === 'auth_state_change' || key === 'currentOrgId')) {
+                        keysToRemove.push(key);
+                    }
+                }
+                
+                keysToRemove.forEach(key => {
+                    localStorage.removeItem(key);
+                    console.log('Removed:', key);
+                });
+                
+                alert('Cleared ' + keysToRemove.length + ' auth-related keys');
+                checkAuth();
+            }
+        }
+        
+        // Auto-refresh every 2 seconds
+        setInterval(checkAuth, 2000);
+        
+        // Initial check
+        checkAuth();
+        
+        // Listen for storage events
+        window.addEventListener('storage', (e) => {
+            // Log more detail for logout signal events
+            if (e.key === 'auth_logout_signal') {
+                console.log(`[${tabId}] LOGOUT SIGNAL:`, e.newValue ? 'set' : 'removed (trigger!)');
+            } else if (e.key && e.key.startsWith('sb-') && e.key.endsWith('-auth-token')) {
+                console.log(`[${tabId}] Supabase token:`, e.newValue ? 'updated' : 'cleared');
+            } else {
+                console.log(`[${tabId}] Storage event:`, e.key, e.newValue ? 'updated' : 'removed');
+            }
+            checkAuth();
+        });
+    </script>
+</body>
+</html>

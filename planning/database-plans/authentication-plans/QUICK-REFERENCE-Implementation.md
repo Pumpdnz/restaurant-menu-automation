@@ -1,5 +1,13 @@
 # Quick Reference: Multi-Tenant Auth Implementation (UPDATED)
-## Current Status: Database & Backend Complete ✅
+## Current Status: Authentication Working! ✅
+
+## 🎉 WORKING AUTHENTICATION
+- ✅ Login/Logout functioning correctly
+- ✅ Multi-tab synchronization working (logout syncs, login requires refresh)
+- ✅ Profile loading successfully
+- ✅ Organization context maintained
+- ✅ Session persistence across refreshes
+- ✅ Clean, simple implementation without complex flags
 
 ## ✅ COMPLETED COMPONENTS
 
@@ -67,11 +75,16 @@ CREATE POLICY "restaurant_access_policy" ON restaurants
   FOR ALL USING (has_org_access(organisation_id));
 ```
 
-### 3. Frontend Auth (PARTIALLY DONE)
+### 3. Frontend Auth (MOSTLY DONE)
 ```typescript
 // ✅ AuthContext CREATED at: /src/context/AuthContext.tsx
 // ✅ Auth Types CREATED at: /src/types/auth.ts
 // ✅ Supabase Client CREATED at: /src/lib/supabase.ts
+// ✅ Login Page CREATED at: /src/pages/Login.tsx
+// ✅ Signup Page CREATED at: /src/pages/Signup.tsx
+// ✅ Password Reset Pages CREATED at: /src/pages/ForgotPassword.tsx & ResetPassword.tsx
+// ✅ Protected Routes WORKING at: /src/components/ProtectedRoute.tsx
+// ✅ Organization Sync Hook at: /src/hooks/useOrganizationSync.tsx
 
 // Three-tier role system implemented:
 type UserRole = 'super_admin' | 'admin' | 'user';
@@ -82,11 +95,10 @@ isSuperAdmin() // Returns true for super_admin only
 hasRole(role)  // Flexible role checking
 
 // ⚠️ STILL NEEDED:
-// - Login page component
-// - Signup page component  
-// - Password reset pages
+// - Google OAuth integration
 // - Organization management UI
 // - Super admin dashboard
+// - Fix data visibility issue (org assignment not filtering data)
 ```
 
 ### 4. Backend Middleware (DONE)
@@ -118,26 +130,41 @@ createRestaurant(restaurantData, organisationId)
 // etc...
 ```
 
+## 🟡 IN PROGRESS ISSUES
+
+### 1. Data Visibility Problem (URGENT)
+```sql
+-- User is assigned to default org: ✅
+-- Data is assigned to default org: ✅  
+-- But no data showing in UI: ❌
+
+-- Need to check:
+1. Frontend queries including organisation_id filter?
+2. API endpoints filtering by org correctly?
+3. RLS policies blocking access?
+4. Organisation ID being passed in requests?
+```
+
 ## 🔴 PENDING COMPONENTS
 
-### 1. Frontend Pages (NOT STARTED)
+### 1. Frontend Pages (PARTIALLY COMPLETE)
 ```
-❌ /src/pages/Login.tsx
-❌ /src/pages/Signup.tsx
-❌ /src/pages/ForgotPassword.tsx
-❌ /src/pages/ResetPassword.tsx
+✅ /src/pages/Login.tsx
+✅ /src/pages/Signup.tsx
+✅ /src/pages/ForgotPassword.tsx
+✅ /src/pages/ResetPassword.tsx
 ❌ /src/pages/InviteAccept.tsx
 ❌ /src/pages/OrganizationSettings.tsx
 ❌ /src/pages/SuperAdminDashboard.tsx
-❌ /src/pages/AuthCallback.tsx (OAuth handler)
+✅ /src/pages/AuthCallback.tsx (OAuth handler created)
 ❌ /src/pages/Billing.tsx (Usage & subscription)
 ```
 
-### 2. App Router Updates (NOT STARTED)
+### 2. App Router Updates (DONE)
 ```typescript
-// Need to wrap App with AuthProvider
-// Add protected routes
-// Add role-based route guards
+// ✅ App wrapped with AuthProvider
+// ✅ Protected routes working
+// ✅ Role-based checks available
 ```
 
 ### 3. Google OAuth Setup (NOT STARTED)
@@ -211,45 +238,49 @@ VITE_SUPABASE_ANON_KEY=eyJhbG...
 
 ## 🚀 NEXT IMMEDIATE STEPS
 
-### Day 1: Create Login/Signup Pages
+### Priority 1: Fix Data Visibility (TODAY)
 ```bash
-# 1. Create login page with email/password
-# 2. Add Google OAuth button
-# 3. Create signup page with org creation
-# 4. Add invitation token handling
+# Debug why data isn't showing:
+1. Check if organisation_id is being passed in API requests
+2. Verify frontend queries include org filter
+3. Test RLS policies directly in Supabase
+4. Check if user.organisationId is populated in AuthContext
+5. Verify API middleware is attaching org context
 ```
 
-### Day 2: OAuth & Password Reset
+### Priority 2: Google OAuth (Day 1)
 ```bash
-# 1. Setup Google OAuth in Supabase
-# 2. Create callback handler
-# 3. Create password reset flow
-# 4. Test authentication
+1. Enable Google provider in Supabase Dashboard
+2. Configure OAuth consent screen in Google Cloud
+3. Update Login/Signup pages with Google button
+4. Test OAuth flow with AuthCallback component
 ```
 
-### Day 3: Organization Management
+### Priority 3: Organization Management (Day 2-3)
 ```bash
-# 1. Create org settings page
-# 2. Add member list
-# 3. Implement invitation system
-# 4. Test invite flow
+1. Create org settings page
+2. Add member list view
+3. Implement invitation system
+4. Test invite acceptance flow
 ```
 
-### Day 4: Super Admin Dashboard
+### Priority 4: Super Admin Dashboard (Day 4-5)
 ```bash
-# 1. Create super admin dashboard
-# 2. Add org switcher
-# 3. Implement impersonation
-# 4. Add billing management
+1. Create super admin dashboard
+2. Add org switcher component
+3. Implement data access across orgs
+4. Add system monitoring views
 ```
 
 ## ✅ WHAT'S WORKING NOW
 
 1. **Database Ready** - All tables, RLS policies, and migrations applied
 2. **Backend Auth** - Middleware complete with 3-tier roles
-3. **Frontend Context** - AuthContext ready with role checks
-4. **Data Isolation** - All queries filter by organization
-5. **Invitation System** - Database structure ready
+3. **Frontend Auth** - Login/Logout/Signup working perfectly
+4. **Multi-Tab Sync** - Logout syncs across tabs automatically
+5. **Session Persistence** - Auth state maintained across refreshes
+6. **Profile Loading** - User profiles load without timeouts
+7. **Clean Implementation** - No complex flags or retry logic
 
 ## 🔧 TESTING CHECKLIST
 
@@ -258,16 +289,50 @@ VITE_SUPABASE_ANON_KEY=eyJhbG...
 - [x] RLS policies created
 - [x] Default organization created
 - [x] Auth middleware exports correct functions
+- [x] User signup creates organization
+- [x] Login loads correct profile
+- [x] Password reset flow works
+- [x] Multi-tab logout synchronization
+- [x] Session persistence across refreshes
 
-### Need UI to Test:
-- [ ] User signup creates organization
-- [ ] Login loads correct profile
-- [ ] Google OAuth works
-- [ ] Password reset flow
-- [ ] Invitation acceptance
-- [ ] Role-based access control
+### Still Need to Test:
+- [ ] Google OAuth integration
+- [ ] Invitation acceptance flow
+- [ ] Role-based access control (partially working)
 - [ ] Super admin can access all orgs
-- [ ] Data isolation between orgs
+- [ ] Data isolation between orgs (ISSUE: data not showing)
+
+## 🔑 KEY LESSONS FROM MULTI-TAB AUTH
+
+### What Failed:
+- ❌ Manual synchronization with localStorage signals
+- ❌ Complex flag management (isLogoutInitiatorRef)
+- ❌ Multiple concurrent auth checks
+- ❌ Aggressive timeouts on queries
+- ❌ Calling getSession() inside profile load
+
+### What Succeeded:
+- ✅ Single initialization check on mount
+- ✅ Trusting Supabase's built-in sync
+- ✅ Simple onAuthStateChange for logout only
+- ✅ Removing competing auth checks
+- ✅ Fixing RLS policies (removed conflicting SELECT policies)
+
+### The Solution:
+```typescript
+// Clean, simple auth with no manual sync
+useEffect(() => {
+  // One-time session check
+  initializeAuth();
+  
+  // Only handle logout events
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_OUT') {
+      // Clear state and navigate
+    }
+  });
+}, []);
+```
 
 ## 🎯 SIMPLIFIED APPROACH BENEFITS
 

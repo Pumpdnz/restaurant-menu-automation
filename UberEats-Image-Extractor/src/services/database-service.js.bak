@@ -113,7 +113,7 @@ async function upsertRestaurant(restaurantData, organisationId = null) {
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     
     // Try to find existing restaurant by slug within organization
-    let restaurant = await getSupabaseClient()
+    let restaurant = await supabase
       .from('restaurants')
       .select('*')
       .eq('slug', slug)
@@ -122,7 +122,7 @@ async function upsertRestaurant(restaurantData, organisationId = null) {
     
     if (restaurant.error && restaurant.error.code === 'PGRST116') {
       // Restaurant doesn't exist, create it
-      const { data: newRestaurant, error: createError } = await getSupabaseClient()
+      const { data: newRestaurant, error: createError } = await supabase
         .from('restaurants')
         .insert({
           name,
@@ -140,7 +140,7 @@ async function upsertRestaurant(restaurantData, organisationId = null) {
     }
     
     // Upsert restaurant platform URL
-    const { error: platformError } = await getSupabaseClient()
+    const { error: platformError } = await supabase
       .from('restaurant_platforms')
       .upsert({
         restaurant_id: restaurant.data.id,
@@ -250,12 +250,12 @@ async function getExtractionJob(jobId) {
 async function createMenu(menuData, organisationId = null) {
   if (!isDatabaseAvailable()) return null;
   
-  // Use provided org ID or get current organization context
-  const orgId = organisationId || getCurrentOrganizationId();
+  // Use provided org ID or fall back to default
+  const orgId = organisationId || '00000000-0000-0000-0000-000000000000';
   
   try {
     // Get the latest version for this restaurant
-    const { data: latestMenu } = await getSupabaseClient()
+    const { data: latestMenu } = await supabase
       .from('menus')
       .select('version')
       .eq('restaurant_id', menuData.restaurantId)
@@ -308,14 +308,12 @@ async function createCategories(menuId, categories) {
   if (!isDatabaseAvailable()) return [];
   
   try {
-    const orgId = getCurrentOrganizationId();
     const categoryData = categories.map((cat, index) => ({
       menu_id: menuId,
       name: cat.name,
       description: cat.description,
       position: cat.position || index + 1,
-      selector: cat.selector,
-      organisation_id: orgId  // Add organization context for RLS
+      selector: cat.selector
     }));
     
     const client = getSupabaseClient();
@@ -339,7 +337,6 @@ async function createMenuItems(menuId, categoryMap, items) {
   if (!isDatabaseAvailable()) return [];
   
   try {
-    const orgId = getCurrentOrganizationId();
     const itemData = items.map(item => ({
       menu_id: menuId,
       category_id: categoryMap[item.categoryName],
@@ -351,8 +348,7 @@ async function createMenuItems(menuId, categoryMap, items) {
       dietary_info: item.dietaryInfo || {},
       platform_item_id: item.platformItemId,
       is_available: item.isAvailable !== false,
-      metadata: item.metadata || {},
-      organisation_id: orgId  // Add organization context for RLS
+      metadata: item.metadata || {}
     }));
     
     const client = getSupabaseClient();
@@ -378,24 +374,20 @@ async function createItemImages(itemImageMap) {
   try {
     const imageData = [];
     
-    const orgId = getCurrentOrganizationId();
-    
     for (const [itemId, images] of Object.entries(itemImageMap)) {
       if (Array.isArray(images)) {
         images.forEach(img => {
           imageData.push({
             menu_item_id: itemId,
             url: img.url || img,
-            type: img.type || 'primary',
-            organisation_id: orgId  // Add organization context for RLS
+            type: img.type || 'primary'
           });
         });
       } else if (images) {
         imageData.push({
           menu_item_id: itemId,
           url: images,
-          type: 'primary',
-          organisation_id: orgId  // Add organization context for RLS
+          type: 'primary'
         });
       }
     }
@@ -665,7 +657,7 @@ async function getRestaurantMenus(restaurantId) {
   if (!isDatabaseAvailable()) return [];
   
   try {
-    const { data: menus, error } = await getSupabaseClient()
+    const { data: menus, error } = await supabase
       .from('menus')
       .select(`
         *,
@@ -785,7 +777,7 @@ async function reassignMenusToRestaurant(menuIds, restaurantId) {
   
   try {
     // First verify the target restaurant exists
-    const { data: restaurant, error: restaurantError } = await getSupabaseClient()
+    const { data: restaurant, error: restaurantError } = await supabase
       .from('restaurants')
       .select('id, name')
       .eq('id', restaurantId)
@@ -830,7 +822,7 @@ async function activateMenu(menuId) {
   
   try {
     // Get the menu to find restaurant_id and platform_id
-    const { data: menu, error: menuError } = await getSupabaseClient()
+    const { data: menu, error: menuError } = await supabase
       .from('menus')
       .select('restaurant_id, platform_id')
       .eq('id', menuId)
@@ -839,7 +831,7 @@ async function activateMenu(menuId) {
     if (menuError) throw menuError;
     
     // Deactivate all other menus for this restaurant/platform
-    const { error: deactivateError } = await getSupabaseClient()
+    const { error: deactivateError } = await supabase
       .from('menus')
       .update({ is_active: false })
       .eq('restaurant_id', menu.restaurant_id)
@@ -915,7 +907,7 @@ async function deleteMenu(menuId) {
   
   try {
     // First, get all menu_items for this menu to delete associated images
-    const { data: menuItems, error: itemsError } = await getSupabaseClient()
+    const { data: menuItems, error: itemsError } = await supabase
       .from('menu_items')
       .select('id')
       .eq('menu_id', menuId);
@@ -926,7 +918,7 @@ async function deleteMenu(menuId) {
     if (menuItems && menuItems.length > 0) {
       const itemIds = menuItems.map(item => item.id);
       
-      const { error: imagesError } = await getSupabaseClient()
+      const { error: imagesError } = await supabase
         .from('item_images')
         .delete()
         .in('menu_item_id', itemIds);
@@ -938,7 +930,7 @@ async function deleteMenu(menuId) {
     }
     
     // Delete all menu_items for this menu
-    const { error: deleteItemsError } = await getSupabaseClient()
+    const { error: deleteItemsError } = await supabase
       .from('menu_items')
       .delete()
       .eq('menu_id', menuId);
@@ -946,7 +938,7 @@ async function deleteMenu(menuId) {
     if (deleteItemsError) throw deleteItemsError;
     
     // Finally, delete the menu itself
-    const { data, error: deleteMenuError } = await getSupabaseClient()
+    const { data, error: deleteMenuError } = await supabase
       .from('menus')
       .delete()
       .eq('id', menuId)
@@ -1150,7 +1142,7 @@ async function cancelExtractionJob(jobId) {
   if (!isDatabaseAvailable()) return false;
   
   try {
-    const { error } = await getSupabaseClient()
+    const { error } = await supabase
       .from('extraction_jobs')
       .update({
         status: 'cancelled',
@@ -1175,7 +1167,7 @@ async function deleteExtraction(jobId) {
   
   try {
     // First, get the extraction job to find its UUID id
-    const { data: extractionJob, error: jobError } = await getSupabaseClient()
+    const { data: extractionJob, error: jobError } = await supabase
       .from('extraction_jobs')
       .select('id')
       .eq('job_id', jobId)
@@ -1189,7 +1181,7 @@ async function deleteExtraction(jobId) {
     const extractionUuid = extractionJob.id;
     
     // Find all menus associated with this extraction job (using UUID)
-    const { data: menus, error: menuError } = await getSupabaseClient()
+    const { data: menus, error: menuError } = await supabase
       .from('menus')
       .select('id')
       .eq('extraction_job_id', extractionUuid);
@@ -1204,7 +1196,7 @@ async function deleteExtraction(jobId) {
     }
     
     // Delete extraction logs associated with this job
-    const { error: logsError } = await getSupabaseClient()
+    const { error: logsError } = await supabase
       .from('extraction_logs')
       .delete()
       .eq('job_id', jobId);
@@ -1215,7 +1207,7 @@ async function deleteExtraction(jobId) {
     }
     
     // Finally, delete the extraction job itself
-    const { data, error: deleteError } = await getSupabaseClient()
+    const { data, error: deleteError } = await supabase
       .from('extraction_jobs')
       .delete()
       .eq('job_id', jobId)
@@ -1255,7 +1247,7 @@ async function createRestaurant(restaurantData) {
     // Check for existing slugs and append number if needed
     let slugExists = true;
     while (slugExists) {
-      const { data: existing } = await getSupabaseClient()
+      const { data: existing } = await supabase
         .from('restaurants')
         .select('id')
         .eq('slug', slug)
@@ -1283,7 +1275,6 @@ async function createRestaurant(restaurantData) {
     const insertData = {
       ...cleanData,
       slug: slug,
-      organisation_id: getCurrentOrganizationId(), // Add organization context
       metadata: restaurantData.metadata || {},
       onboarding_status: restaurantData.onboarding_status || 'lead',
       created_at: new Date().toISOString(),
@@ -1363,7 +1354,7 @@ async function deleteRestaurant(restaurantId) {
   
   try {
     // First, find all extraction jobs for this restaurant
-    const { data: extractions, error: extractionError } = await getSupabaseClient()
+    const { data: extractions, error: extractionError } = await supabase
       .from('extraction_jobs')
       .select('job_id')
       .eq('restaurant_id', restaurantId);
@@ -1378,7 +1369,7 @@ async function deleteRestaurant(restaurantId) {
     }
     
     // Find and delete any remaining menus that might not have extraction_job_id
-    const { data: menus, error: menuError } = await getSupabaseClient()
+    const { data: menus, error: menuError } = await supabase
       .from('menus')
       .select('id')
       .eq('restaurant_id', restaurantId);
@@ -1392,7 +1383,7 @@ async function deleteRestaurant(restaurantId) {
     }
     
     // Finally, delete the restaurant itself
-    const { data, error: deleteError } = await getSupabaseClient()
+    const { data, error: deleteError } = await supabase
       .from('restaurants')
       .delete()
       .eq('id', restaurantId)
@@ -1539,7 +1530,7 @@ async function duplicateMenu(menuId) {
       
       // Create categories
       for (const cat of originalMenu.categories) {
-        const { data: newCat, error } = await getSupabaseClient()
+        const { data: newCat, error } = await supabase
           .from('categories')
           .insert({
             menu_id: newMenu.id,
@@ -1560,7 +1551,7 @@ async function duplicateMenu(menuId) {
       for (const cat of originalMenu.categories) {
         if (cat.menu_items) {
           for (const item of cat.menu_items) {
-            const { data: newItem, error } = await getSupabaseClient()
+            const { data: newItem, error } = await supabase
               .from('menu_items')
               .insert({
                 menu_id: newMenu.id,
@@ -1640,8 +1631,6 @@ async function bulkUpdateMenuItems(updates) {
     const results = [];
     
     for (const update of updates) {
-      // Log the full update object to see if category is present
-      console.log('[Database] Processing update:', JSON.stringify(update, null, 2));
       const { id, imageURL, is_deleted, ...data } = update;
       
       // Check if item should be deleted
@@ -1650,13 +1639,13 @@ async function bulkUpdateMenuItems(updates) {
         
         // Delete the menu item and its associations
         // First delete image associations
-        await getSupabaseClient()
+        await client
           .from('item_images')
           .delete()
           .eq('menu_item_id', id);
         
         // Then delete the menu item itself
-        const { error } = await getSupabaseClient()
+        const { error } = await supabase
           .from('menu_items')
           .delete()
           .eq('id', id);
@@ -1673,56 +1662,46 @@ async function bulkUpdateMenuItems(updates) {
       // Handle category rename if category field is present
       let updateData = { ...data };
       if (data.category) {
-        console.log('[Database] Category field detected:', data.category);
         // Remove category name from update data as it's not a column
         const { category, ...restData } = updateData;
         updateData = restData;
         
         // Find or create the category with the new name
         // First, get the menu_id from the existing item
-        const { data: existingItem, error: itemError } = await getSupabaseClient()
+        const { data: existingItem } = await supabase
           .from('menu_items')
           .select('menu_id')
           .eq('id', id)
           .single();
-        
-        console.log('[Database] Existing item lookup:', { existingItem, itemError });
           
         if (existingItem) {
           // Check if category with new name exists
-          let { data: existingCategory, error: catError } = await getSupabaseClient()
+          let { data: existingCategory } = await supabase
             .from('categories')
             .select('id')
             .eq('menu_id', existingItem.menu_id)
             .eq('name', category)
             .single();
           
-          console.log('[Database] Category lookup result:', { existingCategory, catError });
-          
           if (!existingCategory) {
             // Create new category
-            console.log('[Database] Creating new category:', category);
-            const orgId = getCurrentOrganizationId();
-            const { data: newCategory, error: createError } = await getSupabaseClient()
+            const { data: newCategory } = await supabase
               .from('categories')
               .insert({
                 menu_id: existingItem.menu_id,
                 name: category,
-                organisation_id: orgId,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
               })
               .select()
               .single();
             
-            console.log('[Database] New category created:', { newCategory, createError });
             existingCategory = newCategory;
           }
           
           if (existingCategory) {
             // Update item with new category_id
             updateData.category_id = existingCategory.id;
-            console.log('[Database] Setting category_id:', existingCategory.id);
           }
         }
       }
@@ -1730,7 +1709,7 @@ async function bulkUpdateMenuItems(updates) {
       // Update the menu item (excluding imageURL as it's handled separately)
       console.log('[Database] Updating item:', id, 'with data:', updateData);
       
-      const { data: updated, error } = await getSupabaseClient()
+      const { data: updated, error } = await supabase
         .from('menu_items')
         .update({
           ...updateData,
@@ -1747,19 +1726,19 @@ async function bulkUpdateMenuItems(updates) {
           // If imageURL is null, delete the image association
           if (imageURL === null) {
             // Delete existing image associations
-            await getSupabaseClient()
+            await client
               .from('item_images')
               .delete()
               .eq('menu_item_id', id);
           } else if (imageURL) {
             // First delete existing images
-            await getSupabaseClient()
+            await client
               .from('item_images')
               .delete()
               .eq('menu_item_id', id);
             
             // Then add the new image
-            await getSupabaseClient()
+            await client
               .from('item_images')
               .insert({
                 menu_item_id: id,
@@ -1769,7 +1748,7 @@ async function bulkUpdateMenuItems(updates) {
         }
         
         // Fetch the updated item with its images
-        const { data: itemWithImages } = await getSupabaseClient()
+        const { data: itemWithImages } = await supabase
           .from('menu_items')
           .select('*, item_images(url)')
           .eq('id', id)
@@ -1799,7 +1778,7 @@ async function addItemToCategory(categoryId, itemData) {
   
   try {
     // Get category to find menu_id
-    const { data: category, error: catError } = await getSupabaseClient()
+    const { data: category, error: catError } = await supabase
       .from('categories')
       .select('menu_id')
       .eq('id', categoryId)
@@ -1852,7 +1831,7 @@ async function getPriceHistory(restaurantId, itemId = null) {
     // Join through menu_items to get restaurant
     if (restaurantId) {
       // This requires a more complex query through menus
-      const { data: menus } = await getSupabaseClient()
+      const { data: menus } = await supabase
         .from('menus')
         .select('id')
         .eq('restaurant_id', restaurantId);
@@ -1897,7 +1876,7 @@ async function getExtractionStats() {
   
   try {
     // Get overall stats
-    const { data: jobs, error: jobsError } = await getSupabaseClient()
+    const { data: jobs, error: jobsError } = await supabase
       .from('extraction_jobs')
       .select('status, created_at, completed_at');
     
@@ -1929,7 +1908,7 @@ async function getExtractionStats() {
     }
     
     // Get items per menu average
-    const { data: menus, error: menusError } = await getSupabaseClient()
+    const { data: menus, error: menusError } = await supabase
       .from('menus')
       .select(`
         id,

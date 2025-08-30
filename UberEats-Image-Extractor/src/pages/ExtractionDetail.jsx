@@ -438,8 +438,8 @@ export default function ExtractionDetail() {
             price: hasOtherEdits?.price || item.price,
             description: hasOtherEdits?.description || item.description,
             tags: hasOtherEdits?.tags || item.tags || [],
-            category: newCategory, // New category name
-            imageURL: item.imageURL
+            category: newCategory // New category name
+            // Omit imageURL to prevent accidental deletion
           });
         });
       });

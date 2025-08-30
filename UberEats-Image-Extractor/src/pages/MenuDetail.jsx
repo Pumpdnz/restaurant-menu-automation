@@ -258,15 +258,18 @@ export default function MenuDetail() {
 
   const handleSaveCategoryName = () => {
     if (tempCategoryName && tempCategoryName !== editingCategoryName) {
-      setCategoryNameChanges(prev => ({
-        ...prev,
-        [editingCategoryName]: tempCategoryName
-      }));
+      setCategoryNameChanges(prev => {
+        const newChanges = {
+          ...prev,
+          [editingCategoryName]: tempCategoryName
+        };
+        console.log('[Frontend] Saving category name change:', editingCategoryName, '->', tempCategoryName);
+        console.log('[Frontend] Updated categoryNameChanges:', newChanges);
+        return newChanges;
+      });
       
-      // If this was the selected category, update the selection
-      if (selectedCategory === editingCategoryName) {
-        setSelectedCategory(tempCategoryName);
-      }
+      // Don't update selectedCategory to the new name since it doesn't exist as a key in menuData
+      // The display will show the new name via categoryNameChanges
     }
     setEditingCategoryName(null);
     setTempCategoryName('');
@@ -343,9 +346,13 @@ export default function MenuDetail() {
       
       // Handle category name changes by updating items with new category name
       const categoryRenamedItems = [];
+      console.log('[Frontend] Processing category name changes:', categoryNameChanges);
+      console.log('[Frontend] Category name changes length:', Object.keys(categoryNameChanges).length);
       if (Object.keys(categoryNameChanges).length > 0) {
         for (const [oldName, newName] of Object.entries(categoryNameChanges)) {
+          console.log('[Frontend] Processing category rename:', oldName, '->', newName);
           const itemsInCategory = menuData[oldName] || [];
+          console.log('[Frontend] Items in category:', itemsInCategory.length);
           for (const item of itemsInCategory) {
             // Skip if item is deleted
             if (itemsToDelete.has(item.id)) continue;
@@ -354,19 +361,22 @@ export default function MenuDetail() {
             const currentItem = editedItems[item.id] || item;
             
             // Create update with all required fields
+            // Don't include imageURL for category renames to preserve existing images
             const updatedItem = {
               id: item.id,
               name: currentItem.name,
               price: currentItem.price,
               category: newName,  // Use the new category name
               description: currentItem.description || null,
-              tags: currentItem.tags || null,
-              imageURL: currentItem.imageURL || null
+              tags: currentItem.tags || null
+              // Omit imageURL to prevent accidental deletion
             };
             
             categoryRenamedItems.push(updatedItem);
+            console.log('[Frontend] Added renamed item:', updatedItem);
           }
         }
+        console.log('[Frontend] Total categoryRenamedItems:', categoryRenamedItems.length);
         changesSummary.push(`${Object.keys(categoryNameChanges).length} categories renamed`);
         hasChanges = true;
       }
@@ -379,6 +389,10 @@ export default function MenuDetail() {
       
       // Combine all updates: deletions, category renames, and other changes
       const allItemsToUpdate = [...deletionUpdates, ...categoryRenamedItems, ...changedItems];
+      
+      console.log('[Frontend] Category name changes:', categoryNameChanges);
+      console.log('[Frontend] Category renamed items:', categoryRenamedItems);
+      console.log('[Frontend] All items to update:', allItemsToUpdate);
       
       if (allItemsToUpdate.length > 0) {
         const response = await menuItemAPI.bulkUpdate(allItemsToUpdate);

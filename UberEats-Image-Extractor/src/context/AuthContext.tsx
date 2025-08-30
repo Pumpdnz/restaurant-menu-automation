@@ -1,8 +1,8 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { AuthContextType, UserProfile, UserRole } from '../types/auth';
+import { useNavigate } from 'react-router-dom';
 
 // Create context
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -17,26 +17,57 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  console.log('AuthProvider initializing...');
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [isLoadingProfile, setIsLoadingProfile] = useState<boolean>(false);
   const navigate = useNavigate();
-
-  // Simple function to load user profile
-  const loadUserProfile = async (supabaseUser: User) => {
+  
+  // Simple function to load user profile with retry logic
+  const loadUserProfile = async (supabaseUser: User, retryCount = 0): Promise<void> => {
     try {
-      // Fetch profile with organization data
-      const { data: profile, error } = await supabase
+      console.log(`Loading profile for user: ${supabaseUser.id} (attempt ${retryCount + 1})`);
+      
+      console.log('Querying profiles table...');
+      
+      // Remove timeout - let the query complete naturally
+      console.log('Making query to profiles table for ID:', supabaseUser.id);
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select(`
-          *,
-          organisation:organisations(*)
-        `)
+        .select('*')
         .eq('id', supabaseUser.id)
         .single();
+      
+      console.log('Profile fetch result:', { profile, profileError });
 
-      if (error || !profile) {
-        console.error('Profile load error:', error);
+      if (profileError || !profile) {
+        // For OAuth users, profile might be created asynchronously
+        // Retry a few times with exponential backoff
+        if (retryCount < 3) {
+          const delay = Math.min(1000 * Math.pow(2, retryCount), 5000);
+          console.log(`Profile not found, retrying in ${delay}ms`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return loadUserProfile(supabaseUser, retryCount + 1);
+        }
+        console.error('Profile not found after retries:', profileError);
         throw new Error('Profile not found');
+      }
+
+      // Fetch organisation separately if user has one
+      let organisation = null;
+      if (profile.organisation_id) {
+        console.log('Fetching organisation:', profile.organisation_id);
+        const { data: orgData, error: orgError } = await supabase
+          .from('organisations')
+          .select('*')
+          .eq('id', profile.organisation_id)
+          .single();
+        
+        console.log('Organisation fetch result:', { orgData, orgError });
+        
+        if (!orgError && orgData) {
+          organisation = orgData;
+        }
       }
 
       // Set user profile
@@ -46,11 +77,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         name: profile.name || profile.email,
         role: profile.role,
         organisationId: profile.organisation_id,
-        organisation: profile.organisation
+        organisation: organisation
       };
 
+      console.log('Setting user profile in state:', userProfile);
       setUser(userProfile);
-      return userProfile;
+      console.log('User profile set successfully');
     } catch (error) {
       console.error('Failed to load user profile:', error);
       throw error;
@@ -69,7 +101,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (data.user) {
         await loadUserProfile(data.user);
-        navigate('/');
+        // Don't navigate here - let the calling component handle navigation
       }
     } catch (error: any) {
       console.error('Login error:', error);
@@ -129,7 +161,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Load the profile
       await loadUserProfile(authData.user);
-      navigate('/');
+      // Don't navigate here - let the calling component handle navigation
     } catch (error: any) {
       console.error('Signup error:', error);
       throw new Error(error.message || 'Failed to create account');
@@ -156,14 +188,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Logout function
   const logout = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      console.log('Logout initiated');
       
+      // Clear user state immediately
       setUser(null);
+      setIsLoadingProfile(false);
+      
+      // Clear organization ID from localStorage
+      localStorage.removeItem('currentOrgId');
+      
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Supabase signOut error:', error);
+      }
+      
+      // Navigate to login
       navigate('/login');
     } catch (error: any) {
       console.error('Logout error:', error);
-      throw new Error(error.message || 'Failed to logout');
+      // Don't throw - just log the error and navigate anyway
+      navigate('/login');
     }
   };
 
@@ -191,59 +236,67 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Initialize auth state on mount
   useEffect(() => {
+    let mounted = true;
+    
     const initializeAuth = async () => {
       try {
-        // Get current session
-        const { data: { session } } = await supabase.auth.getSession();
+        console.log('Initializing auth in new tab/window...');
         
-        if (session?.user) {
+        // First check if there's an existing session in localStorage
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting session:', error);
+        }
+        
+        console.log('Session check result:', {
+          hasSession: !!session,
+          userId: session?.user?.id,
+          email: session?.user?.email
+        });
+        
+        if (session?.user && mounted) {
+          console.log('Found existing session, loading profile...');
           await loadUserProfile(session.user);
+        } else {
+          console.log('No existing session found');
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
       } finally {
-        setLoading(false);
+        if (mounted) {
+          console.log('Auth initialization complete');
+          setLoading(false);
+        }
       }
     };
 
     initializeAuth();
 
-    // Listen for auth changes
+    // Listen for auth changes - simplified to only handle essential events
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event);
+      console.log('Auth state changed:', event, 'Session:', !!session, 'User:', session?.user?.email);
       
-      if (event === 'SIGNED_IN' && session?.user) {
-        try {
-          await loadUserProfile(session.user);
-        } catch (error) {
-          console.error('Failed to load profile after sign in:', error);
-          // For OAuth logins, profile might not exist yet
-          if (event === 'SIGNED_IN') {
-            // Create profile for OAuth user
-            const { error: profileError } = await supabase
-              .from('profiles')
-              .insert({
-                id: session.user.id,
-                email: session.user.email!,
-                name: session.user.user_metadata?.name || session.user.email!,
-                role: 'user',
-                organisation_id: '00000000-0000-0000-0000-000000000000' // Default org
-              });
-
-            if (!profileError) {
-              await loadUserProfile(session.user);
-            }
-          }
-        }
-      } else if (event === 'SIGNED_OUT') {
+      // Only handle SIGNED_OUT event from auth state changes
+      // Initial session loading is handled by initializeAuth
+      if (event === 'SIGNED_OUT' && mounted) {
+        console.log('SIGNED_OUT event - clearing user state');
         setUser(null);
+        localStorage.removeItem('currentOrgId');
+        
+        // Navigate to login if we're not already there
+        if (window.location.pathname !== '/login') {
+          navigate('/login');
+        }
       }
     });
 
     return () => {
+      mounted = false;
       authListener.subscription.unsubscribe();
     };
   }, []);
+
 
   // Password reset function
   const resetPassword = async (email: string) => {
