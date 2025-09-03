@@ -7,7 +7,8 @@ const { createClient } = require('@supabase/supabase-js');
 
 // Initialize Supabase client
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY;
+// Prefer service role key for backend operations (bypasses RLS)
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
 
 let supabase = null;
 let currentOrgId = null;
@@ -95,19 +96,30 @@ async function getPlatformByName(platformName) {
  * Restaurant Operations
  */
 async function upsertRestaurant(restaurantData, organisationId = null) {
-  if (!isDatabaseAvailable()) return null;
+  if (!isDatabaseAvailable()) {
+    console.error('[Database] Database not available for upsertRestaurant');
+    return null;
+  }
   
   const { name, url, platformName } = restaurantData;
+  
+  if (!name || !platformName) {
+    console.error('[Database] Missing required fields for upsertRestaurant:', { name, platformName });
+    return null;
+  }
   
   // Use provided org ID or fall back to current org or default
   const orgId = organisationId || getCurrentOrganizationId();
   
   try {
     // Get platform
+    console.log(`[Database] Looking up platform: ${platformName}`);
     const platform = await getPlatformByName(platformName);
     if (!platform) {
+      console.error(`[Database] Platform ${platformName} not found in database`);
       throw new Error(`Platform ${platformName} not found`);
     }
+    console.log(`[Database] Found platform: ${platform.name} with ID: ${platform.id}`);
     
     // Generate slug from name
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -158,7 +170,14 @@ async function upsertRestaurant(restaurantData, organisationId = null) {
       platform
     };
   } catch (error) {
-    console.error('[Database] Error upserting restaurant:', error);
+    console.error('[Database] Error upserting restaurant:', {
+      error: error.message,
+      code: error.code,
+      details: error.details,
+      restaurantName: name,
+      platformName,
+      orgId
+    });
     return null;
   }
 }
@@ -254,8 +273,11 @@ async function createMenu(menuData, organisationId = null) {
   const orgId = organisationId || getCurrentOrganizationId();
   
   try {
+    // Get the Supabase client
+    const client = getSupabaseClient();
+    
     // Get the latest version for this restaurant
-    const { data: latestMenu } = await getSupabaseClient()
+    const { data: latestMenu } = await client
       .from('menus')
       .select('version')
       .eq('restaurant_id', menuData.restaurantId)
@@ -278,7 +300,6 @@ async function createMenu(menuData, organisationId = null) {
     }
     
     // Create new menu
-    const client = getSupabaseClient();
     const { data, error } = await client
       .from('menus')
       .insert({
@@ -304,11 +325,12 @@ async function createMenu(menuData, organisationId = null) {
 /**
  * Category Operations
  */
-async function createCategories(menuId, categories) {
+async function createCategories(menuId, categories, organisationId = null) {
   if (!isDatabaseAvailable()) return [];
   
   try {
-    const orgId = getCurrentOrganizationId();
+    // Use provided org ID or get current organization context
+    const orgId = organisationId || getCurrentOrganizationId();
     const categoryData = categories.map((cat, index) => ({
       menu_id: menuId,
       name: cat.name,
@@ -335,25 +357,41 @@ async function createCategories(menuId, categories) {
 /**
  * Menu Item Operations
  */
-async function createMenuItems(menuId, categoryMap, items) {
+async function createMenuItems(menuId, categoryMap, items, organisationId = null) {
   if (!isDatabaseAvailable()) return [];
   
   try {
-    const orgId = getCurrentOrganizationId();
-    const itemData = items.map(item => ({
-      menu_id: menuId,
-      category_id: categoryMap[item.categoryName],
-      name: item.dishName || item.name,
-      description: item.dishDescription || item.description,
-      price: item.dishPrice || item.price,
-      currency: item.currency || 'NZD',
-      tags: item.tags || [],
-      dietary_info: item.dietaryInfo || {},
-      platform_item_id: item.platformItemId,
-      is_available: item.isAvailable !== false,
-      metadata: item.metadata || {},
-      organisation_id: orgId  // Add organization context for RLS
-    }));
+    // Use provided org ID or get current organization context
+    const orgId = organisationId || getCurrentOrganizationId();
+    
+    // Debug category mapping
+    console.log('[Database] Category map:', Object.keys(categoryMap));
+    console.log('[Database] Sample item categories:', items.slice(0, 3).map(i => i.categoryName || i.category));
+    
+    const itemData = items.map(item => {
+      // Try multiple fields for category name
+      const categoryName = item.categoryName || item.category;
+      const categoryId = categoryMap[categoryName];
+      
+      if (!categoryId) {
+        console.warn(`[Database] No category ID found for item "${item.dishName || item.name}" with category "${categoryName}"`);
+      }
+      
+      return {
+        menu_id: menuId,
+        category_id: categoryId,
+        name: item.dishName || item.name,
+        description: item.dishDescription || item.description,
+        price: item.dishPrice || item.price,
+        currency: item.currency || 'NZD',
+        tags: item.tags || [],
+        dietary_info: item.dietaryInfo || {},
+        platform_item_id: item.platformItemId,
+        is_available: item.isAvailable !== false,
+        metadata: item.metadata || {},
+        organisation_id: orgId  // Add organization context for RLS
+      };
+    });
     
     const client = getSupabaseClient();
     const { data, error } = await client
@@ -372,13 +410,14 @@ async function createMenuItems(menuId, categoryMap, items) {
 /**
  * Image Operations
  */
-async function createItemImages(itemImageMap) {
+async function createItemImages(itemImageMap, organisationId = null) {
   if (!isDatabaseAvailable()) return [];
   
   try {
     const imageData = [];
     
-    const orgId = getCurrentOrganizationId();
+    // Use provided org ID or get current organization context
+    const orgId = organisationId || getCurrentOrganizationId();
     
     for (const [itemId, images] of Object.entries(itemImageMap)) {
       if (Array.isArray(images)) {
@@ -444,6 +483,238 @@ async function createExtractionLog(logData) {
 }
 
 /**
+ * Option Set Operations
+ */
+async function saveOptionSet(optionSetData, orgId) {
+  if (!isDatabaseAvailable()) return null;
+  
+  try {
+    const client = getSupabaseClient();
+    
+    // First save the option set
+    const { data: optionSet, error: setError } = await client
+      .from('option_sets')
+      .insert({
+        menu_item_id: optionSetData.menu_item_id,
+        name: optionSetData.name,
+        display_order: optionSetData.display_order || 0,
+        is_required: optionSetData.required || false,
+        min_selections: optionSetData.min_selections || 0,
+        max_selections: optionSetData.max_selections || 1,
+        organisation_id: orgId
+      })
+      .select()
+      .single();
+    
+    if (setError) throw setError;
+    
+    // Then save the option set items if provided
+    if (optionSetData.items && optionSetData.items.length > 0) {
+      const itemsToInsert = optionSetData.items.map(item => ({
+        option_set_id: optionSet.id,
+        name: item.name,
+        price: item.price || 0,
+        display_order: item.display_order || 0,
+        description: item.description || null,
+        organisation_id: orgId
+      }));
+      
+      const { data: items, error: itemsError } = await client
+        .from('option_set_items')
+        .insert(itemsToInsert)
+        .select();
+      
+      if (itemsError) {
+        console.error('[Database] Error saving option set items:', itemsError);
+      }
+      
+      optionSet.items = items || [];
+    }
+    
+    return optionSet;
+  } catch (error) {
+    console.error('[Database] Error saving option set:', error);
+    return null;
+  }
+}
+
+async function saveOptionSetItem(itemData, orgId) {
+  if (!isDatabaseAvailable()) return null;
+  
+  try {
+    const client = getSupabaseClient();
+    const { data, error } = await client
+      .from('option_set_items')
+      .insert({
+        option_set_id: itemData.option_set_id,
+        name: itemData.name,
+        price: itemData.price || 0,
+        display_order: itemData.display_order || 0,
+        description: itemData.description || null,
+        organisation_id: orgId
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('[Database] Error saving option set item:', error);
+    return null;
+  }
+}
+
+async function updateMenuItemOptionSets(menuItemId, hasOptionSets, orgId) {
+  if (!isDatabaseAvailable()) return null;
+  
+  try {
+    const client = getSupabaseClient();
+    const { data, error } = await client
+      .from('menu_items')
+      .update({ has_option_sets: hasOptionSets })
+      .eq('id', menuItemId)
+      .eq('organisation_id', orgId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('[Database] Error updating menu item option sets flag:', error);
+    return null;
+  }
+}
+
+async function bulkSaveOptionSets(optionSets, orgId) {
+  if (!isDatabaseAvailable()) return [];
+  
+  if (!optionSets || optionSets.length === 0) {
+    return [];
+  }
+  
+  try {
+    const client = getSupabaseClient();
+    
+    // Prepare all option sets for batch insert
+    const optionSetsToInsert = optionSets.map(optionSet => ({
+      menu_item_id: optionSet.menu_item_id,
+      name: optionSet.name,
+      display_order: optionSet.display_order || 0,
+      is_required: optionSet.required || false,
+      min_selections: optionSet.min_selections || 0,
+      max_selections: optionSet.max_selections || 1,
+      organisation_id: orgId
+    }));
+    
+    // Batch insert all option sets
+    const { data: savedSets, error: setsError } = await client
+      .from('option_sets')
+      .insert(optionSetsToInsert)
+      .select();
+    
+    if (setsError) {
+      console.error('[Database] Error batch saving option sets:', setsError);
+      throw setsError;
+    }
+    
+    // Prepare all option set items for batch insert
+    const allItemsToInsert = [];
+    savedSets.forEach((savedSet, index) => {
+      const originalOptionSet = optionSets[index];
+      if (originalOptionSet.items && originalOptionSet.items.length > 0) {
+        const items = originalOptionSet.items.map(item => ({
+          option_set_id: savedSet.id,
+          name: item.name,
+          price: item.price || 0,
+          display_order: item.display_order || 0,
+          description: item.description || null,
+          organisation_id: orgId
+        }));
+        allItemsToInsert.push(...items);
+      }
+    });
+    
+    // Batch insert all option set items if there are any
+    if (allItemsToInsert.length > 0) {
+      const { data: savedItems, error: itemsError } = await client
+        .from('option_set_items')
+        .insert(allItemsToInsert)
+        .select();
+      
+      if (itemsError) {
+        console.error('[Database] Error batch saving option set items:', itemsError);
+        // Don't throw here, option sets were saved successfully
+      }
+    }
+    
+    console.log(`[Database] Batch saved ${savedSets.length} option sets with ${allItemsToInsert.length} items`);
+    return savedSets;
+  } catch (error) {
+    console.error('[Database] Error bulk saving option sets:', error);
+    return [];
+  }
+}
+
+async function getOptionSetsByMenuItem(menuItemId, orgId) {
+  if (!isDatabaseAvailable()) return [];
+  
+  try {
+    const client = getSupabaseClient();
+    const { data, error } = await client
+      .from('option_sets')
+      .select(`
+        *,
+        option_set_items (*)
+      `)
+      .eq('menu_item_id', menuItemId)
+      .eq('organisation_id', orgId)
+      .order('display_order');
+    
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('[Database] Error getting option sets:', error);
+    return [];
+  }
+}
+
+/**
+ * Save menu item with organization context
+ */
+async function saveMenuItem(itemData, orgId) {
+  if (!isDatabaseAvailable()) return null;
+  
+  try {
+    const client = getSupabaseClient();
+    
+    // Note: This function expects itemData to have category_id already set
+    // If category name is provided instead, the caller should resolve it first
+    const { data, error } = await client
+      .from('menu_items')
+      .insert({
+        name: itemData.name,
+        description: itemData.description,
+        price: itemData.price,
+        category_id: itemData.category_id, // Use category_id, not category
+        menu_id: itemData.menu_id, // Menu ID is required
+        image_url: itemData.image_url,
+        has_option_sets: itemData.has_option_sets || false,
+        is_available: itemData.is_available !== false,
+        platform_item_id: itemData.platform_item_id || null,
+        organisation_id: orgId
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('[Database] Error saving menu item:', error);
+    return null;
+  }
+}
+
+/**
  * Full Extraction Save
  * Saves complete extraction results to database
  */
@@ -457,21 +728,21 @@ async function saveExtractionResults(jobId, extractionData) {
       throw new Error('Extraction job not found');
     }
     
-    // Create menu
+    // Create menu - pass organisation_id from job
     const menu = await createMenu({
       restaurantId: job.restaurant_id,
       extractionJobId: job.id,
       platformId: job.platform_id,
       rawData: extractionData
-    });
+    }, job.organisation_id);
     
     if (!menu) {
       throw new Error('Failed to create menu');
     }
     
-    // Extract categories from data
+    // Extract categories from data - pass organisation_id from job
     const categories = extractionData.categories || [];
-    const categoryRecords = await createCategories(menu.id, categories);
+    const categoryRecords = await createCategories(menu.id, categories, job.organisation_id);
     
     // Create category map
     const categoryMap = {};
@@ -481,19 +752,59 @@ async function saveExtractionResults(jobId, extractionData) {
     
     // Extract menu items
     const menuItems = extractionData.menuItems || [];
-    const itemRecords = await createMenuItems(menu.id, categoryMap, menuItems);
     
-    // Create item image map
-    const itemImageMap = {};
-    itemRecords.forEach((item, index) => {
-      const originalItem = menuItems[index];
-      if (originalItem.imageURL || originalItem.dishImageURL) {
-        itemImageMap[item.id] = originalItem.imageURL || originalItem.dishImageURL;
+    // Debug: Check for duplicate image URLs in the extraction data
+    console.log('[Database] DEBUG: Analyzing extraction data images...');
+    const imageUrlCounts = {};
+    const itemsWithImages = [];
+    const itemsWithoutImages = [];
+    
+    menuItems.forEach((item, idx) => {
+      const url = item.imageURL || item.dishImageURL;
+      const itemName = item.dishName || item.name;
+      
+      if (url) {
+        imageUrlCounts[url] = (imageUrlCounts[url] || 0) + 1;
+        itemsWithImages.push(`${idx}: "${itemName}" -> ${url.substring(0, 50)}...`);
+      } else {
+        itemsWithoutImages.push(`${idx}: "${itemName}" -> NO IMAGE`);
       }
     });
     
-    // Create item images
-    await createItemImages(itemImageMap);
+    console.log(`[Database] Items with images (${itemsWithImages.length}):`);
+    itemsWithImages.slice(0, 5).forEach(item => console.log(`  ${item}`));
+    if (itemsWithImages.length > 5) console.log(`  ... and ${itemsWithImages.length - 5} more`);
+    
+    console.log(`[Database] Items without images (${itemsWithoutImages.length}):`);
+    itemsWithoutImages.slice(0, 5).forEach(item => console.log(`  ${item}`));
+    if (itemsWithoutImages.length > 5) console.log(`  ... and ${itemsWithoutImages.length - 5} more`);
+    
+    const duplicateImages = Object.entries(imageUrlCounts).filter(([url, count]) => count > 1);
+    if (duplicateImages.length > 0) {
+      console.log('[Database] WARNING: Duplicate image URLs detected:');
+      duplicateImages.forEach(([url, count]) => {
+        console.log(`  - ${url.substring(0, 50)}... appears ${count} times`);
+      });
+    }
+    
+    const itemRecords = await createMenuItems(menu.id, categoryMap, menuItems, job.organisation_id);
+    
+    // Create item image map - ORIGINAL LOGIC (index-based)
+    console.log('[Database] DEBUG: Mapping images to created items...');
+    const itemImageMap = {};
+    itemRecords.forEach((item, index) => {
+      const originalItem = menuItems[index];
+      if (originalItem && (originalItem.imageURL || originalItem.dishImageURL)) {
+        const imageUrl = originalItem.imageURL || originalItem.dishImageURL;
+        itemImageMap[item.id] = imageUrl;
+        console.log(`[Database] Mapping: Item[${index}] "${item.name}" (id: ${item.id}) -> ${imageUrl.substring(0, 50)}...`);
+      } else {
+        console.log(`[Database] Mapping: Item[${index}] "${item.name}" (id: ${item.id}) -> NO IMAGE`);
+      }
+    });
+    
+    // Create item images - pass organisation_id from job
+    await createItemImages(itemImageMap, job.organisation_id);
     
     // Update job status
     await updateExtractionJob(jobId, {
@@ -552,7 +863,11 @@ async function getMenuWithItems(menuId) {
           position,
           menu_items (
             *,
-            item_images (*)
+            item_images (*),
+            option_sets (
+              *,
+              option_set_items (*)
+            )
           )
         )
       `)
@@ -1999,6 +2314,14 @@ module.exports = {
   createMenuItems,
   updateMenuItem,
   bulkUpdateMenuItems,
+  saveMenuItem,
+  
+  // Option set operations
+  saveOptionSet,
+  saveOptionSetItem,
+  updateMenuItemOptionSets,
+  bulkSaveOptionSets,
+  getOptionSetsByMenuItem,
   
   // Image operations
   createItemImages,

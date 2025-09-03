@@ -88,6 +88,9 @@ export default function RestaurantDetail() {
   const [extractionDialogOpen, setExtractionDialogOpen] = useState(false);
   const [extractionConfig, setExtractionConfig] = useState(null);
   const [isExtracting, setIsExtracting] = useState(false);
+  const [extractionMode, setExtractionMode] = useState('standard'); // 'standard' or 'premium'
+  const [extractOptionSets, setExtractOptionSets] = useState(true);
+  const [validateImages, setValidateImages] = useState(true);
   const isNewRestaurant = id === 'new';
 
   useEffect(() => {
@@ -793,6 +796,10 @@ export default function RestaurantDetail() {
       restaurantId: id,
       restaurantName: restaurant?.name || 'Unknown Restaurant'
     });
+    // Reset extraction mode to standard when opening dialog
+    setExtractionMode('standard');
+    setExtractOptionSets(true);
+    setValidateImages(true);
     setExtractionDialogOpen(true);
   };
 
@@ -803,25 +810,41 @@ export default function RestaurantDetail() {
     setError(null);
     
     try {
-      // Use the proper extraction start endpoint that creates database job
-      const response = await api.post('/extractions/start', {
-        url: extractionConfig.url,
-        restaurantId: extractionConfig.restaurantId,
-        extractionType: 'batch',
-        options: {
-          includeImages: true,
-          generateCSV: true
-        }
-      });
+      let response;
+      
+      // Check if this is UberEats and premium mode is selected
+      if (extractionConfig.platform === 'ubereats' && extractionMode === 'premium') {
+        // Use premium extraction endpoint
+        response = await api.post('/extract-menu-premium', {
+          storeUrl: extractionConfig.url,
+          restaurantId: extractionConfig.restaurantId,
+          restaurantName: extractionConfig.restaurantName,
+          extractOptionSets: extractOptionSets,
+          validateImages: validateImages,
+          async: true
+        });
+      } else {
+        // Use standard extraction endpoint
+        response = await api.post('/extractions/start', {
+          url: extractionConfig.url,
+          restaurantId: extractionConfig.restaurantId,
+          extractionType: 'batch',
+          options: {
+            includeImages: true,
+            generateCSV: true
+          }
+        });
+      }
 
       if (response.data.success) {
         toast({
           title: "Extraction started",
-          description: `Extracting menu from ${extractionConfig.platformName}`,
+          description: `${extractionMode === 'premium' ? 'Premium' : 'Standard'} extraction from ${extractionConfig.platformName}`,
         });
         
-        // Navigate to extraction detail page
-        navigate(`/extractions/${response.data.jobId}?poll=true`);
+        // Navigate to extraction detail page with appropriate parameters
+        const isPremium = response.data.statusUrl ? true : false;
+        navigate(`/extractions/${response.data.jobId}?poll=true${isPremium ? '&premium=true' : ''}`);
       }
     } catch (error) {
       console.error('Extraction error:', error);
@@ -3102,7 +3125,7 @@ export default function RestaurantDetail() {
 
       {/* Platform Extraction Dialog */}
       <Dialog open={extractionDialogOpen} onOpenChange={setExtractionDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Start Menu Extraction</DialogTitle>
             <DialogDescription>
@@ -3129,11 +3152,81 @@ export default function RestaurantDetail() {
                 </div>
               </div>
               
+              {/* Show extraction mode options only for UberEats */}
+              {extractionConfig.platform === 'ubereats' && (
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium mb-3 block">Extraction Mode</Label>
+                    <RadioGroup value={extractionMode} onValueChange={setExtractionMode}>
+                      <div className="space-y-3">
+                        <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+                          <RadioGroupItem value="standard" id="standard" />
+                          <Label htmlFor="standard" className="flex-1 cursor-pointer">
+                            <div className="font-medium">Standard Extraction</div>
+                            <div className="text-sm text-muted-foreground mt-1">
+                              Fast extraction of menu items with images and basic information
+                            </div>
+                          </Label>
+                        </div>
+                        
+                        <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+                          <RadioGroupItem value="premium" id="premium" />
+                          <Label htmlFor="premium" className="flex-1 cursor-pointer">
+                            <div className="font-medium">Premium Extraction</div>
+                            <div className="text-sm text-muted-foreground mt-1">
+                              Advanced extraction with customization options, modifiers, and validated images
+                            </div>
+                          </Label>
+                        </div>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                  
+                  {/* Show premium options when premium mode is selected */}
+                  {extractionMode === 'premium' && (
+                    <div className="space-y-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <Label className="text-sm font-medium">Premium Options</Label>
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox 
+                            id="extractOptionSets"
+                            checked={extractOptionSets}
+                            onCheckedChange={setExtractOptionSets}
+                          />
+                          <Label htmlFor="extractOptionSets" className="text-sm cursor-pointer">
+                            Extract customization options (toppings, sizes, etc.)
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox 
+                            id="validateImages"
+                            checked={validateImages}
+                            onCheckedChange={setValidateImages}
+                          />
+                          <Label htmlFor="validateImages" className="text-sm cursor-pointer">
+                            Validate and optimize menu images
+                          </Label>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  This will scan the menu categories and extract all menu items from the {extractionConfig.platformName} page. 
-                  The process may take several minutes depending on the menu size.
+                  {extractionMode === 'premium' && extractionConfig.platform === 'ubereats' ? (
+                    <>
+                      Premium extraction will extract detailed menu information including all customization options. 
+                      This process may take several minutes depending on the menu size.
+                    </>
+                  ) : (
+                    <>
+                      This will scan the menu categories and extract all menu items from the {extractionConfig.platformName} page. 
+                      The process may take several minutes depending on the menu size.
+                    </>
+                  )}
                 </AlertDescription>
               </Alert>
             </div>

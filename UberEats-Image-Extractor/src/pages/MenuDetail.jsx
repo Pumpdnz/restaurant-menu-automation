@@ -39,6 +39,7 @@ export default function MenuDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedTab, setSelectedTab] = useState('items'); // 'items' or 'optionSets'
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedItems, setEditedItems] = useState({});
   const [validationErrors, setValidationErrors] = useState({});
@@ -74,7 +75,20 @@ export default function MenuDetail() {
               tags: item.tags || [],
               imageURL: item.item_images?.[0]?.url || null,
               categoryId: category.id,
-              categoryName: category.name
+              categoryName: category.name,
+              // Transform option sets for display component
+              optionSets: (item.option_sets || []).map(set => ({
+                ...set,
+                options: (set.option_set_items || []).map(optItem => ({
+                  name: optItem.name,
+                  description: optItem.description,
+                  priceChange: optItem.price || 0,
+                  isDefault: optItem.is_default || false
+                })),
+                minSelections: set.min_selections || 0,
+                maxSelections: set.max_selections || 1,
+                isShared: false // Can be determined by checking if multiple items use this set
+              }))
             }));
           }
         });
@@ -690,14 +704,43 @@ export default function MenuDetail() {
         </div>
       )}
 
-      {/* Categories and Items */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Category List */}
-        <div className="lg:col-span-1">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">Categories</CardTitle>
-            </CardHeader>
+      {/* Tab Navigation */}
+      <div className="mb-6">
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setSelectedTab('items')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                selectedTab === 'items'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Menu Items
+            </button>
+            <button
+              onClick={() => setSelectedTab('optionSets')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                selectedTab === 'optionSets'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Option Sets Management
+            </button>
+          </nav>
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      {selectedTab === 'items' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Category List */}
+          <div className="lg:col-span-1">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Categories</CardTitle>
+              </CardHeader>
             <CardContent className="p-0">
               <div className="space-y-1">
                 {categories.map((category) => {
@@ -835,6 +878,146 @@ export default function MenuDetail() {
           </Card>
         </div>
       </div>
+      ) : (
+        /* Option Sets Management View */
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Option Sets Overview</CardTitle>
+              <p className="text-sm text-gray-600 mt-2">
+                Manage shared option sets that can be applied to multiple menu items. 
+                Changes here will affect all items using these option sets.
+              </p>
+            </CardHeader>
+            <CardContent>
+              {/* Collect all unique option sets from all menu items */}
+              {(() => {
+                const allOptionSets = new Map();
+                const optionSetUsage = new Map(); // Track which items use each option set
+                
+                // Iterate through all categories and items to collect option sets
+                Object.entries(menuData || {}).forEach(([categoryName, items]) => {
+                  if (!deletedCategories.has(categoryName)) {
+                    items.forEach(item => {
+                      if (!deletedItems.has(item.id) && item.optionSets) {
+                        item.optionSets.forEach(optionSet => {
+                          const key = optionSet.name; // Use name as unique identifier
+                          
+                          if (!allOptionSets.has(key)) {
+                            allOptionSets.set(key, optionSet);
+                            optionSetUsage.set(key, []);
+                          }
+                          
+                          // Track which items use this option set
+                          optionSetUsage.get(key).push({
+                            itemId: item.id,
+                            itemName: item.name,
+                            categoryName: categoryName
+                          });
+                        });
+                      }
+                    });
+                  }
+                });
+
+                if (allOptionSets.size === 0) {
+                  return (
+                    <div className="text-center py-12 text-gray-500">
+                      <p>No option sets found in this menu.</p>
+                      <p className="text-sm mt-2">Option sets will appear here once menu items have customization options.</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center mb-4">
+                      <p className="text-sm text-gray-600">
+                        Found {allOptionSets.size} unique option {allOptionSets.size === 1 ? 'set' : 'sets'} across all menu items
+                      </p>
+                    </div>
+                    
+                    {Array.from(allOptionSets.entries()).map(([key, optionSet]) => {
+                      const usage = optionSetUsage.get(key) || [];
+                      
+                      return (
+                        <div key={key} className="border rounded-lg p-4 space-y-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h3 className="font-medium text-gray-900">{optionSet.name}</h3>
+                              {optionSet.description && (
+                                <p className="text-sm text-gray-600 mt-1">{optionSet.description}</p>
+                              )}
+                              <div className="flex items-center gap-4 mt-2">
+                                <Badge variant="secondary" className="text-xs">
+                                  {optionSet.minSelections === optionSet.maxSelections
+                                    ? `Select ${optionSet.minSelections}`
+                                    : optionSet.maxSelections === null
+                                    ? `Select ${optionSet.minSelections}+`
+                                    : `Select ${optionSet.minSelections}-${optionSet.maxSelections}`}
+                                </Badge>
+                                {optionSet.required && (
+                                  <Badge variant="outline" className="text-xs text-orange-600">
+                                    Required
+                                  </Badge>
+                                )}
+                                <Badge variant="outline" className="text-xs">
+                                  Used by {usage.length} {usage.length === 1 ? 'item' : 'items'}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Option Items */}
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium text-gray-700">Options:</p>
+                            <div className="grid gap-2">
+                              {optionSet.options && optionSet.options.map((option, idx) => (
+                                <div key={idx} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded">
+                                  <div className="flex items-center gap-2">
+                                    {option.isDefault && (
+                                      <CheckCircleIcon className="h-4 w-4 text-green-600" />
+                                    )}
+                                    <span className="text-sm">{option.name}</span>
+                                    {option.description && (
+                                      <span className="text-xs text-gray-500">({option.description})</span>
+                                    )}
+                                  </div>
+                                  {option.priceChange !== 0 && (
+                                    <span className="text-sm font-medium">
+                                      {option.priceChange > 0 ? '+' : ''}${Math.abs(option.priceChange).toFixed(2)}
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          
+                          {/* Usage Information */}
+                          <div className="border-t pt-3">
+                            <details className="cursor-pointer">
+                              <summary className="text-sm text-gray-600 hover:text-gray-800">
+                                Used by {usage.length} menu {usage.length === 1 ? 'item' : 'items'}
+                              </summary>
+                              <div className="mt-2 space-y-1">
+                                {usage.map((item, idx) => (
+                                  <div key={idx} className="text-xs text-gray-500 pl-4">
+                                    • {item.itemName} ({item.categoryName})
+                                  </div>
+                                ))}
+                              </div>
+                            </details>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

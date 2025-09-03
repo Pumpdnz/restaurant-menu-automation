@@ -1,8 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
-import { Download, AlertCircle, CheckCircle, Building2, Search, Loader2, Check } from 'lucide-react';
+import { Download, AlertCircle, CheckCircle, Building2, Search, Loader2, Check, Sparkles, Info } from 'lucide-react';
 import { extractionAPI, restaurantAPI } from '../services/api';
+import { Switch } from '../components/ui/switch';
+import { Label } from '../components/ui/label';
+import { Checkbox } from '../components/ui/checkbox';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '../components/ui/tooltip';
 
 export default function NewExtraction() {
   const navigate = useNavigate();
@@ -19,6 +28,15 @@ export default function NewExtraction() {
   const [selectedRestaurantId, setSelectedRestaurantId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [loadingRestaurants, setLoadingRestaurants] = useState(false);
+  const [similarRestaurants, setSimilarRestaurants] = useState([]);
+  
+  // Premium extraction state
+  const [isPremiumMode, setIsPremiumMode] = useState(false);
+  const [extractOptionSets, setExtractOptionSets] = useState(true);
+  const [validateImages, setValidateImages] = useState(true);
+  
+  // Get organization ID from localStorage
+  const orgId = localStorage.getItem('currentOrgId');
 
   // Fetch restaurants when component mounts or mode changes to manual
   useEffect(() => {
@@ -79,36 +97,51 @@ export default function NewExtraction() {
       
       setPlatform(detectedPlatform);
       
-      // Extract restaurant name if in auto mode
-      if (restaurantMode === 'auto') {
-        const pathParts = urlObj.pathname.split('/').filter(part => part);
-        let extractedName = '';
-        
-        if (detectedPlatform === 'ubereats' || detectedPlatform === 'doordash') {
-          const storeIndex = pathParts.indexOf('store');
-          if (storeIndex !== -1 && pathParts[storeIndex + 1]) {
-            extractedName = pathParts[storeIndex + 1];
-          }
-        } else if (pathParts[0]) {
-          extractedName = pathParts[0];
+      // Extract restaurant name from URL
+      const pathParts = urlObj.pathname.split('/').filter(part => part);
+      let extractedName = '';
+      
+      if (detectedPlatform === 'ubereats' || detectedPlatform === 'doordash') {
+        const storeIndex = pathParts.indexOf('store');
+        if (storeIndex !== -1 && pathParts[storeIndex + 1]) {
+          extractedName = pathParts[storeIndex + 1];
         }
+      } else if (pathParts[0]) {
+        extractedName = pathParts[0];
+      }
+      
+      if (extractedName) {
+        const formattedName = extractedName
+          .replace(/-/g, ' ')
+          .replace(/_/g, ' ')
+          .split(' ')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ');
+        setRestaurantName(formattedName);
         
-        if (extractedName) {
-          const formattedName = extractedName
-            .replace(/-/g, ' ')
-            .replace(/_/g, ' ')
-            .split(' ')
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' ');
-          setRestaurantName(formattedName);
-        } else {
-          setRestaurantName('');
+        // Check for similar restaurants
+        const similar = restaurants.filter(r => 
+          r.name.toLowerCase().includes(formattedName.toLowerCase()) ||
+          formattedName.toLowerCase().includes(r.name.toLowerCase())
+        );
+        setSimilarRestaurants(similar);
+        
+        // If in manual mode, also update search query
+        if (restaurantMode === 'manual') {
+          setSearchQuery(formattedName);
+        }
+      } else {
+        setRestaurantName('');
+        setSimilarRestaurants([]);
+        if (restaurantMode === 'manual') {
+          setSearchQuery('');
         }
       }
     } catch (e) {
       setPlatform('');
-      if (restaurantMode === 'auto') {
-        setRestaurantName('');
+      setRestaurantName('');
+      if (restaurantMode === 'manual') {
+        setSearchQuery('');
       }
     }
   };
@@ -117,53 +150,78 @@ export default function NewExtraction() {
   const startExtraction = useMutation({
     mutationFn: async (data) => {
       setIsExtracting(true); // Set loading immediately
-      let extractionData = { ...data };
       
-      if (restaurantMode === 'manual' && selectedRestaurantId) {
-        // In manual mode, use the selected restaurant ID
-        const selectedRestaurant = restaurants.find(r => r.id === selectedRestaurantId);
-        extractionData.restaurantId = selectedRestaurantId;
-        extractionData.restaurantName = selectedRestaurant?.name || 'Unknown Restaurant';
-      } else {
-        // In auto mode, extract restaurant name from URL
-        let restaurantName = 'Unknown Restaurant';
+      // Use premium extraction if enabled and platform is UberEats
+      if (isPremiumMode && data.url.includes('ubereats.com')) {
+        // Premium extraction - orgId now comes from header via middleware
+        const premiumData = {
+          storeUrl: data.url,
+          extractOptionSets,
+          validateImages,
+          async: true // Always use async for better UX
+        };
         
-        try {
-          const urlObj = new URL(data.url);
-          const pathParts = urlObj.pathname.split('/').filter(part => part);
+        // Add restaurant information if in manual mode
+        if (restaurantMode === 'manual' && selectedRestaurantId) {
+          const selectedRestaurant = restaurants.find(r => r.id === selectedRestaurantId);
+          premiumData.restaurantId = selectedRestaurantId;
+          premiumData.restaurantName = selectedRestaurant?.name || 'Unknown Restaurant';
+        }
+        
+        return await extractionAPI.startPremium(premiumData);
+      } else {
+        // Standard extraction
+        let extractionData = { ...data };
+        
+        if (restaurantMode === 'manual' && selectedRestaurantId) {
+          // In manual mode, use the selected restaurant ID
+          const selectedRestaurant = restaurants.find(r => r.id === selectedRestaurantId);
+          extractionData.restaurantId = selectedRestaurantId;
+          extractionData.restaurantName = selectedRestaurant?.name || 'Unknown Restaurant';
+        } else {
+          // In auto mode, extract restaurant name from URL
+          let restaurantName = 'Unknown Restaurant';
           
-          if (data.url.includes('ubereats.com') || data.url.includes('doordash.com')) {
-            const storeIndex = pathParts.indexOf('store');
-            if (storeIndex !== -1 && pathParts[storeIndex + 1]) {
-              restaurantName = pathParts[storeIndex + 1]
+          try {
+            const urlObj = new URL(data.url);
+            const pathParts = urlObj.pathname.split('/').filter(part => part);
+            
+            if (data.url.includes('ubereats.com') || data.url.includes('doordash.com')) {
+              const storeIndex = pathParts.indexOf('store');
+              if (storeIndex !== -1 && pathParts[storeIndex + 1]) {
+                restaurantName = pathParts[storeIndex + 1]
+                  .replace(/-/g, ' ')
+                  .replace(/_/g, ' ')
+                  .split(' ')
+                  .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                  .join(' ');
+              }
+            } else if (pathParts[0]) {
+              restaurantName = pathParts[0]
                 .replace(/-/g, ' ')
                 .replace(/_/g, ' ')
                 .split(' ')
                 .map(word => word.charAt(0).toUpperCase() + word.slice(1))
                 .join(' ');
             }
-          } else if (pathParts[0]) {
-            restaurantName = pathParts[0]
-              .replace(/-/g, ' ')
-              .replace(/_/g, ' ')
-              .split(' ')
-              .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-              .join(' ');
+          } catch (e) {
+            console.error('Error parsing URL:', e);
           }
-        } catch (e) {
-          console.error('Error parsing URL:', e);
+          
+          extractionData.restaurantName = restaurantName;
         }
         
-        extractionData.restaurantName = restaurantName;
+        return await extractionAPI.start(extractionData);
       }
-      
-      return await extractionAPI.start(extractionData);
     },
     onSuccess: (response) => {
       setSuccess(true);
       // Small delay to show success state before navigating
       setTimeout(() => {
-        navigate(`/extractions/${response.data.jobId}?poll=true`);
+        // Handle both standard and premium extraction responses
+        const jobId = response.data.jobId;
+        const isPremium = response.data.statusUrl ? true : false;
+        navigate(`/extractions/${jobId}?poll=true${isPremium ? '&premium=true' : ''}`);
       }, 500);
     },
     onError: (error) => {
@@ -265,7 +323,7 @@ export default function NewExtraction() {
                     }}
                     className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
                   />
-                  <span className="ml-2 text-sm text-gray-700">Auto-detect restaurant</span>
+                  <span className="ml-2 text-sm text-gray-700">Create New Restaurant</span>
                 </label>
                 <label className="flex items-center">
                   <input
@@ -274,7 +332,10 @@ export default function NewExtraction() {
                     checked={restaurantMode === 'manual'}
                     onChange={(e) => {
                       setRestaurantMode(e.target.value);
-                      setRestaurantName('');
+                      // Auto-populate search with detected restaurant name
+                      if (restaurantName) {
+                        setSearchQuery(restaurantName);
+                      }
                     }}
                     className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
                   />
@@ -292,7 +353,31 @@ export default function NewExtraction() {
                   </div>
                   <div className="ml-3">
                     <p className="text-sm text-blue-800">
-                      Auto-detected: <span className="font-medium">{restaurantName}</span>
+                      New restaurant will be created: <span className="font-medium">{restaurantName}</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Show warning if similar restaurants exist */}
+            {restaurantMode === 'auto' && similarRestaurants.length > 0 && (
+              <div className="mt-2 rounded-md bg-yellow-50 border border-yellow-200 p-3">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <AlertCircle className="h-5 w-5 text-yellow-400" />
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-yellow-800">
+                      {similarRestaurants.length} similar restaurant{similarRestaurants.length > 1 ? 's' : ''} found:
+                    </p>
+                    <ul className="mt-1 text-sm text-yellow-700">
+                      {similarRestaurants.slice(0, 3).map(r => (
+                        <li key={r.id} className="ml-2">• {r.name}</li>
+                      ))}
+                    </ul>
+                    <p className="mt-2 text-sm text-yellow-800">
+                      Consider selecting an existing restaurant instead to avoid duplicates.
                     </p>
                   </div>
                 </div>
@@ -376,6 +461,99 @@ export default function NewExtraction() {
             </div>
           )}
 
+          {/* Premium Extraction Options - Only for UberEats */}
+          {platform === 'ubereats' && (
+            <div className="space-y-4 border rounded-lg p-4 bg-gray-50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Label htmlFor="premium-mode" className="text-sm font-medium">
+                    Premium Extraction Mode
+                  </Label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-4 w-4 text-gray-400 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="max-w-xs text-sm">
+                          Premium extraction captures option sets (sizes, toppings, add-ons) 
+                          and validates images for better menu accuracy.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <Switch
+                  id="premium-mode"
+                  checked={isPremiumMode}
+                  onCheckedChange={setIsPremiumMode}
+                />
+              </div>
+
+              {isPremiumMode && (
+                <div className="ml-6 space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="extract-option-sets"
+                      checked={extractOptionSets}
+                      onCheckedChange={setExtractOptionSets}
+                    />
+                    <Label
+                      htmlFor="extract-option-sets"
+                      className="text-sm text-gray-700 cursor-pointer"
+                    >
+                      Extract Option Sets
+                    </Label>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3 w-3 text-gray-400 cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="max-w-xs text-sm">
+                            Captures customization options like sizes, toppings, and add-ons.
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="validate-images"
+                      checked={validateImages}
+                      onCheckedChange={setValidateImages}
+                    />
+                    <Label
+                      htmlFor="validate-images"
+                      className="text-sm text-gray-700 cursor-pointer"
+                    >
+                      Validate Images
+                    </Label>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3 w-3 text-gray-400 cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="max-w-xs text-sm">
+                            Checks and validates all menu item images for quality and availability.
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+
+                  <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                    <p className="text-xs text-blue-700">
+                      <strong>Note:</strong> Premium extraction runs asynchronously and may take 
+                      longer but provides more detailed menu data.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Submit Button */}
           <div className="flex justify-end space-x-3">

@@ -66,6 +66,11 @@ export const extractionAPI = {
   retry: (jobId) => api.post(`/extractions/${jobId}/retry`),
   cancel: (jobId) => api.delete(`/extractions/${jobId}`),
   
+  // Premium extraction endpoints
+  startPremium: (data) => api.post('/extract-menu-premium', data),
+  getPremiumStatus: (jobId) => api.get(`/premium-extract-status/${jobId}`),
+  getPremiumResults: (jobId) => api.get(`/premium-extract-results/${jobId}`),
+  
   // Legacy endpoints (for backward compatibility)
   scanCategories: (url) => api.post('/scan-categories', { url }),
   batchExtract: (data) => api.post('/batch-extract-categories', data),

@@ -4,6 +4,8 @@ import { Textarea } from '../ui/textarea';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { X, Plus, Trash2 } from 'lucide-react';
+import OptionSetsDisplay from './OptionSetsDisplay';
+import OptionSetEditor from './OptionSetEditor';
 
 export default function EditableMenuItem({ 
   item, 
@@ -123,6 +125,9 @@ export default function EditableMenuItem({
             )}
           </div>
         </div>
+        {item.optionSets && item.optionSets.length > 0 && (
+          <OptionSetsDisplay optionSets={item.optionSets} />
+        )}
       </div>
     );
   }
@@ -248,6 +253,13 @@ export default function EditableMenuItem({
               </Button>
             </div>
           </div>
+
+          {/* Option Sets Editor */}
+          <OptionSetEditor 
+            optionSets={editedItem.optionSets || []}
+            onUpdate={(updatedSets) => handleFieldChange('optionSets', updatedSets)}
+            isEditMode={true}
+          />
 
           {/* Change indicator */}
           {hasChanges && (

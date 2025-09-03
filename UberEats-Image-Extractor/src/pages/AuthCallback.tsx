@@ -35,8 +35,15 @@ export function AuthCallbackPage() {
         .eq('id', session.user.id)
         .single();
 
-      // Check for invitation token
-      const inviteToken = searchParams.get('invite');
+      // Check for invitation token from URL or localStorage
+      let inviteToken = searchParams.get('invite');
+      if (!inviteToken) {
+        // Check localStorage for pending invite (from signup flow)
+        inviteToken = localStorage.getItem('pendingInvite');
+        if (inviteToken) {
+          localStorage.removeItem('pendingInvite');
+        }
+      }
       
       if (inviteToken) {
         setStatus('Processing invitation...');
@@ -104,10 +111,19 @@ export function AuthCallbackPage() {
             role = invite.role;
           }
         } else {
+          // Check for pending organization name from signup
+          const pendingOrgName = localStorage.getItem('pendingOrgName');
+          
           // Create a new organization for this user
-          const orgName = session.user.user_metadata?.name 
-            ? `${session.user.user_metadata.name}'s Organization`
-            : `${session.user.email?.split('@')[0]}'s Organization`;
+          const orgName = pendingOrgName || 
+            (session.user.user_metadata?.name 
+              ? `${session.user.user_metadata.name}'s Organization`
+              : `${session.user.email?.split('@')[0]}'s Organization`);
+
+          // Clean up localStorage
+          if (pendingOrgName) {
+            localStorage.removeItem('pendingOrgName');
+          }
 
           const { data: newOrg, error: orgError } = await supabase
             .from('organisations')

@@ -240,10 +240,6 @@ async function startBackgroundExtraction(jobId, url, categories, restaurantName 
 6. DO NOT include items from other categories
 7. Ensure the categoryName field exactly matches "${category.name}"`;
         
-        // Debug logging for per-category extraction
-        console.log(`[Job ${jobId}] DEBUG - Category "${category.name}" Extraction Schema:`, JSON.stringify(categorySchema, null, 2).substring(0, 500) + '...');
-        console.log(`[Job ${jobId}] DEBUG - Category "${category.name}" Extraction Prompt:`, categoryPrompt.substring(0, 300) + '...');
-        
         // Prepare v2 category-specific payload
         const categoryPayload = {
           url: url,
@@ -253,15 +249,24 @@ async function startBackgroundExtraction(jobId, url, categories, restaurantName 
             prompt: categoryPrompt
           }],
           onlyMainContent: true,
-          waitFor: 2000,
+          waitFor: 3000,  // Increased from 2000 to 3000ms
           blockAds: true,
           timeout: 180000,
-          maxAge: parseInt(process.env.FIRECRAWL_CACHE_MAX_AGE || '172800'),
+          // maxAge removed to force fresh scraping
           skipTlsVerification: true,
           removeBase64Images: true
         };
         
         const apiEndpoint = `${FIRECRAWL_API_URL}/v2/scrape`;
+        
+        // COMPREHENSIVE DEBUG LOGGING - FULL SCHEMA AND PROMPT
+        console.log(`[Job ${jobId}] ========== FIRECRAWL REQUEST FOR: ${category.name} ==========`);
+        console.log(`[Job ${jobId}] FULL SCHEMA:`);
+        console.log(JSON.stringify(categorySchema, null, 2));
+        console.log(`[Job ${jobId}] FULL PROMPT:`);
+        console.log(categoryPrompt);
+        console.log(`[Job ${jobId}] REQUEST URL: ${apiEndpoint}`);
+        console.log(`[Job ${jobId}] PAYLOAD SUMMARY: waitFor=${categoryPayload.waitFor}ms, timeout=${categoryPayload.timeout}ms, maxAge=${categoryPayload.maxAge}s`);
         
         // Make request to Firecrawl API
         const axiosInstance = axios.create({
@@ -272,10 +277,42 @@ async function startBackgroundExtraction(jobId, url, categories, restaurantName 
           }
         });
         
+        console.log(`[Job ${jobId}] Sending request to Firecrawl...`);
+        const requestStartTime = Date.now();
         const categoryResponse = await axiosInstance.post(apiEndpoint, categoryPayload);
+        const requestTime = Date.now() - requestStartTime;
+        console.log(`[Job ${jobId}] Response received in ${requestTime}ms`);
         
         // Parse v2 response
         const parsedCategoryResponse = categoryResponse.data;
+        
+        // LOG FULL RESPONSE
+        console.log(`[Job ${jobId}] ========== FIRECRAWL RESPONSE FOR: ${category.name} ==========`);
+        console.log(`[Job ${jobId}] Response success: ${parsedCategoryResponse.success}`);
+        if (parsedCategoryResponse.data?.json) {
+          const items = parsedCategoryResponse.data.json.menuItems || [];
+          console.log(`[Job ${jobId}] Items returned: ${items.length}`);
+          
+          // Log first 3 items as sample
+          items.slice(0, 3).forEach((item, idx) => {
+            console.log(`[Job ${jobId}] Sample Item ${idx + 1}:`);
+            console.log(`  - Name: ${item.dishName}`);
+            console.log(`  - Price: ${item.dishPrice}`);
+            console.log(`  - Has Image: ${!!item.imageURL}`);
+            if (item.imageURL) {
+              console.log(`  - Image URL: ${item.imageURL.substring(0, 100)}...`);
+            }
+          });
+          
+          // Check for duplicate images in response
+          const imageUrls = items.map(i => i.imageURL).filter(Boolean);
+          const uniqueImages = new Set(imageUrls);
+          if (imageUrls.length > 0 && uniqueImages.size < imageUrls.length) {
+            console.log(`[Job ${jobId}] WARNING: Firecrawl returned duplicate images!`);
+            console.log(`  - Total items with images: ${imageUrls.length}`);
+            console.log(`  - Unique image URLs: ${uniqueImages.size}`);
+          }
+        }
         
         if (!parsedCategoryResponse.success) {
           throw new Error(`API returned error: ${parsedCategoryResponse.error || 'Unknown error'}`);
@@ -344,12 +381,23 @@ async function startBackgroundExtraction(jobId, url, categories, restaurantName 
     }
     
     // Aggregate results
-    const menuItems = categoryResults.flatMap(result => 
-      result.menuItems.map(item => ({
+    console.log(`[Job ${jobId}] Aggregating results from ${categoryResults.length} categories`);
+    console.log(`[Job ${jobId}] Category results structure:`, categoryResults.map(r => ({
+      categoryName: r.categoryName,
+      hasMenuItems: !!r.menuItems,
+      itemCount: r.menuItems?.length || 0
+    })));
+    
+    const menuItems = categoryResults.flatMap(result => {
+      if (!result.menuItems || !Array.isArray(result.menuItems)) {
+        console.error(`[Job ${jobId}] WARNING: Category "${result.categoryName}" has no menuItems array`);
+        return [];
+      }
+      return result.menuItems.map(item => ({
         ...item,
         categoryName: result.categoryName
-      }))
-    );
+      }));
+    });
     
     console.log(`[Job ${jobId}] Successfully extracted a total of ${menuItems.length} menu items across ${categoryResults.length} categories`);
     
@@ -395,6 +443,8 @@ async function startBackgroundExtraction(jobId, url, categories, restaurantName 
     
   } catch (error) {
     console.error(`[Job ${jobId}] Fatal error during extraction:`, error.message);
+    console.error(`[Job ${jobId}] Full error stack:`, error.stack);
+    console.error(`[Job ${jobId}] Error details:`, error);
     
     // Update database job if available
     if (db.isDatabaseAvailable() && dbJob) {
@@ -922,10 +972,10 @@ app.post('/api/scan-categories', async (req, res) => {
         prompt: categoryPrompt
       }],
       onlyMainContent: true,
-      waitFor: 2000, // Wait 2 seconds for page to load properly
+      waitFor: 3000, // Wait 3 seconds for page to load properly
       blockAds: true, // Block ads and cookie popups
       timeout: 90000, // 1.5 minute timeout (category scan should be faster than full extraction)
-      maxAge: parseInt(process.env.FIRECRAWL_CACHE_MAX_AGE || '172800'),
+      // maxAge removed to force fresh scraping
       skipTlsVerification: true,
       removeBase64Images: true
     };
@@ -1097,7 +1147,7 @@ app.post('/api/extract-images-for-category', async (req, res) => {
       waitFor: 2000,
       blockAds: true,
       timeout: 120000,
-      maxAge: parseInt(process.env.FIRECRAWL_CACHE_MAX_AGE || '172800'),
+      // maxAge removed to force fresh scraping
       skipTlsVerification: true,
       removeBase64Images: true
     };
@@ -1317,10 +1367,6 @@ app.post('/api/batch-extract-categories', async (req, res) => {
 6. DO NOT include items from other categories
 7. Ensure the categoryName field exactly matches "${category.name}"`;
         
-        // Debug logging for per-category extraction
-        console.log(`[Job ${jobId}] DEBUG - Category "${category.name}" Extraction Schema:`, JSON.stringify(categorySchema, null, 2).substring(0, 500) + '...');
-        console.log(`[Job ${jobId}] DEBUG - Category "${category.name}" Extraction Prompt:`, categoryPrompt.substring(0, 300) + '...');
-        
         // Prepare v2 category-specific payload
         const categoryPayload = {
           url: url,
@@ -1330,10 +1376,10 @@ app.post('/api/batch-extract-categories', async (req, res) => {
             prompt: categoryPrompt
           }],
           onlyMainContent: true,
-          waitFor: 2000,
+          waitFor: 3000,  // Increased from 2000 to 3000ms
           blockAds: true,
           timeout: 180000, // 3 minute timeout per category
-          maxAge: parseInt(process.env.FIRECRAWL_CACHE_MAX_AGE || '172800'),
+          // maxAge removed to force fresh scraping
           skipTlsVerification: true,
           removeBase64Images: true
         };
@@ -1352,13 +1398,45 @@ app.post('/api/batch-extract-categories', async (req, res) => {
         });
         
         // Make request to Firecrawl API
+        console.log(`[Job ${jobId}] Sending request to Firecrawl...`);
+        const requestStartTime = Date.now();
         const categoryResponse = await axiosInstance.post(apiEndpoint, categoryPayload);
+        const requestTime = Date.now() - requestStartTime;
+        console.log(`[Job ${jobId}] Response received in ${requestTime}ms`);
         
         // Log response summary
         console.log(`Category "${category.name}" extraction response status:`, categoryResponse.status);
         
         // Parse v2 response
         const parsedCategoryResponse = categoryResponse.data;
+        
+        // LOG FULL RESPONSE
+        console.log(`[Job ${jobId}] ========== FIRECRAWL RESPONSE FOR: ${category.name} ==========`);
+        console.log(`[Job ${jobId}] Response success: ${parsedCategoryResponse.success}`);
+        if (parsedCategoryResponse.data?.json) {
+          const items = parsedCategoryResponse.data.json.menuItems || [];
+          console.log(`[Job ${jobId}] Items returned: ${items.length}`);
+          
+          // Log first 3 items as sample
+          items.slice(0, 3).forEach((item, idx) => {
+            console.log(`[Job ${jobId}] Sample Item ${idx + 1}:`);
+            console.log(`  - Name: ${item.dishName}`);
+            console.log(`  - Price: ${item.dishPrice}`);
+            console.log(`  - Has Image: ${!!item.imageURL}`);
+            if (item.imageURL) {
+              console.log(`  - Image URL: ${item.imageURL.substring(0, 100)}...`);
+            }
+          });
+          
+          // Check for duplicate images in response
+          const imageUrls = items.map(i => i.imageURL).filter(Boolean);
+          const uniqueImages = new Set(imageUrls);
+          if (imageUrls.length > 0 && uniqueImages.size < imageUrls.length) {
+            console.log(`[Job ${jobId}] WARNING: Firecrawl returned duplicate images!`);
+            console.log(`  - Total items with images: ${imageUrls.length}`);
+            console.log(`  - Unique image URLs: ${uniqueImages.size}`);
+          }
+        }
         
         if (!parsedCategoryResponse.success) {
           throw new Error(`API returned error: ${parsedCategoryResponse.error || 'Unknown error'}`);
@@ -1653,6 +1731,9 @@ app.get('/api/batch-extract-results/:jobId', async (req, res) => {
  * API endpoint for scanning restaurant menu item URLs
  * This is the first phase of the option sets extraction process
  */
+// REMOVED: Dead code endpoint /api/scan-menu-items
+// Replaced by new premium extraction endpoint
+/*
 app.post('/api/scan-menu-items', async (req, res) => {
   const { url } = req.body;
   
@@ -1691,10 +1772,10 @@ app.post('/api/scan-menu-items', async (req, res) => {
         prompt: UBEREATS_MENU_ITEMS_URL_PROMPT
       }],
       onlyMainContent: true,
-      waitFor: 2000, // Wait 2 seconds for page to load properly
+      waitFor: 3000, // Wait 3 seconds for page to load properly
       blockAds: true, // Block ads and cookie popups
       timeout: 120000, // 2 minute timeout
-      maxAge: parseInt(process.env.FIRECRAWL_CACHE_MAX_AGE || '172800'),
+      // maxAge removed to force fresh scraping
       skipTlsVerification: true,
       removeBase64Images: true
     };
@@ -1800,11 +1881,11 @@ app.post('/api/scan-menu-items', async (req, res) => {
     });
   }
 });
+*/
 
-/**
- * API endpoint for batch extracting option sets from menu item URLs
- * This is the second phase of the option sets extraction process
- */
+// REMOVED: Dead code endpoint /api/batch-extract-option-sets
+// Replaced by new premium extraction endpoint
+/*
 app.post('/api/batch-extract-option-sets', async (req, res) => {
   const { menuItemUrls } = req.body;
   
@@ -1853,10 +1934,10 @@ app.post('/api/batch-extract-option-sets', async (req, res) => {
             prompt: UBEREATS_OPTION_SETS_PROMPT
           }],
           onlyMainContent: true,
-          waitFor: 2000,
+          waitFor: 3000,  // Increased from 2000 to 3000ms
           blockAds: true,
           timeout: 90000, // 1.5 minute timeout per item
-          maxAge: parseInt(process.env.FIRECRAWL_CACHE_MAX_AGE || '172800'),
+          // maxAge removed to force fresh scraping
           skipTlsVerification: true,
           removeBase64Images: true
         };
@@ -1995,6 +2076,114 @@ app.post('/api/batch-extract-option-sets', async (req, res) => {
     return res.status(error.response?.status || 500).json({
       success: false,
       error: `Batch option sets extraction failed: ${error.message}`
+    });
+  }
+});
+*/
+
+/**
+ * Premium Menu Extraction Endpoint
+ * Enhanced extraction with option sets and validated images
+ */
+app.post('/api/extract-menu-premium', authMiddleware, async (req, res) => {
+  const { storeUrl, restaurantName, extractOptionSets = true, validateImages = true, async = false } = req.body;
+  
+  // Get organization ID from middleware (header-based, consistent with standard extraction)
+  const orgId = req.organizationId;
+  
+  // Validate inputs
+  if (!storeUrl) {
+    return res.status(400).json({
+      success: false,
+      error: 'Store URL is required'
+    });
+  }
+  
+  // Organization ID should already be set by middleware
+  if (!orgId) {
+    return res.status(400).json({
+      success: false,
+      error: 'Organization context not found. Please ensure you are authenticated.'
+    });
+  }
+  
+  // Check if URL is from UberEats
+  if (!storeUrl.includes('ubereats.com')) {
+    return res.status(400).json({
+      success: false,
+      error: 'Premium extraction currently only supports UberEats URLs'
+    });
+  }
+  
+  try {
+    const premiumExtractionService = require('./src/services/premium-extraction-service');
+    
+    const result = await premiumExtractionService.extractPremiumMenu(storeUrl, orgId, {
+      restaurantName,
+      extractOptionSets,
+      validateImages,
+      async,
+      saveToDatabase: true
+    });
+    
+    if (async) {
+      // Return job info for async processing
+      return res.json({
+        success: true,
+        jobId: result.jobId,
+        estimatedTime: result.estimatedTime,
+        statusUrl: `/api/premium-extract-status/${result.jobId}`,
+        resultsUrl: `/api/premium-extract-results/${result.jobId}`,
+        message: result.message
+      });
+    } else {
+      // Return results directly for sync processing
+      return res.json(result);
+    }
+    
+  } catch (error) {
+    console.error('Premium extraction error:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Premium extraction failed'
+    });
+  }
+});
+
+/**
+ * Get premium extraction job status
+ */
+app.get('/api/premium-extract-status/:jobId', authMiddleware, async (req, res) => {
+  const { jobId } = req.params;
+  
+  try {
+    const premiumExtractionService = require('./src/services/premium-extraction-service');
+    const status = await premiumExtractionService.getJobStatus(jobId);
+    
+    res.json(status);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Get premium extraction job results
+ */
+app.get('/api/premium-extract-results/:jobId', authMiddleware, (req, res) => {
+  const { jobId } = req.params;
+  
+  try {
+    const premiumExtractionService = require('./src/services/premium-extraction-service');
+    const results = premiumExtractionService.getJobResults(jobId);
+    
+    res.json(results);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 });
@@ -3328,7 +3517,7 @@ app.post('/api/extractions/start', async (req, res) => {
     // Get restaurant name for the extraction process
     const restaurantName = restaurantData.restaurant.name;
     
-    // Create extraction job in database with options
+    // Create extraction job in database with options - pass organization ID from request
     const dbJob = await db.createExtractionJob({
       jobId: jobId,
       restaurantId: restaurantData.restaurant.id,
@@ -3341,7 +3530,7 @@ app.post('/api/extractions/start', async (req, res) => {
         generateCSV: options.generateCSV !== false, // Default to true
         ...options
       }
-    });
+    }, req.organizationId);
     
     if (!dbJob) {
       return res.status(500).json({
@@ -3394,7 +3583,7 @@ app.post('/api/extractions/start', async (req, res) => {
             prompt: categoryPrompt
           }],
           onlyMainContent: true,
-          waitFor: 2000,
+          waitFor: 3000,  // Increased from 2000 to 3000ms
           timeout: 90000,
           maxAge: parseInt(process.env.FIRECRAWL_CACHE_MAX_AGE || '172800')
         };
@@ -3602,7 +3791,7 @@ app.post('/api/extractions/:jobId/retry', async (req, res) => {
         ...originalJob.config,
         retriedFrom: jobId
       }
-    });
+    }, req.organizationId);
     
     if (!newJob) {
       return res.status(500).json({

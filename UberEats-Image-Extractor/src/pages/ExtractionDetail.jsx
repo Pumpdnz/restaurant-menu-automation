@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import api, { menuItemAPI } from '../services/api';
+import api, { menuItemAPI, extractionAPI } from '../services/api';
 import { 
   ArrowLeftIcon,
   DocumentArrowDownIcon,
@@ -41,6 +41,10 @@ export default function ExtractionDetail() {
   const [categoryNameChanges, setCategoryNameChanges] = useState({});
   const [editingCategoryName, setEditingCategoryName] = useState(null);
   const [tempCategoryName, setTempCategoryName] = useState('');
+  
+  // Premium extraction state
+  const [isPremiumExtraction, setIsPremiumExtraction] = useState(false);
+  const [premiumProgress, setPremiumProgress] = useState(null);
 
   useEffect(() => {
     const shouldPoll = searchParams.get('poll') === 'true';
@@ -55,15 +59,61 @@ export default function ExtractionDetail() {
 
   const fetchJobDetails = async (shouldStartPolling = false) => {
     try {
-      // Get job details
-      const jobResponse = await api.get(`/extractions/${jobId}`);
-      // API returns { success: true, job: {...} }
-      const jobData = jobResponse.data.job || jobResponse.data;
+      // Check if this is a premium extraction (jobId starts with 'premium_')
+      const isPremium = jobId.startsWith('premium_');
+      setIsPremiumExtraction(isPremium);
+      
+      let jobData, status;
+      
+      if (isPremium) {
+        // Handle premium extraction status - use the full jobId including premium_ prefix
+        const statusResponse = await extractionAPI.getPremiumStatus(jobId);
+        
+        if (statusResponse.data.success) {
+          // For completed premium extractions, we need to find the menu
+          let menuId = statusResponse.data.menuId;
+          
+          // If no menuId and the job is completed, try to find it from the results
+          if (!menuId && statusResponse.data.status === 'completed') {
+            try {
+              const resultsResponse = await extractionAPI.getPremiumResults(jobId);
+              if (resultsResponse.data.success && resultsResponse.data.menuId) {
+                menuId = resultsResponse.data.menuId;
+              }
+            } catch (err) {
+              console.warn('Could not fetch premium results for menuId:', err);
+            }
+          }
+          
+          jobData = {
+            id: jobId,
+            url: statusResponse.data.url,
+            restaurant: statusResponse.data.restaurantName || 'Restaurant',
+            state: statusResponse.data.status,
+            extractionType: 'premium',
+            progress: statusResponse.data.progress,
+            menuId: menuId,
+            created_at: statusResponse.data.startTime ? new Date(statusResponse.data.startTime).toISOString() : null
+          };
+          
+          // Set premium progress details
+          setPremiumProgress(statusResponse.data.progress);
+          status = statusResponse.data.status;
+        } else {
+          throw new Error(statusResponse.data.error || 'Failed to get premium extraction status');
+        }
+      } else {
+        // Get standard job details
+        const jobResponse = await api.get(`/extractions/${jobId}`);
+        // API returns { success: true, job: {...} }
+        jobData = jobResponse.data.job || jobResponse.data;
+        status = jobData.state || jobData.status;
+      }
+      
       setJob(jobData);
 
       // Check job status
-      const status = jobData.state || jobData.status;
-      const isInProgress = status === 'running' || status === 'pending' || status === 'processing';
+      const isInProgress = status === 'running' || status === 'pending' || status === 'processing' || status === 'in_progress';
       
       // Start polling if job is in progress and we should poll
       if (isInProgress && shouldStartPolling && !pollingInterval.current) {
@@ -83,7 +133,9 @@ export default function ExtractionDetail() {
         if (status === 'completed') {
           toast({
             title: "Extraction Complete!",
-            description: "Menu data has been successfully extracted.",
+            description: isPremium 
+              ? "Premium menu data with option sets has been successfully extracted."
+              : "Menu data has been successfully extracted.",
             variant: "success"
           });
         } else if (status === 'failed') {
@@ -97,8 +149,60 @@ export default function ExtractionDetail() {
 
       // If completed, get the menu data
       if (status === 'completed') {
-        if (jobData.menuId) {
-          // Use database API for new extractions
+        if (isPremium) {
+          // Get premium extraction results - use the full jobId including premium_ prefix
+          const resultsResponse = await extractionAPI.getPremiumResults(jobId);
+          
+          if (resultsResponse.data.success && resultsResponse.data.menuId) {
+            // Load the menu from database with option sets
+            const menuResponse = await api.get(`/menus/${resultsResponse.data.menuId}`);
+            if (menuResponse.data.success && menuResponse.data.menu) {
+              const dbMenu = menuResponse.data.menu;
+              // Transform database structure to component format
+              const transformedData = {};
+              
+              dbMenu.categories.forEach(category => {
+                // Only include categories that have items
+                if (category.menu_items && category.menu_items.length > 0) {
+                  transformedData[category.name] = category.menu_items.map(item => ({
+                    id: item.id,
+                    name: item.name,
+                    price: item.price,
+                    description: item.description,
+                    tags: item.tags || [],
+                    imageURL: item.item_images?.[0]?.url || null,
+                    categoryId: category.id,
+                    categoryName: category.name,
+                    // Transform option sets from snake_case to camelCase
+                    optionSets: (item.option_sets || []).map(optionSet => ({
+                      ...optionSet,
+                      minSelections: optionSet.min_selections,
+                      maxSelections: optionSet.max_selections,
+                      isRequired: optionSet.is_required,
+                      options: (optionSet.option_set_items || []).map(optionItem => ({
+                        ...optionItem,
+                        name: optionItem.name,
+                        description: optionItem.description,
+                        priceChange: optionItem.price || 0,
+                        isDefault: optionItem.is_default || false
+                      }))
+                    }))
+                  }));
+                }
+              });
+              
+              setMenuData(transformedData);
+              setOriginalMenuData(JSON.parse(JSON.stringify(transformedData)));
+              
+              // Set first category as selected by default
+              const categories = Object.keys(transformedData);
+              if (categories.length > 0) {
+                setSelectedCategory(categories[0]);
+              }
+            }
+          }
+        } else if (jobData.menuId) {
+          // Use database API for standard extractions
           const menuResponse = await api.get(`/menus/${jobData.menuId}`);
           if (menuResponse.data.success && menuResponse.data.menu) {
             const dbMenu = menuResponse.data.menu;
@@ -116,7 +220,21 @@ export default function ExtractionDetail() {
                   tags: item.tags || [],
                   imageURL: item.item_images?.[0]?.url || null,
                   categoryId: category.id,
-                  categoryName: category.name
+                  categoryName: category.name,
+                  // Transform option sets from snake_case to camelCase
+                  optionSets: (item.option_sets || []).map(optionSet => ({
+                    ...optionSet,
+                    minSelections: optionSet.min_selections,
+                    maxSelections: optionSet.max_selections,
+                    isRequired: optionSet.is_required,
+                    options: (optionSet.option_set_items || []).map(optionItem => ({
+                      ...optionItem,
+                      name: optionItem.name,
+                      description: optionItem.description,
+                      priceChange: optionItem.price || 0,
+                      isDefault: optionItem.is_default || false
+                    }))
+                  }))
                 }));
               }
             });
@@ -688,13 +806,14 @@ export default function ExtractionDetail() {
               </dd>
             </div>
             {/* Progress Indicator for Running Jobs */}
-            {(job.state === 'running' || job.status === 'running' || job.state === 'processing' || job.status === 'processing') && (
+            {(job.state === 'running' || job.status === 'running' || job.state === 'processing' || 
+              job.status === 'processing' || job.state === 'in_progress' || job.status === 'in_progress') && (
               <div className="sm:col-span-3">
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <div className="flex items-center mb-3">
                     <ArrowPathIcon className="h-5 w-5 text-blue-600 animate-spin mr-2" />
                     <h4 className="text-sm font-medium text-blue-900">
-                      Extraction in Progress
+                      {isPremiumExtraction ? 'Premium Extraction in Progress' : 'Extraction in Progress'}
                     </h4>
                     {isPolling && (
                       <span className="ml-auto text-xs text-blue-600">
@@ -703,13 +822,120 @@ export default function ExtractionDetail() {
                     )}
                   </div>
                   <div className="space-y-2">
-                    <div className="flex items-center text-sm text-blue-700">
-                      <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse mr-2"></span>
-                      Scanning menu categories and items...
-                    </div>
-                    <div className="text-xs text-blue-600 mt-2">
-                      This process typically takes 1-3 minutes depending on menu size.
-                    </div>
+                    {isPremiumExtraction && premiumProgress ? (
+                      <>
+                        {/* Premium extraction progress phases */}
+                        <div className="space-y-3">
+                          <div className={`flex items-center text-sm ${
+                            premiumProgress.phase === 'scanning_categories' ? 'text-blue-700' : 
+                            premiumProgress.categoriesScanned ? 'text-green-700' : 'text-gray-500'
+                          }`}>
+                            {premiumProgress.phase === 'scanning_categories' ? (
+                              <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse mr-2"></span>
+                            ) : premiumProgress.categoriesScanned ? (
+                              <CheckCircleIcon className="h-4 w-4 text-green-600 mr-2" />
+                            ) : (
+                              <span className="w-2 h-2 bg-gray-300 rounded-full mr-2"></span>
+                            )}
+                            <span>Scanning menu categories</span>
+                            {premiumProgress.categoriesFound > 0 && (
+                              <span className="ml-auto text-xs">
+                                {premiumProgress.categoriesFound} found
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div className={`flex items-center text-sm ${
+                            premiumProgress.phase === 'extracting_items' ? 'text-blue-700' : 
+                            premiumProgress.itemsExtracted ? 'text-green-700' : 'text-gray-500'
+                          }`}>
+                            {premiumProgress.phase === 'extracting_items' ? (
+                              <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse mr-2"></span>
+                            ) : premiumProgress.itemsExtracted ? (
+                              <CheckCircleIcon className="h-4 w-4 text-green-600 mr-2" />
+                            ) : (
+                              <span className="w-2 h-2 bg-gray-300 rounded-full mr-2"></span>
+                            )}
+                            <span>Extracting menu items</span>
+                            {premiumProgress.itemsFound > 0 && (
+                              <span className="ml-auto text-xs">
+                                {premiumProgress.itemsFound} items
+                              </span>
+                            )}
+                          </div>
+                          
+                          {premiumProgress.extractOptionSets && (
+                            <div className={`flex items-center text-sm ${
+                              premiumProgress.phase === 'extracting_options' ? 'text-blue-700' : 
+                              premiumProgress.optionSetsExtracted ? 'text-green-700' : 'text-gray-500'
+                            }`}>
+                              {premiumProgress.phase === 'extracting_options' ? (
+                                <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse mr-2"></span>
+                              ) : premiumProgress.optionSetsExtracted ? (
+                                <CheckCircleIcon className="h-4 w-4 text-green-600 mr-2" />
+                              ) : (
+                                <span className="w-2 h-2 bg-gray-300 rounded-full mr-2"></span>
+                              )}
+                              <span>Extracting option sets</span>
+                              {premiumProgress.optionSetsFound > 0 && (
+                                <span className="ml-auto text-xs">
+                                  {premiumProgress.optionSetsFound} sets
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          
+                          {premiumProgress.validateImages && (
+                            <div className={`flex items-center text-sm ${
+                              premiumProgress.phase === 'validating_images' ? 'text-blue-700' : 
+                              premiumProgress.imagesValidated ? 'text-green-700' : 'text-gray-500'
+                            }`}>
+                              {premiumProgress.phase === 'validating_images' ? (
+                                <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse mr-2"></span>
+                              ) : premiumProgress.imagesValidated ? (
+                                <CheckCircleIcon className="h-4 w-4 text-green-600 mr-2" />
+                              ) : (
+                                <span className="w-2 h-2 bg-gray-300 rounded-full mr-2"></span>
+                              )}
+                              <span>Validating images</span>
+                              {premiumProgress.imagesProcessed > 0 && (
+                                <span className="ml-auto text-xs">
+                                  {premiumProgress.imagesProcessed} validated
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          
+                          <div className={`flex items-center text-sm ${
+                            premiumProgress.phase === 'saving_to_database' ? 'text-blue-700' : 
+                            premiumProgress.savedToDatabase ? 'text-green-700' : 'text-gray-500'
+                          }`}>
+                            {premiumProgress.phase === 'saving_to_database' ? (
+                              <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse mr-2"></span>
+                            ) : premiumProgress.savedToDatabase ? (
+                              <CheckCircleIcon className="h-4 w-4 text-green-600 mr-2" />
+                            ) : (
+                              <span className="w-2 h-2 bg-gray-300 rounded-full mr-2"></span>
+                            )}
+                            <span>Saving to database</span>
+                          </div>
+                        </div>
+                        
+                        <div className="text-xs text-blue-600 mt-3">
+                          Premium extraction with option sets typically takes 2-5 minutes.
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center text-sm text-blue-700">
+                          <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse mr-2"></span>
+                          Scanning menu categories and items...
+                        </div>
+                        <div className="text-xs text-blue-600 mt-2">
+                          This process typically takes 1-3 minutes depending on menu size.
+                        </div>
+                      </>
+                    )}
                   </div>
                   {!isPolling && (
                     <button

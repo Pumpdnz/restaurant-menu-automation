@@ -180,19 +180,43 @@ export function SignupPage() {
         return;
       }
 
-      // Create account with organization name (if not invited)
-      const orgName = inviteData ? inviteData.organisationName : data.organizationName!;
-      
-      await signup(data.email, data.password, data.fullName);
+      // Create account
+      const { data: authData, error: signupError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            full_name: data.fullName,
+            // Pass invitation token if present
+            invitation_token: inviteToken || undefined
+          },
+          emailRedirectTo: inviteToken 
+            ? `${window.location.origin}/auth/callback?invite=${inviteToken}`
+            : `${window.location.origin}/auth/callback`
+        }
+      });
 
-      // If we have an invite, the auth callback will handle organization assignment
+      if (signupError) throw signupError;
+
+      // If we have an invite, store it in localStorage for the callback to process
+      if (inviteToken) {
+        localStorage.setItem('pendingInvite', inviteToken);
+      }
+
+      // Store organization name for new orgs (non-invited users)
+      if (!inviteData && data.organizationName) {
+        localStorage.setItem('pendingOrgName', data.organizationName);
+      }
       
       toast({
         title: 'Account created!',
-        description: 'Please check your email to verify your account.'
+        description: inviteData 
+          ? `Please check your email to verify your account and join ${inviteData.organisationName}.`
+          : 'Please check your email to verify your account.'
       });
 
-      navigate('/');
+      // Navigate to login page
+      navigate('/login');
     } catch (err: any) {
       if (err.message?.includes('already registered')) {
         setError('This email is already registered. Please login instead.');

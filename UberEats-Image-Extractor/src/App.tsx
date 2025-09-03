@@ -29,6 +29,7 @@ import { SignupPage } from './pages/Signup';
 import { ForgotPasswordPage } from './pages/ForgotPassword';
 import { ResetPasswordPage } from './pages/ResetPassword';
 import { AuthCallbackPage } from './pages/AuthCallback';
+import { InviteAcceptPage } from './pages/InviteAccept';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -56,6 +57,7 @@ function AppContent() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
+        <Route path="/invite/:token" element={<InviteAcceptPage />} />
 
         {/* Protected Routes */}
         <Route

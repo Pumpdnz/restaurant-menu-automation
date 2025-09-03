@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Loader2, Lock, Eye, EyeOff, CheckCircle } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -43,7 +43,6 @@ type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
 export function ResetPasswordPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { updatePassword } = useAuth();
   const { toast } = useToast();
   
   const [isLoading, setIsLoading] = useState(false);
@@ -51,10 +50,43 @@ export function ResetPasswordPage() {
   const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isValidSession, setIsValidSession] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
 
-  // Get token from URL
-  const token = searchParams.get('token');
-  const type = searchParams.get('type'); // recovery or invite
+  // Check for Supabase session on mount
+  useEffect(() => {
+    checkResetSession();
+  }, []);
+
+  const checkResetSession = async () => {
+    try {
+      // Supabase sends the reset token in the URL hash, which gets processed automatically
+      // We just need to check if there's a valid session with recovery type
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('Session check error:', error);
+        setError('Invalid or expired reset link');
+        setCheckingSession(false);
+        return;
+      }
+
+      // Check if this is a recovery session
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const type = hashParams.get('type');
+      
+      if (type === 'recovery' || session) {
+        setIsValidSession(true);
+      } else {
+        setError('Invalid or expired reset link. Please request a new one.');
+      }
+    } catch (err) {
+      console.error('Error checking session:', err);
+      setError('Unable to verify reset link');
+    } finally {
+      setCheckingSession(false);
+    }
+  };
 
   // Form setup
   const {
@@ -84,7 +116,7 @@ export function ResetPasswordPage() {
 
   // Handle form submission
   const onSubmit = async (data: ResetPasswordFormData) => {
-    if (!token) {
+    if (!isValidSession) {
       setError('Invalid reset link. Please request a new one.');
       return;
     }
@@ -93,13 +125,24 @@ export function ResetPasswordPage() {
     setError(null);
 
     try {
-      await updatePassword(token, data.password);
+      // Update password using Supabase auth
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: data.password
+      });
+
+      if (updateError) {
+        throw updateError;
+      }
+
       setSuccess(true);
       
       toast({
         title: 'Password reset successful!',
         description: 'You can now login with your new password.'
       });
+
+      // Sign out to clear the recovery session
+      await supabase.auth.signOut();
 
       // Redirect to login after 3 seconds
       setTimeout(() => {
@@ -118,15 +161,31 @@ export function ResetPasswordPage() {
     }
   };
 
-  // Check if token is present
-  if (!token) {
+  // Show loading while checking session
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center space-y-4">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <p className="text-sm text-gray-600">Verifying reset link...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Check if session is valid
+  if (!isValidSession && !checkingSession) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
         <Card className="max-w-md w-full">
           <CardHeader>
             <CardTitle>Invalid Reset Link</CardTitle>
             <CardDescription>
-              This password reset link is invalid or incomplete.
+              This password reset link is invalid or has expired.
             </CardDescription>
           </CardHeader>
           <CardContent>

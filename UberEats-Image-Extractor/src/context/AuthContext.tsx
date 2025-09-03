@@ -3,6 +3,7 @@ import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { AuthContextType, UserProfile, UserRole } from '../types/auth';
 import { useNavigate } from 'react-router-dom';
+import { InvitationService } from '../services/invitation-service';
 
 // Create context
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -67,6 +68,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (!orgError && orgData) {
           organisation = orgData;
+        } else if (orgError) {
+          console.error('Failed to fetch organisation:', orgError);
+          console.error('Organisation ID:', profile.organisation_id);
+          console.error('User ID:', profile.id);
+          // Set a fallback organization name for debugging
+          organisation = {
+            id: profile.organisation_id,
+            name: `Organization (ID: ${profile.organisation_id})`,
+            // This helps us see if the org ID is correct even if we can't fetch details
+          };
         }
       }
 
@@ -312,8 +323,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Update password with token
-  const updatePassword = async (token: string, newPassword: string) => {
+  // Update password (used by reset password flow)
+  const updatePassword = async (newPassword: string) => {
     try {
       const { error } = await supabase.auth.updateUser({
         password: newPassword
@@ -323,6 +334,62 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error: any) {
       console.error('Password update error:', error);
       throw new Error(error.message || 'Failed to update password');
+    }
+  };
+
+  // Invitation management functions (only available for admins)
+  const inviteUser = async (email: string, role: Exclude<UserRole, 'super_admin'>): Promise<string> => {
+    if (!user || !isAdmin()) {
+      throw new Error('Only admins can invite users');
+    }
+
+    try {
+      const token = await InvitationService.createInvitation(
+        email,
+        role,
+        user.organisationId,
+        user.id
+      );
+      
+      // Generate the invitation URL
+      const inviteUrl = InvitationService.generateInvitationUrl(token);
+      
+      // TODO: Send email with invitation link
+      console.log('Invitation created:', { email, role, inviteUrl });
+      
+      return inviteUrl;
+    } catch (error: any) {
+      console.error('Invite user error:', error);
+      throw new Error(error.message || 'Failed to invite user');
+    }
+  };
+
+  const removeUser = async (userId: string): Promise<void> => {
+    if (!user || !isAdmin()) {
+      throw new Error('Only admins can remove users');
+    }
+
+    try {
+      await InvitationService.removeUser(userId, user.organisationId);
+    } catch (error: any) {
+      console.error('Remove user error:', error);
+      throw new Error(error.message || 'Failed to remove user');
+    }
+  };
+
+  const updateUserRole = async (
+    userId: string,
+    role: Exclude<UserRole, 'super_admin'>
+  ): Promise<void> => {
+    if (!user || !isAdmin()) {
+      throw new Error('Only admins can update user roles');
+    }
+
+    try {
+      await InvitationService.updateUserRole(userId, role, user.organisationId);
+    } catch (error: any) {
+      console.error('Update user role error:', error);
+      throw new Error(error.message || 'Failed to update user role');
     }
   };
 
@@ -337,7 +404,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updatePassword,
     isAdmin,
     isSuperAdmin,
-    hasRole
+    hasRole,
+    // Invitation functions (only for admins)
+    ...(user && isAdmin() ? {
+      inviteUser,
+      removeUser,
+      updateUserRole
+    } : {})
   };
 
   return (

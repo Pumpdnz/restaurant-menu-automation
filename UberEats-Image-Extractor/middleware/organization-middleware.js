@@ -10,29 +10,44 @@ function organizationMiddleware(req, res, next) {
   // Get organization ID from header
   const orgId = req.headers['x-organization-id'] || req.headers['X-Organization-ID'];
   
-  console.log(`[Org Middleware] Request to ${req.path}, Org ID from header: ${orgId || 'NONE'}`);
+  // Determine if this is a polling/status endpoint that doesn't need verbose logging
+  const isStatusEndpoint = req.path.includes('/status/') || 
+                          req.path.includes('/extract-status/') ||
+                          req.path.includes('/premium-extract-status/');
+  
+  if (!isStatusEndpoint) {
+    console.log(`[Org Middleware] Request to ${req.path}, Org ID from header: ${orgId || 'NONE'}`);
+  }
   
   // Extract auth token if present
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
-    console.log('[Org Middleware] Auth token found, setting user Supabase client');
+    if (!isStatusEndpoint) {
+      console.log('[Org Middleware] Auth token found, setting user Supabase client');
+    }
     databaseService.setUserSupabaseClient(token);
   } else {
-    console.log('[Org Middleware] No auth token, using default Supabase client');
+    if (!isStatusEndpoint) {
+      console.log('[Org Middleware] No auth token, using default Supabase client');
+    }
     databaseService.setUserSupabaseClient(null);
   }
   
   if (orgId) {
     // Set the organization ID for this request
     databaseService.setCurrentOrganizationId(orgId);
-    console.log(`[Org Middleware] Set organization ID: ${orgId}`);
+    if (!isStatusEndpoint) {
+      console.log(`[Org Middleware] Set organization ID: ${orgId}`);
+    }
     
     // Also attach to request object for easy access
     req.organizationId = orgId;
   } else {
     // Use default organization if not provided
-    console.log('[Org Middleware] No org ID in header, using default');
+    if (!isStatusEndpoint) {
+      console.log('[Org Middleware] No org ID in header, using default');
+    }
     databaseService.setCurrentOrganizationId(null);
   }
   
