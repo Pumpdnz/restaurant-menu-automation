@@ -14,7 +14,8 @@ import {
   BuildingStorefrontIcon,
   TagIcon,
   ChevronDownIcon,
-  TrashIcon
+  TrashIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import EditableMenuItem from '../components/menu/EditableMenuItem';
 import { validateMenuItem, validateMenuItems, getChangedItems } from '../components/menu/MenuItemValidator';
@@ -111,19 +112,23 @@ export default function MenuDetail() {
     }
   };
 
-  const handleDownloadCSV = async (includeImages = true) => {
+  const handleDownloadCSV = async (includeImages = true, useCDN = false) => {
     try {
-      const response = await api.post(`/menus/${id}/export`, {
-        includeImages: includeImages
-      });
+      let response;
       
-      if (response.data.success && response.data.csvData) {
-        // Create a Blob from the CSV string
-        const blob = new Blob([response.data.csvData], { type: 'text/csv;charset=utf-8;' });
+      if (useCDN) {
+        // Use new CDN endpoint
+        response = await api.get(`/menus/${id}/csv-with-cdn`, {
+          params: { download: 'true' },
+          responseType: 'text'
+        });
+        
+        // For CDN endpoint, response.data is the CSV string directly
+        const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        const filename = response.data.filename || `menu_${id}_export.csv`;
+        const filename = `menu_${id}_cdn_export.csv`;
         link.setAttribute('download', filename);
         document.body.appendChild(link);
         link.click();
@@ -132,8 +137,31 @@ export default function MenuDetail() {
         
         toast({
           title: "CSV exported successfully",
-          description: `Exported ${response.data.stats?.rowCount || 'all'} items to ${filename}`,
+          description: `Exported menu with CDN data to ${filename}`,
         });
+      } else {
+        // Use existing export endpoint
+        response = await api.post(`/menus/${id}/export`, {
+          includeImages: includeImages
+        });
+        
+        if (response.data.success && response.data.csvData) {
+          const blob = new Blob([response.data.csvData], { type: 'text/csv;charset=utf-8;' });
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          const filename = response.data.filename || `menu_${id}_export.csv`;
+          link.setAttribute('download', filename);
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          window.URL.revokeObjectURL(url);
+          
+          toast({
+            title: "CSV exported successfully",
+            description: `Exported ${response.data.stats?.rowCount || 'all'} items to ${filename}`,
+          });
+        }
       }
     } catch (err) {
       console.error('Failed to export CSV:', err);
@@ -175,6 +203,65 @@ export default function MenuDetail() {
       toast({
         title: "Download failed",
         description: 'Failed to download menu images',
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUploadImagesToCDN = async () => {
+    try {
+      toast({
+        title: "Starting CDN upload...",
+        description: "Uploading images to CDN",
+      });
+      
+      const response = await api.post(`/menus/${id}/upload-images`, {
+        options: {
+          preserveFilenames: true,
+          skipExisting: true
+        }
+      });
+      
+      if (response.data.success) {
+        const batchId = response.data.batchId;
+        
+        toast({
+          title: "Upload started",
+          description: `Uploading ${response.data.totalImages} images to CDN. Batch ID: ${batchId}`,
+        });
+        
+        // Poll for progress
+        const checkProgress = setInterval(async () => {
+          try {
+            const progressResponse = await api.get(`/upload-batches/${batchId}`);
+            const batch = progressResponse.data.batch;
+            
+            if (batch.status === 'completed') {
+              clearInterval(checkProgress);
+              toast({
+                title: "Upload complete!",
+                description: `Successfully uploaded ${batch.progress.uploaded} images to CDN`,
+                variant: "success"
+              });
+            } else if (batch.status === 'failed') {
+              clearInterval(checkProgress);
+              toast({
+                title: "Upload failed",
+                description: "Some images failed to upload to CDN",
+                variant: "destructive"
+              });
+            }
+          } catch (err) {
+            console.error('Error checking progress:', err);
+            clearInterval(checkProgress);
+          }
+        }, 2000);
+      }
+    } catch (err) {
+      console.error('Failed to upload images to CDN:', err);
+      toast({
+        title: "Upload failed",
+        description: err.response?.data?.error || 'Failed to upload images to CDN',
         variant: "destructive",
       });
     }
@@ -590,9 +677,9 @@ export default function MenuDetail() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleDownloadCSV(true)}>
-                      <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
-                      CSV with Images
+                    <DropdownMenuItem onClick={() => handleDownloadCSV(true, true)}>
+                      <CheckCircleIcon className="h-4 w-4 mr-2 text-green-600" />
+                      CSV with CDN Images
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleDownloadCSV(false)}>
                       <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
@@ -600,14 +687,25 @@ export default function MenuDetail() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button
-                  onClick={handleDownloadImages}
-                  variant="outline"
-                  size="sm"
-                >
-                  <PhotoIcon className="h-4 w-4 mr-1.5" />
-                  Download Images
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <PhotoIcon className="h-4 w-4 mr-1.5" />
+                      Export Images
+                      <ChevronDownIcon className="h-3 w-3 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleUploadImagesToCDN}>
+                      <ArrowPathIcon className="h-4 w-4 mr-2 text-purple-600" />
+                      Upload to CDN
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleDownloadImages}>
+                      <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
+                      Download Images (ZIP)
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </>
             ) : (
               <>

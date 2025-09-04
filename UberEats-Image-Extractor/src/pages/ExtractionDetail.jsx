@@ -11,11 +11,20 @@ import {
   CheckIcon,
   XMarkIcon,
   ArrowPathIcon,
-  TrashIcon
+  TrashIcon,
+  ChevronDownIcon,
+  CloudArrowUpIcon
 } from '@heroicons/react/24/outline';
 import EditableMenuItem from '../components/menu/EditableMenuItem';
 import { validateMenuItem, validateMenuItems, getChangedItems } from '../components/menu/MenuItemValidator';
 import { useToast } from '../hooks/use-toast';
+import { Button } from '../components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu';
 
 export default function ExtractionDetail() {
   const { jobId } = useParams();
@@ -271,36 +280,60 @@ export default function ExtractionDetail() {
     }
   };
 
-  const handleDownloadCSV = async (includeImages = true) => {
+  const handleDownloadCSV = async (includeImages = true, useCDN = false) => {
     try {
       // Check if the job has a menuId (database-driven)
       if (job.menuId) {
-        // Use direct CSV download endpoint for database menus
-        const response = await api.get(`/menus/${job.menuId}/csv`, {
-          responseType: 'blob',
-          params: { format: includeImages ? 'full' : 'no_images' }
-        });
-        
-        // Create download link
-        const url = window.URL.createObjectURL(response.data);
-        const a = document.createElement('a');
-        a.href = url;
-        
-        // Extract filename from Content-Disposition header or use default
-        const contentDisposition = response.headers['content-disposition'];
-        let filename = `${job.restaurant || 'menu'}_export.csv`;
-        if (contentDisposition) {
-          const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(contentDisposition);
-          if (matches && matches[1]) {
-            filename = matches[1].replace(/['"]/g, '');
+        if (useCDN) {
+          // Use new CDN endpoint
+          const response = await api.get(`/menus/${job.menuId}/csv-with-cdn`, {
+            params: { download: 'true' },
+            responseType: 'text'
+          });
+          
+          // Create download link
+          const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${job.restaurant || 'menu'}_cdn_export.csv`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+          
+          toast({
+            title: "CSV exported successfully",
+            description: "Exported menu with CDN data",
+          });
+        } else {
+          // Use direct CSV download endpoint for database menus
+          const response = await api.get(`/menus/${job.menuId}/csv`, {
+            responseType: 'blob',
+            params: { format: includeImages ? 'full' : 'no_images' }
+          });
+          
+          // Create download link
+          const url = window.URL.createObjectURL(response.data);
+          const a = document.createElement('a');
+          a.href = url;
+          
+          // Extract filename from Content-Disposition header or use default
+          const contentDisposition = response.headers['content-disposition'];
+          let filename = `${job.restaurant || 'menu'}_export.csv`;
+          if (contentDisposition) {
+            const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(contentDisposition);
+            if (matches && matches[1]) {
+              filename = matches[1].replace(/['"]/g, '');
+            }
           }
+          
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
         }
-        
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
       } else if (menuData) {
         // Fall back to old method using in-memory data
         const csvResponse = await api.post('/generate-clean-csv', {
@@ -636,6 +669,74 @@ export default function ExtractionDetail() {
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleUploadImagesToCDN = async () => {
+    try {
+      if (!job.menuId) {
+        toast({
+          title: "No menu available",
+          description: "This extraction doesn't have a saved menu. Please run a new extraction.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      toast({
+        title: "Starting CDN upload...",
+        description: "Uploading images to CDN",
+      });
+      
+      const response = await api.post(`/menus/${job.menuId}/upload-images`, {
+        options: {
+          preserveFilenames: true,
+          skipExisting: true
+        }
+      });
+      
+      if (response.data.success) {
+        const batchId = response.data.batchId;
+        
+        toast({
+          title: "Upload started",
+          description: `Uploading ${response.data.totalImages} images to CDN`,
+        });
+        
+        // Poll for progress
+        const checkProgress = setInterval(async () => {
+          try {
+            const progressResponse = await api.get(`/upload-batches/${batchId}`);
+            const batch = progressResponse.data.batch;
+            
+            if (batch.status === 'completed') {
+              clearInterval(checkProgress);
+              toast({
+                title: "Upload complete!",
+                description: `Successfully uploaded ${batch.progress.uploaded} images to CDN`,
+                variant: "success"
+              });
+            } else if (batch.status === 'failed') {
+              clearInterval(checkProgress);
+              toast({
+                title: "Upload failed",
+                description: "Some images failed to upload to CDN",
+                variant: "destructive"
+              });
+            }
+          } catch (err) {
+            console.error('Error checking progress:', err);
+            clearInterval(checkProgress);
+          }
+        }, 2000);
+      }
+    } catch (err) {
+      console.error('Failed to upload images to CDN:', err);
+      toast({
+        title: "Upload failed",
+        description: err.response?.data?.error || 'Failed to upload images to CDN',
+        variant: "destructive",
+      });
     }
   };
 
@@ -978,35 +1079,52 @@ export default function ExtractionDetail() {
             {(job.state === 'completed' || job.status === 'completed') && (
               <div className="sm:col-span-3">
                 <div className="flex flex-wrap gap-3">
-                  <button
-                    onClick={() => handleDownloadCSV(false)}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700"
-                  >
-                    <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
-                    CSV (No Images)
-                  </button>
-                  <button
-                    onClick={() => handleDownloadCSV(true)}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700"
-                  >
-                    <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
-                    CSV (With Images)
-                  </button>
-                  <button
-                    onClick={() => handleDownloadImages(true)}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
-                  >
-                    <PhotoIcon className="h-4 w-4 mr-2" />
-                    Download Images (ZIP)
-                  </button>
-                  <button
-                    onClick={() => handleDownloadImages(false)}
-                    className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                    title="Downloads images to server location for internal processing"
-                  >
-                    <PhotoIcon className="h-4 w-4 mr-2" />
-                    Download Images (Server)
-                  </button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="default" size="sm" className="bg-green-600 hover:bg-green-700">
+                        <DocumentArrowDownIcon className="h-4 w-4 mr-1.5" />
+                        Export CSV
+                        <ChevronDownIcon className="h-3 w-3 ml-1" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleDownloadCSV(true, true)}>
+                        <CheckCircleIcon className="h-4 w-4 mr-2 text-green-600" />
+                        CSV with CDN Images
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleDownloadCSV(false)}>
+                        <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
+                        CSV without Images
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="default" size="sm" className="bg-blue-600 hover:bg-blue-700">
+                        <PhotoIcon className="h-4 w-4 mr-1.5" />
+                        Export Images
+                        <ChevronDownIcon className="h-3 w-3 ml-1" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={handleUploadImagesToCDN}>
+                        <CloudArrowUpIcon className="h-4 w-4 mr-2 text-purple-600" />
+                        Upload to CDN
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleDownloadImages(true)}>
+                        <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
+                        Download Images (ZIP)
+                      </DropdownMenuItem>
+                      {/* Only show server download for admin users */}
+                      {localStorage.getItem('userRole') === 'admin' && (
+                        <DropdownMenuItem onClick={() => handleDownloadImages(false)}>
+                          <PhotoIcon className="h-4 w-4 mr-2" />
+                          Download Images (Server)
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             )}

@@ -883,6 +883,36 @@ async function getMenuWithItems(menuId) {
 }
 
 /**
+ * Get menu ID for an extraction job
+ */
+async function getMenuIdForJob(extractionJobId) {
+  if (!isDatabaseAvailable()) {
+    return null;
+  }
+
+  try {
+    const { data, error } = await getSupabaseClient()
+      .from('menus')
+      .select('id')
+      .eq('extraction_job_id', extractionJobId)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // No menu found
+        return null;
+      }
+      throw error;
+    }
+
+    return data?.id || null;
+  } catch (error) {
+    console.error('[Database] Failed to get menu ID for job:', error.message);
+    return null;
+  }
+}
+
+/**
  * Get active menu items view
  */
 async function getActiveMenuItems(restaurantId, platformId = null) {
@@ -2263,6 +2293,382 @@ async function getExtractionStats() {
   }
 }
 
+/**
+ * CDN Upload Operations
+ */
+
+/**
+ * Get menu images for CDN upload
+ */
+async function getMenuImagesForUpload(menuId) {
+  if (!isDatabaseAvailable()) return [];
+  
+  try {
+    const client = getSupabaseClient();
+    
+    // First get menu items for this menu
+    const { data: menuItems, error: menuError } = await client
+      .from('menu_items')
+      .select('id')
+      .eq('menu_id', menuId);
+    
+    if (menuError) throw menuError;
+    
+    const menuItemIds = menuItems.map(item => item.id);
+    
+    // Then get images for these menu items
+    const { data, error } = await client
+      .from('item_images')
+      .select(`
+        *,
+        menu_items (
+          id,
+          name,
+          menu_id,
+          categories (
+            id,
+            name
+          )
+        )
+      `)
+      .in('menu_item_id', menuItemIds)
+      .or('cdn_uploaded.eq.false,cdn_uploaded.is.null');
+    
+    if (error) throw error;
+    
+    // Transform the data to include item and category names
+    const transformedData = data.map(image => ({
+      ...image,
+      itemName: image.menu_items?.name,
+      categoryName: image.menu_items?.categories?.name,
+      menuItemId: image.menu_item_id
+    }));
+    
+    console.log(`[Database] Found ${transformedData.length} images to upload for menu ${menuId}`);
+    return transformedData;
+  } catch (error) {
+    console.error('[Database] Error getting menu images for upload:', error);
+    return [];
+  }
+}
+
+/**
+ * Update image with CDN information
+ */
+async function updateImageCDNInfo(imageId, cdnData) {
+  if (!isDatabaseAvailable()) return null;
+  
+  try {
+    const client = getSupabaseClient();
+    const { data, error } = await client
+      .from('item_images')
+      .update({
+        cdn_uploaded: true,
+        cdn_id: cdnData.cdnId,
+        cdn_url: cdnData.cdnUrl,
+        cdn_filename: cdnData.filename,
+        cdn_metadata: cdnData.metadata || {},
+        upload_status: 'success',
+        uploaded_at: new Date().toISOString()
+      })
+      .eq('id', imageId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('[Database] Error updating image CDN info:', error);
+    return null;
+  }
+}
+
+/**
+ * Mark image upload as failed
+ */
+async function markImageUploadFailed(imageId, errorMessage) {
+  if (!isDatabaseAvailable()) return null;
+  
+  try {
+    const client = getSupabaseClient();
+    const { data, error } = await client
+      .from('item_images')
+      .update({
+        upload_status: 'failed',
+        upload_error: errorMessage,
+        cdn_uploaded: false
+      })
+      .eq('id', imageId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('[Database] Error marking image upload as failed:', error);
+    return null;
+  }
+}
+
+/**
+ * Create upload batch record
+ */
+async function createUploadBatch(menuId, totalImages) {
+  if (!isDatabaseAvailable()) return null;
+  
+  try {
+    const client = getSupabaseClient();
+    const { data, error } = await client
+      .from('upload_batches')
+      .insert({
+        menu_id: menuId,
+        total_images: totalImages,
+        uploaded_count: 0,
+        failed_count: 0,
+        status: 'pending',
+        started_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    console.log(`[Database] Created upload batch ${data.id} for ${totalImages} images`);
+    return data;
+  } catch (error) {
+    console.error('[Database] Error creating upload batch:', error);
+    return null;
+  }
+}
+
+/**
+ * Update upload batch progress
+ */
+async function updateUploadBatch(batchId, updates) {
+  if (!isDatabaseAvailable()) return null;
+  
+  try {
+    const client = getSupabaseClient();
+    const updateData = {
+      ...updates,
+      updated_at: new Date().toISOString()
+    };
+    
+    // Add completed_at if status is completed or failed
+    if (updates.status === 'completed' || updates.status === 'failed') {
+      updateData.completed_at = new Date().toISOString();
+    }
+    
+    const { data, error } = await client
+      .from('upload_batches')
+      .update(updateData)
+      .eq('id', batchId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('[Database] Error updating upload batch:', error);
+    return null;
+  }
+}
+
+/**
+ * Get upload batch by ID
+ */
+async function getUploadBatch(batchId) {
+  if (!isDatabaseAvailable()) return null;
+  
+  try {
+    const client = getSupabaseClient();
+    const { data, error } = await client
+      .from('upload_batches')
+      .select(`
+        *,
+        menus (
+          id,
+          restaurants (name)
+        )
+      `)
+      .eq('id', batchId)
+      .single();
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('[Database] Error getting upload batch:', error);
+    return null;
+  }
+}
+
+/**
+ * Get pending images for batch (for resume functionality)
+ */
+async function getPendingImagesForBatch(batchId) {
+  if (!isDatabaseAvailable()) return [];
+  
+  try {
+    // Get the batch to find menu_id
+    const batch = await getUploadBatch(batchId);
+    if (!batch) return [];
+    
+    const client = getSupabaseClient();
+    const { data, error } = await client
+      .from('item_images')
+      .select(`
+        *,
+        menu_items!inner (
+          id,
+          name,
+          menu_id,
+          categories (
+            name
+          )
+        )
+      `)
+      .eq('menu_items.menu_id', batch.menu_id)
+      .or('cdn_uploaded.eq.false,cdn_uploaded.is.null')
+      .neq('upload_status', 'success');
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('[Database] Error getting pending images for batch:', error);
+    return [];
+  }
+}
+
+/**
+ * Get menu CDN images (for rollback)
+ */
+async function getMenuCDNImages(menuId) {
+  if (!isDatabaseAvailable()) return [];
+  
+  try {
+    const client = getSupabaseClient();
+    const { data, error } = await client
+      .from('item_images')
+      .select(`
+        *,
+        menu_items!inner (
+          menu_id
+        )
+      `)
+      .eq('menu_items.menu_id', menuId)
+      .eq('cdn_uploaded', true)
+      .not('cdn_id', 'is', null);
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('[Database] Error getting menu CDN images:', error);
+    return [];
+  }
+}
+
+/**
+ * Clear image CDN info (for rollback)
+ */
+async function clearImageCDNInfo(imageId) {
+  if (!isDatabaseAvailable()) return null;
+  
+  try {
+    const client = getSupabaseClient();
+    const { data, error } = await client
+      .from('item_images')
+      .update({
+        cdn_uploaded: false,
+        cdn_id: null,
+        cdn_url: null,
+        cdn_filename: null,
+        cdn_metadata: null,
+        upload_status: null,
+        upload_error: null,
+        uploaded_at: null
+      })
+      .eq('id', imageId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('[Database] Error clearing image CDN info:', error);
+    return null;
+  }
+}
+
+/**
+ * Get CDN upload statistics for a menu
+ */
+async function getMenuCDNStats(menuId) {
+  if (!isDatabaseAvailable()) return null;
+  
+  try {
+    const client = getSupabaseClient();
+    
+    // First get menu items for this menu
+    const { data: menuItems, error: menuError } = await client
+      .from('menu_items')
+      .select('id')
+      .eq('menu_id', menuId);
+    
+    if (menuError) throw menuError;
+    
+    const menuItemIds = menuItems.map(item => item.id);
+    
+    // Then get images for these menu items
+    const { data: images, error } = await client
+      .from('item_images')
+      .select('cdn_uploaded, upload_status')
+      .in('menu_item_id', menuItemIds);
+    
+    if (error) throw error;
+    
+    const stats = {
+      totalImages: images.length,
+      uploadedImages: images.filter(img => img.cdn_uploaded === true).length,
+      failedUploads: images.filter(img => img.upload_status === 'failed').length,
+      pendingUploads: images.filter(img => !img.cdn_uploaded && img.upload_status !== 'failed').length,
+      uploadPercentage: 0
+    };
+    
+    if (stats.totalImages > 0) {
+      stats.uploadPercentage = Math.round((stats.uploadedImages / stats.totalImages) * 100);
+    }
+    
+    return stats;
+  } catch (error) {
+    console.error('[Database] Error getting menu CDN stats:', error);
+    return null;
+  }
+}
+
+/**
+ * Find existing CDN image by original URL (for deduplication)
+ */
+async function findCDNImageByUrl(originalUrl) {
+  if (!isDatabaseAvailable()) return null;
+  
+  try {
+    const client = getSupabaseClient();
+    const { data, error } = await client
+      .from('item_images')
+      .select('*')
+      .eq('url', originalUrl)
+      .eq('cdn_uploaded', true)
+      .not('cdn_id', 'is', null)
+      .limit(1)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows found
+    return data;
+  } catch (error) {
+    console.error('[Database] Error finding CDN image by URL:', error);
+    return null;
+  }
+}
+
 // Export all functions
 module.exports = {
   get supabase() { return supabase; },
@@ -2326,6 +2732,19 @@ module.exports = {
   // Image operations
   createItemImages,
   
+  // CDN Upload operations
+  getMenuImagesForUpload,
+  updateImageCDNInfo,
+  markImageUploadFailed,
+  createUploadBatch,
+  updateUploadBatch,
+  getUploadBatch,
+  getPendingImagesForBatch,
+  getMenuCDNImages,
+  clearImageCDNInfo,
+  getMenuCDNStats,
+  findCDNImageByUrl,
+  
   // Log operations
   createExtractionLog,
   
@@ -2339,5 +2758,6 @@ module.exports = {
   // Combined operations
   saveExtractionResults,
   getMenuWithItems,
-  getActiveMenuItems
+  getActiveMenuItems,
+  getMenuIdForJob
 };

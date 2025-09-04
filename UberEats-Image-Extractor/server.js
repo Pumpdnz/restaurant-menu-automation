@@ -36,6 +36,9 @@ const {
 // Import database service
 const db = require('./src/services/database-service');
 
+// Import UploadCare service for CDN uploads
+const UploadCareService = require('./src/services/uploadcare-service');
+
 // Import auth middleware
 const { authMiddleware } = require('./middleware/auth');
 
@@ -52,6 +55,11 @@ const isDevelopment = process.env.NODE_ENV !== 'production';
 // Environment variables
 const FIRECRAWL_API_KEY = process.env.FIRECRAWL_API_KEY || '';
 const FIRECRAWL_API_URL = process.env.FIRECRAWL_API_URL || 'https://api.firecrawl.dev';
+const UPLOADCARE_PUBLIC_KEY = process.env.UPLOADCARE_PUBLIC_KEY || '';
+const UPLOADCARE_SECRET_KEY = process.env.UPLOADCARE_SECRET_KEY || null;
+
+// Initialize UploadCare service
+const uploadcare = new UploadCareService(UPLOADCARE_PUBLIC_KEY, UPLOADCARE_SECRET_KEY);
 
 // Default extraction prompt for restaurant menu data
 const DEFAULT_PROMPT = `I need you to extract the complete structured menu data from this restaurant's food delivery platform. They may have multiple menus so please navigate thoroughly through the entire site to view all menus. Scroll from top to bottom to ensure all menu items load. Click on the menu selector dropdown and open all available menus to extract all variants of the menu items across all menus. Ensure all menu items and their details are visible before extraction. Do not include any frequently asked questions. Do not include the thumbs up ratings in the tags array data.`;
@@ -2172,12 +2180,12 @@ app.get('/api/premium-extract-status/:jobId', authMiddleware, async (req, res) =
 /**
  * Get premium extraction job results
  */
-app.get('/api/premium-extract-results/:jobId', authMiddleware, (req, res) => {
+app.get('/api/premium-extract-results/:jobId', authMiddleware, async (req, res) => {
   const { jobId } = req.params;
   
   try {
     const premiumExtractionService = require('./src/services/premium-extraction-service');
-    const results = premiumExtractionService.getJobResults(jobId);
+    const results = await premiumExtractionService.getJobResults(jobId);
     
     res.json(results);
   } catch (error) {
@@ -2763,6 +2771,415 @@ app.post('/api/menus/:id/download-images', async (req, res) => {
     return res.status(500).json({
       success: false,
       error: error.message || 'Failed to download menu images'
+    });
+  }
+});
+
+/**
+ * POST /api/menus/:id/upload-images
+ * Upload menu images to UploadCare CDN
+ */
+app.post('/api/menus/:id/upload-images', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { options = {} } = req.body;
+    
+    // Check if UploadCare is configured
+    if (!UPLOADCARE_PUBLIC_KEY) {
+      return res.status(503).json({
+        success: false,
+        error: 'UploadCare service not configured. Please set UPLOADCARE_PUBLIC_KEY in environment variables.'
+      });
+    }
+    
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+    
+    // Get the menu to verify it exists
+    const menu = await db.getMenuWithItems(id);
+    if (!menu) {
+      return res.status(404).json({
+        success: false,
+        error: 'Menu not found'
+      });
+    }
+    
+    // Get images that need to be uploaded
+    const imagesToUpload = await db.getMenuImagesForUpload(id);
+    
+    if (imagesToUpload.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No images to upload. All images are already uploaded to CDN or no images exist.',
+        stats: {
+          totalImages: 0,
+          alreadyUploaded: 0
+        }
+      });
+    }
+    
+    // Create upload batch record
+    const batch = await db.createUploadBatch(id, imagesToUpload.length);
+    
+    if (!batch) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to create upload batch'
+      });
+    }
+    
+    const restaurantName = menu.restaurants?.name || 'Unknown Restaurant';
+    console.log(`[API] Starting CDN upload for menu ${id} (${restaurantName}): ${imagesToUpload.length} images`);
+    
+    // Decide whether to process synchronously or asynchronously based on batch size
+    const SYNC_UPLOAD_LIMIT = 10; // Process synchronously if 10 or fewer images
+    
+    if (imagesToUpload.length <= SYNC_UPLOAD_LIMIT) {
+      // Small batch - process synchronously
+      try {
+        const uploadResults = await processSyncUpload(batch.id, id, imagesToUpload, restaurantName);
+        
+        return res.json({
+          success: true,
+          mode: 'synchronous',
+          batchId: batch.id,
+          message: `Upload completed for ${uploadResults.successful.length} images`,
+          stats: {
+            totalImages: imagesToUpload.length,
+            successful: uploadResults.successful.length,
+            failed: uploadResults.failed.length
+          },
+          results: uploadResults
+        });
+      } catch (error) {
+        console.error(`[API] Sync upload failed for batch ${batch.id}:`, error);
+        await db.updateUploadBatch(batch.id, {
+          status: 'failed',
+          failed_count: imagesToUpload.length,
+          metadata: { error: error.message }
+        });
+        
+        return res.status(500).json({
+          success: false,
+          error: 'Upload failed',
+          details: error.message
+        });
+      }
+    } else {
+      // Large batch - process asynchronously
+      // Start background processing
+      processAsyncUpload(batch.id, id, imagesToUpload, restaurantName);
+      
+      return res.json({
+        success: true,
+        mode: 'asynchronous',
+        batchId: batch.id,
+        message: `Upload started for ${imagesToUpload.length} images. Track progress using the batch ID.`,
+        totalImages: imagesToUpload.length,
+        progressUrl: `/api/upload-batches/${batch.id}`
+      });
+    }
+    
+  } catch (error) {
+    console.error('[API] Error in upload-images endpoint:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to start image upload'
+    });
+  }
+});
+
+/**
+ * Helper function to process synchronous upload
+ */
+async function processSyncUpload(batchId, menuId, images, restaurantName) {
+  const results = {
+    successful: [],
+    failed: []
+  };
+  
+  try {
+    // Update batch status to processing
+    await db.updateUploadBatch(batchId, {
+      status: 'processing'
+    });
+    
+    // Process each image
+    for (const image of images) {
+      try {
+        const filename = uploadcare.sanitizeFilename(
+          image.url,
+          image.itemName,
+          image.categoryName
+        );
+        
+        const metadata = {
+          menuItemId: image.menu_item_id,
+          menuId: menuId,
+          itemName: image.itemName,
+          categoryName: image.categoryName,
+          restaurantName: restaurantName,
+          batchId: batchId
+        };
+        
+        const uploadResult = await uploadcare.uploadImageWithRetry(
+          image.url,
+          filename,
+          metadata
+        );
+        
+        if (uploadResult.success) {
+          // Update database with CDN info
+          await db.updateImageCDNInfo(image.id, {
+            cdnId: uploadResult.cdnId,
+            cdnUrl: uploadResult.cdnUrl,
+            filename: uploadResult.filename || filename,
+            metadata: uploadResult.metadata
+          });
+          
+          results.successful.push({
+            imageId: image.id,
+            itemName: image.itemName,
+            cdnUrl: uploadResult.cdnUrl
+          });
+        } else {
+          // Mark as failed
+          await db.markImageUploadFailed(image.id, uploadResult.error);
+          results.failed.push({
+            imageId: image.id,
+            itemName: image.itemName,
+            error: uploadResult.error
+          });
+        }
+      } catch (error) {
+        console.error(`[API] Failed to upload image ${image.id}:`, error);
+        await db.markImageUploadFailed(image.id, error.message);
+        results.failed.push({
+          imageId: image.id,
+          itemName: image.itemName,
+          error: error.message
+        });
+      }
+    }
+    
+    // Update batch record
+    await db.updateUploadBatch(batchId, {
+      uploaded_count: results.successful.length,
+      failed_count: results.failed.length,
+      status: results.failed.length === 0 ? 'completed' : 'partial',
+      metadata: {
+        completedAt: new Date().toISOString()
+      }
+    });
+    
+    return results;
+  } catch (error) {
+    console.error(`[API] Error in sync upload processing:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Helper function to process asynchronous upload (background)
+ */
+async function processAsyncUpload(batchId, menuId, images, restaurantName) {
+  try {
+    console.log(`[API] Starting async upload for batch ${batchId}: ${images.length} images`);
+    
+    // Update batch status
+    await db.updateUploadBatch(batchId, {
+      status: 'processing'
+    });
+    
+    // Use the uploadBatch method with progress callback
+    const progressCallback = async (progress) => {
+      // Update batch progress in database
+      await db.updateUploadBatch(batchId, {
+        uploaded_count: progress.progress.successful,
+        failed_count: progress.progress.failed
+      });
+    };
+    
+    // Transform images for batch upload
+    const uploadImages = images.map(img => ({
+      ...img,
+      restaurantName: restaurantName
+    }));
+    
+    const results = await uploadcare.uploadBatch(uploadImages, progressCallback, batchId);
+    
+    // Process successful uploads
+    for (const result of results.successful) {
+      await db.updateImageCDNInfo(result.originalImage.id, {
+        cdnId: result.cdnId,
+        cdnUrl: result.cdnUrl,
+        filename: result.filename,
+        metadata: result.metadata
+      });
+    }
+    
+    // Process failed uploads
+    for (const result of results.failed) {
+      await db.markImageUploadFailed(result.originalImage.id, result.error);
+    }
+    
+    // Final batch update
+    await db.updateUploadBatch(batchId, {
+      uploaded_count: results.successful.length,
+      failed_count: results.failed.length,
+      status: results.failed.length === 0 ? 'completed' : 
+              results.successful.length === 0 ? 'failed' : 'partial',
+      metadata: {
+        completedAt: new Date().toISOString(),
+        duration: results.completedAt - results.startedAt
+      }
+    });
+    
+    console.log(`[API] Async upload completed for batch ${batchId}: ${results.successful.length} successful, ${results.failed.length} failed`);
+    
+  } catch (error) {
+    console.error(`[API] Async upload failed for batch ${batchId}:`, error);
+    await db.updateUploadBatch(batchId, {
+      status: 'failed',
+      metadata: { 
+        error: error.message,
+        failedAt: new Date().toISOString()
+      }
+    });
+  }
+}
+
+/**
+ * GET /api/upload-batches/:batchId
+ * Get upload batch status and progress
+ */
+app.get('/api/upload-batches/:batchId', async (req, res) => {
+  try {
+    const { batchId } = req.params;
+    
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+    
+    const batch = await db.getUploadBatch(batchId);
+    
+    if (!batch) {
+      return res.status(404).json({
+        success: false,
+        error: 'Upload batch not found'
+      });
+    }
+    
+    const response = {
+      success: true,
+      batch: {
+        id: batch.id,
+        menuId: batch.menu_id,
+        status: batch.status,
+        progress: {
+          total: batch.total_images,
+          uploaded: batch.uploaded_count || 0,
+          failed: batch.failed_count || 0,
+          percentage: batch.total_images > 0 
+            ? Math.round(((batch.uploaded_count || 0) / batch.total_images) * 100)
+            : 0
+        },
+        startedAt: batch.started_at,
+        completedAt: batch.completed_at,
+        metadata: batch.metadata
+      }
+    };
+    
+    // Add restaurant name if available
+    if (batch.menus?.restaurants?.name) {
+      response.batch.restaurantName = batch.menus.restaurants.name;
+    }
+    
+    return res.json(response);
+    
+  } catch (error) {
+    console.error('[API] Error getting upload batch:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get upload batch status'
+    });
+  }
+});
+
+/**
+ * POST /api/upload-batches/:batchId/retry
+ * Retry failed uploads in a batch
+ */
+app.post('/api/upload-batches/:batchId/retry', async (req, res) => {
+  try {
+    const { batchId } = req.params;
+    
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+    
+    const batch = await db.getUploadBatch(batchId);
+    
+    if (!batch) {
+      return res.status(404).json({
+        success: false,
+        error: 'Upload batch not found'
+      });
+    }
+    
+    // Get pending/failed images for this batch
+    const pendingImages = await db.getPendingImagesForBatch(batchId);
+    
+    if (pendingImages.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No images to retry. All images have been successfully uploaded.',
+        stats: {
+          totalImages: batch.total_images,
+          uploaded: batch.uploaded_count,
+          toRetry: 0
+        }
+      });
+    }
+    
+    // Reset batch status for retry
+    await db.updateUploadBatch(batchId, {
+      status: 'processing',
+      metadata: {
+        ...batch.metadata,
+        retryStarted: new Date().toISOString()
+      }
+    });
+    
+    // Get restaurant name
+    const menu = await db.getMenuWithItems(batch.menu_id);
+    const restaurantName = menu?.restaurants?.name || 'Unknown Restaurant';
+    
+    // Process retry (always async for retries)
+    processAsyncUpload(batchId, batch.menu_id, pendingImages, restaurantName);
+    
+    return res.json({
+      success: true,
+      batchId: batchId,
+      message: `Retry started for ${pendingImages.length} images`,
+      progressUrl: `/api/upload-batches/${batchId}`
+    });
+    
+  } catch (error) {
+    console.error('[API] Error retrying upload batch:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to retry upload batch'
     });
   }
 });
@@ -3414,6 +3831,222 @@ app.get('/api/menus/:id/csv', async (req, res) => {
     return res.status(500).json({
       success: false,
       error: error.message || 'Failed to generate CSV'
+    });
+  }
+});
+
+/**
+ * GET /api/menus/:id/csv-with-cdn
+ * Generate CSV with CDN information for Pumpd platform integration
+ * Includes columns: isCDNImage, imageCDNID, imageCDNFilename, imageExternalURL
+ */
+app.get('/api/menus/:id/csv-with-cdn', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { download = 'false' } = req.query; // Option to download as file or return JSON
+    
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+    
+    // Get the full menu with items
+    const menu = await db.getMenuWithItems(id);
+    
+    if (!menu) {
+      return res.status(404).json({
+        success: false,
+        error: 'Menu not found'
+      });
+    }
+    
+    // Phrases to remove from all fields (same as generate-clean-csv)
+    const UNWANTED_PHRASES = [
+      'Plus small',
+      'Thumb up outline',
+      'No. 1 most liked',
+      'No. 2 most liked',
+      'No. 3 most liked'
+    ];
+    
+    // Regex patterns to remove
+    const REGEX_PATTERNS = [
+      /\d+%/g,        // Percentages like "93%"
+      /\(\d+\)/g      // Counts in parentheses like "(30)"
+    ];
+    
+    /**
+     * Clean a field value by removing unwanted phrases while preserving legitimate content
+     */
+    function cleanField(value) {
+      if (!value || typeof value !== 'string') {
+        return value;
+      }
+      
+      let cleaned = value;
+      
+      // Remove each unwanted phrase
+      UNWANTED_PHRASES.forEach(phrase => {
+        cleaned = cleaned.replace(new RegExp(phrase, 'g'), '');
+      });
+      
+      // Remove regex patterns
+      REGEX_PATTERNS.forEach(pattern => {
+        cleaned = cleaned.replace(pattern, '');
+      });
+      
+      // Replace newlines with spaces to prevent CSV format breaking
+      cleaned = cleaned.replace(/\r?\n/g, ' ');
+      
+      // Clean up multiple semicolons, commas, and extra spaces
+      if (cleaned.includes(';') || UNWANTED_PHRASES.some(phrase => value.includes(phrase))) {
+        cleaned = cleaned.replace(/;\s*;/g, ';');     // Remove duplicate semicolons
+        cleaned = cleaned.replace(/,\s*,/g, ',');     // Remove duplicate commas
+        cleaned = cleaned.replace(/\s+/g, ' ');       // Normalize spaces
+        cleaned = cleaned.replace(/^\s*[;,]\s*/, ''); // Remove leading punctuation
+        cleaned = cleaned.replace(/\s*[;,]\s*$/, ''); // Remove trailing punctuation
+      }
+      
+      // Trim whitespace
+      cleaned = cleaned.trim();
+      
+      // Return empty string if we removed everything
+      return cleaned || '';
+    }
+    
+    // CSV Headers including new CDN columns
+    const headers = [
+      'menuID', 'menuName', 'menuDisplayName', 'menuDescription',
+      'categoryID', 'categoryName', 'categoryDisplayName', 'categoryDescription',
+      'dishID', 'dishName', 'dishPrice', 'dishType', 'dishDescription',
+      'displayName', 'printName', 'tags',
+      'isCDNImage', 'imageCDNID', 'imageCDNFilename', 'imageExternalURL'
+    ];
+    
+    // Process menu items
+    const rows = [];
+    let totalItems = 0;
+    let itemsWithCDN = 0;
+    let itemsWithoutImages = 0;
+    
+    if (menu.categories) {
+      menu.categories.forEach(category => {
+        if (category.menu_items) {
+          category.menu_items.forEach(item => {
+            totalItems++;
+            
+            // Clean field values
+            const cleanedCategoryName = cleanField(category.name || 'Uncategorized');
+            const cleanedDishName = cleanField(item.name || '');
+            const cleanedDescription = cleanField(item.description || '');
+            
+            // Process tags
+            let tagsString = '';
+            if (item.tags) {
+              if (Array.isArray(item.tags)) {
+                tagsString = item.tags.join(', ');
+              } else {
+                tagsString = String(item.tags);
+              }
+              tagsString = cleanField(tagsString);
+            }
+            
+            // Check for CDN uploaded image
+            let isCDNImage = 'FALSE';
+            let imageCDNID = '';
+            let imageCDNFilename = '';
+            let imageExternalURL = ''; // Always blank for now - reserved for future external image support
+            
+            // Look for CDN uploaded images
+            if (item.item_images && item.item_images.length > 0) {
+              // Find primary image or first available
+              const primaryImage = item.item_images.find(img => img.type === 'primary') || item.item_images[0];
+              
+              if (primaryImage && primaryImage.cdn_uploaded === true && primaryImage.cdn_id) {
+                isCDNImage = 'TRUE';
+                imageCDNID = primaryImage.cdn_id;
+                imageCDNFilename = primaryImage.cdn_filename || '';
+                itemsWithCDN++;
+              }
+            } else {
+              itemsWithoutImages++;
+            }
+            
+            // Build the CSV row with all fields including CDN information
+            const row = [
+              '', // menuID - leave blank
+              escapeCSVField('Menu'), // menuName - always 'Menu' for consistency
+              '', // menuDisplayName - leave blank
+              '', // menuDescription - leave blank
+              '', // categoryID - leave blank
+              escapeCSVField(cleanedCategoryName), // categoryName (cleaned)
+              '', // categoryDisplayName - leave blank
+              '', // categoryDescription - leave blank
+              '', // dishID - leave blank
+              escapeCSVField(cleanedDishName), // dishName (cleaned)
+              formatPrice(item.price || 0), // dishPrice
+              'standard', // dishType - default to standard (TODO: add combo detection)
+              escapeCSVField(cleanedDescription), // dishDescription (cleaned)
+              '', // displayName - leave blank
+              '', // printName - leave blank
+              escapeCSVField(tagsString), // tags (cleaned)
+              isCDNImage, // isCDNImage - TRUE or FALSE
+              escapeCSVField(imageCDNID), // imageCDNID - CDN UUID if uploaded
+              escapeCSVField(imageCDNFilename), // imageCDNFilename - CDN filename if uploaded
+              escapeCSVField(imageExternalURL) // imageExternalURL - blank for now, future: external URL support
+            ];
+            
+            rows.push(row);
+          });
+        }
+      });
+    }
+    
+    // Build CSV content
+    let csvContent = headers.join(',') + '\n';
+    rows.forEach(row => {
+      csvContent += row.join(',') + '\n';
+    });
+    
+    // Generate filename
+    const restaurantName = menu.restaurants?.name || 'restaurant';
+    const date = new Date().toISOString().split('T')[0];
+    const filename = `${formatFilename(restaurantName)}_menu_cdn_${date}.csv`;
+    
+    // Stats for response
+    const stats = {
+      totalItems: totalItems,
+      itemsWithCDN: itemsWithCDN,
+      itemsWithoutCDN: totalItems - itemsWithCDN,
+      itemsWithoutImages: itemsWithoutImages,
+      cdnPercentage: totalItems > 0 ? Math.round((itemsWithCDN / totalItems) * 100) : 0
+    };
+    
+    // Return based on download parameter
+    if (download === 'true') {
+      // Set headers for file download
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      
+      // Send CSV content
+      return res.send(csvContent);
+    } else {
+      // Return JSON response with CSV data
+      return res.json({
+        success: true,
+        csvData: csvContent,
+        filename: filename,
+        stats: stats,
+        message: `CSV generated with ${itemsWithCDN} CDN-uploaded items out of ${totalItems} total items`
+      });
+    }
+  } catch (error) {
+    console.error('[API] Error generating CSV with CDN data:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to generate CSV with CDN data'
     });
   }
 });
@@ -6105,6 +6738,11 @@ app.listen(PORT, () => {
   console.log(`  POST   /api/batch-extract-categories  - Extract full menu data`);
   console.log(`  GET    /api/batch-extract-status/:id  - Check extraction status`);
   console.log(`  GET    /api/batch-extract-results/:id - Get extraction results`);
+  console.log(`  POST   /api/scan-menu-items           - Scan menu items`);
+  console.log(`  POST   /api/batch-extract-option-sets - Extract option sets`);
+  console.log(`  POST   /api/extract-menu-premium       - Premium menu extraction`);
+  console.log(`  GET    /api/premium-extract-status/:id - Check premium extraction status`);
+  console.log(`  GET    /api/premium-extract-results/:id - Get premium extraction results`);
   console.log(`  POST   /api/extract-images-for-category - Extract category images`);
   console.log(`  POST   /api/generate-csv              - Generate CSV from data`);
   console.log(`  POST   /api/generate-clean-csv        - Generate clean CSV`);
@@ -6114,10 +6752,14 @@ app.listen(PORT, () => {
     console.log('\n  === Restaurant Management ===');
     console.log(`  GET    /api/restaurants               - List all restaurants`);
     console.log(`  GET    /api/restaurants/:id           - Get restaurant details`);
+    console.log(`  GET    /api/restaurants/:id/details   - Get restaurant full details`);
     console.log(`  POST   /api/restaurants               - Create new restaurant`);
     console.log(`  PATCH  /api/restaurants/:id           - Update restaurant`);
+    console.log(`  PATCH  /api/restaurants/:id/workflow  - Update restaurant workflow`);
+    console.log(`  DELETE /api/restaurants/:id           - Delete restaurant`);
     console.log(`  GET    /api/restaurants/:id/menus     - Get restaurant menus`);
     console.log(`  GET    /api/restaurants/:id/price-history - Get price history`);
+    console.log(`  POST   /api/google-business-search    - Google Business search`);
     
     console.log('\n  === Extraction Management ===');
     console.log(`  POST   /api/extractions/start         - Start new extraction`);
@@ -6127,15 +6769,25 @@ app.listen(PORT, () => {
     console.log(`  DELETE /api/extractions/:jobId        - Cancel extraction`);
     
     console.log('\n  === Menu Management ===');
+    console.log(`  GET    /api/menus                     - List all menus`);
     console.log(`  GET    /api/menus/:id                 - Get full menu with items`);
     console.log(`  GET    /api/menus/:id/csv             - Direct CSV download`);
+    console.log(`  GET    /api/menus/:id/csv-with-cdn    - CSV with CDN URLs`);
     console.log(`  GET    /api/menus/compare             - Compare menus (query params)`);
     console.log(`  POST   /api/menus/:id/activate        - Activate menu version`);
     console.log(`  POST   /api/menus/:id/compare         - Compare menu versions`);
     console.log(`  POST   /api/menus/:id/duplicate       - Duplicate menu`);
     console.log(`  POST   /api/menus/:id/export          - Export menu to CSV`);
     console.log(`  POST   /api/menus/:id/download-images - Download menu images from DB`);
+    console.log(`  GET    /api/menus/:id/download-images-zip - Download images as ZIP`);
+    console.log(`  POST   /api/menus/:id/upload-images   - Upload images to CDN`);
+    console.log(`  PATCH  /api/menus/:id/status          - Update menu status`);
+    console.log(`  PATCH  /api/menus/bulk-reassign       - Bulk reassign menus`);
     console.log(`  DELETE /api/menus/:id                 - Delete menu`);
+    console.log(`  POST   /api/menus/merge/validate      - Validate menu merge`);
+    console.log(`  POST   /api/menus/merge/compare       - Compare for merge`);
+    console.log(`  POST   /api/menus/merge/preview       - Preview menu merge`);
+    console.log(`  POST   /api/menus/merge/execute       - Execute menu merge`);
     
     console.log('\n  === Item Management ===');
     console.log(`  PATCH  /api/menu-items/:id            - Update menu item`);
@@ -6152,6 +6804,15 @@ app.listen(PORT, () => {
     console.log(`  POST   /api/exports/pdf               - Export menu to PDF`);
     console.log(`  GET    /api/exports/history           - Get export history`);
   }
+  
+  console.log('\n  === Website Extraction ===');
+  console.log(`  POST   /api/website-extraction/logo   - Extract logo from website`);
+  console.log(`  POST   /api/website-extraction/logo-candidates - Get logo candidates`);
+  console.log(`  POST   /api/website-extraction/process-selected-logo - Process selected logo`);
+  
+  console.log('\n  === Upload Management ===');
+  console.log(`  GET    /api/upload-batches/:batchId   - Get upload batch status`);
+  console.log(`  POST   /api/upload-batches/:batchId/retry - Retry failed uploads`);
   
   console.log('\n  === System Endpoints ===');
   console.log(`  GET    /api/status                    - Server status`);

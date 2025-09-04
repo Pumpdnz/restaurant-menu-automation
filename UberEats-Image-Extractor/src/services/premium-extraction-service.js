@@ -774,24 +774,58 @@ Focus ONLY on the "${categoryName}" category section.`;
    * @param {string} jobId - Job ID
    * @returns {object} Job results if completed
    */
-  getJobResults(jobId) {
+  async getJobResults(jobId) {
+    // First check in-memory jobs
     const jobInfo = this.activeJobs.get(jobId);
     
-    if (!jobInfo) {
-      return {
-        success: false,
-        error: 'Job not found'
-      };
+    if (jobInfo) {
+      if (jobInfo.status !== 'completed') {
+        return {
+          success: false,
+          error: `Job is ${jobInfo.status}, not completed`
+        };
+      }
+      
+      return jobInfo.results;
     }
     
-    if (jobInfo.status !== 'completed') {
-      return {
-        success: false,
-        error: `Job is ${jobInfo.status}, not completed`
-      };
+    // If not in memory, check database
+    console.log(`[Premium] Checking database for job results: ${jobId}`);
+    try {
+      const dbJob = await databaseService.getExtractionJob(jobId);
+      
+      if (dbJob) {
+        console.log(`[Premium] Found job in database with status: ${dbJob.status}`);
+        // Check if job is completed (use 'status' not 'state')
+        if (dbJob.status !== 'completed') {
+          return {
+            success: false,
+            error: `Job is ${dbJob.status}, not completed`
+          };
+        }
+        
+        // Get the menu ID from the database
+        const menuId = await databaseService.getMenuIdForJob(dbJob.id);
+        console.log(`[Premium] Found menu ID: ${menuId}`);
+        
+        // Return results from database - reconstruct the results format
+        return {
+          success: true,
+          jobId: dbJob.job_id,
+          menuId: menuId,
+          results: dbJob.result_data || dbJob.extracted_data || {},
+          completedAt: dbJob.completed_at
+        };
+      }
+    } catch (error) {
+      console.error(`[Premium] Failed to get job results from database:`, error.message);
     }
     
-    return jobInfo.results;
+    // Job not found anywhere
+    return {
+      success: false,
+      error: 'Job not found'
+    };
   }
   
   /**
