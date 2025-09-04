@@ -121,8 +121,11 @@ async function upsertRestaurant(restaurantData, organisationId = null) {
     }
     console.log(`[Database] Found platform: ${platform.name} with ID: ${platform.id}`);
     
-    // Generate slug from name
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    // Generate slug from name - append first 8 chars of org ID to ensure uniqueness
+    // This ensures slugs are unique across organizations
+    const baseSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const orgSuffix = orgId.substring(0, 8);
+    const slug = `${baseSlug}-${orgSuffix}`;
     
     // Try to find existing restaurant by slug within organization
     let restaurant = await getSupabaseClient()
@@ -377,11 +380,15 @@ async function createMenuItems(menuId, categoryMap, items, organisationId = null
         console.warn(`[Database] No category ID found for item "${item.dishName || item.name}" with category "${categoryName}"`);
       }
       
+      // Clean up description - filter out "null" string
+      const description = item.dishDescription || item.description;
+      const cleanDescription = (description && description !== 'null') ? description : null;
+      
       return {
         menu_id: menuId,
         category_id: categoryId,
         name: item.dishName || item.name,
-        description: item.dishDescription || item.description,
+        description: cleanDescription,
         price: item.dishPrice || item.price,
         currency: item.currency || 'NZD',
         tags: item.tags || [],
@@ -655,6 +662,158 @@ async function bulkSaveOptionSets(optionSets, orgId) {
   }
 }
 
+/**
+ * Save unique option sets with deduplication via hash
+ * @param {Array} optionSets - Array of option sets with hashes
+ * @param {string} orgId - Organization ID
+ * @returns {Array} Saved option sets with their IDs
+ */
+async function bulkSaveUniqueOptionSets(optionSets, orgId) {
+  if (!isDatabaseAvailable()) return [];
+  
+  if (!optionSets || optionSets.length === 0) {
+    return [];
+  }
+  
+  try {
+    const client = getSupabaseClient();
+    const savedOptionSets = [];
+    
+    // Process each option set individually to handle upsert logic
+    for (const optionSet of optionSets) {
+      // Prepare option set data (no menu_item_id!)
+      const optionSetData = {
+        name: optionSet.name,
+        display_order: optionSet.display_order || 0,
+        is_required: optionSet.required || optionSet.is_required || false,
+        min_selections: optionSet.minSelections || optionSet.min_selections || 0,
+        max_selections: optionSet.maxSelections || optionSet.max_selections || 1,
+        organisation_id: orgId,
+        option_set_hash: optionSet.option_set_hash,
+        extraction_source: optionSet.extraction_source || 'ubereats', // Must be one of: ubereats, doordash, menulog, manual, import
+        extracted_at: new Date().toISOString()
+      };
+      
+      // Try to insert, or get existing if hash already exists
+      const { data: existingSet, error: fetchError } = await client
+        .from('option_sets')
+        .select('*')
+        .eq('organisation_id', orgId)
+        .eq('option_set_hash', optionSet.option_set_hash)
+        .single();
+      
+      let savedSet;
+      if (existingSet) {
+        // Option set already exists with this hash, use it
+        savedSet = existingSet;
+        console.log(`[Database] Option set "${optionSet.name}" already exists with hash ${optionSet.option_set_hash.substring(0, 8)}`);
+      } else {
+        // Insert new option set
+        const { data: newSet, error: insertError } = await client
+          .from('option_sets')
+          .insert(optionSetData)
+          .select()
+          .single();
+        
+        if (insertError) {
+          console.error('[Database] Error saving option set:', insertError);
+          continue;
+        }
+        
+        savedSet = newSet;
+        console.log(`[Database] Saved new option set "${optionSet.name}" with hash ${optionSet.option_set_hash.substring(0, 8)}`);
+        
+        // Now save the option set items if they exist
+        if (optionSet.options && optionSet.options.length > 0) {
+          const optionItems = optionSet.options.map((option, idx) => ({
+            option_set_id: savedSet.id,
+            name: option.name,
+            price: option.priceValue || 0, // Use only numeric priceValue, not string price
+            price_display: option.priceDisplay || option.price_display || option.price || null, // Store string representation
+            display_order: idx,
+            is_available: option.isAvailable !== false,
+            organisation_id: orgId,
+            extraction_source: optionSet.extraction_source || 'ubereats', // Must match parent option_set
+            extracted_at: new Date().toISOString()
+          }));
+          
+          const { data: savedItems, error: itemsError } = await client
+            .from('option_set_items')
+            .insert(optionItems)
+            .select();
+          
+          if (itemsError) {
+            console.error('[Database] Error saving option set items:', itemsError);
+          } else {
+            savedSet.items = savedItems;
+            console.log(`[Database] Saved ${savedItems.length} items for option set "${optionSet.name}"`);
+          }
+        }
+      }
+      
+      // Store the mapping from temporary ID to real database ID
+      savedOptionSets.push({
+        ...savedSet,
+        temporaryId: optionSet.id, // The ID from deduplication service
+        usageCount: optionSet.usageCount,
+        sharedAcrossItems: optionSet.sharedAcrossItems
+      });
+    }
+    
+    console.log(`[Database] Successfully saved/retrieved ${savedOptionSets.length} unique option sets`);
+    return savedOptionSets;
+    
+  } catch (error) {
+    console.error('[Database] Error in bulkSaveUniqueOptionSets:', error);
+    return [];
+  }
+}
+
+/**
+ * Create junction table entries to link menu items to option sets
+ * @param {Array} junctionEntries - Array of { menu_item_id, option_set_id, display_order }
+ * @param {string} orgId - Organization ID
+ * @returns {Array} Created junction entries
+ */
+async function bulkCreateJunctionEntries(junctionEntries, orgId) {
+  if (!isDatabaseAvailable()) return [];
+  
+  if (!junctionEntries || junctionEntries.length === 0) {
+    return [];
+  }
+  
+  try {
+    const client = getSupabaseClient();
+    
+    // Prepare junction entries for batch insert
+    const entriesToInsert = junctionEntries.map(entry => ({
+      menu_item_id: entry.menu_item_id,
+      option_set_id: entry.option_set_id,
+      display_order: entry.display_order || 0,
+      organisation_id: orgId,
+      created_at: new Date().toISOString()
+    }));
+    
+    // Batch insert junction entries
+    const { data: savedEntries, error } = await client
+      .from('menu_item_option_sets')
+      .insert(entriesToInsert)
+      .select();
+    
+    if (error) {
+      console.error('[Database] Error creating junction entries:', error);
+      return [];
+    }
+    
+    console.log(`[Database] Created ${savedEntries.length} menu item to option set links`);
+    return savedEntries;
+    
+  } catch (error) {
+    console.error('[Database] Error in bulkCreateJunctionEntries:', error);
+    return [];
+  }
+}
+
 async function getOptionSetsByMenuItem(menuItemId, orgId) {
   if (!isDatabaseAvailable()) return [];
   
@@ -864,9 +1023,12 @@ async function getMenuWithItems(menuId) {
           menu_items (
             *,
             item_images (*),
-            option_sets (
-              *,
-              option_set_items (*)
+            menu_item_option_sets (
+              display_order,
+              option_set:option_sets (
+                *,
+                option_set_items (*)
+              )
             )
           )
         )
@@ -875,6 +1037,30 @@ async function getMenuWithItems(menuId) {
       .single();
     
     if (error) throw error;
+    
+    // Transform the nested structure to flatten option sets
+    // Convert menu_item_option_sets junction data to direct option_sets array
+    if (data && data.categories) {
+      data.categories.forEach(category => {
+        if (category.menu_items) {
+          category.menu_items.forEach(item => {
+            // Transform junction table data to flat option_sets array
+            if (item.menu_item_option_sets) {
+              item.option_sets = item.menu_item_option_sets
+                .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
+                .map(junction => junction.option_set)
+                .filter(Boolean); // Remove any null option_sets
+              
+              // Remove the junction table data from the response
+              delete item.menu_item_option_sets;
+            } else {
+              item.option_sets = [];
+            }
+          });
+        }
+      });
+    }
+    
     return data;
   } catch (error) {
     console.error('[Database] Error getting menu with items:', error);
@@ -1592,9 +1778,13 @@ async function createRestaurant(restaurantData) {
   });
   
   try {
-    // Generate base slug if not provided
+    // Get organization ID for slug uniqueness
+    const orgId = getCurrentOrganizationId();
+    const orgSuffix = orgId.substring(0, 8);
+    
+    // Generate base slug if not provided - append org ID for uniqueness
     let baseSlug = restaurantData.slug || restaurantData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    let slug = baseSlug;
+    let slug = `${baseSlug}-${orgSuffix}`;
     let slugSuffix = 1;
     
     // Check for existing slugs and append number if needed
@@ -1607,7 +1797,7 @@ async function createRestaurant(restaurantData) {
         .single();
       
       if (existing) {
-        slug = `${baseSlug}-${slugSuffix}`;
+        slug = `${baseSlug}-${orgSuffix}-${slugSuffix}`;
         slugSuffix++;
       } else {
         slugExists = false;
@@ -1628,7 +1818,7 @@ async function createRestaurant(restaurantData) {
     const insertData = {
       ...cleanData,
       slug: slug,
-      organisation_id: getCurrentOrganizationId(), // Add organization context
+      organisation_id: orgId, // Use the org ID variable we already have
       metadata: restaurantData.metadata || {},
       onboarding_status: restaurantData.onboarding_status || 'lead',
       created_at: new Date().toISOString(),
@@ -2727,6 +2917,8 @@ module.exports = {
   saveOptionSetItem,
   updateMenuItemOptionSets,
   bulkSaveOptionSets,
+  bulkSaveUniqueOptionSets,
+  bulkCreateJunctionEntries,
   getOptionSetsByMenuItem,
   
   // Image operations

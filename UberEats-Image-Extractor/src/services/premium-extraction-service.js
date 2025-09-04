@@ -274,10 +274,36 @@ Focus ONLY on the "${categoryName}" category section.`;
         if (restaurantResult && restaurantResult.restaurant) {
           restaurantId = restaurantResult.restaurant.id;
           console.log(`[${orgId}] Restaurant created/found with ID: ${restaurantId}`);
+        } else {
+          // Restaurant creation returned null/undefined - this shouldn't happen
+          throw new Error('Restaurant creation failed - no restaurant data returned');
         }
       } catch (error) {
         console.error(`[${orgId}] Failed to create restaurant:`, error.message);
-        // Continue without restaurant ID
+        
+        // Fail early - don't continue the extraction without a restaurant ID
+        // This avoids wasting resources on extraction that will fail to save
+        const errorMessage = `Restaurant creation failed: ${error.message}. Extraction cannot proceed without a valid restaurant.`;
+        
+        // If this was an async job, update the database status
+        if (async) {
+          try {
+            await databaseService.updateExtractionJob(jobId, {
+              status: 'failed',
+              error: errorMessage,
+              completed_at: new Date().toISOString()
+            });
+          } catch (dbError) {
+            console.error(`[${orgId}] Failed to update job status in database:`, dbError.message);
+          }
+        }
+        
+        // Return error response
+        return {
+          success: false,
+          error: errorMessage,
+          jobId: jobId
+        };
       }
     }
     
@@ -369,7 +395,30 @@ Focus ONLY on the "${categoryName}" category section.`;
       throw new Error(`Job ${jobId} not found`);
     }
     
-    const { storeUrl, orgId, options } = jobInfo;
+    const { storeUrl, orgId, options, restaurantId } = jobInfo;
+    
+    // Validate prerequisites before starting extraction
+    if (options.saveToDatabase && !restaurantId) {
+      const errorMessage = 'Cannot proceed with extraction: Restaurant ID is missing. Restaurant creation must succeed before extraction can begin.';
+      console.error(`[${orgId}] ${errorMessage}`);
+      
+      // Update job status
+      jobInfo.status = 'failed';
+      jobInfo.error = errorMessage;
+      
+      // Update database if possible
+      try {
+        await databaseService.updateExtractionJob(jobId, {
+          status: 'failed',
+          error: errorMessage,
+          completed_at: new Date().toISOString()
+        });
+      } catch (dbError) {
+        console.error(`[${orgId}] Failed to update job status:`, dbError.message);
+      }
+      
+      throw new Error(errorMessage);
+    }
     
     try {
       jobInfo.status = 'running';
@@ -526,8 +575,23 @@ Focus ONLY on the "${categoryName}" category section.`;
           categoryName: item.categoryName,
           // Keep all other fields
           ...item,
-          // Ensure imageURL is set (override with correct field)
-          imageURL: item.imageUrl || item.imageURL || item.dishImageURL || null
+          // Prioritize high-quality images from option sets detail page, fallback to category page images
+          // Filter out known placeholder images with _static in URL
+          imageURL: (() => {
+            const candidates = [
+              item.optionSetsData?.imageUrl,
+              item.imageUrl,
+              item.imageURL,
+              item.dishImageURL
+            ];
+            // Find first non-placeholder image
+            for (const url of candidates) {
+              if (url && !url.includes('_static')) {
+                return url;
+              }
+            }
+            return null; // No valid image found
+          })()
         }));
         
         // Match the exact structure from standard extraction
@@ -587,61 +651,113 @@ Focus ONLY on the "${categoryName}" category section.`;
             console.log(`[${orgId}] Items with actual option sets: ${itemsWithActualOptionSets.length}`);
             console.log(`[${orgId}] Total saved menu items found: ${menuItems.length}`);
             
-            // Collect all option sets for batch saving
-            const allOptionSetsToSave = [];
-            const menuItemsToUpdate = [];
-            
-            for (const item of itemsWithOptionSets) {
-              // Find the saved menu item by matching name
-              const itemName = item.dishName || item.name;
-              console.log(`[${orgId}] Looking for saved item with name: "${itemName}"`);
+            // Use deduplicated data if available, otherwise skip option sets
+            if (deduplicatedData && deduplicatedData.masterOptionSets) {
+              console.log(`[${orgId}] Using deduplicated option sets from Phase 5`);
+              console.log(`[${orgId}] Master option sets to save: ${deduplicatedData.masterOptionSets.length}`);
               
-              const savedItem = menuItems.find(mi => 
-                mi.name === itemName
-              );
-              
-              if (!savedItem) {
-                console.log(`[${orgId}] WARNING: Could not find saved menu item for "${itemName}"`);
-                continue;
-              }
-              
-              console.log(`[${orgId}] Found saved item "${itemName}" with ID: ${savedItem.id}`);
-              
-              if (item.optionSetsData?.optionSets) {
-                console.log(`[${orgId}] Item has ${item.optionSetsData.optionSets.length} option sets`);
-                
-                const optionSets = optionSetsService.transformForDatabase(
-                  item.optionSetsData,
-                  savedItem.id
-                );
-                
-                if (optionSets.length > 0) {
-                  allOptionSetsToSave.push(...optionSets);
-                  menuItemsToUpdate.push({ id: savedItem.id, name: itemName, count: optionSets.length });
+              // Step 1: Save unique/master option sets (shared ones)
+              let savedMasterSets = [];
+              if (deduplicatedData.masterOptionSets.length > 0) {
+                try {
+                  savedMasterSets = await databaseService.bulkSaveUniqueOptionSets(
+                    deduplicatedData.masterOptionSets, 
+                    orgId
+                  );
+                  console.log(`[${orgId}] Saved ${savedMasterSets.length} unique option sets`);
+                  
+                  // Create a map from temporary ID to real database ID
+                  const tempIdToRealId = new Map();
+                  savedMasterSets.forEach(set => {
+                    if (set.temporaryId) {
+                      tempIdToRealId.set(set.temporaryId, set.id);
+                    }
+                  });
+                  
+                  // Step 2: Process each item and create junction table entries
+                  const junctionEntries = [];
+                  const menuItemsToUpdate = [];
+                  
+                  for (const processedItem of deduplicatedData.processedItems) {
+                    // Find the saved menu item by matching name
+                    const itemName = processedItem.dishName || processedItem.name;
+                    const savedItem = menuItems.find(mi => mi.name === itemName);
+                    
+                    if (!savedItem) {
+                      console.log(`[${orgId}] WARNING: Could not find saved menu item for "${itemName}"`);
+                      continue;
+                    }
+                    
+                    // Create junction entries for shared option sets
+                    if (processedItem.optionSetReferences && processedItem.optionSetReferences.length > 0) {
+                      for (const ref of processedItem.optionSetReferences) {
+                        const realOptionSetId = tempIdToRealId.get(ref.masterSetId);
+                        if (realOptionSetId) {
+                          junctionEntries.push({
+                            menu_item_id: savedItem.id,
+                            option_set_id: realOptionSetId,
+                            display_order: ref.displayOrder || 0
+                          });
+                        }
+                      }
+                      menuItemsToUpdate.push({ 
+                        id: savedItem.id, 
+                        name: itemName, 
+                        count: processedItem.optionSetReferences.length 
+                      });
+                    }
+                    
+                    // Handle unique option sets (item-specific, not shared)
+                    if (processedItem.uniqueOptionSets && processedItem.uniqueOptionSets.length > 0) {
+                      console.log(`[${orgId}] Item "${itemName}" has ${processedItem.uniqueOptionSets.length} unique option sets`);
+                      
+                      // Save unique option sets (they also use the new structure without menu_item_id)
+                      const savedUniqueSets = await databaseService.bulkSaveUniqueOptionSets(
+                        processedItem.uniqueOptionSets,
+                        orgId
+                      );
+                      
+                      // Create junction entries for unique sets too
+                      for (let i = 0; i < savedUniqueSets.length; i++) {
+                        const uniqueSet = savedUniqueSets[i];
+                        const originalSet = processedItem.uniqueOptionSets[i];
+                        junctionEntries.push({
+                          menu_item_id: savedItem.id,
+                          option_set_id: uniqueSet.id,
+                          display_order: originalSet.displayOrder || i
+                        });
+                      }
+                      
+                      menuItemsToUpdate.push({ 
+                        id: savedItem.id, 
+                        name: itemName, 
+                        count: processedItem.uniqueOptionSets.length 
+                      });
+                    }
+                  }
+                  
+                  // Step 3: Batch create all junction entries
+                  if (junctionEntries.length > 0) {
+                    console.log(`[${orgId}] Creating ${junctionEntries.length} junction table entries`);
+                    const savedJunctions = await databaseService.bulkCreateJunctionEntries(junctionEntries, orgId);
+                    console.log(`[${orgId}] Successfully created ${savedJunctions.length} menu item to option set links`);
+                  }
+                  
+                  // Step 4: Update menu items to indicate they have option sets
+                  for (const item of menuItemsToUpdate) {
+                    await databaseService.updateMenuItemOptionSets(item.id, true, orgId);
+                    console.log(`[${orgId}] Updated item "${item.name}" to indicate it has option sets`);
+                  }
+                  
+                  console.log(`[${orgId}] Option sets deduplication and saving complete!`);
+                  console.log(`[${orgId}] Stats: ${savedMasterSets.length} unique sets, ${junctionEntries.length} links created`);
+                  
+                } catch (error) {
+                  console.error(`[${orgId}] Error saving deduplicated option sets:`, error.message);
                 }
-              } else {
-                console.log(`[${orgId}] WARNING: Item "${itemName}" has no optionSetsData.optionSets`);
-              }
-            }
-            
-            // Batch save all option sets at once
-            if (allOptionSetsToSave.length > 0) {
-              console.log(`[${orgId}] Batch saving ${allOptionSetsToSave.length} option sets for ${menuItemsToUpdate.length} menu items`);
-              
-              try {
-                const savedOptionSets = await databaseService.bulkSaveOptionSets(allOptionSetsToSave, orgId);
-                console.log(`[${orgId}] Successfully batch saved ${savedOptionSets.length} option sets`);
-                
-                // Update all menu items to indicate they have option sets
-                for (const item of menuItemsToUpdate) {
-                  await databaseService.updateMenuItemOptionSets(item.id, true, orgId);
-                  console.log(`[${orgId}] Updated item "${item.name}" to indicate it has ${item.count} option sets`);
-                }
-              } catch (error) {
-                console.error(`[${orgId}] Error batch saving option sets:`, error.message);
               }
             } else {
-              console.log(`[${orgId}] No option sets to save`);
+              console.log(`[${orgId}] No deduplicated option sets to save (deduplication may be disabled or no option sets found)`);
             }
           } else {
             console.error(`[${orgId}] Menu save did not return expected structure. savedMenu:`, savedMenu);

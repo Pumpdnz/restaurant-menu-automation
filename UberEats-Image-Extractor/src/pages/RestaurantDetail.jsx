@@ -27,7 +27,9 @@ import {
   Search,
   RefreshCw,
   ExternalLink,
-  FileSearch
+  FileSearch,
+  SearchIcon,
+  FileText
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -91,7 +93,85 @@ export default function RestaurantDetail() {
   const [extractionMode, setExtractionMode] = useState('standard'); // 'standard' or 'premium'
   const [extractOptionSets, setExtractOptionSets] = useState(true);
   const [validateImages, setValidateImages] = useState(true);
+  
+  // New states for URL search and details extraction
+  const [searchingForUrl, setSearchingForUrl] = useState({});
+  const [extractingDetails, setExtractingDetails] = useState(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [detailsExtractionConfig, setDetailsExtractionConfig] = useState(null);
+  const [selectedDetailFields, setSelectedDetailFields] = useState([]);
+  
   const isNewRestaurant = id === 'new';
+  
+  // Platform capabilities configuration
+  const PLATFORM_CAPABILITIES = {
+    ubereats: { 
+      canExtractMenu: true, 
+      canExtractDetails: true,
+      detailFields: ['address', 'hours'],
+      fieldLabels: { address: 'Physical Address', hours: 'Opening Hours' }
+    },
+    doordash: { 
+      canExtractMenu: true, 
+      canExtractDetails: true,
+      detailFields: ['hours'],
+      fieldLabels: { hours: 'Opening Hours' }
+    },
+    website: { 
+      canExtractMenu: true, 
+      canExtractDetails: true,
+      detailFields: ['address', 'hours', 'phone'],
+      fieldLabels: { address: 'Physical Address', hours: 'Opening Hours', phone: 'Phone Number' }
+    },
+    instagram: { 
+      canExtractMenu: false, 
+      canExtractDetails: false,
+      detailFields: [],
+      fieldLabels: {}
+    },
+    facebook: { 
+      canExtractMenu: false, 
+      canExtractDetails: false,
+      detailFields: [],
+      fieldLabels: {}
+    },
+    ordermeal: {
+      canExtractMenu: true,
+      canExtractDetails: true,
+      detailFields: ['address', 'hours', 'phone'],
+      fieldLabels: { address: 'Physical Address', hours: 'Opening Hours', phone: 'Phone Number' }
+    },
+    meandyou: {
+      canExtractMenu: true,
+      canExtractDetails: true,
+      detailFields: ['address', 'hours', 'phone'],
+      fieldLabels: { address: 'Physical Address', hours: 'Opening Hours', phone: 'Phone Number' }
+    },
+    mobi2go: {
+      canExtractMenu: true,
+      canExtractDetails: true,
+      detailFields: ['address', 'hours', 'phone'],
+      fieldLabels: { address: 'Physical Address', hours: 'Opening Hours', phone: 'Phone Number' }
+    },
+    delivereasy: {
+      canExtractMenu: true,
+      canExtractDetails: true,
+      detailFields: ['address', 'hours', 'phone'],
+      fieldLabels: { address: 'Physical Address', hours: 'Opening Hours', phone: 'Phone Number' }
+    },
+    nextorder: {
+      canExtractMenu: true,
+      canExtractDetails: true,
+      detailFields: ['address', 'hours', 'phone'],
+      fieldLabels: { address: 'Physical Address', hours: 'Opening Hours', phone: 'Phone Number' }
+    },
+    foodhub: {
+      canExtractMenu: true,
+      canExtractDetails: true,
+      detailFields: ['address', 'hours', 'phone'],
+      fieldLabels: { address: 'Physical Address', hours: 'Opening Hours', phone: 'Phone Number' }
+    }
+  };
 
   useEffect(() => {
     if (isNewRestaurant) {
@@ -860,6 +940,127 @@ export default function RestaurantDetail() {
     }
   };
 
+  // New function to handle finding a platform URL
+  const handleFindUrl = async (platform) => {
+    setSearchingForUrl(prev => ({ ...prev, [platform]: true }));
+    setError(null);
+    
+    try {
+      const response = await api.post('/platform-url-search', {
+        restaurantName: restaurant?.name,
+        city: restaurant?.city || 'Wellington',
+        platform: platform,
+        restaurantId: id
+      });
+      
+      if (response.data.success && response.data.url) {
+        // Update the local restaurant state with the found URL
+        const urlField = `${platform}_url`;
+        setRestaurant(prev => ({
+          ...prev,
+          [urlField]: response.data.url
+        }));
+        
+        toast({
+          title: 'URL Found',
+          description: `Successfully found ${platform} URL`,
+        });
+        
+        // Refresh restaurant data
+        await fetchRestaurantDetails();
+      } else {
+        toast({
+          title: 'No URL Found',
+          description: `Could not find a ${platform} URL for this restaurant`,
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      console.error(`Failed to find ${platform} URL:`, error);
+      toast({
+        title: 'Search Failed',
+        description: error.response?.data?.error || 'Failed to search for URL',
+        variant: 'destructive'
+      });
+    } finally {
+      setSearchingForUrl(prev => ({ ...prev, [platform]: false }));
+    }
+  };
+
+  // New function to handle extracting business details
+  const handleExtractDetails = (url, platform, platformName) => {
+    const capabilities = PLATFORM_CAPABILITIES[platform];
+    if (!capabilities?.canExtractDetails) return;
+    
+    setDetailsExtractionConfig({
+      url,
+      platform,
+      platformName,
+      restaurantId: id,
+      restaurantName: restaurant?.name || 'Unknown Restaurant',
+      availableFields: capabilities.detailFields,
+      fieldLabels: capabilities.fieldLabels
+    });
+    
+    // Pre-select all available fields
+    setSelectedDetailFields(capabilities.detailFields);
+    setDetailsDialogOpen(true);
+  };
+
+  // Function to start the details extraction
+  const startDetailsExtraction = async () => {
+    if (!detailsExtractionConfig || selectedDetailFields.length === 0) return;
+    
+    setExtractingDetails(true);
+    setError(null);
+    
+    try {
+      const response = await api.post('/platform-details-extraction', {
+        url: detailsExtractionConfig.url,
+        platform: detailsExtractionConfig.platform,
+        extractFields: selectedDetailFields,
+        restaurantId: detailsExtractionConfig.restaurantId,
+        restaurantName: detailsExtractionConfig.restaurantName
+      });
+      
+      if (response.data.success) {
+        const extracted = response.data.extracted;
+        let successMessage = 'Successfully extracted: ';
+        const extractedItems = [];
+        
+        if (extracted.address) extractedItems.push('address');
+        if (extracted.phone) extractedItems.push('phone');
+        if (extracted.hours && extracted.hours.length > 0) extractedItems.push('opening hours');
+        
+        successMessage += extractedItems.join(', ');
+        
+        toast({
+          title: 'Extraction Complete',
+          description: successMessage,
+        });
+        
+        // Refresh restaurant data to show updated fields
+        await fetchRestaurantDetails();
+        setDetailsDialogOpen(false);
+      } else {
+        toast({
+          title: 'Extraction Failed',
+          description: 'No data could be extracted from this URL',
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      console.error('Failed to extract details:', error);
+      toast({
+        title: 'Extraction Error',
+        description: error.response?.data?.error || 'Failed to extract business details',
+        variant: 'destructive'
+      });
+    } finally {
+      setExtractingDetails(false);
+    }
+  };
+
   const addOpeningHoursSlot = (day) => {
     const currentHours = editedData.opening_hours;
     
@@ -1164,6 +1365,88 @@ export default function RestaurantDetail() {
       <Badge className={statusColors[status] || statusColors.lead}>
         {status?.replace('_', ' ').toUpperCase() || 'LEAD'}
       </Badge>
+    );
+  };
+
+  // Reusable component for platform URL fields
+  const PlatformUrlField = ({ platform, platformName, urlValue, fieldName, placeholder }) => {
+    const capabilities = PLATFORM_CAPABILITIES[platform];
+    const isSearching = searchingForUrl[platform];
+    
+    return (
+      <div>
+        <div className="flex items-center justify-between">
+          <Label>{platformName}</Label>
+          {!isEditing && (
+            <div className="flex gap-2">
+              {/* Find URL button - shows when no URL exists */}
+              {!urlValue && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleFindUrl(platform)}
+                  disabled={isSearching || extractingDetails}
+                >
+                  {isSearching ? (
+                    <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                  ) : (
+                    <SearchIcon className="h-3 w-3 mr-1" />
+                  )}
+                  Find URL
+                </Button>
+              )}
+              
+              {/* Get Business Details button - shows when URL exists and platform supports it */}
+              {urlValue && capabilities?.canExtractDetails && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleExtractDetails(urlValue, platform, platformName)}
+                  disabled={extractingDetails || isExtracting}
+                >
+                  <FileText className="h-3 w-3 mr-1" />
+                  Get Details
+                </Button>
+              )}
+              
+              {/* Extract Menu button - shows when URL exists and platform supports menu extraction */}
+              {urlValue && capabilities?.canExtractMenu && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handlePlatformExtraction(urlValue, platformName)}
+                  disabled={isExtracting}
+                >
+                  <FileSearch className="h-3 w-3 mr-1" />
+                  Extract Menu
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+        
+        {isEditing ? (
+          <Input
+            value={editedData[fieldName] || ''}
+            onChange={(e) => handleFieldChange(fieldName, e.target.value)}
+            placeholder={placeholder}
+            className="mt-2"
+          />
+        ) : (
+          <p className="text-sm mt-1">
+            {urlValue ? (
+              <a 
+                href={urlValue}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-brand-blue hover:underline"
+              >
+                {urlValue}
+              </a>
+            ) : '-'}
+          </p>
+        )}
+      </div>
     );
   };
 
@@ -2016,396 +2299,94 @@ export default function RestaurantDetail() {
               <CardDescription>Delivery platforms and social media URLs</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <div className="flex items-center justify-between">
-                  <Label>UberEats URL</Label>
-                  {!isEditing && restaurant?.ubereats_url && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handlePlatformExtraction(restaurant.ubereats_url, 'UberEats')}
-                      disabled={isExtracting}
-                    >
-                      <FileSearch className="h-3 w-3 mr-1" />
-                      Extract Menu
-                    </Button>
-                  )}
-                </div>
-                {isEditing ? (
-                  <Input
-                    value={editedData.ubereats_url || ''}
-                    onChange={(e) => handleFieldChange('ubereats_url', e.target.value)}
-                    placeholder="https://www.ubereats.com/..."
-                    className="mt-2"
-                  />
-                ) : (
-                  <p className="text-sm mt-1">
-                    {restaurant?.ubereats_url ? (
-                      <a 
-                        href={restaurant.ubereats_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-brand-blue hover:underline"
-                      >
-                        {restaurant.ubereats_url}
-                      </a>
-                    ) : '-'}
-                  </p>
-                )}
-              </div>
+              <PlatformUrlField
+                platform="ubereats"
+                platformName="UberEats URL"
+                urlValue={restaurant?.ubereats_url}
+                fieldName="ubereats_url"
+                placeholder="https://www.ubereats.com/..."
+              />
 
-              <div>
-                <div className="flex items-center justify-between">
-                  <Label>DoorDash URL</Label>
-                  {!isEditing && restaurant?.doordash_url && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handlePlatformExtraction(restaurant.doordash_url, 'DoorDash')}
-                      disabled={isExtracting}
-                    >
-                      <FileSearch className="h-3 w-3 mr-1" />
-                      Extract Menu
-                    </Button>
-                  )}
-                </div>
-                {isEditing ? (
-                  <Input
-                    value={editedData.doordash_url || ''}
-                    onChange={(e) => handleFieldChange('doordash_url', e.target.value)}
-                    placeholder="https://www.doordash.com/..."
-                    className="mt-2"
-                  />
-                ) : (
-                  <p className="text-sm mt-1">
-                    {restaurant?.doordash_url ? (
-                      <a 
-                        href={restaurant.doordash_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-brand-blue hover:underline"
-                      >
-                        {restaurant.doordash_url}
-                      </a>
-                    ) : '-'}
-                  </p>
-                )}
-              </div>
+              <PlatformUrlField
+                platform="doordash"
+                platformName="DoorDash URL"
+                urlValue={restaurant?.doordash_url}
+                fieldName="doordash_url"
+                placeholder="https://www.doordash.com/..."
+              />
 
-              <div>
-                <div className="flex items-center justify-between">
-                  <Label>Website URL</Label>
-                  {!isEditing && restaurant?.website_url && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handlePlatformExtraction(restaurant.website_url, 'Website')}
-                      disabled={isExtracting}
-                    >
-                      <FileSearch className="h-3 w-3 mr-1" />
-                      Extract Menu
-                    </Button>
-                  )}
-                </div>
-                {isEditing ? (
-                  <Input
-                    value={editedData.website_url || ''}
-                    onChange={(e) => handleFieldChange('website_url', e.target.value)}
-                    placeholder="https://..."
-                    className="mt-2"
-                  />
-                ) : (
-                  <p className="text-sm mt-1">
-                    {restaurant?.website_url ? (
-                      <a 
-                        href={restaurant.website_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-brand-blue hover:underline"
-                      >
-                        {restaurant.website_url}
-                      </a>
-                    ) : '-'}
-                  </p>
-                )}
-              </div>
+              <PlatformUrlField
+                platform="website"
+                platformName="Website URL"
+                urlValue={restaurant?.website_url}
+                fieldName="website_url"
+                placeholder="https://..."
+              />
 
-              <div>
-                <Label>Instagram URL</Label>
-                {isEditing ? (
-                  <Input
-                    value={editedData.instagram_url || ''}
-                    onChange={(e) => handleFieldChange('instagram_url', e.target.value)}
-                    placeholder="https://instagram.com/..."
-                  />
-                ) : (
-                  <p className="text-sm mt-1">
-                    {restaurant?.instagram_url ? (
-                      <a 
-                        href={restaurant.instagram_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-brand-blue hover:underline"
-                      >
-                        {restaurant.instagram_url}
-                      </a>
-                    ) : '-'}
-                  </p>
-                )}
-              </div>
+              <PlatformUrlField
+                platform="instagram"
+                platformName="Instagram URL"
+                urlValue={restaurant?.instagram_url}
+                fieldName="instagram_url"
+                placeholder="https://instagram.com/..."
+              />
 
-              <div>
-                <Label>Facebook URL</Label>
-                {isEditing ? (
-                  <Input
-                    value={editedData.facebook_url || ''}
-                    onChange={(e) => handleFieldChange('facebook_url', e.target.value)}
-                    placeholder="https://facebook.com/..."
-                  />
-                ) : (
-                  <p className="text-sm mt-1">
-                    {restaurant?.facebook_url ? (
-                      <a 
-                        href={restaurant.facebook_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-brand-blue hover:underline"
-                      >
-                        {restaurant.facebook_url}
-                      </a>
-                    ) : '-'}
-                  </p>
-                )}
-              </div>
+              <PlatformUrlField
+                platform="facebook"
+                platformName="Facebook URL"
+                urlValue={restaurant?.facebook_url}
+                fieldName="facebook_url"
+                placeholder="https://facebook.com/..."
+              />
 
               {/* NZ-specific ordering platforms */}
-              <div>
-                <div className="flex items-center justify-between">
-                  <Label>OrderMeal URL</Label>
-                  {!isEditing && restaurant?.ordermeal_url && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handlePlatformExtraction(restaurant.ordermeal_url, 'OrderMeal')}
-                      disabled={isExtracting}
-                    >
-                      <FileSearch className="h-3 w-3 mr-1" />
-                      Extract Menu
-                    </Button>
-                  )}
-                </div>
-                {isEditing ? (
-                  <Input
-                    value={editedData.ordermeal_url || ''}
-                    onChange={(e) => handleFieldChange('ordermeal_url', e.target.value)}
-                    placeholder="https://ordermeal.co.nz/..."
-                    className="mt-2"
-                  />
-                ) : (
-                  <p className="text-sm mt-1">
-                    {restaurant?.ordermeal_url ? (
-                      <a 
-                        href={restaurant.ordermeal_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-brand-blue hover:underline"
-                      >
-                        {restaurant.ordermeal_url}
-                      </a>
-                    ) : '-'}
-                  </p>
-                )}
-              </div>
+              <PlatformUrlField
+                platform="ordermeal"
+                platformName="OrderMeal URL"
+                urlValue={restaurant?.ordermeal_url}
+                fieldName="ordermeal_url"
+                placeholder="https://ordermeal.co.nz/..."
+              />
 
-              <div>
-                <div className="flex items-center justify-between">
-                  <Label>Me&U URL</Label>
-                  {!isEditing && restaurant?.meandyou_url && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handlePlatformExtraction(restaurant.meandyou_url, 'Me&U')}
-                      disabled={isExtracting}
-                    >
-                      <FileSearch className="h-3 w-3 mr-1" />
-                      Extract Menu
-                    </Button>
-                  )}
-                </div>
-                {isEditing ? (
-                  <Input
-                    value={editedData.meandyou_url || ''}
-                    onChange={(e) => handleFieldChange('meandyou_url', e.target.value)}
-                    placeholder="https://meandyou.co.nz/..."
-                    className="mt-2"
-                  />
-                ) : (
-                  <p className="text-sm mt-1">
-                    {restaurant?.meandyou_url ? (
-                      <a 
-                        href={restaurant.meandyou_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-brand-blue hover:underline"
-                      >
-                        {restaurant.meandyou_url}
-                      </a>
-                    ) : '-'}
-                  </p>
-                )}
-              </div>
+              <PlatformUrlField
+                platform="meandyou"
+                platformName="Me&U URL"
+                urlValue={restaurant?.meandyou_url}
+                fieldName="meandyou_url"
+                placeholder="https://meandyou.co.nz/..."
+              />
 
-              <div>
-                <div className="flex items-center justify-between">
-                  <Label>Mobi2go URL</Label>
-                  {!isEditing && restaurant?.mobi2go_url && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handlePlatformExtraction(restaurant.mobi2go_url, 'Mobi2go')}
-                      disabled={isExtracting}
-                    >
-                      <FileSearch className="h-3 w-3 mr-1" />
-                      Extract Menu
-                    </Button>
-                  )}
-                </div>
-                {isEditing ? (
-                  <Input
-                    value={editedData.mobi2go_url || ''}
-                    onChange={(e) => handleFieldChange('mobi2go_url', e.target.value)}
-                    placeholder="https://mobi2go.com/..."
-                    className="mt-2"
-                  />
-                ) : (
-                  <p className="text-sm mt-1">
-                    {restaurant?.mobi2go_url ? (
-                      <a 
-                        href={restaurant.mobi2go_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-brand-blue hover:underline"
-                      >
-                        {restaurant.mobi2go_url}
-                      </a>
-                    ) : '-'}
-                  </p>
-                )}
-              </div>
+              <PlatformUrlField
+                platform="mobi2go"
+                platformName="Mobi2go URL"
+                urlValue={restaurant?.mobi2go_url}
+                fieldName="mobi2go_url"
+                placeholder="https://mobi2go.com/..."
+              />
 
-              <div>
-                <div className="flex items-center justify-between">
-                  <Label>Delivereasy URL</Label>
-                  {!isEditing && restaurant?.delivereasy_url && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handlePlatformExtraction(restaurant.delivereasy_url, 'Delivereasy')}
-                      disabled={isExtracting}
-                    >
-                      <FileSearch className="h-3 w-3 mr-1" />
-                      Extract Menu
-                    </Button>
-                  )}
-                </div>
-                {isEditing ? (
-                  <Input
-                    value={editedData.delivereasy_url || ''}
-                    onChange={(e) => handleFieldChange('delivereasy_url', e.target.value)}
-                    placeholder="https://delivereasy.co.nz/..."
-                    className="mt-2"
-                  />
-                ) : (
-                  <p className="text-sm mt-1">
-                    {restaurant?.delivereasy_url ? (
-                      <a 
-                        href={restaurant.delivereasy_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-brand-blue hover:underline"
-                      >
-                        {restaurant.delivereasy_url}
-                      </a>
-                    ) : '-'}
-                  </p>
-                )}
-              </div>
+              <PlatformUrlField
+                platform="delivereasy"
+                platformName="Delivereasy URL"
+                urlValue={restaurant?.delivereasy_url}
+                fieldName="delivereasy_url"
+                placeholder="https://delivereasy.co.nz/..."
+              />
 
-              <div>
-                <div className="flex items-center justify-between">
-                  <Label>NextOrder URL</Label>
-                  {!isEditing && restaurant?.nextorder_url && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handlePlatformExtraction(restaurant.nextorder_url, 'NextOrder')}
-                      disabled={isExtracting}
-                    >
-                      <FileSearch className="h-3 w-3 mr-1" />
-                      Extract Menu
-                    </Button>
-                  )}
-                </div>
-                {isEditing ? (
-                  <Input
-                    value={editedData.nextorder_url || ''}
-                    onChange={(e) => handleFieldChange('nextorder_url', e.target.value)}
-                    placeholder="https://nextorder.co.nz/..."
-                    className="mt-2"
-                  />
-                ) : (
-                  <p className="text-sm mt-1">
-                    {restaurant?.nextorder_url ? (
-                      <a 
-                        href={restaurant.nextorder_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-brand-blue hover:underline"
-                      >
-                        {restaurant.nextorder_url}
-                      </a>
-                    ) : '-'}
-                  </p>
-                )}
-              </div>
+              <PlatformUrlField
+                platform="nextorder"
+                platformName="NextOrder URL"
+                urlValue={restaurant?.nextorder_url}
+                fieldName="nextorder_url"
+                placeholder="https://nextorder.co.nz/..."
+              />
 
-              <div>
-                <div className="flex items-center justify-between">
-                  <Label>Foodhub URL</Label>
-                  {!isEditing && restaurant?.foodhub_url && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handlePlatformExtraction(restaurant.foodhub_url, 'Foodhub')}
-                      disabled={isExtracting}
-                    >
-                      <FileSearch className="h-3 w-3 mr-1" />
-                      Extract Menu
-                    </Button>
-                  )}
-                </div>
-                {isEditing ? (
-                  <Input
-                    value={editedData.foodhub_url || ''}
-                    onChange={(e) => handleFieldChange('foodhub_url', e.target.value)}
-                    placeholder="https://foodhub.co.nz/..."
-                    className="mt-2"
-                  />
-                ) : (
-                  <p className="text-sm mt-1">
-                    {restaurant?.foodhub_url ? (
-                      <a 
-                        href={restaurant.foodhub_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-brand-blue hover:underline"
-                      >
-                        {restaurant.foodhub_url}
-                      </a>
-                    ) : '-'}
-                  </p>
-                )}
-              </div>
+              <PlatformUrlField
+                platform="foodhub"
+                platformName="Foodhub URL"
+                urlValue={restaurant?.foodhub_url}
+                fieldName="foodhub_url"
+                placeholder="https://foodhub.co.nz/..."
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -3251,6 +3232,104 @@ export default function RestaurantDetail() {
                 </>
               ) : (
                 'Start Extraction'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Business Details Extraction Dialog */}
+      <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Extract Business Details</DialogTitle>
+            <DialogDescription>
+              Select which business details to extract from {detailsExtractionConfig?.platformName}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {detailsExtractionConfig && (
+            <div className="space-y-4">
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Platform</Label>
+                  <p className="font-medium">{detailsExtractionConfig.platformName}</p>
+                </div>
+                <div className="mt-2">
+                  <Label className="text-xs text-muted-foreground">URL</Label>
+                  <p className="text-sm text-gray-600 break-all">{detailsExtractionConfig.url}</p>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Select fields to extract:</Label>
+                {detailsExtractionConfig.availableFields.map(field => (
+                  <div key={field} className="flex items-center space-x-3">
+                    <Checkbox
+                      id={field}
+                      checked={selectedDetailFields.includes(field)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedDetailFields(prev => [...prev, field]);
+                        } else {
+                          setSelectedDetailFields(prev => prev.filter(f => f !== field));
+                        }
+                      }}
+                    />
+                    <Label 
+                      htmlFor={field}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      {detailsExtractionConfig.fieldLabels[field]}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+              
+              {detailsExtractionConfig.availableFields.length === 0 ? (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    This platform does not support business details extraction
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    {detailsExtractionConfig.platform === 'ubereats' ? 
+                      'UberEats can provide address and opening hours information.' :
+                      detailsExtractionConfig.platform === 'doordash' ?
+                      'DoorDash can only provide opening hours information.' :
+                      detailsExtractionConfig.platform === 'website' ?
+                      'Website extraction can provide address, opening hours, and phone number.' :
+                      'This platform can provide address, opening hours, and phone number.'
+                    }
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDetailsDialogOpen(false)}
+              disabled={extractingDetails}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={startDetailsExtraction}
+              disabled={extractingDetails || selectedDetailFields.length === 0}
+            >
+              {extractingDetails ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Extracting...
+                </>
+              ) : (
+                'Extract Details'
               )}
             </Button>
           </DialogFooter>

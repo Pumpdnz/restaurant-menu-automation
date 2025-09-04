@@ -5249,7 +5249,18 @@ app.post('/api/google-business-search', async (req, res) => {
                     !url.includes('yelp') &&
                     !url.includes('tripadvisor') &&
                     !url.includes('menulog') &&
-                    !url.includes('zomato')) {
+                    !url.includes('zomato') &&
+                    !url.includes('grabone') &&
+                    !url.includes('firsttable') &&
+                    !url.includes('tiktok') &&
+                    !url.includes('youtube') &&
+                    !url.includes('myguide') &&
+                    !url.includes('neatplaces') &&
+                    !url.includes('wanderlog') &&
+                    !url.includes('stuff.co.nz') &&
+                    !url.includes('bookme') &&
+                    !url.includes('reddit') &&
+                    !url.includes('thespinoff')) {
             // Likely the restaurant's own website
             foundUrls.websiteUrl = result.url;
           }
@@ -5286,7 +5297,20 @@ app.post('/api/google-business-search', async (req, res) => {
             const results = retryResults;
             for (const result of results) {
               const url = result.url.toLowerCase();
-              if (!foundUrls.websiteUrl && !url.includes('google') && !url.includes('yelp')) {
+              if (!foundUrls.websiteUrl && 
+                  !url.includes('google') && 
+                  !url.includes('yelp') &&
+                  !url.includes('grabone') &&
+                  !url.includes('firsttable') &&
+                  !url.includes('tiktok') &&
+                  !url.includes('youtube') &&
+                  !url.includes('myguide') &&
+                  !url.includes('neatplaces') &&
+                  !url.includes('wanderlog') &&
+                  !url.includes('stuff.co.nz') &&
+                  !url.includes('bookme') &&
+                  !url.includes('reddit') &&
+                  !url.includes('thespinoff')) {
                 foundUrls.websiteUrl = result.url;
                 break;
               }
@@ -5433,22 +5457,22 @@ app.post('/api/google-business-search', async (req, res) => {
       }
     };
 
-    // Create priority list of URLs to try - ONLY website and UberEats
-    // Website gets all info (phone, address, hours)
-    // UberEats only for fallback (address and hours only, no phone)
+    // Create priority list of URLs to try
+    // UberEats is FIRST priority for address and hours (most reliable)
+    // Website is used for phone number and as fallback for all info if UberEats not available
     const urlsToTry = [];
     
-    // First priority: website for all info
-    if (foundUrls.websiteUrl) {
-      urlsToTry.push({ url: foundUrls.websiteUrl, extractPhone: true, extractAddress: true, extractHours: true });
-    }
-    
-    // Second priority: UberEats for address and hours only (no phone)
+    // First priority: UberEats for address and hours (most reliable for these)
     if (foundUrls.ubereatsUrl) {
       urlsToTry.push({ url: foundUrls.ubereatsUrl, extractPhone: false, extractAddress: true, extractHours: true });
     }
     
-    // Never extract from DoorDash or other platforms - they're unreliable
+    // Second priority: website for phone (and fallback for address/hours if not from UberEats)
+    if (foundUrls.websiteUrl) {
+      urlsToTry.push({ url: foundUrls.websiteUrl, extractPhone: true, extractAddress: true, extractHours: true });
+    }
+    
+    // DoorDash excluded from automatic extraction - only used when user specifically requests it
 
     // Define what we're looking for
     const extractionGoals = {
@@ -5820,6 +5844,519 @@ app.post('/api/google-business-search', async (req, res) => {
     return res.status(500).json({
       success: false,
       error: error.message || 'Failed to search for business information'
+    });
+  }
+});
+
+/**
+ * POST /api/platform-url-search
+ * Search for a specific platform URL for a restaurant
+ */
+app.post('/api/platform-url-search', async (req, res) => {
+  try {
+    const { restaurantName, city, platform, restaurantId } = req.body;
+    
+    if (!restaurantName || !city || !platform) {
+      return res.status(400).json({
+        success: false,
+        error: 'Restaurant name, city, and platform are required'
+      });
+    }
+    
+    console.log(`[Platform URL Search] Searching for ${platform} URL: ${restaurantName} in ${city}`);
+    
+    // Build platform-specific search query
+    let searchQuery = '';
+    switch(platform) {
+      case 'ubereats':
+        searchQuery = `"${restaurantName}" "${city}" New Zealand site:ubereats.com`;
+        break;
+      case 'doordash':
+        searchQuery = `"${restaurantName}" "${city}" New Zealand site:doordash.com`;
+        break;
+      case 'facebook':
+        searchQuery = `"${restaurantName}" "${city}" New Zealand site:facebook.com`;
+        break;
+      case 'instagram':
+        searchQuery = `"${restaurantName}" "${city}" New Zealand site:instagram.com`;
+        break;
+      case 'website':
+        searchQuery = `"${restaurantName}" "${city}" New Zealand website contact hours`;
+        break;
+      case 'meandyou':
+        searchQuery = `"${restaurantName}" "${city}" New Zealand site:meandyou.co.nz`;
+        break;
+      case 'mobi2go':
+        searchQuery = `"${restaurantName}" "${city}" New Zealand site:mobi2go.com`;
+        break;
+      case 'delivereasy':
+        searchQuery = `"${restaurantName}" "${city}" New Zealand site:delivereasy.co.nz`;
+        break;
+      case 'nextorder':
+        searchQuery = `"${restaurantName}" "${city}" New Zealand site:nextorder.co.nz`;
+        break;
+      case 'foodhub':
+        searchQuery = `"${restaurantName}" "${city}" New Zealand site:foodhub.co.nz`;
+        break;
+      case 'ordermeal':
+        searchQuery = `"${restaurantName}" "${city}" New Zealand site:ordermeal.co.nz`;
+        break;
+      default:
+        return res.status(400).json({
+          success: false,
+          error: `Unsupported platform: ${platform}`
+        });
+    }
+    
+    try {
+      const searchResponse = await axios.post(
+        `${FIRECRAWL_API_URL}/v2/search`,
+        {
+          query: searchQuery,
+          limit: 5,
+          lang: 'en',
+          country: 'nz',
+          sources: [{ type: 'web' }]
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${FIRECRAWL_API_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      const results = searchResponse.data?.data?.web || searchResponse.data?.data || [];
+      let foundUrl = null;
+      
+      if (results && Array.isArray(results)) {
+        for (const result of results) {
+          const url = result.url.toLowerCase();
+          
+          // Check if URL matches the platform
+          if (platform === 'website') {
+            // For website, exclude all known platforms and deal sites
+            if (!url.includes('ubereats') && 
+                !url.includes('doordash') && 
+                !url.includes('facebook') && 
+                !url.includes('instagram') &&
+                !url.includes('google') &&
+                !url.includes('yelp') &&
+                !url.includes('tripadvisor') &&
+                !url.includes('menulog') &&
+                !url.includes('zomato') &&
+                !url.includes('grabone') &&
+                !url.includes('firsttable') &&
+                !url.includes('tiktok') &&
+                !url.includes('youtube') &&
+                !url.includes('myguide') &&
+                !url.includes('neatplaces') &&
+                !url.includes('wanderlog') &&
+                !url.includes('stuff.co.nz') &&
+                !url.includes('bookme') &&
+                !url.includes('reddit') &&
+                !url.includes('thespinoff')) {
+              foundUrl = result.url;
+              break;
+            }
+          } else if (url.includes(platform === 'ubereats' ? 'ubereats.com' : 
+                                platform === 'doordash' ? 'doordash.com' :
+                                platform === 'facebook' ? 'facebook.com' :
+                                platform === 'instagram' ? 'instagram.com' :
+                                platform === 'meandyou' ? 'meandyou.co.nz' :
+                                platform === 'mobi2go' ? 'mobi2go.com' :
+                                platform === 'delivereasy' ? 'delivereasy.co.nz' :
+                                platform === 'nextorder' ? 'nextorder.co.nz' :
+                                platform === 'foodhub' ? 'foodhub.co.nz' :
+                                platform === 'ordermeal' ? 'ordermeal.co.nz' : '')) {
+            foundUrl = result.url;
+            break;
+          }
+        }
+      }
+      
+      // Update restaurant if ID provided and URL found
+      if (restaurantId && foundUrl && db.isDatabaseAvailable()) {
+        const updateData = {};
+        const fieldMap = {
+          'website': 'website_url',
+          'ubereats': 'ubereats_url',
+          'doordash': 'doordash_url',
+          'instagram': 'instagram_url',
+          'facebook': 'facebook_url',
+          'meandyou': 'meandyou_url',
+          'mobi2go': 'mobi2go_url',
+          'delivereasy': 'delivereasy_url',
+          'nextorder': 'nextorder_url',
+          'foodhub': 'foodhub_url',
+          'ordermeal': 'ordermeal_url'
+        };
+        
+        if (fieldMap[platform]) {
+          updateData[fieldMap[platform]] = foundUrl;
+          await db.updateRestaurantWorkflow(restaurantId, updateData);
+          console.log(`[Platform URL Search] Updated restaurant ${restaurantId} with ${platform} URL`);
+        }
+      }
+      
+      return res.json({
+        success: true,
+        platform: platform,
+        url: foundUrl,
+        message: foundUrl ? 'URL found successfully' : 'No URL found for this platform'
+      });
+      
+    } catch (err) {
+      console.error('[Platform URL Search] Search error:', err);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to search for platform URL'
+      });
+    }
+  } catch (error) {
+    console.error('[Platform URL Search] Error:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to search for platform URL'
+    });
+  }
+});
+
+/**
+ * POST /api/platform-details-extraction
+ * Extract specific business details from a platform URL
+ */
+app.post('/api/platform-details-extraction', async (req, res) => {
+  try {
+    const { url, platform, extractFields, restaurantId, restaurantName } = req.body;
+    
+    if (!url || !platform || !extractFields || extractFields.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'URL, platform, and extraction fields are required'
+      });
+    }
+    
+    // Validate platform capabilities
+    const platformCapabilities = {
+      'ubereats': ['address', 'hours'],
+      'doordash': ['hours'], // DoorDash can only reliably extract hours
+      'website': ['address', 'hours', 'phone'],
+      'facebook': [],
+      'instagram': [],
+      'meandyou': ['address', 'hours', 'phone'],
+      'mobi2go': ['address', 'hours', 'phone'],
+      'delivereasy': ['address', 'hours', 'phone'],
+      'nextorder': ['address', 'hours', 'phone'],
+      'foodhub': ['address', 'hours', 'phone'],
+      'ordermeal': ['address', 'hours', 'phone']
+    };
+    
+    const allowedFields = platformCapabilities[platform] || [];
+    const invalidFields = extractFields.filter(field => !allowedFields.includes(field));
+    
+    if (invalidFields.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: `Platform ${platform} does not support extracting: ${invalidFields.join(', ')}`
+      });
+    }
+    
+    console.log(`[Platform Details Extraction] Extracting ${extractFields.join(', ')} from ${platform}: ${url}`);
+    
+    // Build extraction schema based on requested fields
+    const schemaProperties = {};
+    if (extractFields.includes('address')) {
+      schemaProperties.address = { type: 'string' };
+    }
+    if (extractFields.includes('phone')) {
+      schemaProperties.phone = { type: 'string' };
+    }
+    if (extractFields.includes('hours')) {
+      schemaProperties.openingHours = {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            day: { type: 'string', description: 'Day of the week (Monday, Tuesday, etc.)' },
+            open: { type: 'string', description: 'Opening time' },
+            close: { type: 'string', description: 'Closing time' },
+            period: { type: 'string', description: 'Optional: Lunch or Dinner if split hours' }
+          }
+        }
+      };
+    }
+    
+    // Build extraction prompt with platform-specific instructions
+    let prompt = `Extract the following information for ${restaurantName || 'this restaurant'}: `;
+    const requestedInfo = [];
+    
+    if (extractFields.includes('address')) {
+      requestedInfo.push('physical address (street address, not just area)');
+    }
+    if (extractFields.includes('phone')) {
+      requestedInfo.push('phone number if available');
+    }
+    if (extractFields.includes('hours')) {
+      requestedInfo.push('opening hours for each day - look for both lunch and dinner times if they exist separately');
+    }
+    
+    prompt += requestedInfo.join(', ') + '.';
+    
+    // Add platform-specific instructions
+    if (extractFields.includes('hours')) {
+      prompt += ' Important: Some restaurants have split hours (lunch and dinner). Extract both time periods for each day if present. For day ranges like "Monday-Saturday", list each day separately.';
+    }
+    
+    // Configure platform-specific wait times
+    // Removing click actions for now as they're causing Firecrawl errors
+    let waitTime = 3000; // Default wait time
+    
+    if (platform === 'ubereats') {
+      // UberEats: Allow time for dynamic content to load
+      waitTime = 3000;
+    } else if (platform === 'doordash') {
+      // DoorDash: Extra time for dynamic content
+      waitTime = 3500;
+    } else if (platform === 'website') {
+      // For restaurant websites, standard load time
+      waitTime = 2000;
+    } else {
+      // For other platforms, standard wait time
+      waitTime = 2500;
+    }
+    
+    try {
+      const scrapeResponse = await axios.post(
+        `${FIRECRAWL_API_URL}/v2/scrape`,
+        {
+          url: url,
+          formats: [{
+            type: 'json',
+            prompt: prompt,
+            schema: {
+              type: 'object',
+              properties: schemaProperties
+            }
+          }],
+          onlyMainContent: true,
+          waitFor: waitTime
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${FIRECRAWL_API_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      const extractedData = scrapeResponse.data?.data?.formats?.json || scrapeResponse.data?.data?.json || {};
+      
+      console.log('[Platform Details Extraction] Raw extracted data:', extractedData);
+      
+      // Check if we got valid data (not 'null' strings or empty data)
+      const hasValidData = (
+        (extractedData.address && extractedData.address !== 'null' && extractedData.address !== '') ||
+        (extractedData.phone && extractedData.phone !== 'null' && extractedData.phone !== '') ||
+        (extractedData.openingHours && extractedData.openingHours.length > 0)
+      );
+      
+      if (!hasValidData) {
+        console.log('[Platform Details Extraction] No valid data extracted from:', url);
+        return res.json({
+          success: false,
+          error: 'No valid data could be extracted from this URL'
+        });
+      }
+      
+      // Format the response
+      const result = {
+        success: true,
+        platform: platform,
+        url: url,
+        extracted: {}
+      };
+      
+      // Process address (check it's not 'null' string or numbers-only)
+      if (extractFields.includes('address') && extractedData.address && 
+          extractedData.address !== 'null' && extractedData.address !== '' && 
+          extractedData.address !== 'N/A' && !/^\d+$/.test(extractedData.address)) {
+        result.extracted.address = extractedData.address;
+      }
+      
+      // Process phone number with cleaning for NZ numbers
+      if (extractFields.includes('phone') && extractedData.phone && 
+          extractedData.phone !== 'N/A' && extractedData.phone !== 'null') {
+        const cleanAndValidateNZPhone = (phoneStr) => {
+          let cleaned = phoneStr.replace(/[^\d+]/g, '');
+          if (cleaned.length < 9 || cleaned.length > 15) return null;
+          
+          const validPatterns = [
+            /^\+64[2-9]\d{7,9}$/,
+            /^0[3-9]\d{7}$/,
+            /^02[0-9]\d{7,8}$/,
+            /^0800\d{6,7}$/,
+            /^0508\d{6}$/
+          ];
+          
+          const isValid = validPatterns.some(pattern => pattern.test(cleaned));
+          if (!isValid) return null;
+          
+          if (!cleaned.startsWith('+64') && cleaned.startsWith('0')) {
+            cleaned = '+64' + cleaned.substring(1);
+          }
+          
+          return cleaned;
+        };
+        
+        const cleanedPhone = cleanAndValidateNZPhone(extractedData.phone);
+        if (cleanedPhone) {
+          result.extracted.phone = cleanedPhone;
+        }
+      }
+      
+      // Process opening hours with expansion and split hours handling
+      if (extractFields.includes('hours') && extractedData.openingHours && Array.isArray(extractedData.openingHours)) {
+        const formattedHours = [];
+        const allDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        
+        // Group hours by day to handle multiple slots (lunch/dinner)
+        const hoursByDay = {};
+        
+        for (const hours of extractedData.openingHours) {
+          // Skip invalid entries
+          if (!hours.day || hours.day.toLowerCase().includes('menu') || 
+              hours.day.toLowerCase().includes('dinner menu') || !hours.open || !hours.close) {
+            continue;
+          }
+          
+          const dayStr = hours.day.toLowerCase();
+          
+          // Handle "Every day" or "Daily"
+          if (dayStr.includes('every day') || dayStr === 'daily' || dayStr === 'everyday') {
+            console.log('[Platform Details Extraction] Expanding "Every day" hours:', hours);
+            // Expand to all days
+            for (const day of allDays) {
+              if (!hoursByDay[day]) {
+                hoursByDay[day] = [];
+              }
+              hoursByDay[day].push({
+                open: hours.open,
+                close: hours.close,
+                period: hours.period || ''
+              });
+            }
+          } else if (hours.day && hours.day.includes('-')) {
+            // Handle day ranges like "Monday-Saturday"
+            const [startDay, endDay] = hours.day.split('-').map(d => d.trim());
+            const startIdx = allDays.findIndex(d => d.toLowerCase().startsWith(startDay.toLowerCase().substring(0, 3)));
+            const endIdx = allDays.findIndex(d => d.toLowerCase().startsWith(endDay.toLowerCase().substring(0, 3)));
+            
+            if (startIdx !== -1 && endIdx !== -1) {
+              for (let i = startIdx; i <= endIdx; i++) {
+                if (!hoursByDay[allDays[i]]) {
+                  hoursByDay[allDays[i]] = [];
+                }
+                hoursByDay[allDays[i]].push({
+                  open: hours.open,
+                  close: hours.close,
+                  period: hours.period || ''
+                });
+              }
+            }
+          } else if (allDays.some(d => d.toLowerCase() === hours.day.toLowerCase())) {
+            // Single day - normalize to proper case
+            const properDay = allDays.find(d => d.toLowerCase() === hours.day.toLowerCase());
+            if (!hoursByDay[properDay]) {
+              hoursByDay[properDay] = [];
+            }
+            hoursByDay[properDay].push({
+              open: hours.open,
+              close: hours.close,
+              period: hours.period || ''
+            });
+          }
+        }
+        
+        // Process each day's hours and handle midnight crossing
+        Object.entries(hoursByDay).forEach(([day, slots]) => {
+          slots.forEach(slot => {
+            const open24 = convertTo24Hour(slot.open);
+            const close24 = convertTo24Hour(slot.close);
+            
+            if (!open24 || !close24) return;
+            
+            const openTime = parseTime(open24);
+            const closeTime = parseTime(close24);
+            
+            // Check for midnight crossing
+            if (closeTime < openTime && closeTime !== 0) {
+              // Split into two entries for midnight crossing
+              formattedHours.push({
+                day: day,
+                hours: { 
+                  open: open24, 
+                  close: "23:59",
+                  ...(slot.period && { period: slot.period })
+                }
+              });
+              
+              const nextDay = getNextDay(day);
+              formattedHours.push({
+                day: nextDay,
+                hours: { 
+                  open: "00:00", 
+                  close: close24,
+                  ...(slot.period && { period: slot.period })
+                }
+              });
+            } else {
+              // Normal hours (no midnight crossing)
+              formattedHours.push({
+                day: day,
+                hours: { 
+                  open: open24, 
+                  close: close24,
+                  ...(slot.period && { period: slot.period })
+                }
+              });
+            }
+          });
+        });
+        
+        result.extracted.hours = formattedHours;
+      }
+      
+      // Update restaurant if ID provided
+      if (restaurantId && db.isDatabaseAvailable()) {
+        const updateData = {};
+        
+        if (result.extracted.address) updateData.address = result.extracted.address;
+        if (result.extracted.phone) updateData.phone = result.extracted.phone;
+        if (result.extracted.hours && result.extracted.hours.length > 0) {
+          updateData.opening_hours = result.extracted.hours;
+        }
+        
+        if (Object.keys(updateData).length > 0) {
+          await db.updateRestaurantWorkflow(restaurantId, updateData);
+          console.log(`[Platform Details Extraction] Updated restaurant ${restaurantId} with extracted data`);
+        }
+      }
+      
+      return res.json(result);
+      
+    } catch (err) {
+      console.error('[Platform Details Extraction] Extraction error:', err);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to extract details from platform URL'
+      });
+    }
+  } catch (error) {
+    console.error('[Platform Details Extraction] Error:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to extract platform details'
     });
   }
 });
@@ -6760,6 +7297,8 @@ app.listen(PORT, () => {
     console.log(`  GET    /api/restaurants/:id/menus     - Get restaurant menus`);
     console.log(`  GET    /api/restaurants/:id/price-history - Get price history`);
     console.log(`  POST   /api/google-business-search    - Google Business search`);
+    console.log(`  POST   /api/platform-url-search       - Search for platform URL`);
+    console.log(`  POST   /api/platform-details-extraction - Extract platform details`);
     
     console.log('\n  === Extraction Management ===');
     console.log(`  POST   /api/extractions/start         - Start new extraction`);

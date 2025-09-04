@@ -14,26 +14,28 @@ class OptionSetsDeduplicationService {
   
   /**
    * Generate a unique hash for an option set based on its structure
+   * Uses SHA-256 for consistency with database schema
    * @param {object} optionSet - Option set to hash
-   * @returns {string} Hash identifier
+   * @returns {string} Hash identifier (64 characters)
    */
   generateOptionSetHash(optionSet) {
     // Create a normalized representation of the option set
     const normalized = {
-      name: optionSet.name,
+      name: (optionSet.name || '').toLowerCase().trim(),
       required: optionSet.required || false,
       minSelections: optionSet.minSelections || 0,
       maxSelections: optionSet.maxSelections || 1,
+      // Sort options by name for consistent hashing
       options: (optionSet.options || []).map(opt => ({
-        name: opt.name,
-        priceValue: opt.priceValue || 0,
+        name: (opt.name || '').toLowerCase().trim(),
+        priceValue: parseFloat(opt.priceValue) || 0,
         // Don't include description in hash as it might vary slightly
       })).sort((a, b) => a.name.localeCompare(b.name))
     };
     
-    // Generate hash from normalized structure
+    // Generate SHA-256 hash from normalized structure
     const jsonString = JSON.stringify(normalized);
-    return crypto.createHash('md5').update(jsonString).digest('hex');
+    return crypto.createHash('sha256').update(jsonString).digest('hex');
   }
   
   /**
@@ -134,8 +136,10 @@ class OptionSetsDeduplicationService {
         minSelections: sharedSet.minSelections,
         maxSelections: sharedSet.maxSelections,
         options: sharedSet.options,
+        option_set_hash: sharedSet.hash, // Include hash for database storage
         isShared: true,
-        usageCount: sharedSet.usageCount
+        usageCount: sharedSet.usageCount,
+        sharedAcrossItems: sharedSet.sharedAcrossItems
       });
     });
     
@@ -164,6 +168,7 @@ class OptionSetsDeduplicationService {
           // This is a unique option set for this item
           uniqueOptionSets.push({
             ...optionSet,
+            option_set_hash: hash, // Include hash for database storage
             displayOrder: index
           });
         }

@@ -6,20 +6,27 @@ Currently, option sets are duplicated for each menu item, creating a 1-to-many r
 ## Current Architecture Problems
 
 ### Database Issues
-1. **Data Duplication**: Option sets with same name/content stored multiple times
-   - "Add Sides" appears 26 times in database
-   - "Add Drinks" appears 26 times
-   - "Extra Proteins" appears 24 times
+1. **Data Duplication**: Option sets AND their items stored multiple times
+   - "Add Sides" option set appears 26 times in database
+   - "Waffle Fries" option item appears 26 times
+   - "Coke® 330ml" option item appears 26 times
+   - Each option set with 7 items = 26 × 7 = 182 duplicate records!
    
 2. **Current Foreign Key Structure**:
    ```sql
    option_sets.menu_item_id -> menu_items.id (1-to-many)
+   option_set_items.option_set_id -> option_sets.id (1-to-many)
    ```
-   This means each option set can only belong to ONE menu item
+   This creates cascading duplication at both levels
 
-3. **Editing Nightmare**: To update "Add Sides", must update 26 separate records
+3. **Editing Nightmare**: 
+   - To update "Add Sides", must update 26 option_set records
+   - To update "Waffle Fries" price, must update 26 option_set_items records
+   - Total updates for one option set with 7 items: 26 + (26 × 7) = 208 records!
 
-4. **Storage Waste**: Storing identical data multiple times
+4. **Storage Waste**: Massive redundancy
+   - 26 option sets × 7 items each = 182 option_set_items records
+   - Should be just 1 option set + 7 items = 8 records total
 
 ### Frontend Issues
 1. **OptionSetEditor in wrong place**: Currently in EditableMenuItem component
@@ -61,7 +68,7 @@ CREATE INDEX idx_menu_item_option_sets_option_set ON menu_item_option_sets(optio
 
 #### 3. Data Migration Strategy
 ```sql
--- Step 1: Create temporary mapping of duplicates
+-- Step 1: Identify duplicate option sets (keep one master copy)
 WITH duplicate_sets AS (
   SELECT 
     name,
@@ -73,9 +80,46 @@ WITH duplicate_sets AS (
   GROUP BY name, organisation_id, min_selections, max_selections, is_required
   HAVING COUNT(*) > 1
 )
--- Step 2: Insert into junction table
--- Step 3: Update option_set_items to point to master
--- Step 4: Delete duplicate option_sets
+
+-- Step 2: Create junction table entries for all menu items
+INSERT INTO menu_item_option_sets (menu_item_id, option_set_id, display_order)
+SELECT 
+  unnest(menu_item_ids) as menu_item_id,
+  master_id as option_set_id,
+  ROW_NUMBER() OVER (PARTITION BY unnest(menu_item_ids)) as display_order
+FROM duplicate_sets;
+
+-- Step 3: Migrate option_set_items to point to master option set
+-- This is CRITICAL - we need to deduplicate items too!
+WITH item_mapping AS (
+  SELECT 
+    osi_duplicate.id as old_item_id,
+    osi_master.id as new_item_id
+  FROM duplicate_sets ds
+  CROSS JOIN LATERAL unnest(ds.all_ids) as dup_id
+  JOIN option_set_items osi_duplicate ON osi_duplicate.option_set_id = dup_id
+  JOIN option_set_items osi_master ON 
+    osi_master.option_set_id = ds.master_id AND
+    osi_master.name = osi_duplicate.name AND
+    osi_master.price = osi_duplicate.price
+)
+-- Update any references, then delete duplicates
+
+-- Step 4: Delete duplicate option_set_items
+DELETE FROM option_set_items 
+WHERE option_set_id IN (
+  SELECT unnest(all_ids) 
+  FROM duplicate_sets 
+  WHERE unnest(all_ids) != master_id
+);
+
+-- Step 5: Delete duplicate option_sets
+DELETE FROM option_sets 
+WHERE id IN (
+  SELECT unnest(all_ids) 
+  FROM duplicate_sets 
+  WHERE unnest(all_ids) != master_id
+);
 ```
 
 ## Implementation Plan
@@ -476,6 +520,256 @@ const MenuItemOptionSetLinker = ({ menuItem, availableOptionSets }) => {
 - [ ] Backup production database
 - [ ] Execute migration
 - [ ] Monitor for issues
+
+---
+
+## Detailed Explanation: How the Junction Table Approach Works
+
+### Understanding the Current Problem
+
+Currently, when multiple menu items need the same option set (e.g., "Add Sides"), we create duplicate records:
+
+```sql
+-- Current database structure creates DUPLICATE records:
+option_sets table:
+id                                    | menu_item_id                          | name       | options...
+--------------------------------------|---------------------------------------|------------|------------
+uuid-1                                | beef-brisket-burger-id                | Add Sides  | [data...]
+uuid-2                                | pork-belly-burger-id                  | Add Sides  | [data...]
+uuid-3                                | jerk-chicken-burger-id                | Add Sides  | [data...]
+-- Same "Add Sides" stored 26 times! 🔴
+```
+
+### Junction Table Solution Explained
+
+A junction table is a **bridge** that connects two tables in a many-to-many relationship. Instead of duplicating option sets, we store each option set once and use a junction table to track which menu items use which option sets.
+
+**Important**: The `option_set_items` table relationship remains unchanged (1-to-many with option_sets), but because we're deduplicating option_sets, the items are automatically deduplicated too!
+
+```sql
+-- New structure with junction table:
+
+option_sets table (stores each option set ONCE):
+id        | name       | min_selections | max_selections 
+----------|------------|----------------|----------------
+uuid-ABC  | Add Sides  | 0              | 7              
+uuid-DEF  | Add Drinks | 0              | 5              
+uuid-GHI  | Extra Proteins | 0          | 3              
+
+option_set_items table (stores each item ONCE per option set):
+id        | option_set_id | name          | price  
+----------|---------------|---------------|--------
+item-1    | uuid-ABC      | Waffle Fries  | 6.99   -- Only stored ONCE!
+item-2    | uuid-ABC      | Slaw          | 6.49   -- Not 26 times!
+item-3    | uuid-ABC      | Loaded Fries  | 14.99  
+item-4    | uuid-DEF      | Coke® 330ml   | 5.00   -- Only stored ONCE!
+item-5    | uuid-DEF      | Sprite® 330ml | 5.00   -- Not 26 times!
+
+menu_item_option_sets table (junction/bridge table):
+id        | menu_item_id           | option_set_id | display_order
+----------|------------------------|---------------|---------------
+link-1    | beef-brisket-burger-id | uuid-ABC      | 1  -- Add Sides
+link-2    | beef-brisket-burger-id | uuid-DEF      | 2  -- Add Drinks
+link-3    | pork-belly-burger-id   | uuid-ABC      | 1  -- Add Sides (SAME uuid-ABC!)
+link-4    | pork-belly-burger-id   | uuid-DEF      | 2  -- Add Drinks (SAME uuid-DEF!)
+```
+
+### Visual Representation
+
+```
+BEFORE (Current):
+┌─────────────────┐
+│  Menu Item 1    │───────► [Add Sides Copy #1]
+└─────────────────┘
+┌─────────────────┐
+│  Menu Item 2    │───────► [Add Sides Copy #2]  ❌ Duplicate!
+└─────────────────┘
+┌─────────────────┐
+│  Menu Item 3    │───────► [Add Sides Copy #3]  ❌ Duplicate!
+└─────────────────┘
+
+AFTER (Junction Table):
+┌─────────────────┐     ┌──────────────┐     ┌─────────────────┐
+│  Menu Item 1    │────►│   Junction   │────►│   Add Sides     │
+└─────────────────┘     │    Table     │     │   (One Copy)    │
+┌─────────────────┐     │              │     └─────────────────┘
+│  Menu Item 2    │────►│   Links      │────►✓ Shared!
+└─────────────────┘     │              │
+┌─────────────────┐     │              │
+│  Menu Item 3    │────►│              │────►✓ Shared!
+└─────────────────┘     └──────────────┘
+```
+
+### Practical Implementation Example
+
+#### During Extraction and Saving:
+
+```javascript
+// Step 1: Extract menu with duplicate option sets
+const extractedMenu = {
+  items: [
+    {
+      name: "Beef Brisket Burger",
+      optionSets: [
+        { name: "Add Sides", options: [...] },
+        { name: "Add Drinks", options: [...] }
+      ]
+    },
+    {
+      name: "Pork Belly Burger", 
+      optionSets: [
+        { name: "Add Sides", options: [...] },  // Same as above!
+        { name: "Add Drinks", options: [...] }  // Same as above!
+      ]
+    }
+  ]
+};
+
+// Step 2: Deduplicate and save unique option sets
+const uniqueOptionSets = new Map();
+
+// Loop through all items and collect unique sets
+extractedMenu.items.forEach(item => {
+  item.optionSets.forEach(optionSet => {
+    const hash = createHash(optionSet); // Hash of name + options
+    if (!uniqueOptionSets.has(hash)) {
+      uniqueOptionSets.set(hash, {
+        ...optionSet,
+        usedByItems: []
+      });
+    }
+    uniqueOptionSets.get(hash).usedByItems.push(item.id);
+  });
+});
+
+// Step 3: Save unique option sets to database
+const savedOptionSets = [];
+for (const [hash, optionSet] of uniqueOptionSets) {
+  const saved = await db.insert('option_sets', {
+    name: optionSet.name,
+    options: optionSet.options,
+    organisation_id: orgId
+    // NO menu_item_id here!
+  });
+  savedOptionSets.push({ ...saved, usedByItems: optionSet.usedByItems });
+}
+
+// Step 4: Create junction table entries
+for (const optionSet of savedOptionSets) {
+  for (const itemId of optionSet.usedByItems) {
+    await db.insert('menu_item_option_sets', {
+      menu_item_id: itemId,
+      option_set_id: optionSet.id,
+      display_order: getDisplayOrder(itemId, optionSet.name)
+    });
+  }
+}
+```
+
+#### Querying: How to Fetch Menu with Option Sets
+
+```sql
+-- Fetch menu with all relationships
+SELECT 
+  m.id as menu_id,
+  mi.id as item_id,
+  mi.name as item_name,
+  os.id as option_set_id,
+  os.name as option_set_name,
+  os.options,
+  mios.display_order
+FROM menus m
+JOIN menu_items mi ON mi.menu_id = m.id
+JOIN menu_item_option_sets mios ON mios.menu_item_id = mi.id
+JOIN option_sets os ON os.id = mios.option_set_id
+WHERE m.id = $1
+ORDER BY mi.id, mios.display_order;
+```
+
+#### Updating: Edit Once, Affect All
+
+```javascript
+// When user edits "Add Sides" option set:
+async function updateOptionSet(optionSetId, newData) {
+  // Update the single option set record
+  await db.update('option_sets', {
+    where: { id: optionSetId },
+    data: newData
+  });
+  
+  // That's it! All 26 menu items using this option set are updated!
+  // No need to update 26 separate records
+}
+
+// To see which items are affected:
+async function getAffectedItems(optionSetId) {
+  return await db.query(`
+    SELECT mi.name, mi.id 
+    FROM menu_items mi
+    JOIN menu_item_option_sets mios ON mios.menu_item_id = mi.id
+    WHERE mios.option_set_id = $1
+  `, [optionSetId]);
+  // Returns: ["Beef Brisket Burger", "Pork Belly Burger", ...] (26 items)
+}
+```
+
+#### Adding/Removing Option Sets from Menu Items
+
+```javascript
+// Link an existing option set to a menu item
+async function linkOptionSetToItem(menuItemId, optionSetId) {
+  await db.insert('menu_item_option_sets', {
+    menu_item_id: menuItemId,
+    option_set_id: optionSetId,
+    display_order: await getNextDisplayOrder(menuItemId)
+  });
+}
+
+// Unlink option set from menu item (doesn't delete the option set!)
+async function unlinkOptionSetFromItem(menuItemId, optionSetId) {
+  await db.delete('menu_item_option_sets', {
+    where: {
+      menu_item_id: menuItemId,
+      option_set_id: optionSetId
+    }
+  });
+}
+```
+
+### Key Benefits Illustrated
+
+1. **Storage Efficiency**:
+   - Before: 26 option_sets + 182 option_set_items = 208 total records for "Add Sides"
+   - After: 1 option_set + 7 option_set_items + 26 junction records = 34 total records
+   - **Reduction: 83.6% fewer records!**
+
+2. **Update Efficiency**:
+   - Before: Update 26 records to change "Add Sides"
+   - After: Update 1 record, affects all 26 items instantly
+
+3. **Flexibility**:
+   - Easy to add option set to new item (just add junction record)
+   - Easy to remove option set from item (just delete junction record)
+   - Option set continues to exist for other items
+
+4. **Data Integrity**:
+   - Foreign keys ensure option sets and menu items exist
+   - Cascading deletes clean up junction records automatically
+
+### Analogy: The Sign-Up Sheet
+
+The junction table acts like a **sign-up sheet** where menu items can "sign up" to use option sets:
+
+- **Option Sets**: Like classes or clubs that exist independently
+- **Menu Items**: Like students who can join multiple classes
+- **Junction Table**: Like the enrollment records showing which students are in which classes
+- **Benefits**: 
+  - The class exists once, not recreated for each student
+  - Updating class details (like room number) automatically affects all enrolled students
+  - Students can easily join or leave classes
+  - We can easily see all students in a class or all classes for a student
+
+This architecture follows database normalization principles and eliminates redundancy while maintaining flexibility and data integrity.
 
 ---
 
