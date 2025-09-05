@@ -16,6 +16,7 @@ import {
   CloudArrowUpIcon
 } from '@heroicons/react/24/outline';
 import EditableMenuItem from '../components/menu/EditableMenuItem';
+import OptionSetsManagement from '../components/menu/OptionSetsManagement';
 import { validateMenuItem, validateMenuItems, getChangedItems } from '../components/menu/MenuItemValidator';
 import { useToast } from '../hooks/use-toast';
 import { Button } from '../components/ui/button';

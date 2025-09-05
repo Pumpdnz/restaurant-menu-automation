@@ -1,0 +1,552 @@
+{
+  "menuId": "1ae32216-1ea3-46f3-8a0e-b75f686970b8",
+  "menuVersion": 1,
+  "restaurant": "Romans kitchen",
+  "platform": "ubereats",
+  "downloadDate": "2025-09-03T23:41:54.829Z",
+  "stats": {
+    "total": 71,
+    "downloaded": 31,
+    "failed": 40,
+    "noImage": 0
+  },
+  "items": [
+    {
+      "dishName": "Creamy chicken cajun macncheese",
+      "categoryName": "Todays Special",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/29e0b341a7a0327c40d8b63ed92c3bd8/58f691da9eaef86b0b51f9b2c483fe63.jpeg",
+      "localPath": "todays_special/creamy_chicken_cajun_macncheese.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Creamy Shrimp Cajun Mac n Cheese",
+      "categoryName": "Todays Special",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/29e0b341a7a0327c40d8b63ed92c3bd8/58f691da9eaef86b0b51f9b2c483fe63.jpeg",
+      "localPath": "todays_special/creamy_shrimp_cajun_mac_n_cheese.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Garlic Parmesan chicken burger",
+      "categoryName": "Classic Burger",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/a99bcc3b-6024-4358-a844-a5e8bf910890/38d3d524-6d4b-48a1-a904-c35cde97aecd/f342c071-c095-469a-87df-23bcfdf17c09.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Spicy buffalo chicken burger",
+      "categoryName": "Classic Burger",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/a99bcc3b-6024-4358-a844-a5e8bf910890/38d3d524-6d4b-48a1-a904-c35cde97aecd/1adde108-9075-469f-9fcd-965862628250.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Sweet chilli chicken burger",
+      "categoryName": "Classic Burger",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/a99bcc3b-6024-4358-a844-a5e8bf910890/38d3d524-6d4b-48a1-a904-c35cde97aecd/6a1ad69d-c4f8-4845-8575-56374cd29fc8.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Honey barbecue chicken burger",
+      "categoryName": "Classic Burger",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/a99bcc3b-6024-4358-a844-a5e8bf910890/38d3d524-6d4b-48a1-a904-c35cde97aecd/3dc2f1b8-4444-4582-ab02-d99bdd9ee753.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Classic Salad Burger",
+      "categoryName": "Classic Burger",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/a99bcc3b-6024-4358-a844-a5e8bf910890/38d3d524-6d4b-48a1-a904-c35cde97aecd/08301629-5808-4f71-8652-fe0bf9699a52.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Hawaiian salad burger",
+      "categoryName": "Classic Burger",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/a99bcc3b-6024-4358-a844-a5e8bf910890/38d3d524-6d4b-48a1-a904-c35cde97aecd/4f667aa3-c061-4531-b642-481d99b28cc2.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Classic egg burger",
+      "categoryName": "Classic Burger",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/a99bcc3b-6024-4358-a844-a5e8bf910890/38d3d524-6d4b-48a1-a904-c35cde97aecd/b68cf0b7-cad9-4fd6-bf3a-0609e0ceb302.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Smoked salmon burger",
+      "categoryName": "Classic Burger",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/a99bcc3b-6024-4358-a844-a5e8bf910890/38d3d524-6d4b-48a1-a904-c35cde97aecd/a512ef8b-afc5-424f-80f5-48f715d08565.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Garlic Parmesan beef burger",
+      "categoryName": "Classic Burger",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/a99bcc3b-6024-4358-a844-a5e8bf910890/38d3d524-6d4b-48a1-a904-c35cde97aecd/30579d3a-75f6-482b-83a5-a7a84dee6727.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Spicy buffalo beef burger",
+      "categoryName": "Classic Burger",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/a99bcc3b-6024-4358-a844-a5e8bf910890/38d3d524-6d4b-48a1-a904-c35cde97aecd/00b1dfd5-8dc2-4432-b3f2-1d44f340d6d9.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Sweet chilli beef burger",
+      "categoryName": "Classic Burger",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/a99bcc3b-6024-4358-a844-a5e8bf910890/38d3d524-6d4b-48a1-a904-c35cde97aecd/1a413230-9aa9-4aa6-9348-700b9e1626be.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Honey barbecue beef burger",
+      "categoryName": "Classic Burger",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/a99bcc3b-6024-4358-a844-a5e8bf910890/38d3d524-6d4b-48a1-a904-c35cde97aecd/871851f2-9200-4085-8bee-a6b996ed6bc6.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Chicken Carbonara Pasta",
+      "categoryName": "Pasta",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/1c7ab0aca97b0b8968529c5469689988/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": "pasta/chicken_carbonara_pasta.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Fettuccine Alfredo Pasta",
+      "categoryName": "Pasta",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/b87e2fb2bc9f1f8f1d47a8e7a52722dd/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": "pasta/fettuccine_alfredo_pasta.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Chicken Cacciatore Pasta",
+      "categoryName": "Pasta",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/fc61503a-99a6-4d38-9018-8534fa04dfbf/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Gamberi Romans Pasta",
+      "categoryName": "Pasta",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/7dfb3766-9a6c-4b7c-9bda-b86c190e7056/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Pesto Chicken Pasta",
+      "categoryName": "Pasta",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/4b7a8af0-cf74-4bfc-bbc2-31e658cd264e/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Spaghetti Bolognese Pasta",
+      "categoryName": "Pasta",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/34624470-2015-4b0e-8327-75c7bc2304ec/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Creamy Mushroom Pasta",
+      "categoryName": "Pasta",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/daa20983-09d6-4a2f-83fa-e0eedc3212ca/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Creamy Garlic Prawn Pasta",
+      "categoryName": "Pasta",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/b2bd355e-c282-4ce2-99f9-249354e53eed/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Smoked Salmon Pasta",
+      "categoryName": "Pasta",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/bce539c7-8e61-4e99-984b-8c02fd8364cf/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Penne Arrabiata Pasta",
+      "categoryName": "Pasta",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/2ccefcbb-2a1f-4949-a1f6-e569ea5401da/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Creamy Pesto Shrimps Pasta",
+      "categoryName": "Pasta",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/64d6e4c5-a5db-4321-a2df-b96efb2d5959/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Spaghetti in Tomato Pasta",
+      "categoryName": "Pasta",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/06b94040-b831-4576-8921-61f383e3c600/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Basil Pesto Pasta",
+      "categoryName": "Pasta",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/1fe18107-c26d-4bd8-88b3-dccd77e942fb/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Seafood Marinara Pasta",
+      "categoryName": "Pasta",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/9495607e-f1c0-426a-a503-d2f97e9a1765/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Wings in Parmesan garlic sauce 5 pack",
+      "categoryName": "Chicken Wings",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/0260d9aa6e14ebedc7c95e07d20ed6f6/984bf8a9c67542af33d1e2c9a3e8625f.jpeg",
+      "localPath": "chicken_wings/wings_in_parmesan_garlic_sauce_5_pack.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Wings in buffalo sauce 5pack",
+      "categoryName": "Chicken Wings",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/0260d9aa6e14ebedc7c95e07d20ed6f6/984bf8a9c67542af33d1e2c9a3e8625f.jpeg",
+      "localPath": "chicken_wings/wings_in_buffalo_sauce_5pack.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Wings in sweet chilli sauce 5pack",
+      "categoryName": "Chicken Wings",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/0260d9aa6e14ebedc7c95e07d20ed6f6/984bf8a9c67542af33d1e2c9a3e8625f.jpeg",
+      "localPath": "chicken_wings/wings_in_sweet_chilli_sauce_5pack.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Wings in honey barbecue sauce 5pack",
+      "categoryName": "Chicken Wings",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/0260d9aa6e14ebedc7c95e07d20ed6f6/984bf8a9c67542af33d1e2c9a3e8625f.jpeg",
+      "localPath": "chicken_wings/wings_in_honey_barbecue_sauce_5pack.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Pepper Steak and Chips",
+      "categoryName": "Steak",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/94cc2817-97e2-4b63-956d-7e13f9ed65dd/ec1689ae3a25695f1b8e25c59bec5034.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Steak and Chips with Mushroom Sauce",
+      "categoryName": "Steak",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/cd29bc39-e84f-4c27-b2cd-80e77729de5d/ec1689ae3a25695f1b8e25c59bec5034.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Steak and Chips with Cream Sauce",
+      "categoryName": "Steak",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/e3b0d43b-dcb6-4fda-a719-ab8e31eeb06f/ec1689ae3a25695f1b8e25c59bec5034.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Steak on Chicken Carbonara Pasta",
+      "categoryName": "Steak on Pasta",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/0260d9aa6e14ebedc7c95e07d20ed6f6/984bf8a9c67542af33d1e2c9a3e8625f.jpeg",
+      "localPath": "steak_on_pasta/steak_on_chicken_carbonara_pasta.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Steak on Spaghetti Bolognese",
+      "categoryName": "Steak on Pasta",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/0260d9aa6e14ebedc7c95e07d20ed6f6/984bf8a9c67542af33d1e2c9a3e8625f.jpeg",
+      "localPath": "steak_on_pasta/steak_on_spaghetti_bolognese.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Creamy Mushroom Steak Pasta",
+      "categoryName": "Steak on Pasta",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/0260d9aa6e14ebedc7c95e07d20ed6f6/984bf8a9c67542af33d1e2c9a3e8625f.jpeg",
+      "localPath": "steak_on_pasta/creamy_mushroom_steak_pasta.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Steak on Macaroni and Cheese Pasta",
+      "categoryName": "Steak on Pasta",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/0260d9aa6e14ebedc7c95e07d20ed6f6/984bf8a9c67542af33d1e2c9a3e8625f.jpeg",
+      "localPath": "steak_on_pasta/steak_on_macaroni_and_cheese_pasta.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Steak on Chicken Alfredo Pasta",
+      "categoryName": "Steak on Pasta",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/0260d9aa6e14ebedc7c95e07d20ed6f6/984bf8a9c67542af33d1e2c9a3e8625f.jpeg",
+      "localPath": "steak_on_pasta/steak_on_chicken_alfredo_pasta.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Steak on Cacciatore Pasta",
+      "categoryName": "Steak on Pasta",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/0260d9aa6e14ebedc7c95e07d20ed6f6/984bf8a9c67542af33d1e2c9a3e8625f.jpeg",
+      "localPath": "steak_on_pasta/steak_on_cacciatore_pasta.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Steak on Pomodoro Spaghetti",
+      "categoryName": "Steak on Pasta",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/0260d9aa6e14ebedc7c95e07d20ed6f6/984bf8a9c67542af33d1e2c9a3e8625f.jpeg",
+      "localPath": "steak_on_pasta/steak_on_pomodoro_spaghetti.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Steak on Penne and Cream Pasta",
+      "categoryName": "Steak on Pasta",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/0260d9aa6e14ebedc7c95e07d20ed6f6/984bf8a9c67542af33d1e2c9a3e8625f.jpeg",
+      "localPath": "steak_on_pasta/steak_on_penne_and_cream_pasta.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Creamy Peppper Sauce Spaghetti Pasta on Steak",
+      "categoryName": "Steak on Pasta",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/0260d9aa6e14ebedc7c95e07d20ed6f6/984bf8a9c67542af33d1e2c9a3e8625f.jpeg",
+      "localPath": "steak_on_pasta/creamy_peppper_sauce_spaghetti_pasta_on_steak.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Waffle Fries Loaded Macaroni and Cheese",
+      "categoryName": "Macaroni and Cheese and Fries",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/d5ed6eff58f0991a7a0aa126f42d7858/36d60e3d86e4cf5dc84830bee9edbbd5.jpeg",
+      "localPath": "macaroni_and_cheese_and_fries/waffle_fries_loaded_macaroni_and_cheese.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Curly Fries Loaded Macaroni and Cheese",
+      "categoryName": "Macaroni and Cheese and Fries",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/d5ed6eff58f0991a7a0aa126f42d7858/36d60e3d86e4cf5dc84830bee9edbbd5.jpeg",
+      "localPath": "macaroni_and_cheese_and_fries/curly_fries_loaded_macaroni_and_cheese.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Macaroni and Cheese",
+      "categoryName": "Macaroni and Cheese and Fries",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/d5ed6eff58f0991a7a0aa126f42d7858/36d60e3d86e4cf5dc84830bee9edbbd5.jpeg",
+      "localPath": "macaroni_and_cheese_and_fries/macaroni_and_cheese.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Fries Loaded Macaroni and Cheese",
+      "categoryName": "Macaroni and Cheese and Fries",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/d5ed6eff58f0991a7a0aa126f42d7858/36d60e3d86e4cf5dc84830bee9edbbd5.jpeg",
+      "localPath": "macaroni_and_cheese_and_fries/fries_loaded_macaroni_and_cheese.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Wedges Loaded Macaroni and Cheese",
+      "categoryName": "Macaroni and Cheese and Fries",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/d5ed6eff58f0991a7a0aa126f42d7858/36d60e3d86e4cf5dc84830bee9edbbd5.jpeg",
+      "localPath": "macaroni_and_cheese_and_fries/wedges_loaded_macaroni_and_cheese.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Oreo Shake",
+      "categoryName": "Premium Shake",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/d5ed6eff58f0991a7a0aa126f42d7858/36d60e3d86e4cf5dc84830bee9edbbd5.jpeg",
+      "localPath": "premium_shake/oreo_shake.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Strawberry Shake",
+      "categoryName": "Premium Shake",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/d5ed6eff58f0991a7a0aa126f42d7858/36d60e3d86e4cf5dc84830bee9edbbd5.jpeg",
+      "localPath": "premium_shake/strawberry_shake.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Cadbury Chocolate Shake",
+      "categoryName": "Premium Shake",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/d5ed6eff58f0991a7a0aa126f42d7858/36d60e3d86e4cf5dc84830bee9edbbd5.jpeg",
+      "localPath": "premium_shake/cadbury_chocolate_shake.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Oreo Cheesecake",
+      "categoryName": "Desserts",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/91ffe1285bad425a91c2d74457b195e6/ec1689ae3a25695f1b8e25c59bec5034.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Nutella Cheesecake",
+      "categoryName": "Desserts",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/91ffe1285bad425a91c2d74457b195e6/ec1689ae3a25695f1b8e25c59bec5034.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Maltesers Chocolate Cheesecake",
+      "categoryName": "Desserts",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/91ffe1285bad425a91c2d74457b195e6/ec1689ae3a25695f1b8e25c59bec5034.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Passionfruit Cheesecake",
+      "categoryName": "Desserts",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/91ffe1285bad425a91c2d74457b195e6/ec1689ae3a25695f1b8e25c59bec5034.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Strawberry Cheesecake",
+      "categoryName": "Desserts",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/91ffe1285bad425a91c2d74457b195e6/ec1689ae3a25695f1b8e25c59bec5034.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "M&M's Cheesecake",
+      "categoryName": "Desserts",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/91ffe1285bad425a91c2d74457b195e6/ec1689ae3a25695f1b8e25c59bec5034.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Mixed Berry Cheesecake",
+      "categoryName": "Desserts",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/91ffe1285bad425a91c2d74457b195e6/ec1689ae3a25695f1b8e25c59bec5034.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Salted Caramel Cheesecake",
+      "categoryName": "Desserts",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/91ffe1285bad425a91c2d74457b195e6/ec1689ae3a25695f1b8e25c59bec5034.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Chocolate Cheesecake",
+      "categoryName": "Desserts",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/91ffe1285bad425a91c2d74457b195e6/ec1689ae3a25695f1b8e25c59bec5034.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Caramel Cheesecake",
+      "categoryName": "Desserts",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/91ffe1285bad425a91c2d74457b195e6/ec1689ae3a25695f1b8e25c59bec5034.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Curly Fries",
+      "categoryName": "Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/3fc82849265ffd7e2709f2d21cd35811/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": "sides/curly_fries.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Fries",
+      "categoryName": "Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/3fc82849265ffd7e2709f2d21cd35811/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": "sides/fries.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Waffle Fries",
+      "categoryName": "Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/3fc82849265ffd7e2709f2d21cd35811/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": "sides/waffle_fries.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Wedges",
+      "categoryName": "Sides",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/3fc82849265ffd7e2709f2d21cd35811/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": "sides/wedges.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "Fanta Grape 1.75l",
+      "categoryName": "Beverages",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/4e5221c1-5fb8-401b-a40b-f5cce65acd24/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Fanta Strawberry 1.75l",
+      "categoryName": "Beverages",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/4e5221c1-5fb8-401b-a40b-f5cce65acd24/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "Canned Drink",
+      "categoryName": "Beverages",
+      "originalUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/4e5221c1-5fb8-401b-a40b-f5cce65acd24/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "localPath": null,
+      "status": "failed",
+      "error": "HTTP 404"
+    },
+    {
+      "dishName": "ROMANS FRIED Chicken Burger",
+      "categoryName": "Burger",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/2f391caca3866a988c6ec92e9c074672/0baca410dad94733c4fda514bca1624f.jpeg",
+      "localPath": "burger/romans_fried_chicken_burger.jpg",
+      "status": "success"
+    },
+    {
+      "dishName": "ROMANS JUICY beef Burger",
+      "categoryName": "Burger",
+      "originalUrl": "https://tb-static.uber.com/prod/enhanced-images/image-touchup-v1/2f391caca3866a988c6ec92e9c074672/0baca410dad94733c4fda514bca1624f.jpeg",
+      "localPath": "burger/romans_juicy_beef_burger.jpg",
+      "status": "success"
+    }
+  ]
+}

@@ -5,7 +5,6 @@ import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { X, Plus, Trash2 } from 'lucide-react';
 import OptionSetsDisplay from './OptionSetsDisplay';
-import OptionSetEditor from './OptionSetEditor';
 
 export default function EditableMenuItem({ 
   item, 
@@ -254,19 +253,19 @@ export default function EditableMenuItem({
             </div>
           </div>
 
-          {/* Option Sets Editor */}
-          <OptionSetEditor 
-            optionSets={editedItem.optionSets || []}
-            onUpdate={(updatedSets) => handleFieldChange('optionSets', updatedSets)}
-            isEditMode={true}
-          />
-
           {/* Change indicator */}
           {hasChanges && (
             <p className="text-xs text-blue-600 font-medium">Item has unsaved changes</p>
           )}
         </div>
       </div>
+      
+      {/* Option Sets Display (read-only in edit mode) */}
+      {editedItem.optionSets && editedItem.optionSets.length > 0 && (
+        <div className="mt-3 pt-3 border-t">
+          <OptionSetsDisplay optionSets={editedItem.optionSets} />
+        </div>
+      )}
     </div>
   );
 }
