@@ -73,6 +73,7 @@
     "input-otp": "^1.4.2",
     "jszip": "^3.10.1",
     "lucide-react": "^0.540.0",
+    "multer": "^2.0.2",
     "node-vibrant": "^4.0.3",
     "prop-types": "^15.8.1",
     "react": "^19.1.0",

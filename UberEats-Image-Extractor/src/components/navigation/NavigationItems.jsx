@@ -8,6 +8,7 @@ import {
   BarChart,
   History,
   Settings,
+  Shield,
 } from 'lucide-react';
 import {
   SidebarGroup,
@@ -17,9 +18,11 @@ import {
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/AuthContext';
 
 const NavigationItems = ({ collapsed }) => {
   const location = useLocation();
+  const { isSuperAdmin } = useAuth();
   
   const navigationItems = [
     { href: '/', label: 'Dashboard', icon: Home },
@@ -30,6 +33,16 @@ const NavigationItems = ({ collapsed }) => {
     { href: '/history', label: 'History', icon: History },
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
+  
+  // Add Super Admin link if user is super admin
+  if (isSuperAdmin && isSuperAdmin()) {
+    navigationItems.push({ 
+      href: '/super-admin', 
+      label: 'Super Admin', 
+      icon: Shield,
+      className: 'text-purple-600 hover:text-purple-700'
+    });
+  }
   
   const isActive = (path) => {
     if (path === '/') {
@@ -52,6 +65,7 @@ const NavigationItems = ({ collapsed }) => {
                   asChild
                   isActive={active}
                   tooltip={collapsed ? item.label : null}
+                  className={item.className}
                 >
                   <Link to={item.href}>
                     <Icon className="h-4 w-4" />

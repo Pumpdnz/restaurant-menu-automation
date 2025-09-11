@@ -11,10 +11,11 @@
  * 
  * Options:
  *   --email=<email>           Login email (required)
+ *   --password=<password>     User password (required)
  *   --primary=<color>         Primary color hex code (required)
  *   --head=<path>             Path to head injection HTML file (required)
  *   --body=<path>             Path to body injection HTML file (required)
- *   --name=<text>             Restaurant name (required)
+ *   --name=<text>             Restaurant name for matching (required)
  *   --logo=<path>             Path to logo image file (optional)
  *   --instagram=<url>         Instagram URL (optional)
  *   --facebook=<url>          Facebook URL (optional)
@@ -25,11 +26,10 @@
  *   --debug                   Enable debug mode (keeps browser open)
  * 
  * Environment Variables:
- *   ADMIN_PASSWORD          Admin password for login
  *   DEBUG_MODE              Enable debug mode (true/false)
  * 
  * Example:
- *   node edit-website-settings-light.js --email="test@example.com" --name="Curry Garden" --primary="#A47F20" --head="../generated-code/restaurant/head-injection.html" --body="../generated-code/restaurant/body-injection.html"
+ *   node edit-website-settings-light.js --email="test@example.com" --password="Password123!" --name="Curry Garden" --primary="#A47F20" --head="../generated-code/restaurant/head-injection.html" --body="../generated-code/restaurant/body-injection.html"
  */
 
 import { createRequire } from 'module';
@@ -61,6 +61,7 @@ const getArg = (name) => {
 
 // Parse arguments
 const email = getArg('email');
+const password = getArg('password'); // NEW: Accept password as argument
 const primaryColor = getArg('primary');
 const headPath = getArg('head');
 const bodyPath = getArg('body');
@@ -73,13 +74,12 @@ const location = getArg('location');
 const address = getArg('address');
 const phoneNumber = getArg('phone');
 
-// Use admin password from environment or default
-const password = process.env.ADMIN_PASSWORD || '7uo@%K2^Hz%yiXDeP39Ckp6BvF!2';
-
 // Validate required arguments
-if (!email || !primaryColor || !headPath || !bodyPath || !restaurantName) {
-  console.error('❌ Error: Email, restaurant name, primary color, head path, and body path are required');
-  console.error('Usage: node edit-website-settings-light.js --email="email@example.com" --name="Restaurant Name" --primary="#HEXCOLOR" --head="path/to/head.html" --body="path/to/body.html"');
+if (!email || !password || !primaryColor || !headPath || !bodyPath || !restaurantName) {
+  console.error('❌ Error: Missing required parameters');
+  console.error('Required: --email=<email> --password=<password> --name=<name> --primary=<color> --head=<path> --body=<path>');
+  console.error('\nExample:');
+  console.error('node edit-website-settings-dark.js --email="test@example.com" --password="Password123!" --name="Test Restaurant" --primary="#A47F20" --head="../generated-code/restaurant/head-injection.html" --body="../generated-code/restaurant/body-injection.html"');
   process.exit(1);
 }
 
@@ -135,6 +135,9 @@ async function editWebsiteSettingsLight() {
   
   const page = await context.newPage();
   
+  // Track uploaded logo URL for output
+  let uploadedLogoUrl = null;
+  
   // Set up dialog handler to automatically accept theme change confirmation
   page.on('dialog', async dialog => {
     console.log('  📢 Dialog detected:', dialog.message());
@@ -159,39 +162,220 @@ async function editWebsiteSettingsLight() {
     await page.click('button[type="submit"], button:has-text("Login"), button:has-text("Sign In")');
     console.log('  ✓ Clicked login');
     
-    await page.waitForURL('**/admin.pumpd.co.nz/**', { timeout: 15000 });
-    console.log('  ✓ Login successful');
+    // Wait for redirect with better error handling (like test-get-restaurant-id.js)
+    console.log('  ⏳ Waiting for redirect...');
+    try {
+      await page.waitForURL('**/admin.pumpd.co.nz/**', { timeout: 15000 });
+      console.log('  ✓ Successfully logged in!');
+      console.log('  ✓ Redirected to dashboard');
+    } catch (error) {
+      const currentUrl = page.url();
+      if (currentUrl.includes('admin.pumpd.co.nz')) {
+        console.log('  ✓ Successfully logged in (already on dashboard)');
+      } else {
+        throw new Error('Login failed - not redirected to dashboard');
+      }
+    }
     
-    // Wait for dashboard to load
-    await page.waitForTimeout(3000);
+    // Improved waiting for dashboard content with timeout handling
+    console.log('\n⏳ Waiting for dashboard...');
+    try {
+      await page.waitForLoadState('networkidle', { timeout: 10000 });
+    } catch (error) {
+      console.log('  ⚠️ Network idle timeout, continuing anyway...');
+    }
+    console.log('  ✓ Reached dashboard:', page.url());
+    
+    // Wait for loading overlay to disappear (if present)
+    try {
+      await page.waitForFunction(() => {
+        const loader = document.querySelector('.cover-loader');
+        return !loader || !loader.classList.contains('active');
+      }, { timeout: 5000 });
+    } catch (error) {
+      console.log('  ⚠️ Loading overlay check timed out, continuing...');
+    }
+    
+    // Wait longer for dashboard content to fully load
+    console.log('  ⏳ Waiting for dashboard content to load...');
+    await page.waitForTimeout(5000);
+    
+    // Try to wait for restaurant elements to appear
+    try {
+      await page.waitForSelector('h4', { timeout: 8000 });
+      console.log('  ✓ Dashboard content loaded');
+    } catch (error) {
+      console.log('  ⚠️ No h4 elements found, continuing anyway...');
+    }
+    
     await takeScreenshot(page, '02-dashboard');
     
-    // STEP 2: Navigate to restaurant management
+    // STEP 2: Navigate to restaurant management with smart matching
     console.log('\n🏪 STEP 2: Navigate to restaurant management');
+    console.log(`  🔍 Looking for restaurant: ${restaurantName}`);
     
-    const manageButton = page.locator('#restaurant-list-item-0 button:has-text("Manage")').first();
-    await manageButton.click();
-    console.log('  ✓ Clicked Manage button');
+    // Wait a bit for the list to fully render
+    await page.waitForTimeout(2000);
+    
+    // Helper functions for smart matching
+    const normalizeForMatching = (str) => {
+      return str
+        .toLowerCase()
+        .replace(/['']/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    };
+    
+    const calculateMatchScore = (searchTerm, restaurantNameInList) => {
+      const searchNorm = normalizeForMatching(searchTerm);
+      const nameNorm = normalizeForMatching(restaurantNameInList);
+      
+      // Exact match (after normalization) - highest priority
+      if (searchNorm === nameNorm) {
+        return { score: 1000, reason: 'exact match' };
+      }
+      
+      // Split into words for word-based matching
+      const searchWords = searchNorm.split(' ').filter(w => w.length > 1);
+      const nameWords = nameNorm.split(' ');
+      
+      let score = 0;
+      let matchedWords = 0;
+      let reason = '';
+      
+      // Count how many search words are found in the restaurant name
+      for (const searchWord of searchWords) {
+        // Check for exact word match
+        if (nameWords.includes(searchWord)) {
+          score += 10;
+          matchedWords++;
+        }
+        // Check for partial word match
+        else if (nameWords.some(nameWord => {
+          const lengthDiff = Math.abs(nameWord.length - searchWord.length);
+          if (lengthDiff <= 2) {
+            const commonChars = searchWord.split('').filter(char => nameWord.includes(char)).length;
+            return commonChars >= Math.min(searchWord.length, nameWord.length) - 1;
+          }
+          return false;
+        })) {
+          score += 8;
+          matchedWords++;
+        }
+        // Check for substring match
+        else if (nameWords.some(nameWord => nameWord.includes(searchWord) || searchWord.includes(nameWord))) {
+          score += 5;
+          matchedWords++;
+        }
+      }
+      
+      // Bonus for matching all words
+      if (matchedWords === searchWords.length && searchWords.length > 0) {
+        score += 50;
+        reason = `all ${searchWords.length} words matched`;
+      } else if (matchedWords > 0) {
+        reason = `${matchedWords}/${searchWords.length} words matched`;
+      }
+      
+      // Penalty for extra words in restaurant name (less specific match)
+      const extraWords = nameWords.length - searchWords.length;
+      if (extraWords > 0 && score > 0) {
+        score -= extraWords * 2;
+      }
+      
+      // If the full search term is contained in the restaurant name (substring match)
+      if (score === 0 && nameNorm.includes(searchNorm)) {
+        score = 25;
+        reason = 'substring match';
+      }
+      
+      return { score, reason };
+    };
+    
+    // Try to find which index our restaurant is at by checking the h4 elements
+    let restaurantIndex = -1;
+    let bestScore = 0;
+    let bestMatch = null;
+    
+    const allRestaurantNames = await page.locator('h4').allTextContents();
+    
+    console.log(`  ℹ️ Found ${allRestaurantNames.length} restaurants in the list`);
+    console.log(`  📊 Evaluating restaurants for best match:`);
+    
+    for (let i = 0; i < allRestaurantNames.length; i++) {
+      const { score, reason } = calculateMatchScore(restaurantName, allRestaurantNames[i]);
+      
+      if (score > 0) {
+        console.log(`    ${i}: "${allRestaurantNames[i]}" - Score: ${score} (${reason})`);
+        
+        if (score > bestScore) {
+          bestScore = score;
+          restaurantIndex = i;
+          bestMatch = { name: allRestaurantNames[i], reason };
+        }
+      }
+    }
+    
+    if (restaurantIndex >= 0) {
+      console.log(`  ✅ Best match: "${bestMatch.name}" at index ${restaurantIndex} (${bestMatch.reason})`);
+      
+      // Use the simple, reliable selector pattern with the found index
+      const manageButton = page.locator(`#restaurant-list-item-${restaurantIndex} button:has-text("Manage")`).first();
+      
+      // If the first selector doesn't work, try with view-store pattern
+      if (await manageButton.count() === 0) {
+        console.log('  ⚠️ Standard selector not found, trying view-store pattern...');
+        const alternativeButton = page.locator(`button[id="restaurant-list-item-view-store-${restaurantIndex}"]`).first();
+        if (await alternativeButton.count() > 0) {
+          await alternativeButton.click();
+          console.log(`  ✓ Clicked Manage button using view-store pattern`);
+        } else {
+          console.log('  ⚠️ View-store pattern not found, trying index-based fallback...');
+          const allManageButtons = page.locator('button:has-text("Manage")');
+          if (await allManageButtons.count() > restaurantIndex) {
+            await allManageButtons.nth(restaurantIndex).click();
+            console.log(`  ✓ Clicked Manage button at index ${restaurantIndex}`);
+          } else {
+            throw new Error('Could not find Manage button for restaurant');
+          }
+        }
+      } else {
+        await manageButton.click();
+        console.log(`  ✓ Clicked Manage button for ${restaurantName}`);
+      }
+    } else {
+      console.log(`  ❌ No matching restaurant found for "${restaurantName}"`);
+      console.log('  Available restaurants:');
+      allRestaurantNames.forEach((name, index) => {
+        console.log(`    ${index}: "${name}"`);
+      });
+      throw new Error('Restaurant not found in list');
+    }
     
     // Wait for navigation to complete and page to load
     console.log('  ⏳ Waiting for restaurant management page to load...');
     try {
       // Wait for URL change to restaurant management
-      await page.waitForURL('**/restaurant/**', { timeout: 10000 });
+      await page.waitForURL('**/restaurant/**', { timeout: 8000 });
       console.log('  ✓ Navigated to restaurant page');
-      
-      // Wait for the navigation menu to appear
-      await page.waitForSelector('#nav-link-settings', { timeout: 10000 });
-      console.log('  ✓ Navigation menu loaded');
-      
-      // Additional wait for any dynamic content
-      await page.waitForTimeout(2000);
-      
     } catch (error) {
-      console.log('  ⚠️ Initial wait failed, trying alternative approach...');
-      // Fallback: just wait for network to be idle
-      await page.waitForLoadState('networkidle', { timeout: 15000 });
-      await page.waitForTimeout(3000);
+      console.log('  ⚠️ Navigation timeout, checking current URL...');
+    }
+    
+    // Add extra wait to ensure URL is fully loaded and stable
+    await page.waitForTimeout(3000);
+    try {
+      await page.waitForLoadState('networkidle', { timeout: 8000 });
+    } catch (error) {
+      console.log('  ⚠️ Network idle timeout after navigation, continuing...');
+    }
+    
+    // Wait for the navigation menu to appear
+    try {
+      await page.waitForSelector('#nav-link-settings', { timeout: 8000 });
+      console.log('  ✓ Navigation menu loaded');
+    } catch (error) {
+      console.log('  ⚠️ Settings link not found, continuing anyway...');
     }
     
     console.log('  ✓ Restaurant management page loaded');
@@ -241,6 +425,7 @@ async function editWebsiteSettingsLight() {
     }
     
     // Wait for settings page to load
+    await page.waitForLoadState('networkidle');
     await page.waitForTimeout(3000);
     await takeScreenshot(page, '04-settings-page');
     
@@ -256,7 +441,7 @@ async function editWebsiteSettingsLight() {
       if (await websiteText.count() > 0) {
         await websiteText.click();
         console.log('  ✓ Clicked on Website text');
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(1000);
       } else {
         // Fallback: Try button with Website text
         console.log('  Website text not found, trying button selector...');
@@ -264,21 +449,36 @@ async function editWebsiteSettingsLight() {
         if (await websiteButton.count() > 0) {
           await websiteButton.click();
           console.log('  ✓ Clicked Website button');
-          await page.waitForTimeout(2000);
+          await page.waitForTimeout(1000);
         } else {
           throw new Error('Could not find Website tab');
         }
       }
       
       // Verify we're on the Website tab by checking for Website-specific content
-      const websiteContent = await page.locator('text=/Themes|Colors|Fonts/i').count();
-      if (websiteContent > 0) {
-        console.log('  ✓ Website tab content detected');
-      } else {
-        console.log('  ⚠️ Could not verify Website content, checking URL...');
+      const websiteIndicators = [
+        page.locator('text=/Custom.*Header/i'),
+        page.locator('text=/Custom.*Footer/i'),
+        page.locator('text=/Header.*Code/i'),
+        page.locator('text=/Footer.*Code/i'),
+        page.locator('text=/Domain/i'),
+        page.locator('text=/Subdomain/i')
+      ];
+      
+      let foundWebsiteContent = false;
+      for (const indicator of websiteIndicators) {
+        if (await indicator.count() > 0) {
+          foundWebsiteContent = true;
+          console.log('  ✓ Website tab content detected');
+          break;
+        }
       }
       
-      console.log('  ✓ Successfully navigated to Website tab');
+      if (foundWebsiteContent) {
+        console.log('  ✓ Successfully navigated to Website tab');
+      } else {
+        console.log('  ⚠️ Could not verify Website content, but tab should be active');
+      }
       
     } catch (error) {
       console.error('  ❌ Failed to click Website tab:', error.message);
@@ -304,13 +504,57 @@ async function editWebsiteSettingsLight() {
     }
     
     // Wait for website settings to load
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(1000);
     await takeScreenshot(page, '05-website-settings');
     
     console.log('\n✅ Successfully navigated to Website Settings!');
     
-    // STEP 5: Open Colors menu dropdown (Light theme is default, no need to select it)
-    console.log('\n🎨 STEP 5: Opening Colors menu');
+    // STEP 5: Open Themes menu dropdown
+    console.log('\n🎨 STEP 5: Opening Themes menu');
+    
+    const themesSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div:nth-child(2)';
+    
+    try {
+      await page.locator(themesSelector).scrollIntoViewIfNeeded();
+      await page.waitForTimeout(500);
+      console.log('  ✓ Scrolled to Themes section');
+      
+      await page.click(themesSelector);
+      await page.waitForTimeout(1000);
+      console.log('  ✓ Expanded Themes dropdown');
+      
+      await takeScreenshot(page, '05-themes-expanded');
+    } catch (error) {
+      console.log('  ⚠️ Using fallback selector for Themes section');
+      const themesText = page.locator('div:has-text("Themes"):has(svg)').first();
+      await themesText.scrollIntoViewIfNeeded();
+      await themesText.click();
+      await page.waitForTimeout(1000);
+    }
+    
+    // STEP 6: Click Light Theme button
+    console.log('\n☀️ STEP 6: Selecting Light Theme');
+    
+    // Light theme is typically the second button (index 2)
+    const lightThemeSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > div > div > div > div > button:nth-child(2)';
+    
+    try {
+      await page.click(lightThemeSelector);
+      console.log('  ✓ Clicked Light Theme button');
+      
+      // Wait for theme to apply (dialog will be handled automatically)
+      await page.waitForTimeout(4000);
+      console.log('  ✓ Light theme applied successfully');
+      
+      await takeScreenshot(page, '06-light-theme-applied');
+    } catch (error) {
+      console.log('  ⚠️ Using fallback selector for Light Theme');
+      await page.click('button:has-text("Light Theme")');
+      await page.waitForTimeout(4000);
+    }
+    
+    // STEP 7: Open Colors menu dropdown
+    console.log('\n🎨 STEP 7: Opening Colors menu');
     
     const colorsSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div:nth-child(3)';
     
@@ -323,7 +567,7 @@ async function editWebsiteSettingsLight() {
       await page.waitForTimeout(1000);
       console.log('  ✓ Expanded Colors dropdown');
       
-      await takeScreenshot(page, '05-colors-expanded');
+      await takeScreenshot(page, '07-colors-expanded');
     } catch (error) {
       console.log('  ⚠️ Using fallback selector for Colors section');
       const colorsText = page.locator('div:has-text("Colors"):has(svg)').first();
@@ -332,75 +576,39 @@ async function editWebsiteSettingsLight() {
       await page.waitForTimeout(1000);
     }
     
-    // STEP 6: Set all color configurations
-    console.log('\n🎨 STEP 6: Setting Color Configurations');
+    // STEP 8: Set Primary Color
+    console.log('\n🎨 STEP 8: Setting Primary Color');
     
-    // Define selectors for each color field - IN REVERSE ORDER to avoid picker overlap
-    const colorFields = [
-      {
-        name: 'Box & Popup Text',
-        pickerSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(6) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj',
-        inputSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(6) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input',
-        value: primaryColor  // Text color for boxes
-      },
-      {
-        name: 'Box & Popup Background',
-        pickerSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(5) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj',
-        inputSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(5) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input',
-        value: '#FFFBF2'  // Cream background for boxes
-      },
-      {
-        name: 'Text',
-        pickerSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(4) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj',
-        inputSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(4) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input',
-        value: '#323232'  // Dark gray text for light mode
-      },
-      {
-        name: 'Background',
-        pickerSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(3) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj',
-        inputSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(3) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input',
-        value: '#FFFBF2'  // Cream background for light mode
-      },
-      {
-        name: 'Primary Text',
-        pickerSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(2) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj',
-        inputSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(2) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input',
-        value: '#FFFBF2'  // Cream text on primary
-      },
-      {
-        name: 'Primary',
-        pickerSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj',
-        inputSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input',
-        value: primaryColor
-      }
-    ];
+    const colorPickerSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj';
+    const colorInputSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input';
     
-    // Set each color (in reverse order to avoid picker overlap)
-    for (const field of colorFields) {
-      try {
-        console.log(`  Setting ${field.name} color...`);
-        
-        // Click on color picker to open it
-        await page.click(field.pickerSelector);
-        await page.waitForTimeout(500);
-        
-        // Find and fill the color input - this clears existing value automatically
-        await page.fill(field.inputSelector, field.value);
-        console.log(`  ✓ Set ${field.name} to ${field.value}`);
-        
-        // Don't worry about closing - just move to the next one
-        // The picker will either close automatically or stay open
-        await page.waitForTimeout(800);
-        
-      } catch (error) {
-        console.log(`  ⚠️ Failed to set ${field.name} color:`, error.message);
-      }
+    try {
+      // Click on color picker to open it
+      await page.click(colorPickerSelector);
+      await page.waitForTimeout(500);
+      console.log('  ✓ Opened color picker');
+      
+      // Find and fill the color input
+      await page.fill(colorInputSelector, primaryColor);
+      console.log(`  ✓ Set primary color to ${primaryColor}`);
+      
+      // Click outside to close color picker
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(500);
+      
+      await takeScreenshot(page, '08-color-set');
+    } catch (error) {
+      console.log('  ⚠️ Using alternative color input method');
+      // Try to find any visible color input
+      const colorInput = page.locator('input[type="text"][value^="#"]').first();
+      await colorInput.click();
+      await colorInput.clear();
+      await colorInput.fill(primaryColor);
+      console.log(`  ✓ Set primary color to ${primaryColor} (fallback)`);
     }
     
-    await takeScreenshot(page, '06-colors-configured');
-    
-    // STEP 7: Save color changes
-    console.log('\n💾 STEP 7: Saving color configuration');
+    // STEP 9: Save color changes
+    console.log('\n💾 STEP 9: Saving color configuration');
     
     const saveColorSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > button';
     
@@ -410,7 +618,7 @@ async function editWebsiteSettingsLight() {
       console.log('  ✓ Clicked Save button for colors');
       await page.waitForTimeout(2000);
       
-      await takeScreenshot(page, '07-colors-saved');
+      await takeScreenshot(page, '09-colors-saved');
     } catch (error) {
       console.log('  ⚠️ Using fallback save button');
       const saveButton = page.locator('button:has-text("Save")').first();
@@ -418,8 +626,8 @@ async function editWebsiteSettingsLight() {
       await page.waitForTimeout(2000);
     }
     
-    // STEP 8: Configure Fonts
-    console.log('\n🔤 STEP 8: Configuring Fonts');
+    // STEP 10: Configure Fonts
+    console.log('\n🔤 STEP 10: Configuring Fonts');
     
     const fontsSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div:nth-child(4)';
     
@@ -432,7 +640,7 @@ async function editWebsiteSettingsLight() {
       await page.waitForTimeout(2000); // Wait for Google fonts to load
       console.log('  ✓ Expanded Fonts dropdown, Google fonts loading...');
       
-      await takeScreenshot(page, '08-fonts-expanded');
+      await takeScreenshot(page, '10-fonts-expanded');
     } catch (error) {
       console.log('  ⚠️ Using fallback selector for Fonts section');
       const fontsText = page.locator('div:has-text("Fonts"):has(svg)').first();
@@ -503,7 +711,7 @@ async function editWebsiteSettingsLight() {
       await page.click(saveFontSelector);
       console.log('  ✓ Saved font configuration');
       await page.waitForTimeout(2000);
-      await takeScreenshot(page, '08-fonts-saved');
+      await takeScreenshot(page, '10-fonts-saved');
     } catch (error) {
       console.log('  ⚠️ Using fallback save button for fonts');
       const saveButton = page.locator('button:has-text("Save")').first();
@@ -511,9 +719,9 @@ async function editWebsiteSettingsLight() {
       await page.waitForTimeout(2000);
     }
     
-    // STEP 9: Upload Logo (if provided)
+    // STEP 11: Upload Logo (if provided)
     if (logoPath) {
-      console.log('\n🖼️ STEP 9: Uploading Logo');
+      console.log('\n🖼️ STEP 11: Uploading Logo');
       
       const topNavSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div:nth-child(5)';
       
@@ -526,7 +734,7 @@ async function editWebsiteSettingsLight() {
         await page.waitForTimeout(1000);
         console.log('  ✓ Expanded Top Nav Bar dropdown');
         
-        await takeScreenshot(page, '09-topnav-expanded');
+        await takeScreenshot(page, '11-topnav-expanded');
       } catch (error) {
         console.log('  ⚠️ Using fallback selector for Top Nav Bar');
         const topNavText = page.locator('div:has-text("Top Nav Bar"):has(svg)').first();
@@ -535,40 +743,7 @@ async function editWebsiteSettingsLight() {
         await page.waitForTimeout(1000);
       }
       
-      // First set nav bar colors
-      console.log('  Setting Nav Bar colors...');
-      
-      // Set Nav Bar Background Color
-      const navBgPickerSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj.grid-2.sm.sm-gap.max300 > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj';
-      const navBgInputSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj.grid-2.sm.sm-gap.max300 > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input';
-      
-      try {
-        await page.click(navBgPickerSelector);
-        await page.waitForTimeout(500);
-        await page.fill(navBgInputSelector, '#FFFBF2');  // Use cream for nav background
-        console.log(`  ✓ Set Nav Bar Background to #FFFBF2`);
-        await page.keyboard.press('Escape');
-        await page.waitForTimeout(500);
-      } catch (error) {
-        console.log('  ⚠️ Failed to set nav bar background color:', error.message);
-      }
-      
-      // Set Nav Bar Text Color
-      const navTextPickerSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj.grid-2.sm.sm-gap.max300 > div:nth-child(2) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj > div';
-      const navTextInputSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj.grid-2.sm.sm-gap.max300 > div:nth-child(2) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input';
-      
-      try {
-        await page.click(navTextPickerSelector);
-        await page.waitForTimeout(500);
-        await page.fill(navTextInputSelector, primaryColor);  // Use primary color for nav bar
-        console.log(`  ✓ Set Nav Bar Text to ${primaryColor}`);
-        await page.keyboard.press('Escape');
-        await page.waitForTimeout(500);
-      } catch (error) {
-        console.log('  ⚠️ Failed to set nav bar text color:', error.message);
-      }
-      
-      // Now Upload Logo
+      // Click Upload Logo button
       const uploadLogoSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(3) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > button:nth-child(1)';
       
       try {
@@ -611,7 +786,7 @@ async function editWebsiteSettingsLight() {
           console.log('  ✓ Triggered file chooser');
           
           // Wait for upload to complete
-          await page.waitForTimeout(8000);
+          await page.waitForTimeout(5000);
           
           // Check if upload failed
           const errorMessage = page.locator('text="Something went wrong during the upload"').first();
@@ -636,7 +811,7 @@ async function editWebsiteSettingsLight() {
               if (await retryChooseButton.count() > 0) {
                 await retryChooseButton.click();
                 console.log('  ✓ Retriggered file chooser');
-                await page.waitForTimeout(8000);
+                await page.waitForTimeout(5000);
               }
             }
           }
@@ -680,13 +855,14 @@ async function editWebsiteSettingsLight() {
           const logoImgSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(3) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > a > img';
           
           // Wait for the logo preview to be visible
-          await page.waitForSelector(logoImgSelector, { timeout: 5000 });
+          await page.waitForSelector(logoImgSelector, { timeout: 3000 });
           
           // Extract the src attribute
           const logoUrl = await page.locator(logoImgSelector).getAttribute('src');
           
           if (logoUrl) {
             console.log(`  📌 Uploaded Logo URL: ${logoUrl}`);
+            uploadedLogoUrl = logoUrl; // Store for output
           } else {
             console.log('  ⚠️ Could not extract logo URL');
           }
@@ -700,17 +876,17 @@ async function editWebsiteSettingsLight() {
         console.log('  ✓ Saved logo configuration');
         await page.waitForTimeout(2000);
         
-        await takeScreenshot(page, '09-logo-saved');
+        await takeScreenshot(page, '11-logo-saved');
       } catch (error) {
         console.error('  ❌ Failed to upload logo:', error.message);
       }
     } else {
-      console.log('\n📋 STEP 9: Skipping logo upload (no logo provided)');
+      console.log('\n📋 STEP 11: Skipping logo upload (no logo provided)');
     }
     
-    // STEP 10: Upload Favicon (use same logo)
+    // STEP 12: Upload Favicon (use same logo)
     if (logoPath) {
-      console.log('\n🔖 STEP 10: Uploading Favicon');
+      console.log('\n🔖 STEP 12: Uploading Favicon');
       
       const faviconSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div:nth-child(15)';
       
@@ -769,11 +945,11 @@ async function editWebsiteSettingsLight() {
         console.error('  ❌ Failed to upload favicon:', error.message);
       }
     } else {
-      console.log('\n📋 STEP 10: Skipping favicon upload (no logo provided)');
+      console.log('\n📋 STEP 12: Skipping favicon upload (no logo provided)');
     }
     
-    // STEP 11: Configure SEO Settings
-    console.log('\n🔍 STEP 11: Configuring SEO Settings');
+    // STEP 13: Configure SEO Settings
+    console.log('\n🔍 STEP 13: Configuring SEO Settings');
     
     const seoSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div:nth-child(16)';
     
@@ -818,14 +994,14 @@ async function editWebsiteSettingsLight() {
       console.log('  ✓ Saved SEO configuration');
       await page.waitForTimeout(2000);
       
-      await takeScreenshot(page, '12-seo-saved');
+      await takeScreenshot(page, '13-seo-saved');
     } catch (error) {
       console.error('  ❌ Failed to configure SEO:', error.message);
     }
     
-    // STEP 12: Configure Social Media Links (if provided)
+    // STEP 14: Configure Social Media Links (if provided)
     if (instagramUrl || facebookUrl) {
-      console.log('\n📱 STEP 12: Configuring Social Media Links');
+      console.log('\n📱 STEP 14: Configuring Social Media Links');
       
       const socialSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div:nth-child(17)';
       
@@ -870,16 +1046,16 @@ async function editWebsiteSettingsLight() {
         console.log('  ✓ Saved social media configuration');
         await page.waitForTimeout(2000);
         
-        await takeScreenshot(page, '13-social-saved');
+        await takeScreenshot(page, '14-social-saved');
       } catch (error) {
         console.error('  ❌ Failed to configure social media:', error.message);
       }
     } else {
-      console.log('\n📋 STEP 12: Skipping social media (no URLs provided)');
+      console.log('\n📋 STEP 14: Skipping social media (no URLs provided)');
     }
     
-    // STEP 13: Scroll to Custom Code section and open it
-    console.log('\n📝 STEP 13: Opening Custom Code section');
+    // STEP 15: Scroll to Custom Code section and open it
+    console.log('\n📝 STEP 15: Opening Custom Code section');
     
     const customCodeSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div:nth-child(18)';
     
@@ -892,7 +1068,7 @@ async function editWebsiteSettingsLight() {
       await page.waitForTimeout(1500);
       console.log('  ✓ Expanded Custom Code dropdown');
       
-      await takeScreenshot(page, '14-custom-code-expanded');
+      await takeScreenshot(page, '15-custom-code-expanded');
     } catch (error) {
       console.log('  ⚠️ Using fallback selector for Custom Code section');
       const customCodeText = page.locator('div:has-text("Custom Code"):has(svg)').first();
@@ -901,8 +1077,8 @@ async function editWebsiteSettingsLight() {
       await page.waitForTimeout(1500);
     }
     
-    // STEP 14: Add Head Code
-    console.log('\n🔖 STEP 14: Adding Head Code Injection');
+    // STEP 16: Add Head Code
+    console.log('\n🔖 STEP 16: Adding Head Code Injection');
     
     try {
       const headerTextarea = page.locator('textarea').first();
@@ -915,8 +1091,8 @@ async function editWebsiteSettingsLight() {
       console.error('  ❌ Failed to add head code:', error.message);
     }
     
-    // STEP 15: Add Body Code
-    console.log('\n🔖 STEP 15: Adding Body Code Injection');
+    // STEP 17: Add Body Code
+    console.log('\n🔖 STEP 17: Adding Body Code Injection');
     
     try {
       const footerTextarea = page.locator('textarea').nth(1);
@@ -929,8 +1105,8 @@ async function editWebsiteSettingsLight() {
       console.error('  ❌ Failed to add body code:', error.message);
     }
     
-    // STEP 16: Save code injection changes
-    console.log('\n💾 STEP 16: Saving code injection changes');
+    // STEP 18: Save code injection changes
+    console.log('\n💾 STEP 18: Saving code injection changes');
     
     try {
       const saveButton = page.locator('button:has-text("Save"), button:has-text("Update")').first();
@@ -947,15 +1123,25 @@ async function editWebsiteSettingsLight() {
       console.error('  ❌ Failed to save changes:', error.message);
     }
     
-    await takeScreenshot(page, '17-final-state');
+    await takeScreenshot(page, '18-final-state');
     
     console.log('\n✅ Light theme configuration completed successfully!');
     console.log(`Primary Color: ${primaryColor}`);
     console.log(`Head code: ${headCode.length} characters`);
     console.log(`Body code: ${bodyCode.length} characters`);
     
-    // STEP 17: Wait for changes to save then view the store
-    console.log('\n👀 STEP 17: Viewing the store with applied changes');
+    // Output result data in JSON format for API parsing
+    if (uploadedLogoUrl) {
+      console.log('\n===RESULT_DATA_START===');
+      console.log(JSON.stringify({
+        success: true,
+        uploadedLogoUrl: uploadedLogoUrl
+      }));
+      console.log('===RESULT_DATA_END===');
+    }
+    
+    // STEP 19: Wait for changes to save then view the store
+    console.log('\n👀 STEP 19: Viewing the store with applied changes');
     console.log('  ⏳ Waiting 8 seconds for changes to fully save...');
     await page.waitForTimeout(8000);
     
@@ -981,7 +1167,11 @@ async function editWebsiteSettingsLight() {
       console.log('  ✓ New tab opened');
       
       // Wait for the new page to load
-      await newPage.waitForLoadState('networkidle', { timeout: 15000 });
+      try {
+        await newPage.waitForLoadState('networkidle', { timeout: 15000 });
+      } catch (error) {
+        console.log('  ⚠️ Store page network idle timeout, continuing...');
+      }
       await newPage.waitForTimeout(3000); // Extra wait for dynamic content
       
       // Get the final URL
@@ -989,7 +1179,7 @@ async function editWebsiteSettingsLight() {
       console.log(`  📍 Store URL: ${finalUrl}`);
       
       // Take screenshot of the store page
-      await takeScreenshot(newPage, '18-store-view');
+      await takeScreenshot(newPage, '19-store-view');
       console.log('  ✓ Store page screenshot captured');
       
       // Close the store tab
@@ -1022,4 +1212,4 @@ async function editWebsiteSettingsLight() {
 }
 
 // Run the script
-editWebsiteSettingsLight();
+editWebsiteSettingsLight().catch(console.error);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api, { menuItemAPI } from '../services/api';
 import { 
@@ -50,10 +50,19 @@ export default function MenuDetail() {
   const [tempCategoryName, setTempCategoryName] = useState('');
   const [deletedItems, setDeletedItems] = useState(new Set());
   const [deletedCategories, setDeletedCategories] = useState(new Set());
+  const uploadIntervalRef = useRef(null);
   const [categoryNameChanges, setCategoryNameChanges] = useState({});
 
   useEffect(() => {
     fetchMenuDetails();
+    
+    // Cleanup function to clear interval on unmount
+    return () => {
+      if (uploadIntervalRef.current) {
+        clearInterval(uploadIntervalRef.current);
+        uploadIntervalRef.current = null;
+      }
+    };
   }, [id]);
 
   const fetchMenuDetails = async () => {
@@ -211,6 +220,12 @@ export default function MenuDetail() {
 
   const handleUploadImagesToCDN = async () => {
     try {
+      // Clear any existing interval before starting
+      if (uploadIntervalRef.current) {
+        clearInterval(uploadIntervalRef.current);
+        uploadIntervalRef.current = null;
+      }
+      
       toast({
         title: "Starting CDN upload...",
         description: "Uploading images to CDN",
@@ -231,21 +246,23 @@ export default function MenuDetail() {
           description: `Uploading ${response.data.totalImages} images to CDN. Batch ID: ${batchId}`,
         });
         
-        // Poll for progress
-        const checkProgress = setInterval(async () => {
+        // Poll for progress using ref
+        uploadIntervalRef.current = setInterval(async () => {
           try {
             const progressResponse = await api.get(`/upload-batches/${batchId}`);
             const batch = progressResponse.data.batch;
             
             if (batch.status === 'completed') {
-              clearInterval(checkProgress);
+              clearInterval(uploadIntervalRef.current);
+              uploadIntervalRef.current = null;
               toast({
                 title: "Upload complete!",
                 description: `Successfully uploaded ${batch.progress.uploaded} images to CDN`,
                 variant: "success"
               });
             } else if (batch.status === 'failed') {
-              clearInterval(checkProgress);
+              clearInterval(uploadIntervalRef.current);
+              uploadIntervalRef.current = null;
               toast({
                 title: "Upload failed",
                 description: "Some images failed to upload to CDN",
@@ -254,7 +271,8 @@ export default function MenuDetail() {
             }
           } catch (err) {
             console.error('Error checking progress:', err);
-            clearInterval(checkProgress);
+            clearInterval(uploadIntervalRef.current);
+            uploadIntervalRef.current = null;
           }
         }, 2000);
       }

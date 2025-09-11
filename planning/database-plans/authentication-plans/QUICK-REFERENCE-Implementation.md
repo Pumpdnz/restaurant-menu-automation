@@ -8,6 +8,11 @@
 - ✅ Organization context maintained
 - ✅ Session persistence across refreshes
 - ✅ Clean, simple implementation without complex flags
+- ✅ Password reset flow complete with email verification
+- ✅ User invitation system with email notifications
+- ✅ Organization management UI with member management
+- ✅ Role-based access control fully functional
+- ✅ Google OAuth integration configured and working
 
 ## ✅ COMPLETED COMPONENTS
 
@@ -35,7 +40,7 @@ CREATE TABLE profiles (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- ✅ Organization Invitations Table (CREATED)
+-- ✅ Organization Invitations Table (CREATED & UPDATED)
 CREATE TABLE organisation_invites (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   organisation_id UUID REFERENCES organisations(id),
@@ -45,7 +50,8 @@ CREATE TABLE organisation_invites (
   token TEXT UNIQUE NOT NULL,
   expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
   accepted_at TIMESTAMP WITH TIME ZONE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()  -- Added for resend functionality
 );
 
 -- ✅ All data tables updated with organisation_id
@@ -75,7 +81,7 @@ CREATE POLICY "restaurant_access_policy" ON restaurants
   FOR ALL USING (has_org_access(organisation_id));
 ```
 
-### 3. Frontend Auth (MOSTLY DONE)
+### 3. Frontend Auth (COMPLETE)
 ```typescript
 // ✅ AuthContext CREATED at: /src/context/AuthContext.tsx
 // ✅ Auth Types CREATED at: /src/types/auth.ts
@@ -85,6 +91,10 @@ CREATE POLICY "restaurant_access_policy" ON restaurants
 // ✅ Password Reset Pages CREATED at: /src/pages/ForgotPassword.tsx & ResetPassword.tsx
 // ✅ Protected Routes WORKING at: /src/components/ProtectedRoute.tsx
 // ✅ Organization Sync Hook at: /src/hooks/useOrganizationSync.tsx
+// ✅ Settings Page with Member Management at: /src/pages/Settings.tsx
+// ✅ Invite Accept Page at: /src/pages/InviteAccept.tsx
+// ✅ Auth Callback for OAuth at: /src/pages/AuthCallback.tsx
+// ✅ Google OAuth integration configured and working
 
 // Three-tier role system implemented:
 type UserRole = 'super_admin' | 'admin' | 'user';
@@ -94,11 +104,14 @@ isAdmin()      // Returns true for admin OR super_admin
 isSuperAdmin() // Returns true for super_admin only
 hasRole(role)  // Flexible role checking
 
+// Invitation management functions:
+inviteUser()   // Admin only - send invitations
+removeUser()   // Admin only - remove members
+updateUserRole() // Admin only - change roles
+
 // ⚠️ STILL NEEDED:
-// - Google OAuth integration
-// - Organization management UI
 // - Super admin dashboard
-// - Fix data visibility issue (org assignment not filtering data)
+// - Stripe billing integration
 ```
 
 ### 4. Backend Middleware (DONE)
@@ -130,33 +143,33 @@ createRestaurant(restaurantData, organisationId)
 // etc...
 ```
 
-## 🟡 IN PROGRESS ISSUES
+## ✅ RESOLVED ISSUES
 
-### 1. Data Visibility Problem (URGENT)
+### 1. Data Visibility Problem (FIXED)
 ```sql
--- User is assigned to default org: ✅
--- Data is assigned to default org: ✅  
--- But no data showing in UI: ❌
+-- User is assigned to organization: ✅
+-- Data is assigned to organization: ✅  
+-- Data showing correctly in UI: ✅
 
--- Need to check:
-1. Frontend queries including organisation_id filter?
-2. API endpoints filtering by org correctly?
-3. RLS policies blocking access?
-4. Organisation ID being passed in requests?
+-- Fixed by:
+1. Simplified RLS policy for organization members
+2. Proper organization context in AuthContext
+3. Fixed profile loading with organization data
+4. All queries now properly filtered by org_id
 ```
 
 ## 🔴 PENDING COMPONENTS
 
-### 1. Frontend Pages (PARTIALLY COMPLETE)
+### 1. Frontend Pages (MOSTLY COMPLETE)
 ```
 ✅ /src/pages/Login.tsx
 ✅ /src/pages/Signup.tsx
 ✅ /src/pages/ForgotPassword.tsx
 ✅ /src/pages/ResetPassword.tsx
-❌ /src/pages/InviteAccept.tsx
-❌ /src/pages/OrganizationSettings.tsx
+✅ /src/pages/InviteAccept.tsx
+✅ /src/pages/Settings.tsx (Organization management)
 ❌ /src/pages/SuperAdminDashboard.tsx
-✅ /src/pages/AuthCallback.tsx (OAuth handler created)
+✅ /src/pages/AuthCallback.tsx (OAuth handler)
 ❌ /src/pages/Billing.tsx (Usage & subscription)
 ```
 
@@ -167,12 +180,13 @@ createRestaurant(restaurantData, organisationId)
 // ✅ Role-based checks available
 ```
 
-### 3. Google OAuth Setup (NOT STARTED)
+### 3. Google OAuth Setup (COMPLETE)
 ```
-- Enable in Supabase Dashboard
-- Configure Google Cloud Console
-- Add redirect URLs
-- Set environment variables
+✅ Enabled in Supabase Dashboard
+✅ Configured Google Cloud Console
+✅ Added redirect URLs (localhost:5007)
+✅ OAuth flow working with AuthCallback
+✅ Multi-tab authentication preserved
 ```
 
 ### 4. Stripe Billing Integration (PLANNED - NOT STARTED)
@@ -238,38 +252,38 @@ VITE_SUPABASE_ANON_KEY=eyJhbG...
 
 ## 🚀 NEXT IMMEDIATE STEPS
 
-### Priority 1: Fix Data Visibility (TODAY)
+### Priority 1: Super Admin Dashboard (Next Task)
 ```bash
-# Debug why data isn't showing:
-1. Check if organisation_id is being passed in API requests
-2. Verify frontend queries include org filter
-3. Test RLS policies directly in Supabase
-4. Check if user.organisationId is populated in AuthContext
-5. Verify API middleware is attaching org context
-```
-
-### Priority 2: Google OAuth (Day 1)
-```bash
-1. Enable Google provider in Supabase Dashboard
-2. Configure OAuth consent screen in Google Cloud
-3. Update Login/Signup pages with Google button
-4. Test OAuth flow with AuthCallback component
-```
-
-### Priority 3: Organization Management (Day 2-3)
-```bash
-1. Create org settings page
-2. Add member list view
-3. Implement invitation system
-4. Test invite acceptance flow
-```
-
-### Priority 4: Super Admin Dashboard (Day 4-5)
-```bash
-1. Create super admin dashboard
+1. Create super admin dashboard at /src/pages/SuperAdminDashboard.tsx
 2. Add org switcher component
 3. Implement data access across orgs
 4. Add system monitoring views
+5. User management across all organizations
+```
+
+### Priority 2: Stripe Billing Integration (After Super Admin)
+```bash
+1. Set up Stripe meters for usage tracking
+2. Create billing webhook endpoints
+3. Implement subscription management
+4. Add usage tracking middleware
+5. Create billing UI components
+```
+
+### Priority 3: Edge Functions (Supporting Features)
+```bash
+✅ Invitation email sending (COMPLETE)
+- Usage tracking webhook
+- Billing event processing
+- Automated reports
+```
+
+### Priority 4: UI/UX Improvements
+```bash
+- Add loading states for all async operations
+- Improve error messages with actionable feedback
+- Add confirmation dialogs for destructive actions
+- Enhance mobile responsiveness
 ```
 
 ## ✅ WHAT'S WORKING NOW
@@ -279,14 +293,20 @@ VITE_SUPABASE_ANON_KEY=eyJhbG...
 3. **Frontend Auth** - Login/Logout/Signup working perfectly
 4. **Multi-Tab Sync** - Logout syncs across tabs automatically
 5. **Session Persistence** - Auth state maintained across refreshes
-6. **Profile Loading** - User profiles load without timeouts
-7. **Clean Implementation** - No complex flags or retry logic
+6. **Profile Loading** - User profiles load with organization data
+7. **Password Reset** - Complete flow with email verification
+8. **User Invitations** - Full invitation system with email notifications (Resend API)
+9. **Organization Management** - Settings page with member management
+10. **Role Management** - Admins can update user roles
+11. **Google OAuth** - Complete OAuth flow with organization assignment
+12. **Data Isolation** - Proper organization-based data filtering
+13. **Edge Functions** - Email sending via Supabase Edge Functions
 
 ## 🔧 TESTING CHECKLIST
 
 ### Can Test Now:
 - [x] Database migrations applied successfully
-- [x] RLS policies created
+- [x] RLS policies created and working
 - [x] Default organization created
 - [x] Auth middleware exports correct functions
 - [x] User signup creates organization
@@ -294,13 +314,18 @@ VITE_SUPABASE_ANON_KEY=eyJhbG...
 - [x] Password reset flow works
 - [x] Multi-tab logout synchronization
 - [x] Session persistence across refreshes
+- [x] Google OAuth integration working
+- [x] Invitation acceptance flow complete
+- [x] Role-based access control working
+- [x] Data isolation between orgs working
+- [x] Admin role management functional
+- [x] Email sending via Edge Functions
 
-### Still Need to Test:
-- [ ] Google OAuth integration
-- [ ] Invitation acceptance flow
-- [ ] Role-based access control (partially working)
-- [ ] Super admin can access all orgs
-- [ ] Data isolation between orgs (ISSUE: data not showing)
+### Still Need to Implement:
+- [ ] Super admin dashboard
+- [ ] Organization switcher for super admins
+- [ ] Stripe billing integration
+- [ ] Usage tracking and metering
 
 ## 🔑 KEY LESSONS FROM MULTI-TAB AUTH
 
@@ -531,11 +556,16 @@ app.post('/api/images/bulk/*', requireActiveSubscription);
 | Auth Context | ✅ Complete | /src/context/AuthContext.tsx |
 | Backend Middleware | ✅ Complete | /middleware/auth.js |
 | Database Service | ✅ Updated | /src/services/database-service.js |
-| Login Page | ❌ Pending | /src/pages/Login.tsx |
-| Signup Page | ❌ Pending | /src/pages/Signup.tsx |
-| OAuth Handler | ❌ Pending | /src/pages/AuthCallback.tsx |
-| Org Management | ❌ Pending | /src/pages/OrganizationSettings.tsx |
+| Login Page | ✅ Complete | /src/pages/Login.tsx |
+| Signup Page | ✅ Complete | /src/pages/Signup.tsx |
+| Password Reset | ✅ Complete | /src/pages/ForgotPassword.tsx & ResetPassword.tsx |
+| OAuth Handler | ✅ Complete | /src/pages/AuthCallback.tsx |
+| Invite Accept | ✅ Complete | /src/pages/InviteAccept.tsx |
+| Org Management | ✅ Complete | /src/pages/Settings.tsx |
+| Invitation Service | ✅ Complete | /src/services/invitation-service.ts |
+| Edge Functions | ✅ Complete | /supabase/functions/send-invitation |
 | Super Admin | ❌ Pending | /src/pages/SuperAdminDashboard.tsx |
+| Billing Integration | ❌ Pending | /src/pages/Billing.tsx |
 
 ---
 

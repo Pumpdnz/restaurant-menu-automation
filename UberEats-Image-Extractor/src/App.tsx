@@ -23,6 +23,9 @@ import Analytics from './pages/Analytics';
 import History from './pages/History';
 import Settings from './pages/Settings';
 
+// Super Admin Pages
+import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
+
 // Auth Pages
 import { LoginPage } from './pages/Login';
 import { SignupPage } from './pages/Signup';
@@ -94,11 +97,7 @@ function AppContent() {
           {/* Super Admin Only Routes */}
           <Route 
             path="super-admin" 
-            element={
-              <ProtectedRoute requireSuperAdmin={true}>
-                <div>Super Admin Dashboard (Coming Soon)</div>
-              </ProtectedRoute>
-            } 
+            element={<SuperAdminDashboard />}
           />
           
           <Route path="*" element={<Navigate to="/" replace />} />

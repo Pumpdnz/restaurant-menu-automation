@@ -5,25 +5,25 @@
  * 
  * This script performs automated CSV menu import including:
  * - Login to existing restaurant account
- * - Navigation to restaurant management
+ * - Smart restaurant matching by name
+ * - Navigation to correct restaurant management
  * - CSV import process
  * - File selection and upload
- * Uses admin password from environment or default
  * 
  * Usage:
  *   node import-csv-menu.js [options]
  * 
  * Options:
  *   --email=<email>           Login email (required)
- *   --csvFile=<path>         Path to CSV file to import (optional, will find latest if not provided)
- *   --restaurantName=<name>   Restaurant name for file selection (optional)
+ *   --password=<password>     User password (required)
+ *   --name=<name>             Restaurant name for matching (required)
+ *   --csvFile=<path>          Path to CSV file to import (optional, will find latest if not provided)
  * 
  * Environment Variables:
  *   DEBUG_MODE              Enable debug mode (true/false)
- *   ADMIN_PASSWORD          Admin password for login
  * 
  * Example:
- *   node import-csv-menu.js --email="test@example.com" --csvFile="/path/to/menu.csv"
+ *   node import-csv-menu.js --email="test@example.com" --password="Password123!" --name="Test Restaurant" --csvFile="/path/to/menu.csv"
  */
 
 const { chromium } = require('playwright');
@@ -46,16 +46,17 @@ const getArg = (name) => {
 
 // Parse arguments
 const email = getArg('email');
+const password = getArg('password'); // NEW: Accept password as argument
+const restaurantName = getArg('name'); // NEW: Accept restaurant name for matching
 const csvFile = getArg('csvFile');
-const restaurantName = getArg('restaurantName');
-
-// Use admin password from environment or default
-const password = process.env.ADMIN_PASSWORD || '7uo@%K2^Hz%yiXDeP39Ckp6BvF!2';
 
 // Validate required arguments
-if (!email) {
-  console.error('❌ Error: Email is required');
-  console.error('Usage: node import-csv-menu.js --email="email@example.com" --csvFile="/path/to/menu.csv"');
+if (!email || !password || !restaurantName) {
+  console.error('❌ Error: Missing required parameters');
+  console.error('Required: --email=<email> --password=<password> --name=<restaurant_name>');
+  console.error('Optional: --csvFile=<path> (will find latest if not provided)');
+  console.error('\nExample:');
+  console.error('node import-csv-menu.js --email=test@example.com --password=Password123! --name="Test Restaurant" --csvFile="/path/to/menu.csv"');
   process.exit(1);
 }
 
@@ -188,38 +189,186 @@ async function importCSVMenu() {
       return !loader || !loader.classList.contains('active');
     }, { timeout: 10000 });
     
-    await page.waitForTimeout(2000);
+    // Wait longer for dashboard content to fully load
+    console.log('  ⏳ Waiting for dashboard content to load...');
+    await page.waitForTimeout(5000);
+    
+    // Try to wait for restaurant elements to appear
+    try {
+      await page.waitForSelector('h4', { timeout: 10000 });
+      console.log('  ✓ Dashboard content loaded');
+    } catch (error) {
+      console.log('  ⚠️ No h4 elements found, continuing anyway...');
+    }
+    
+    await page.waitForLoadState('networkidle');
     await takeScreenshot(page, '02-dashboard-loaded');
     
-    // STEP 2: Click Manage button for the restaurant
+    // STEP 2: Navigate to restaurant management with smart matching
     console.log('\n🏪 STEP 2: Navigate to restaurant management');
+    console.log(`  🔍 Looking for restaurant: ${restaurantName}`);
     
-    // Strategy to click the Manage button (not View Store)
-    // The selector matches two buttons, we need the first one (Manage)
-    try {
-      // Try to click using more specific selector for Manage button
-      const manageButton = page.locator('#restaurant-list-item-0 button:has-text("Manage")').first();
-      await manageButton.click();
-      console.log('  ✓ Clicked Manage button');
-    } catch {
-      // Fallback: Use nth-child or index-based selection
-      try {
-        const buttons = await page.locator('#restaurant-list-item-0 button').all();
-        if (buttons.length >= 1) {
-          await buttons[0].click(); // First button should be Manage
-          console.log('  ✓ Clicked Manage button (via index)');
-        }
-      } catch {
-        // Last fallback: Use the exact selector path
-        await page.click('#restaurant-list-item-0 > div > div.flex-line.centered.child-mr-10.m-t-2 > button:first-child');
-        console.log('  ✓ Clicked Manage button (via exact selector)');
+    // Wait for restaurant list to load
+    await page.waitForTimeout(2000);
+    
+    // Helper function for fuzzy restaurant name matching
+    const normalizeForMatching = (str) => {
+      return str
+        .toLowerCase()                    // Case insensitive
+        .replace(/['']/g, '')             // Remove apostrophes
+        .replace(/\s+/g, ' ')             // Normalize spaces
+        .trim();
+    };
+    
+    // Function to calculate match score between search term and restaurant name
+    const calculateMatchScore = (searchTerm, restaurantName) => {
+      const searchNorm = normalizeForMatching(searchTerm);
+      const nameNorm = normalizeForMatching(restaurantName);
+      
+      // Exact match (after normalization) - highest priority
+      if (searchNorm === nameNorm) {
+        return { score: 1000, reason: 'exact match' };
       }
+      
+      // Split into words for word-based matching
+      const searchWords = searchNorm.split(' ').filter(w => w.length > 1); // Filter out single chars
+      const nameWords = nameNorm.split(' ');
+      
+      let score = 0;
+      let matchedWords = 0;
+      let reason = '';
+      
+      // Count how many search words are found in the restaurant name
+      for (const searchWord of searchWords) {
+        // Check for exact word match
+        if (nameWords.includes(searchWord)) {
+          score += 10;
+          matchedWords++;
+        }
+        // Check for partial word match (e.g., "zaikaa" matches "ziakaa")
+        else if (nameWords.some(nameWord => {
+          // Use Levenshtein-like simple check: if words are similar length and share most characters
+          const lengthDiff = Math.abs(nameWord.length - searchWord.length);
+          if (lengthDiff <= 2) {
+            const commonChars = searchWord.split('').filter(char => nameWord.includes(char)).length;
+            return commonChars >= Math.min(searchWord.length, nameWord.length) - 1;
+          }
+          return false;
+        })) {
+          score += 8;
+          matchedWords++;
+        }
+        // Check for substring match
+        else if (nameWords.some(nameWord => nameWord.includes(searchWord) || searchWord.includes(nameWord))) {
+          score += 5;
+          matchedWords++;
+        }
+      }
+      
+      // Bonus for matching all words
+      if (matchedWords === searchWords.length && searchWords.length > 0) {
+        score += 50;
+        reason = `all ${searchWords.length} words matched`;
+      } else if (matchedWords > 0) {
+        reason = `${matchedWords}/${searchWords.length} words matched`;
+      }
+      
+      // Penalty for extra words in restaurant name (less specific match)
+      const extraWords = nameWords.length - searchWords.length;
+      if (extraWords > 0 && score > 0) {
+        score -= extraWords * 2;
+      }
+      
+      // If the full search term is contained in the restaurant name (substring match)
+      if (score === 0 && nameNorm.includes(searchNorm)) {
+        score = 25;
+        reason = 'substring match';
+      }
+      
+      return { score, reason };
+    };
+    
+    // Try to find which index our restaurant is at by checking the h4 elements
+    let restaurantIndex = -1;
+    let bestScore = 0;
+    let bestMatch = null;
+    
+    const allRestaurantNames = await page.locator('h4').allTextContents();
+    
+    console.log(`  ℹ️ Found ${allRestaurantNames.length} restaurants in the list`);
+    if (allRestaurantNames.length > 0) {
+      console.log(`  📊 Evaluating restaurants for best match:`);
+      
+      for (let i = 0; i < allRestaurantNames.length; i++) {
+        const { score, reason } = calculateMatchScore(restaurantName, allRestaurantNames[i]);
+        
+        if (score > 0) {
+          console.log(`    ${i}: "${allRestaurantNames[i]}" - Score: ${score} (${reason})`);
+          
+          if (score > bestScore) {
+            bestScore = score;
+            restaurantIndex = i;
+            bestMatch = { name: allRestaurantNames[i], reason };
+          }
+        }
+      }
+    }
+    
+    if (restaurantIndex >= 0) {
+      console.log(`  ✅ Best match: "${bestMatch.name}" at index ${restaurantIndex} (${bestMatch.reason})`);
+      
+      // Use the simple, reliable selector pattern with the found index
+      const manageButton = page.locator(`#restaurant-list-item-${restaurantIndex} button:has-text("Manage")`).first();
+      
+      // If the first selector doesn't work, try with view-store pattern
+      if (await manageButton.count() === 0) {
+        console.log('  ⚠️ Standard selector not found, trying view-store pattern...');
+        const alternativeButton = page.locator(`button[id="restaurant-list-item-view-store-${restaurantIndex}"]`).first();
+        if (await alternativeButton.count() > 0) {
+          await alternativeButton.click();
+          console.log(`  ✓ Clicked Manage button using view-store pattern`);
+        } else {
+          console.log('  ⚠️ View-store pattern not found, trying index-based fallback...');
+          // Final fallback - just click the button at that index
+          const allManageButtons = page.locator('button:has-text("Manage")');
+          if (await allManageButtons.count() > restaurantIndex) {
+            await allManageButtons.nth(restaurantIndex).click();
+            console.log(`  ✓ Clicked Manage button at index ${restaurantIndex}`);
+          } else {
+            throw new Error('Could not find Manage button for restaurant');
+          }
+        }
+      } else {
+        await manageButton.click();
+        console.log(`  ✓ Clicked Manage button for ${restaurantName}`);
+      }
+    } else {
+      console.log(`  ❌ No matching restaurant found for "${restaurantName}"`);
+      console.log('  Available restaurants:');
+      allRestaurantNames.forEach((name, index) => {
+        console.log(`    ${index}: "${name}"`);
+      });
+      throw new Error('Restaurant not found in list');
     }
     
     // Wait for navigation to restaurant management page
     console.log('  ⏳ Waiting for restaurant management page...');
-    await page.waitForURL('**/admin.pumpd.co.nz/restaurant/**', { timeout: 15000 });
-    console.log('  ✓ Navigated to restaurant page');
+    try {
+      await page.waitForURL('**/admin.pumpd.co.nz/restaurant/**', { timeout: 15000 });
+      console.log('  ✓ Navigated to restaurant page');
+    } catch (error) {
+      console.log('  ⚠️ Navigation timeout, checking current URL...');
+      const currentUrl = page.url();
+      if (currentUrl.includes('admin.pumpd.co.nz/restaurant/')) {
+        console.log('  ✓ Already on restaurant page');
+      } else {
+        throw error;
+      }
+    }
+    
+    // Add extra wait to ensure page is fully loaded
+    await page.waitForTimeout(2000);
+    await page.waitForLoadState('networkidle');
     
     // Wait 3 seconds for page to fully load
     await page.waitForTimeout(3000);

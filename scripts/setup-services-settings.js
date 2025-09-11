@@ -46,14 +46,13 @@ const getArg = (name) => {
 
 // Parse arguments
 const email = getArg('email');
-
-// Use admin password from environment or default
-const password = process.env.ADMIN_PASSWORD || '7uo@%K2^Hz%yiXDeP39Ckp6BvF!2';
+const password = getArg('password');  // NEW: User password
+const restaurantName = getArg('name'); // NEW: For matching
 
 // Validate required arguments
-if (!email) {
-  console.error('❌ Error: Email is required');
-  console.error('Usage: node navigate-to-services-settings.js --email="email@example.com"');
+if (!email || !password || !restaurantName) {
+  console.error('❌ Error: Missing required parameters');
+  console.error('Required: --email=<email> --password=<password> --name=<restaurant_name>');
   process.exit(1);
 }
 
@@ -71,6 +70,7 @@ async function setupServicesSettings() {
   console.log('Configuration:');
   console.log(`  Email: ${email}`);
   console.log(`  Password: ${'*'.repeat(password.length)}`);
+  console.log(`  Restaurant Name: ${restaurantName}`);
   console.log(`  Debug Mode: ${DEBUG_MODE}`);
   console.log('');
   
@@ -100,39 +100,211 @@ async function setupServicesSettings() {
     await page.click('button[type="submit"], button:has-text("Login"), button:has-text("Sign In")');
     console.log('  ✓ Clicked login');
     
-    await page.waitForURL('**/admin.pumpd.co.nz/**', { timeout: 15000 });
-    console.log('  ✓ Login successful');
+    // Wait for redirect
+    console.log('  ⏳ Waiting for redirect...');
+    try {
+      await page.waitForURL('**/admin.pumpd.co.nz/**', { timeout: 10000 });
+      console.log('  ✓ Successfully logged in!');
+    } catch (error) {
+      throw new Error('Login failed - not redirected to dashboard');
+    }
     
     // Wait for dashboard to load
-    await page.waitForTimeout(3000);
+    console.log('\n⏳ Waiting for dashboard...');
+    try {
+      await page.waitForLoadState('networkidle', { timeout: 10000 });
+    } catch (error) {
+      console.log('  ⚠️ Network idle timeout, continuing anyway...');
+    }
+    console.log('  ✓ Reached dashboard:', page.url());
+    
+    // Wait for loading overlay to disappear
+    try {
+      await page.waitForFunction(() => {
+        const loader = document.querySelector('.cover-loader');
+        return !loader || !loader.classList.contains('active');
+      }, { timeout: 5000 });
+    } catch (error) {
+      console.log('  ⚠️ Loading overlay check timed out, continuing...');
+    }
+    
+    // Additional wait for restaurants to load
+    console.log('  ⏳ Waiting for dashboard content to fully load...');
+    await page.waitForTimeout(5000);
+    
+    // Try to wait for restaurant elements to appear
+    try {
+      await page.waitForSelector('h4', { timeout: 8000 });
+      console.log('  ✓ Dashboard content loaded');
+    } catch (error) {
+      console.log('  ⚠️ No h4 elements found, continuing anyway...');
+    }
+    
     await takeScreenshot(page, '02-dashboard');
     
-    // STEP 2: Navigate to restaurant management
+    // STEP 2: Navigate to restaurant management with smart matching
     console.log('\n🏪 STEP 2: Navigate to restaurant management');
+    console.log(`  🔍 Looking for restaurant: ${restaurantName}`);
     
-    const manageButton = page.locator('#restaurant-list-item-0 button:has-text("Manage")').first();
-    await manageButton.click();
-    console.log('  ✓ Clicked Manage button');
+    // Wait a bit for the list to fully render
+    await page.waitForTimeout(2000);
     
-    // Wait for navigation to complete and page to load
-    console.log('  ⏳ Waiting for restaurant management page to load...');
+    // Helper function for fuzzy restaurant name matching
+    const normalizeForMatching = (str) => {
+      return str
+        .toLowerCase()
+        .replace(/['']/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    };
+    
+    // Function to calculate match score between search term and restaurant name
+    const calculateMatchScore = (searchTerm, restaurantName) => {
+      const searchNorm = normalizeForMatching(searchTerm);
+      const nameNorm = normalizeForMatching(restaurantName);
+      
+      // Exact match (after normalization) - highest priority
+      if (searchNorm === nameNorm) {
+        return { score: 1000, reason: 'exact match' };
+      }
+      
+      // Split into words for word-based matching
+      const searchWords = searchNorm.split(' ').filter(w => w.length > 1);
+      const nameWords = nameNorm.split(' ');
+      
+      let score = 0;
+      let matchedWords = 0;
+      let reason = '';
+      
+      // Count how many search words are found in the restaurant name
+      for (const searchWord of searchWords) {
+        if (nameWords.includes(searchWord)) {
+          score += 10;
+          matchedWords++;
+        } else if (nameWords.some(nameWord => {
+          const lengthDiff = Math.abs(nameWord.length - searchWord.length);
+          if (lengthDiff <= 2) {
+            const commonChars = searchWord.split('').filter(char => nameWord.includes(char)).length;
+            return commonChars >= Math.min(searchWord.length, nameWord.length) - 1;
+          }
+          return false;
+        })) {
+          score += 8;
+          matchedWords++;
+        } else if (nameWords.some(nameWord => nameWord.includes(searchWord) || searchWord.includes(nameWord))) {
+          score += 5;
+          matchedWords++;
+        }
+      }
+      
+      // Bonus for matching all words
+      if (matchedWords === searchWords.length && searchWords.length > 0) {
+        score += 50;
+        reason = `all ${searchWords.length} words matched`;
+      } else if (matchedWords > 0) {
+        reason = `${matchedWords}/${searchWords.length} words matched`;
+      }
+      
+      // Penalty for extra words
+      const extraWords = nameWords.length - searchWords.length;
+      if (extraWords > 0 && score > 0) {
+        score -= extraWords * 2;
+      }
+      
+      // Substring match fallback
+      if (score === 0 && nameNorm.includes(searchNorm)) {
+        score = 25;
+        reason = 'substring match';
+      }
+      
+      return { score, reason };
+    };
+    
+    // Find the best matching restaurant
+    let restaurantIndex = -1;
+    let bestScore = 0;
+    let bestMatch = null;
+    
+    const allRestaurantNames = await page.locator('h4').allTextContents();
+    
+    console.log(`  ℹ️ Found ${allRestaurantNames.length} restaurants in the list`);
+    
+    if (allRestaurantNames.length > 0) {
+      console.log(`  📊 Evaluating restaurants for best match:`);
+      
+      for (let i = 0; i < allRestaurantNames.length; i++) {
+        const { score, reason } = calculateMatchScore(restaurantName, allRestaurantNames[i]);
+        
+        if (score > 0) {
+          console.log(`    ${i}: "${allRestaurantNames[i]}" - Score: ${score} (${reason})`);
+          
+          if (score > bestScore) {
+            bestScore = score;
+            restaurantIndex = i;
+            bestMatch = { name: allRestaurantNames[i], reason };
+          }
+        }
+      }
+    }
+    
+    if (restaurantIndex >= 0) {
+      console.log(`  ✅ Best match: "${bestMatch.name}" at index ${restaurantIndex} (${bestMatch.reason})`);
+      
+      // Try multiple selectors for the Manage button
+      const manageButton = page.locator(`#restaurant-list-item-${restaurantIndex} button:has-text("Manage")`).first();
+      
+      if (await manageButton.count() === 0) {
+        console.log('  ⚠️ Standard selector not found, trying view-store pattern...');
+        const alternativeButton = page.locator(`button[id="restaurant-list-item-view-store-${restaurantIndex}"]`).first();
+        if (await alternativeButton.count() > 0) {
+          await alternativeButton.click();
+          console.log(`  ✓ Clicked Manage button using view-store pattern`);
+        } else {
+          console.log('  ⚠️ View-store pattern not found, trying index-based fallback...');
+          const allManageButtons = page.locator('button:has-text("Manage")');
+          if (await allManageButtons.count() > restaurantIndex) {
+            await allManageButtons.nth(restaurantIndex).click();
+            console.log(`  ✓ Clicked Manage button at index ${restaurantIndex}`);
+          } else {
+            throw new Error('Could not find Manage button for restaurant');
+          }
+        }
+      } else {
+        await manageButton.click();
+        console.log(`  ✓ Clicked Manage button for ${restaurantName}`);
+      }
+    } else {
+      console.error(`  ❌ No matching restaurant found for "${restaurantName}"`);
+      console.log('  Available restaurants:');
+      allRestaurantNames.forEach((name, index) => {
+        console.log(`    ${index}: "${name}"`);
+      });
+      throw new Error(`Restaurant "${restaurantName}" not found in dashboard`);
+    }
+    
+    // Wait for navigation to complete
+    console.log('  ⏳ Waiting for navigation to restaurant management...');
     try {
-      // Wait for URL change to restaurant management
-      await page.waitForURL('**/restaurant/**', { timeout: 10000 });
+      await page.waitForURL('**/restaurant/**', { timeout: 8000 });
       console.log('  ✓ Navigated to restaurant page');
-      
-      // Wait for the navigation menu to appear
-      await page.waitForSelector('#nav-link-settings', { timeout: 10000 });
-      console.log('  ✓ Navigation menu loaded');
-      
-      // Additional wait for any dynamic content
-      await page.waitForTimeout(2000);
-      
     } catch (error) {
-      console.log('  ⚠️ Initial wait failed, trying alternative approach...');
-      // Fallback: just wait for network to be idle
-      await page.waitForLoadState('networkidle', { timeout: 15000 });
-      await page.waitForTimeout(3000);
+      console.log('  ⚠️ Navigation timeout, checking current URL...');
+    }
+    
+    // Additional wait to ensure page is fully loaded
+    await page.waitForTimeout(3000);
+    try {
+      await page.waitForLoadState('networkidle', { timeout: 8000 });
+    } catch (error) {
+      console.log('  ⚠️ Network idle timeout after navigation, continuing...');
+    }
+    
+    // Wait for the navigation menu to appear
+    try {
+      await page.waitForSelector('#nav-link-settings', { timeout: 8000 });
+      console.log('  ✓ Navigation menu loaded');
+    } catch (error) {
+      console.log('  ⚠️ Settings link not found, continuing anyway...');
     }
     
     console.log('  ✓ Restaurant management page loaded');

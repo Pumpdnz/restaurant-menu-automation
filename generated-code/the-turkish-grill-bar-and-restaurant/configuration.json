@@ -1,0 +1,19 @@
+{
+  "restaurant": "The Turkish Grill Bar and Restaurant",
+  "primaryColor": "#e42228",
+  "secondaryColor": "#047474",
+  "theme": "dark",
+  "preset": "Interactive Showcase",
+  "components": {
+    "navBarTextEffects": {
+      "enabled": true,
+      "logoGradient": false
+    },
+    "welcomeMessages": {
+      "enabled": true,
+      "timeBasedGreeting": true,
+      "restaurantName": "The Turkish Grill Bar and Restaurant"
+    }
+  },
+  "generatedAt": "2025-09-10T07:25:49.221Z"
+}

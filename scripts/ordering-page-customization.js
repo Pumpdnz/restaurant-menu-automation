@@ -7,7 +7,15 @@
  * with restaurant-specific colors and presets, then extracts the code injections
  * 
  * Usage:
- *   node ordering-page-customization.js --primary="#XXXXXX" --secondary="#XXXXXX" --name="Restaurant Name" [--lightmode]
+ *   node ordering-page-customization.js --email="email@example.com" --password="password" --primary="#XXXXXX" --secondary="#XXXXXX" --name="Restaurant Name" [--lightmode]
+ * 
+ * Arguments:
+ *   --email       Login email (optional, uses default if not provided)
+ *   --password    Login password (optional, uses default if not provided)
+ *   --primary     Primary color hex code
+ *   --secondary   Secondary color hex code
+ *   --name        Restaurant name
+ *   --lightmode   Enable light mode (optional, dark mode by default)
  */
 
 import { createRequire } from 'module';
@@ -30,14 +38,16 @@ const getArg = (name) => {
 };
 
 // Get parameters
+const email = getArg('email') || 'claude.agent@gmail.com'; // Fallback for backward compatibility
+const password = getArg('password') || '7uo@%K2^Hz%yiXDeP39Ckp6BvF!2'; // Fallback for backward compatibility
 const primaryColor = getArg('primary') || '#E6B800'; // Default to Noi's golden color
 const secondaryColor = getArg('secondary') || '#F2D966'; // Default to Noi's light golden
 const restaurantName = getArg('name') || 'Noi';
 const lightMode = args.includes('--lightmode');
 
-// Hardcoded credentials
-const LOGIN_EMAIL = 'claude.agent@gmail.com';
-const LOGIN_PASSWORD = '7uo@%K2^Hz%yiXDeP39Ckp6BvF!2';
+// Login credentials
+const LOGIN_EMAIL = email;
+const LOGIN_PASSWORD = password;
 const LOGIN_URL = 'https://manage.pumpd.co.nz';
 
 console.log('🚀 Starting Ordering Page Customization...\n');

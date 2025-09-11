@@ -42,6 +42,9 @@ const UploadCareService = require('./src/services/uploadcare-service');
 // Import auth middleware
 const { authMiddleware } = require('./middleware/auth');
 
+// Import super admin middleware
+const { superAdminMiddleware, checkSuperAdmin } = require('./middleware/superAdmin');
+
 // Import platform detector
 const { detectPlatform, extractRestaurantName, getExtractionConfig } = require('./src/utils/platform-detector');
 
@@ -7242,6 +7245,13 @@ app.get('/api/exports/history', async (req, res) => {
 });
 
 /**
+ * === PUMPD REGISTRATION ROUTES ===
+ */
+// Import and use registration routes (with auth middleware)
+const registrationRoutes = require('./src/routes/registration-routes');
+app.use('/api/registration', authMiddleware, registrationRoutes);
+
+/**
  * Serve static files and handle SPA routes
  */
 // Serve the main HTML file for client-side routing (SPA)
@@ -7251,6 +7261,827 @@ app.get('*', (req, res) => {
     return res.status(404).send('API endpoint not found');
   }
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
+/**
+ * ========================================
+ * SUPER ADMIN API ROUTES
+ * ========================================
+ */
+
+// Get all organizations with statistics
+app.get('/api/super-admin/organizations', superAdminMiddleware, async (req, res) => {
+  try {
+    const { supabase } = req;
+    
+    // Get organizations with member counts
+    const { data: organizations, error } = await supabase
+      .from('organisations')
+      .select(`
+        *,
+        profiles!profiles_organisation_id_fkey(count)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    // Format the response
+    const formattedOrgs = organizations?.map(org => ({
+      id: org.id,
+      name: org.name,
+      status: org.status || 'active',
+      feature_flags: org.feature_flags || {},
+      billing_rates: org.billing_rates || {},
+      created_at: org.created_at,
+      updated_at: org.updated_at,
+      archived_at: org.archived_at,
+      member_count: org.profiles?.[0]?.count || 0
+    })) || [];
+
+    res.json({
+      success: true,
+      organizations: formattedOrgs,
+      total: formattedOrgs.length
+    });
+  } catch (error) {
+    console.error('Error fetching organizations:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch organizations',
+      details: error.message 
+    });
+  }
+});
+
+// Get system-wide statistics
+app.get('/api/super-admin/stats', superAdminMiddleware, async (req, res) => {
+  try {
+    const { supabase } = req;
+    
+    // Get various counts
+    const [
+      { count: totalOrgs },
+      { count: activeOrgs },
+      { count: archivedOrgs },
+      { count: totalUsers },
+      { count: totalAdmins },
+      { count: totalSuperAdmins },
+      { count: totalExtractions },
+      { count: totalMenus },
+      { count: totalRestaurants }
+    ] = await Promise.all([
+      supabase.from('organisations').select('*', { count: 'exact', head: true }),
+      supabase.from('organisations').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+      supabase.from('organisations').select('*', { count: 'exact', head: true }).eq('status', 'archived'),
+      supabase.from('profiles').select('*', { count: 'exact', head: true }),
+      supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'admin'),
+      supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'super_admin'),
+      supabase.from('extraction_jobs').select('*', { count: 'exact', head: true }),
+      supabase.from('menus').select('*', { count: 'exact', head: true }),
+      supabase.from('restaurants').select('*', { count: 'exact', head: true })
+    ]);
+
+    res.json({
+      success: true,
+      stats: {
+        organizations: {
+          total: totalOrgs || 0,
+          active: activeOrgs || 0,
+          archived: archivedOrgs || 0
+        },
+        users: {
+          total: totalUsers || 0,
+          admins: totalAdmins || 0,
+          superAdmins: totalSuperAdmins || 0,
+          regular: (totalUsers || 0) - (totalAdmins || 0) - (totalSuperAdmins || 0)
+        },
+        data: {
+          extractions: totalExtractions || 0,
+          menus: totalMenus || 0,
+          restaurants: totalRestaurants || 0
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching statistics:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch statistics',
+      details: error.message 
+    });
+  }
+});
+
+// Get all users across all organizations
+app.get('/api/super-admin/users', superAdminMiddleware, async (req, res) => {
+  try {
+    const { supabase } = req;
+    
+    // Get all users with their organization info
+    const { data: users, error } = await supabase
+      .from('profiles')
+      .select(`
+        *,
+        organisation:organisations(id, name)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      users: users || [],
+      total: users?.length || 0
+    });
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch users',
+      details: error.message 
+    });
+  }
+});
+
+// Update user role
+app.put('/api/super-admin/users/:userId/role', superAdminMiddleware, async (req, res) => {
+  try {
+    const { supabase } = req;
+    const { userId } = req.params;
+    const { role } = req.body;
+
+    // Validate role
+    if (!['user', 'admin', 'super_admin'].includes(role)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid role'
+      });
+    }
+
+    // Update user role
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ role, updated_at: new Date().toISOString() })
+      .eq('id', userId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      user: data
+    });
+  } catch (error) {
+    console.error('Error updating user role:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to update user role',
+      details: error.message 
+    });
+  }
+});
+
+// Create new organization
+app.post('/api/super-admin/organizations', superAdminMiddleware, async (req, res) => {
+  try {
+    const { supabase } = req;
+    const { name, feature_flags, billing_rates, admin_email } = req.body;
+
+    // Validate input
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        error: 'Organization name is required'
+      });
+    }
+
+    // Create organization
+    const { data: org, error: orgError } = await supabase
+      .from('organisations')
+      .insert({
+        name,
+        status: 'active',
+        feature_flags: feature_flags || {},
+        billing_rates: billing_rates || {}
+      })
+      .select()
+      .single();
+
+    if (orgError) throw orgError;
+
+    // If admin email provided, update that user's organization
+    if (admin_email) {
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ 
+          organisation_id: org.id,
+          role: 'admin',
+          updated_at: new Date().toISOString()
+        })
+        .eq('email', admin_email);
+
+      if (updateError) {
+        console.error('Failed to assign admin to organization:', updateError);
+      }
+    }
+
+    res.json({
+      success: true,
+      organization: org
+    });
+  } catch (error) {
+    console.error('Error creating organization:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to create organization',
+      details: error.message 
+    });
+  }
+});
+
+// Archive organization
+app.post('/api/super-admin/organizations/:orgId/archive', superAdminMiddleware, async (req, res) => {
+  try {
+    const { supabase, user } = req;
+    const { orgId } = req.params;
+
+    // Archive the organization
+    const { data, error } = await supabase
+      .from('organisations')
+      .update({
+        status: 'archived',
+        archived_at: new Date().toISOString(),
+        archived_by: user.id
+      })
+      .eq('id', orgId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      organization: data
+    });
+  } catch (error) {
+    console.error('Error archiving organization:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to archive organization',
+      details: error.message 
+    });
+  }
+});
+
+// Get single organization details
+app.get('/api/super-admin/organizations/:orgId', superAdminMiddleware, async (req, res) => {
+  try {
+    const { supabase } = req;
+    const { orgId } = req.params;
+    
+    const { data, error } = await supabase
+      .from('organisations')
+      .select('*')
+      .eq('id', orgId)
+      .single();
+    
+    if (error) throw error;
+    
+    res.json({
+      success: true,
+      organization: data
+    });
+  } catch (error) {
+    console.error('Error fetching organization:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch organization',
+      details: error.message 
+    });
+  }
+});
+
+// Update organization (edit features, rates, name)
+app.put('/api/super-admin/organizations/:orgId', superAdminMiddleware, async (req, res) => {
+  try {
+    const { supabase } = req;
+    const { orgId } = req.params;
+    const { name, feature_flags, billing_rates } = req.body;
+    
+    const updateData = {
+      updated_at: new Date().toISOString()
+    };
+    
+    if (name !== undefined) updateData.name = name;
+    if (feature_flags !== undefined) updateData.feature_flags = feature_flags;
+    if (billing_rates !== undefined) updateData.billing_rates = billing_rates;
+    
+    const { data, error } = await supabase
+      .from('organisations')
+      .update(updateData)
+      .eq('id', orgId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    res.json({
+      success: true,
+      organization: data
+    });
+  } catch (error) {
+    console.error('Error updating organization:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to update organization',
+      details: error.message 
+    });
+  }
+});
+
+// Restore archived organization
+app.post('/api/super-admin/organizations/:orgId/restore', superAdminMiddleware, async (req, res) => {
+  try {
+    const { supabase } = req;
+    const { orgId } = req.params;
+    
+    const { data, error } = await supabase
+      .from('organisations')
+      .update({
+        status: 'active',
+        archived_at: null,
+        archived_by: null
+      })
+      .eq('id', orgId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    res.json({
+      success: true,
+      organization: data
+    });
+  } catch (error) {
+    console.error('Error restoring organization:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to restore organization',
+      details: error.message 
+    });
+  }
+});
+
+// Permanently delete organization (only if archived)
+app.delete('/api/super-admin/organizations/:orgId', superAdminMiddleware, async (req, res) => {
+  try {
+    const { supabase } = req;
+    const { orgId } = req.params;
+    
+    // First check if organization is archived
+    const { data: org, error: checkError } = await supabase
+      .from('organisations')
+      .select('status')
+      .eq('id', orgId)
+      .single();
+    
+    if (checkError) throw checkError;
+    
+    if (org.status !== 'archived') {
+      return res.status(400).json({
+        success: false,
+        error: 'Organization must be archived before deletion'
+      });
+    }
+    
+    // Delete the organization (CASCADE will handle related data)
+    const { error } = await supabase
+      .from('organisations')
+      .delete()
+      .eq('id', orgId);
+    
+    if (error) throw error;
+    
+    res.json({
+      success: true,
+      message: 'Organization permanently deleted'
+    });
+  } catch (error) {
+    console.error('Error deleting organization:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to delete organization',
+      details: error.message 
+    });
+  }
+});
+
+// Reassign restaurant data to another organization
+app.post('/api/super-admin/organizations/reassign-data', superAdminMiddleware, async (req, res) => {
+  try {
+    const { supabase } = req;
+    const { restaurantIds, targetOrgId } = req.body;
+    
+    if (!restaurantIds || !targetOrgId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Restaurant IDs and target organization ID are required'
+      });
+    }
+    
+    const results = [];
+    
+    for (const restaurantId of restaurantIds) {
+      const { error } = await supabase.rpc('reassign_restaurant_to_org', {
+        p_restaurant_id: restaurantId,
+        p_target_org_id: targetOrgId
+      });
+      
+      if (error) {
+        results.push({ restaurantId, success: false, error: error.message });
+      } else {
+        results.push({ restaurantId, success: true });
+      }
+    }
+    
+    res.json({
+      success: true,
+      results
+    });
+  } catch (error) {
+    console.error('Error reassigning data:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to reassign data',
+      details: error.message 
+    });
+  }
+});
+
+// Duplicate restaurant data to another organization
+app.post('/api/super-admin/organizations/duplicate-data', superAdminMiddleware, async (req, res) => {
+  try {
+    const { supabase } = req;
+    const { restaurantIds, targetOrgId } = req.body;
+    
+    if (!restaurantIds || !targetOrgId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Restaurant IDs and target organization ID are required'
+      });
+    }
+    
+    const results = [];
+    
+    for (const restaurantId of restaurantIds) {
+      const { data, error } = await supabase.rpc('duplicate_restaurant_to_org', {
+        p_restaurant_id: restaurantId,
+        p_target_org_id: targetOrgId
+      });
+      
+      if (error) {
+        results.push({ restaurantId, success: false, error: error.message });
+      } else {
+        results.push({ restaurantId, success: true, newRestaurantId: data });
+      }
+    }
+    
+    res.json({
+      success: true,
+      results
+    });
+  } catch (error) {
+    console.error('Error duplicating data:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to duplicate data',
+      details: error.message 
+    });
+  }
+});
+
+// ============================================
+// USER MANAGEMENT API ENDPOINTS (Super Admin)
+// ============================================
+
+// Create new user (invitation-only flow)
+app.post('/api/super-admin/users', superAdminMiddleware, async (req, res) => {
+  try {
+    const { supabase } = req;
+    const { email, role, organisation_id, sendInvite } = req.body;
+
+    console.log('Creating user invitation:', { email, role, organisation_id });
+
+    // First check if user already exists in profiles
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('id, email')
+      .eq('email', email)
+      .single();
+
+    if (existingProfile) {
+      console.log('User already exists in profiles:', existingProfile);
+      return res.status(400).json({
+        success: false,
+        error: 'User already exists',
+        message: `A user with email ${email} already exists in the system`
+      });
+    }
+
+    // Check if there's already a pending invitation for this email to this org
+    const { data: existingInvite } = await supabase
+      .from('organisation_invites')
+      .select('id, email, expires_at')
+      .eq('email', email)
+      .eq('organisation_id', organisation_id)
+      .gte('expires_at', new Date().toISOString())
+      .single();
+
+    if (existingInvite) {
+      console.log('Active invitation already exists:', existingInvite);
+      return res.status(400).json({
+        success: false,
+        error: 'Invitation already exists',
+        message: `An active invitation for ${email} already exists for this organization`
+      });
+    }
+
+    // Generate invitation token
+    const crypto = require('crypto');
+    const token = crypto.randomBytes(32).toString('hex');
+    
+    // Create invitation record (matching the regular invitation flow)
+    const { data: invitation, error: inviteError } = await supabase
+      .from('organisation_invites')
+      .insert({
+        organisation_id,
+        email,
+        role,
+        invited_by: req.user.id,
+        token,
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+        // Note: Name will be set when user accepts the invitation and creates their profile
+      })
+      .select()
+      .single();
+
+    if (inviteError) {
+      console.error('Error creating invitation:', inviteError);
+      throw inviteError;
+    }
+
+    console.log('Created invitation:', { id: invitation.id, email: invitation.email });
+
+    // Generate invitation URL
+    const inviteUrl = `${process.env.FRONTEND_URL || 'http://localhost:5007'}/invite/${token}`;
+    
+    // Send invitation email if requested
+    if (sendInvite !== false) { // Default to sending invite
+      try {
+        // Get organization name for the email
+        const { data: org } = await supabase
+          .from('organisations')
+          .select('name')
+          .eq('id', organisation_id)
+          .single();
+
+        // Send email via Edge Function
+        const { error: emailError } = await supabase.functions.invoke('send-invitation', {
+          body: {
+            email,
+            inviterName: 'Super Admin',
+            organizationName: org?.name || 'Organization',
+            role: role.charAt(0).toUpperCase() + role.slice(1),
+            inviteUrl
+          }
+        });
+
+        if (emailError) {
+          console.error('Error sending invitation email:', emailError);
+          // Don't fail the whole operation if email fails
+        } else {
+          console.log('Invitation email sent successfully');
+        }
+      } catch (emailError) {
+        console.error('Error sending invitation email:', emailError);
+        // Don't fail the whole operation if email fails
+      }
+    }
+
+    res.json({ 
+      success: true,
+      invitation: {
+        id: invitation.id,
+        email: invitation.email,
+        role: invitation.role,
+        organisation_id: invitation.organisation_id,
+        expires_at: invitation.expires_at
+      },
+      inviteUrl,
+      message: `Invitation sent to ${email}. They will need to accept the invitation to create their account.`
+    });
+  } catch (error) {
+    console.error('Error creating user invitation:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to create user invitation',
+      message: error.message 
+    });
+  }
+});
+
+// Update user
+app.put('/api/super-admin/users/:userId', superAdminMiddleware, async (req, res) => {
+  try {
+    const { supabase, user } = req;
+    const { userId } = req.params;
+    const updates = req.body;
+
+    // Update profile
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Log the action
+    await supabase
+      .from('user_activity_log')
+      .insert({
+        user_id: userId,
+        action: 'updated',
+        details: updates,
+        performed_by: user.id
+      });
+
+    res.json({
+      success: true,
+      user: data
+    });
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to update user',
+      message: error.message 
+    });
+  }
+});
+
+// Delete user
+app.delete('/api/super-admin/users/:userId', superAdminMiddleware, async (req, res) => {
+  try {
+    const { supabase, user } = req;
+    const { userId } = req.params;
+
+    // Check if user is last admin of organization
+    const { data: userToDelete } = await supabase
+      .from('profiles')
+      .select('organisation_id, role')
+      .eq('id', userId)
+      .single();
+
+    if (userToDelete?.role === 'admin' || userToDelete?.role === 'super_admin') {
+      const { count } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('organisation_id', userToDelete.organisation_id)
+        .in('role', ['admin', 'super_admin'])
+        .neq('id', userId);
+
+      if (count === 0) {
+        return res.status(400).json({ 
+          success: false,
+          error: 'Cannot delete the last admin of an organization' 
+        });
+      }
+    }
+
+    // Use the delete_user_safely function
+    const { error } = await supabase.rpc('delete_user_safely', {
+      p_user_id: userId,
+      p_deleted_by: user.id
+    });
+
+    if (error) {
+      // If function fails, try direct deletion
+      const { error: deleteError } = await supabase.auth.admin.deleteUser(userId);
+      if (deleteError) throw deleteError;
+    }
+
+    res.json({ 
+      success: true,
+      message: 'User deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to delete user',
+      message: error.message 
+    });
+  }
+});
+
+// Resend invitation to user
+app.post('/api/super-admin/users/:userId/resend-invite', superAdminMiddleware, async (req, res) => {
+  try {
+    const { supabase } = req;
+    const { userId } = req.params;
+
+    // Get user details
+    const { data: user } = await supabase
+      .from('profiles')
+      .select('email, name, organisation_id, role')
+      .eq('id', userId)
+      .single();
+
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'User not found' 
+      });
+    }
+
+    // Get organization name
+    const { data: org } = await supabase
+      .from('organisations')
+      .select('name')
+      .eq('id', user.organisation_id)
+      .single();
+
+    // Generate password reset link
+    const { data, error } = await supabase.auth.admin.generateLink({
+      type: 'recovery',
+      email: user.email
+    });
+
+    if (error) throw error;
+
+    // Send email via Edge Function (optional - can also return link)
+    if (data?.properties?.action_link) {
+      await supabase.functions.invoke('send-invitation', {
+        body: {
+          email: user.email,
+          inviterName: 'Super Admin',
+          organizationName: org?.name || 'Organization',
+          role: user.role.charAt(0).toUpperCase() + user.role.slice(1),
+          inviteUrl: data.properties.action_link
+        }
+      });
+    }
+
+    res.json({ 
+      success: true,
+      message: 'Invitation sent successfully',
+      link: data?.properties?.action_link 
+    });
+  } catch (error) {
+    console.error('Error resending invite:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to resend invitation',
+      message: error.message 
+    });
+  }
+});
+
+// Get single user details
+app.get('/api/super-admin/users/:userId', superAdminMiddleware, async (req, res) => {
+  try {
+    const { supabase } = req;
+    const { userId } = req.params;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select(`
+        *,
+        organisation:organisations(id, name)
+      `)
+      .eq('id', userId)
+      .single();
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      user: data
+    });
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch user',
+      message: error.message 
+    });
+  }
 });
 
 /**
@@ -7352,6 +8183,55 @@ app.listen(PORT, () => {
   console.log('\n  === Upload Management ===');
   console.log(`  GET    /api/upload-batches/:batchId   - Get upload batch status`);
   console.log(`  POST   /api/upload-batches/:batchId/retry - Retry failed uploads`);
+  
+  console.log('\n  === Pumpd Registration & Automation ===');
+  console.log('  Registration:');
+  console.log(`  GET    /api/registration/status/:restaurantId - Get registration status`);
+  console.log(`  POST   /api/registration/register-account - Register new account only`);
+  console.log(`  POST   /api/registration/register-restaurant - Register restaurant`);
+  console.log(`  GET    /api/registration/logs/:restaurantId - Get registration logs`);
+  
+  console.log('  Menu Import:');
+  console.log(`  POST   /api/registration/import-csv-menu - Import CSV menu to Pumpd`);
+  console.log(`  POST   /api/registration/upload-menu-images - Upload menu item images`);
+  
+  console.log('  Website Customization:');
+  console.log(`  POST   /api/registration/customize-ordering-page - Customize ordering page`);
+  console.log(`  POST   /api/registration/configure-website - Configure website settings`);
+  console.log(`  POST   /api/registration/generate-code-injections - Generate code injections`);
+  console.log(`  POST   /api/registration/upload-restaurant-images - Upload restaurant images`);
+  
+  console.log('  Configuration:');
+  console.log(`  POST   /api/registration/configure-payment - Configure Stripe payments`);
+  console.log(`  POST   /api/registration/configure-services - Configure service settings`);
+  
+  console.log('  Onboarding Management:');
+  console.log(`  POST   /api/registration/create-onboarding-user - Create onboarding user`);
+  console.log(`  POST   /api/registration/update-onboarding-record - Update onboarding record`);
+  
+  console.log('\n  === Super Admin (Protected) ===');
+  console.log('  Organizations:');
+  console.log(`  GET    /api/super-admin/organizations - Get all organizations`);
+  console.log(`  GET    /api/super-admin/organizations/:id - Get organization details`);
+  console.log(`  POST   /api/super-admin/organizations - Create organization`);
+  console.log(`  PUT    /api/super-admin/organizations/:id - Update organization`);
+  console.log(`  POST   /api/super-admin/organizations/:id/archive - Archive organization`);
+  console.log(`  POST   /api/super-admin/organizations/:id/restore - Restore organization`);
+  console.log(`  DELETE /api/super-admin/organizations/:id - Delete organization (permanently)`);
+  console.log(`  POST   /api/super-admin/organizations/reassign-data - Reassign restaurant data`);
+  console.log(`  POST   /api/super-admin/organizations/duplicate-data - Duplicate restaurant data`);
+  
+  console.log('  Users:');
+  console.log(`  GET    /api/super-admin/users         - Get all users`);
+  console.log(`  GET    /api/super-admin/users/:id     - Get user details`);
+  console.log(`  POST   /api/super-admin/users         - Create user`);
+  console.log(`  PUT    /api/super-admin/users/:id     - Update user`);
+  console.log(`  PUT    /api/super-admin/users/:id/role - Update user role`);
+  console.log(`  DELETE /api/super-admin/users/:id     - Delete user`);
+  console.log(`  POST   /api/super-admin/users/:id/resend-invite - Resend invitation`);
+  
+  console.log('  Statistics:');
+  console.log(`  GET    /api/super-admin/stats         - Get system statistics`);
   
   console.log('\n  === System Endpoints ===');
   console.log(`  GET    /api/status                    - Server status`);

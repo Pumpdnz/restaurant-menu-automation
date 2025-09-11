@@ -11,10 +11,11 @@
  * 
  * Options:
  *   --email=<email>           Login email (required)
+ *   --password=<password>     User password (required)
  *   --primary=<color>         Primary color hex code (required)
  *   --head=<path>             Path to head injection HTML file (required)
  *   --body=<path>             Path to body injection HTML file (required)
- *   --name=<text>             Restaurant name (required)
+ *   --name=<text>             Restaurant name for matching (required)
  *   --logo=<path>             Path to logo image file (optional)
  *   --instagram=<url>         Instagram URL (optional)
  *   --facebook=<url>          Facebook URL (optional)
@@ -25,11 +26,10 @@
  *   --debug                   Enable debug mode (keeps browser open)
  * 
  * Environment Variables:
- *   ADMIN_PASSWORD          Admin password for login
  *   DEBUG_MODE              Enable debug mode (true/false)
  * 
  * Example:
- *   node edit-website-settings-dark.js --email="test@example.com" --name="Curry Garden" --primary="#A47F20" --head="../generated-code/restaurant/head-injection.html" --body="../generated-code/restaurant/body-injection.html"
+ *   node edit-website-settings-dark.js --email="test@example.com" --password="Password123!" --name="Curry Garden" --primary="#A47F20" --head="../generated-code/restaurant/head-injection.html" --body="../generated-code/restaurant/body-injection.html"
  */
 
 import { createRequire } from 'module';
@@ -61,6 +61,7 @@ const getArg = (name) => {
 
 // Parse arguments
 const email = getArg('email');
+const password = getArg('password'); // NEW: Accept password as argument
 const primaryColor = getArg('primary');
 const headPath = getArg('head');
 const bodyPath = getArg('body');
@@ -73,13 +74,12 @@ const location = getArg('location');
 const address = getArg('address');
 const phoneNumber = getArg('phone');
 
-// Use admin password from environment or default
-const password = process.env.ADMIN_PASSWORD || '7uo@%K2^Hz%yiXDeP39Ckp6BvF!2';
-
 // Validate required arguments
-if (!email || !primaryColor || !headPath || !bodyPath || !restaurantName) {
-  console.error('❌ Error: Email, restaurant name, primary color, head path, and body path are required');
-  console.error('Usage: node edit-website-settings-dark.js --email="email@example.com" --name="Restaurant Name" --primary="#HEXCOLOR" --head="path/to/head.html" --body="path/to/body.html"');
+if (!email || !password || !primaryColor || !headPath || !bodyPath || !restaurantName) {
+  console.error('❌ Error: Missing required parameters');
+  console.error('Required: --email=<email> --password=<password> --name=<name> --primary=<color> --head=<path> --body=<path>');
+  console.error('\nExample:');
+  console.error('node edit-website-settings-dark.js --email="test@example.com" --password="Password123!" --name="Test Restaurant" --primary="#A47F20" --head="../generated-code/restaurant/head-injection.html" --body="../generated-code/restaurant/body-injection.html"');
   process.exit(1);
 }
 
@@ -135,6 +135,9 @@ async function editWebsiteSettingsDark() {
   
   const page = await context.newPage();
   
+  // Track uploaded logo URL for output
+  let uploadedLogoUrl = null;
+  
   // Set up dialog handler to automatically accept theme change confirmation
   page.on('dialog', async dialog => {
     console.log('  📢 Dialog detected:', dialog.message());
@@ -159,39 +162,220 @@ async function editWebsiteSettingsDark() {
     await page.click('button[type="submit"], button:has-text("Login"), button:has-text("Sign In")');
     console.log('  ✓ Clicked login');
     
-    await page.waitForURL('**/admin.pumpd.co.nz/**', { timeout: 15000 });
-    console.log('  ✓ Login successful');
+    // Wait for redirect with better error handling (like test-get-restaurant-id.js)
+    console.log('  ⏳ Waiting for redirect...');
+    try {
+      await page.waitForURL('**/admin.pumpd.co.nz/**', { timeout: 15000 });
+      console.log('  ✓ Successfully logged in!');
+      console.log('  ✓ Redirected to dashboard');
+    } catch (error) {
+      const currentUrl = page.url();
+      if (currentUrl.includes('admin.pumpd.co.nz')) {
+        console.log('  ✓ Successfully logged in (already on dashboard)');
+      } else {
+        throw new Error('Login failed - not redirected to dashboard');
+      }
+    }
     
-    // Wait for dashboard to load
-    await page.waitForTimeout(3000);
+    // Improved waiting for dashboard content with timeout handling
+    console.log('\n⏳ Waiting for dashboard...');
+    try {
+      await page.waitForLoadState('networkidle', { timeout: 10000 });
+    } catch (error) {
+      console.log('  ⚠️ Network idle timeout, continuing anyway...');
+    }
+    console.log('  ✓ Reached dashboard:', page.url());
+    
+    // Wait for loading overlay to disappear (if present)
+    try {
+      await page.waitForFunction(() => {
+        const loader = document.querySelector('.cover-loader');
+        return !loader || !loader.classList.contains('active');
+      }, { timeout: 5000 });
+    } catch (error) {
+      console.log('  ⚠️ Loading overlay check timed out, continuing...');
+    }
+    
+    // Wait longer for dashboard content to fully load
+    console.log('  ⏳ Waiting for dashboard content to load...');
+    await page.waitForTimeout(5000);
+    
+    // Try to wait for restaurant elements to appear
+    try {
+      await page.waitForSelector('h4', { timeout: 8000 });
+      console.log('  ✓ Dashboard content loaded');
+    } catch (error) {
+      console.log('  ⚠️ No h4 elements found, continuing anyway...');
+    }
+    
     await takeScreenshot(page, '02-dashboard');
     
-    // STEP 2: Navigate to restaurant management
+    // STEP 2: Navigate to restaurant management with smart matching
     console.log('\n🏪 STEP 2: Navigate to restaurant management');
+    console.log(`  🔍 Looking for restaurant: ${restaurantName}`);
     
-    const manageButton = page.locator('#restaurant-list-item-0 button:has-text("Manage")').first();
-    await manageButton.click();
-    console.log('  ✓ Clicked Manage button');
+    // Wait a bit for the list to fully render
+    await page.waitForTimeout(2000);
+    
+    // Helper functions for smart matching
+    const normalizeForMatching = (str) => {
+      return str
+        .toLowerCase()
+        .replace(/['']/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    };
+    
+    const calculateMatchScore = (searchTerm, restaurantNameInList) => {
+      const searchNorm = normalizeForMatching(searchTerm);
+      const nameNorm = normalizeForMatching(restaurantNameInList);
+      
+      // Exact match (after normalization) - highest priority
+      if (searchNorm === nameNorm) {
+        return { score: 1000, reason: 'exact match' };
+      }
+      
+      // Split into words for word-based matching
+      const searchWords = searchNorm.split(' ').filter(w => w.length > 1);
+      const nameWords = nameNorm.split(' ');
+      
+      let score = 0;
+      let matchedWords = 0;
+      let reason = '';
+      
+      // Count how many search words are found in the restaurant name
+      for (const searchWord of searchWords) {
+        // Check for exact word match
+        if (nameWords.includes(searchWord)) {
+          score += 10;
+          matchedWords++;
+        }
+        // Check for partial word match
+        else if (nameWords.some(nameWord => {
+          const lengthDiff = Math.abs(nameWord.length - searchWord.length);
+          if (lengthDiff <= 2) {
+            const commonChars = searchWord.split('').filter(char => nameWord.includes(char)).length;
+            return commonChars >= Math.min(searchWord.length, nameWord.length) - 1;
+          }
+          return false;
+        })) {
+          score += 8;
+          matchedWords++;
+        }
+        // Check for substring match
+        else if (nameWords.some(nameWord => nameWord.includes(searchWord) || searchWord.includes(nameWord))) {
+          score += 5;
+          matchedWords++;
+        }
+      }
+      
+      // Bonus for matching all words
+      if (matchedWords === searchWords.length && searchWords.length > 0) {
+        score += 50;
+        reason = `all ${searchWords.length} words matched`;
+      } else if (matchedWords > 0) {
+        reason = `${matchedWords}/${searchWords.length} words matched`;
+      }
+      
+      // Penalty for extra words in restaurant name (less specific match)
+      const extraWords = nameWords.length - searchWords.length;
+      if (extraWords > 0 && score > 0) {
+        score -= extraWords * 2;
+      }
+      
+      // If the full search term is contained in the restaurant name (substring match)
+      if (score === 0 && nameNorm.includes(searchNorm)) {
+        score = 25;
+        reason = 'substring match';
+      }
+      
+      return { score, reason };
+    };
+    
+    // Try to find which index our restaurant is at by checking the h4 elements
+    let restaurantIndex = -1;
+    let bestScore = 0;
+    let bestMatch = null;
+    
+    const allRestaurantNames = await page.locator('h4').allTextContents();
+    
+    console.log(`  ℹ️ Found ${allRestaurantNames.length} restaurants in the list`);
+    console.log(`  📊 Evaluating restaurants for best match:`);
+    
+    for (let i = 0; i < allRestaurantNames.length; i++) {
+      const { score, reason } = calculateMatchScore(restaurantName, allRestaurantNames[i]);
+      
+      if (score > 0) {
+        console.log(`    ${i}: "${allRestaurantNames[i]}" - Score: ${score} (${reason})`);
+        
+        if (score > bestScore) {
+          bestScore = score;
+          restaurantIndex = i;
+          bestMatch = { name: allRestaurantNames[i], reason };
+        }
+      }
+    }
+    
+    if (restaurantIndex >= 0) {
+      console.log(`  ✅ Best match: "${bestMatch.name}" at index ${restaurantIndex} (${bestMatch.reason})`);
+      
+      // Use the simple, reliable selector pattern with the found index
+      const manageButton = page.locator(`#restaurant-list-item-${restaurantIndex} button:has-text("Manage")`).first();
+      
+      // If the first selector doesn't work, try with view-store pattern
+      if (await manageButton.count() === 0) {
+        console.log('  ⚠️ Standard selector not found, trying view-store pattern...');
+        const alternativeButton = page.locator(`button[id="restaurant-list-item-view-store-${restaurantIndex}"]`).first();
+        if (await alternativeButton.count() > 0) {
+          await alternativeButton.click();
+          console.log(`  ✓ Clicked Manage button using view-store pattern`);
+        } else {
+          console.log('  ⚠️ View-store pattern not found, trying index-based fallback...');
+          const allManageButtons = page.locator('button:has-text("Manage")');
+          if (await allManageButtons.count() > restaurantIndex) {
+            await allManageButtons.nth(restaurantIndex).click();
+            console.log(`  ✓ Clicked Manage button at index ${restaurantIndex}`);
+          } else {
+            throw new Error('Could not find Manage button for restaurant');
+          }
+        }
+      } else {
+        await manageButton.click();
+        console.log(`  ✓ Clicked Manage button for ${restaurantName}`);
+      }
+    } else {
+      console.log(`  ❌ No matching restaurant found for "${restaurantName}"`);
+      console.log('  Available restaurants:');
+      allRestaurantNames.forEach((name, index) => {
+        console.log(`    ${index}: "${name}"`);
+      });
+      throw new Error('Restaurant not found in list');
+    }
     
     // Wait for navigation to complete and page to load
     console.log('  ⏳ Waiting for restaurant management page to load...');
     try {
       // Wait for URL change to restaurant management
-      await page.waitForURL('**/restaurant/**', { timeout: 10000 });
+      await page.waitForURL('**/restaurant/**', { timeout: 8000 });
       console.log('  ✓ Navigated to restaurant page');
-      
-      // Wait for the navigation menu to appear
-      await page.waitForSelector('#nav-link-settings', { timeout: 10000 });
-      console.log('  ✓ Navigation menu loaded');
-      
-      // Additional wait for any dynamic content
-      await page.waitForTimeout(2000);
-      
     } catch (error) {
-      console.log('  ⚠️ Initial wait failed, trying alternative approach...');
-      // Fallback: just wait for network to be idle
-      await page.waitForLoadState('networkidle', { timeout: 15000 });
-      await page.waitForTimeout(3000);
+      console.log('  ⚠️ Navigation timeout, checking current URL...');
+    }
+    
+    // Add extra wait to ensure URL is fully loaded and stable
+    await page.waitForTimeout(3000);
+    try {
+      await page.waitForLoadState('networkidle', { timeout: 8000 });
+    } catch (error) {
+      console.log('  ⚠️ Network idle timeout after navigation, continuing...');
+    }
+    
+    // Wait for the navigation menu to appear
+    try {
+      await page.waitForSelector('#nav-link-settings', { timeout: 8000 });
+      console.log('  ✓ Navigation menu loaded');
+    } catch (error) {
+      console.log('  ⚠️ Settings link not found, continuing anyway...');
     }
     
     console.log('  ✓ Restaurant management page loaded');
@@ -257,7 +441,7 @@ async function editWebsiteSettingsDark() {
       if (await websiteText.count() > 0) {
         await websiteText.click();
         console.log('  ✓ Clicked on Website text');
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(1000);
       } else {
         // Fallback: Try button with Website text
         console.log('  Website text not found, trying button selector...');
@@ -265,7 +449,7 @@ async function editWebsiteSettingsDark() {
         if (await websiteButton.count() > 0) {
           await websiteButton.click();
           console.log('  ✓ Clicked Website button');
-          await page.waitForTimeout(2000);
+          await page.waitForTimeout(1000);
         } else {
           throw new Error('Could not find Website tab');
         }
@@ -320,7 +504,7 @@ async function editWebsiteSettingsDark() {
     }
     
     // Wait for website settings to load
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(1000);
     await takeScreenshot(page, '05-website-settings');
     
     console.log('\n✅ Successfully navigated to Website Settings!');
@@ -358,14 +542,14 @@ async function editWebsiteSettingsDark() {
       console.log('  ✓ Clicked Dark Theme button');
       
       // Wait for theme to apply (dialog will be handled automatically)
-      await page.waitForTimeout(10000);
+      await page.waitForTimeout(4000);
       console.log('  ✓ Dark theme applied successfully');
       
       await takeScreenshot(page, '06-dark-theme-applied');
     } catch (error) {
       console.log('  ⚠️ Using fallback selector for Dark Theme');
       await page.click('button:has-text("Dark Theme")');
-      await page.waitForTimeout(10000);
+      await page.waitForTimeout(4000);
     }
     
     // STEP 7: Open Colors menu dropdown
@@ -601,7 +785,7 @@ async function editWebsiteSettingsDark() {
           console.log('  ✓ Triggered file chooser');
           
           // Wait for upload to complete
-          await page.waitForTimeout(8000);
+          await page.waitForTimeout(5000);
           
           // Check if upload failed
           const errorMessage = page.locator('text="Something went wrong during the upload"').first();
@@ -626,7 +810,7 @@ async function editWebsiteSettingsDark() {
               if (await retryChooseButton.count() > 0) {
                 await retryChooseButton.click();
                 console.log('  ✓ Retriggered file chooser');
-                await page.waitForTimeout(8000);
+                await page.waitForTimeout(5000);
               }
             }
           }
@@ -670,13 +854,14 @@ async function editWebsiteSettingsDark() {
           const logoImgSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(3) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > a > img';
           
           // Wait for the logo preview to be visible
-          await page.waitForSelector(logoImgSelector, { timeout: 5000 });
+          await page.waitForSelector(logoImgSelector, { timeout: 3000 });
           
           // Extract the src attribute
           const logoUrl = await page.locator(logoImgSelector).getAttribute('src');
           
           if (logoUrl) {
             console.log(`  📌 Uploaded Logo URL: ${logoUrl}`);
+            uploadedLogoUrl = logoUrl; // Store for output
           } else {
             console.log('  ⚠️ Could not extract logo URL');
           }
@@ -944,6 +1129,16 @@ async function editWebsiteSettingsDark() {
     console.log(`Head code: ${headCode.length} characters`);
     console.log(`Body code: ${bodyCode.length} characters`);
     
+    // Output result data in JSON format for API parsing
+    if (uploadedLogoUrl) {
+      console.log('\n===RESULT_DATA_START===');
+      console.log(JSON.stringify({
+        success: true,
+        uploadedLogoUrl: uploadedLogoUrl
+      }));
+      console.log('===RESULT_DATA_END===');
+    }
+    
     // STEP 19: Wait for changes to save then view the store
     console.log('\n👀 STEP 19: Viewing the store with applied changes');
     console.log('  ⏳ Waiting 8 seconds for changes to fully save...');
@@ -971,7 +1166,11 @@ async function editWebsiteSettingsDark() {
       console.log('  ✓ New tab opened');
       
       // Wait for the new page to load
-      await newPage.waitForLoadState('networkidle', { timeout: 15000 });
+      try {
+        await newPage.waitForLoadState('networkidle', { timeout: 15000 });
+      } catch (error) {
+        console.log('  ⚠️ Store page network idle timeout, continuing...');
+      }
       await newPage.waitForTimeout(3000); // Extra wait for dynamic content
       
       // Get the final URL

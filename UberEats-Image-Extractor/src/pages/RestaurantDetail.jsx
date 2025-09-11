@@ -29,7 +29,19 @@ import {
   ExternalLink,
   FileSearch,
   SearchIcon,
-  FileText
+  FileText,
+  UserPlus,
+  LogIn,
+  History,
+  Loader2,
+  Eye,
+  EyeOff,
+  FileSpreadsheet,
+  Upload,
+  FileCheck,
+  Code,
+  XCircle,
+  Database
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -100,6 +112,52 @@ export default function RestaurantDetail() {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [detailsExtractionConfig, setDetailsExtractionConfig] = useState(null);
   const [selectedDetailFields, setSelectedDetailFields] = useState([]);
+  
+  // Registration states
+  const [registrationStatus, setRegistrationStatus] = useState(null);
+  const [loadingRegistrationStatus, setLoadingRegistrationStatus] = useState(false);
+  const [registrationDialogOpen, setRegistrationDialogOpen] = useState(false);
+  const [registrationType, setRegistrationType] = useState('');
+  const [registering, setRegistering] = useState(false);
+  const [registrationLogs, setRegistrationLogs] = useState([]);
+  const [showRegistrationLogs, setShowRegistrationLogs] = useState(false);
+  const [registrationEmail, setRegistrationEmail] = useState('');
+  const [registrationPassword, setRegistrationPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  
+  // CSV Upload states
+  const [csvFile, setCsvFile] = useState(null);
+  const [uploadStatus, setUploadStatus] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+  
+  // Website Customization states
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isConfiguring, setIsConfiguring] = useState(false);
+  const [codeGenerated, setCodeGenerated] = useState(false);
+  const [customizationStatus, setCustomizationStatus] = useState(null);
+  const [generatedFilePaths, setGeneratedFilePaths] = useState(null);
+  const [customizationMode, setCustomizationMode] = useState('generate'); // 'generate' or 'existing'
+  const [existingHeadPath, setExistingHeadPath] = useState('');
+  const [existingBodyPath, setExistingBodyPath] = useState('');
+  const [filesValidated, setFilesValidated] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
+  
+  // Payment and Services states
+  const [isConfiguringPayments, setIsConfiguringPayments] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState(null);
+  const [isConfiguringServices, setIsConfiguringServices] = useState(false);
+  const [servicesStatus, setServicesStatus] = useState(null);
+  const [includeConnectLink, setIncludeConnectLink] = useState(false); // Default to no-link version
+  
+  // Onboarding User Management states
+  const [isCreatingOnboardingUser, setIsCreatingOnboardingUser] = useState(false);
+  const [onboardingUserStatus, setOnboardingUserStatus] = useState(null);
+  const [isUpdatingOnboarding, setIsUpdatingOnboarding] = useState(false);
+  const [onboardingUpdateStatus, setOnboardingUpdateStatus] = useState(null);
+  const [onboardingUserEmail, setOnboardingUserEmail] = useState('');
+  const [onboardingUserName, setOnboardingUserName] = useState('');
+  const [onboardingUserPassword, setOnboardingUserPassword] = useState('');
   
   const isNewRestaurant = id === 'new';
   
@@ -173,6 +231,19 @@ export default function RestaurantDetail() {
     }
   };
 
+  // Auto-populate onboarding fields when restaurant data is loaded
+  useEffect(() => {
+    if (restaurant && !isNewRestaurant) {
+      // Auto-populate from contact_name and contact_email if available
+      if (restaurant.contact_name) {
+        setOnboardingUserName(restaurant.contact_name);
+      }
+      if (restaurant.contact_email) {
+        setOnboardingUserEmail(restaurant.contact_email);
+      }
+    }
+  }, [restaurant, isNewRestaurant]);
+
   useEffect(() => {
     if (isNewRestaurant) {
       // Initialize empty restaurant for creation
@@ -207,11 +278,608 @@ export default function RestaurantDetail() {
       // Data is already in 24-hour format from database
       setEditedData(restaurantData);
       setError(null);
+      
+      // Fetch registration status if not a new restaurant
+      if (!isNewRestaurant) {
+        fetchRegistrationStatus();
+      }
     } catch (err) {
       console.error('Failed to fetch restaurant details:', err);
       setError('Failed to load restaurant details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchRegistrationStatus = async () => {
+    setLoadingRegistrationStatus(true);
+    try {
+      const response = await api.get(`/registration/status/${id}`);
+      // Map pumpdRestaurant to restaurant for consistency
+      const data = {
+        ...response.data,
+        restaurant: response.data.pumpdRestaurant || response.data.restaurant
+      };
+      setRegistrationStatus(data);
+    } catch (err) {
+      console.error('Failed to fetch registration status:', err);
+      // Don't show error for registration status as it's not critical
+    } finally {
+      setLoadingRegistrationStatus(false);
+    }
+  };
+
+  const fetchRegistrationLogs = async () => {
+    try {
+      const response = await api.get(`/registration/logs/${id}`);
+      setRegistrationLogs(response.data.logs || []);
+      setShowRegistrationLogs(true);
+    } catch (err) {
+      console.error('Failed to fetch registration logs:', err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch registration logs",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleRegistration = async () => {
+    if (!registrationType) {
+      toast({
+        title: "Error",
+        description: "Please select a registration type",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate email and password for all registration types
+    if (!registrationEmail || !registrationPassword) {
+      toast({
+        title: "Error",
+        description: "Please enter email and password",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setRegistering(true);
+    try {
+      // Handle account-only registration
+      if (registrationType === 'account_only') {
+        const accountData = {
+          restaurantId: id,
+          email: registrationEmail || restaurant.email,
+          password: registrationPassword || (() => {
+            const cleaned = restaurant.name.replace(/[^a-zA-Z0-9]/g, '');
+            return cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase() + '789!';
+          })(),
+          phone: restaurant.phone || '',
+          restaurantName: restaurant.name
+        };
+
+        const response = await api.post('/registration/register-account', accountData);
+        
+        toast({
+          title: "Success",
+          description: response.data.message || "Account registered successfully"
+        });
+      } else {
+        // Handle restaurant registration (with or without account creation)
+        const registrationData = {
+          restaurantId: id,
+          registrationType,
+          restaurantName: restaurant.name,
+          email: registrationEmail || restaurant.email,
+          password: registrationPassword || (() => {
+            const cleaned = restaurant.name.replace(/[^a-zA-Z0-9]/g, '');
+            return cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase() + '789!';
+          })(),
+          address: restaurant.address,
+          phone: restaurant.phone,
+          hours: restaurant.opening_hours,
+          city: restaurant.city,
+          cuisine: restaurant.cuisine
+        };
+
+        const response = await api.post('/registration/register-restaurant', registrationData);
+        
+        toast({
+          title: "Success",
+          description: response.data.message || "Registration initiated successfully"
+        });
+      }
+
+      setRegistrationDialogOpen(false);
+      setRegistrationType('');
+      setRegistrationEmail('');
+      setRegistrationPassword('');
+      setShowPassword(false);
+      
+      // Refresh registration status
+      fetchRegistrationStatus();
+    } catch (err) {
+      console.error('Registration failed:', err);
+      toast({
+        title: "Error",
+        description: err.response?.data?.error || "Registration failed",
+        variant: "destructive"
+      });
+    } finally {
+      setRegistering(false);
+    }
+  };
+
+  // CSV Upload handlers
+  const handleCsvFileSelect = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
+        setCsvFile(file);
+        setUploadError(null);
+      } else {
+        setCsvFile(null);
+        setUploadError('Please select a valid CSV file');
+        toast({
+          title: "Invalid File",
+          description: "Please select a CSV file",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
+  const handleCsvUpload = async () => {
+    if (!csvFile) {
+      toast({
+        title: "Error",
+        description: "Please select a CSV file first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!registrationStatus?.account || registrationStatus.account.registration_status !== 'completed') {
+      toast({
+        title: "Error",
+        description: "Account registration must be completed before uploading menu",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!registrationStatus?.restaurant || registrationStatus.restaurant.registration_status !== 'completed') {
+      toast({
+        title: "Error",
+        description: "Restaurant registration must be completed before uploading menu",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadStatus(null);
+    setUploadError(null);
+
+    const formData = new FormData();
+    formData.append('csvFile', csvFile);
+    formData.append('restaurantId', id);
+
+    try {
+      const response = await api.post('/registration/upload-csv-menu', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      if (response.data.success) {
+        setUploadStatus('success');
+        setCsvFile(null);
+        // Reset file input
+        const fileInput = document.getElementById('csv-file-input');
+        if (fileInput) fileInput.value = '';
+        
+        toast({
+          title: "Success",
+          description: "Menu uploaded successfully",
+        });
+      } else {
+        setUploadStatus('error');
+        setUploadError(response.data.error || 'Upload failed');
+        toast({
+          title: "Upload Failed",
+          description: response.data.error || 'Failed to upload menu',
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('CSV upload error:', error);
+      setUploadStatus('error');
+      setUploadError(error.response?.data?.error || error.message);
+      toast({
+        title: "Upload Error",
+        description: error.response?.data?.error || error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Website Customization handlers
+  const handleGenerateCodeInjections = async () => {
+    setIsGenerating(true);
+    setCustomizationStatus(null);
+    
+    try {
+      const response = await api.post('/registration/generate-code-injections', {
+        restaurantId: id
+      });
+      
+      if (response.data.success) {
+        setCodeGenerated(true);
+        setGeneratedFilePaths(response.data.filePaths);
+        setCustomizationStatus({
+          success: true,
+          message: 'Code injections generated successfully'
+        });
+        toast({
+          title: "Success",
+          description: "Code injections generated successfully",
+        });
+      } else {
+        setCustomizationStatus({
+          success: false,
+          message: response.data.error || 'Failed to generate code injections'
+        });
+        toast({
+          title: "Generation Failed",
+          description: response.data.error || 'Failed to generate code injections',
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Code generation error:', error);
+      setCustomizationStatus({
+        success: false,
+        message: error.response?.data?.error || error.message
+      });
+      toast({
+        title: "Generation Error",
+        description: error.response?.data?.error || error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // Validate existing file paths
+  const handleValidateFiles = async () => {
+    if (!existingHeadPath || !existingBodyPath) {
+      setCustomizationStatus({
+        success: false,
+        message: 'Please enter both head and body file paths'
+      });
+      toast({
+        title: "Error",
+        description: "Please enter both head and body file paths",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsValidating(true);
+    setCustomizationStatus(null);
+    setFilesValidated(false);
+    
+    try {
+      const response = await api.post('/registration/validate-files', {
+        headPath: existingHeadPath,
+        bodyPath: existingBodyPath
+      });
+      
+      if (response.data.valid) {
+        setFilesValidated(true);
+        setGeneratedFilePaths({
+          headInjection: existingHeadPath,
+          bodyInjection: existingBodyPath,
+          configuration: null // No configuration file for existing files
+        });
+        setCustomizationStatus({
+          success: true,
+          message: 'Files validated successfully'
+        });
+        toast({
+          title: "Success",
+          description: "Files validated and ready for configuration",
+        });
+      } else {
+        setCustomizationStatus({
+          success: false,
+          message: response.data.error || 'File validation failed'
+        });
+        toast({
+          title: "Validation Failed",
+          description: response.data.error || 'One or more files could not be found',
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('File validation error:', error);
+      setCustomizationStatus({
+        success: false,
+        message: error.response?.data?.error || error.message
+      });
+      toast({
+        title: "Validation Error",
+        description: error.response?.data?.error || error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
+  const handleConfigureWebsite = async () => {
+    // Check based on mode
+    if (customizationMode === 'generate' && !generatedFilePaths) {
+      setCustomizationStatus({
+        success: false,
+        message: 'Please generate code injections first'
+      });
+      toast({
+        title: "Error",
+        description: "Please generate code injections first",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (customizationMode === 'existing' && !filesValidated) {
+      setCustomizationStatus({
+        success: false,
+        message: 'Please validate your files first'
+      });
+      toast({
+        title: "Error",
+        description: "Please validate your files first",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsConfiguring(true);
+    setCustomizationStatus(null);
+    
+    try {
+      const response = await api.post('/registration/configure-website', {
+        restaurantId: id,
+        filePaths: generatedFilePaths
+      });
+      
+      setCustomizationStatus({
+        success: response.data.success,
+        message: response.data.success 
+          ? 'Website configured successfully' 
+          : response.data.error || 'Configuration failed'
+      });
+      
+      toast({
+        title: response.data.success ? "Success" : "Configuration Failed",
+        description: response.data.success 
+          ? "Website configured successfully" 
+          : response.data.error || 'Configuration failed',
+        variant: response.data.success ? "default" : "destructive"
+      });
+    } catch (error) {
+      console.error('Website configuration error:', error);
+      setCustomizationStatus({
+        success: false,
+        message: error.response?.data?.error || error.message
+      });
+      toast({
+        title: "Configuration Error",
+        description: error.response?.data?.error || error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsConfiguring(false);
+    }
+  };
+  
+  // Reset states when switching modes
+  const handleModeChange = (newMode) => {
+    setCustomizationMode(newMode);
+    setCustomizationStatus(null);
+    if (newMode === 'generate') {
+      setFilesValidated(false);
+      setExistingHeadPath('');
+      setExistingBodyPath('');
+    } else {
+      setCodeGenerated(false);
+      setGeneratedFilePaths(null);
+    }
+  };
+
+  // Payment and Services handlers
+  const handleSetupStripePayments = async () => {
+    setIsConfiguringPayments(true);
+    setPaymentStatus(null);
+    
+    try {
+      const response = await api.post('/registration/configure-payment', {
+        restaurantId: id,
+        includeConnectLink
+      });
+      
+      setPaymentStatus(response.data);
+      
+      // If successful and we have a Stripe URL, refresh restaurant data to show it
+      if (response.data.success && response.data.stripeConnectUrl) {
+        await fetchRestaurant();
+        toast({
+          title: "Success",
+          description: "Stripe payments configured. Please complete the Stripe Connect process.",
+        });
+      } else if (response.data.success) {
+        toast({
+          title: "Success",
+          description: "Stripe payments configured successfully",
+        });
+      } else {
+        toast({
+          title: "Warning",
+          description: response.data.message || "Configuration completed with warnings",
+          variant: "warning"
+        });
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || error.message;
+      setPaymentStatus({ 
+        success: false, 
+        error: errorMessage 
+      });
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setIsConfiguringPayments(false);
+    }
+  };
+
+  const handleConfigureServices = async () => {
+    setIsConfiguringServices(true);
+    setServicesStatus(null);
+    
+    try {
+      const response = await api.post('/registration/configure-services', {
+        restaurantId: id
+      });
+      
+      setServicesStatus(response.data);
+      
+      if (response.data.success) {
+        toast({
+          title: "Success",
+          description: "Services configured successfully",
+        });
+      } else {
+        toast({
+          title: "Warning",
+          description: response.data.message || "Configuration completed with warnings",
+          variant: "warning"
+        });
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || error.message;
+      setServicesStatus({ 
+        success: false, 
+        error: errorMessage 
+      });
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setIsConfiguringServices(false);
+    }
+  };
+
+  // Onboarding User Management handlers
+  const generateDefaultPassword = (restaurantName) => {
+    // Generate password following the established convention: "Restaurantname789!"
+    const cleanName = restaurantName.replace(/[^a-zA-Z]/g, '');
+    const capitalizedName = cleanName.charAt(0).toUpperCase() + cleanName.slice(1).toLowerCase();
+    return `${capitalizedName}789!`;
+  };
+
+  const handleCreateOnboardingUser = async () => {
+    setIsCreatingOnboardingUser(true);
+    setOnboardingUserStatus(null);
+    
+    try {
+      const response = await api.post('/registration/create-onboarding-user', {
+        restaurantId: id,
+        userName: onboardingUserName,
+        userEmail: onboardingUserEmail,
+        userPassword: onboardingUserPassword || generateDefaultPassword(restaurant?.name || 'Restaurant')
+      });
+      
+      setOnboardingUserStatus(response.data);
+      
+      if (response.data.success) {
+        toast({
+          title: "Success",
+          description: "Onboarding user created successfully",
+        });
+      } else {
+        toast({
+          title: "Warning",
+          description: response.data.message || "User creation completed with warnings",
+          variant: "warning"
+        });
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || error.message;
+      setOnboardingUserStatus({ 
+        success: false, 
+        error: errorMessage 
+      });
+      toast({
+        title: "Error",
+        description: errorMessage || "Failed to create onboarding user",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCreatingOnboardingUser(false);
+    }
+  };
+
+  const handleUpdateOnboardingRecord = async () => {
+    setIsUpdatingOnboarding(true);
+    setOnboardingUpdateStatus(null);
+    
+    try {
+      const response = await api.post('/registration/update-onboarding-record', {
+        restaurantId: id,
+        userEmail: onboardingUserEmail,
+        updates: {
+          contactPerson: onboardingUserName
+        }
+      });
+      
+      setOnboardingUpdateStatus(response.data);
+      
+      if (response.data.success) {
+        toast({
+          title: "Success",
+          description: "Onboarding record updated successfully",
+        });
+      } else {
+        toast({
+          title: "Warning",
+          description: response.data.message || "Update completed with warnings",
+          variant: "warning"
+        });
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || error.message;
+      setOnboardingUpdateStatus({ 
+        success: false, 
+        error: errorMessage 
+      });
+      toast({
+        title: "Error",
+        description: errorMessage || "Failed to update onboarding record",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUpdatingOnboarding(false);
     }
   };
 
@@ -1566,6 +2234,7 @@ export default function RestaurantDetail() {
           <TabsTrigger value="configuration">Configuration</TabsTrigger>
           <TabsTrigger value="platforms">Platforms & Social</TabsTrigger>
           <TabsTrigger value="workflow">Workflow</TabsTrigger>
+          <TabsTrigger value="registration">Pumpd Registration</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
@@ -2506,6 +3175,944 @@ export default function RestaurantDetail() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Registration Tab */}
+        <TabsContent value="registration" className="space-y-4">
+          {/* Registration Status Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Pumpd Platform Registration</CardTitle>
+              <CardDescription>
+                Manage restaurant registration on the Pumpd platform
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {loadingRegistrationStatus ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Loading registration status...</span>
+                </div>
+              ) : registrationStatus ? (
+                <div className="space-y-4">
+                  {/* Account Status */}
+                  <div className="p-4 border rounded-lg space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-semibold">Account Status</h4>
+                      {registrationStatus.account?.registration_status === 'completed' ? (
+                        <Badge variant="success">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Registered
+                        </Badge>
+                      ) : registrationStatus.account?.registration_status === 'in_progress' ? (
+                        <Badge variant="warning">
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          In Progress
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">Not Registered</Badge>
+                      )}
+                    </div>
+                    {registrationStatus.account && (
+                      <div className="text-sm space-y-1 text-muted-foreground">
+                        <p>Email: {registrationStatus.account.email}</p>
+                        {registrationStatus.account.registration_date && (
+                          <p>Registered: {new Date(registrationStatus.account.registration_date).toLocaleDateString()}</p>
+                        )}
+                        {registrationStatus.account.pumpd_dashboard_url && (
+                          <a 
+                            href={registrationStatus.account.pumpd_dashboard_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline flex items-center gap-1"
+                          >
+                            View Dashboard
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Restaurant Status */}
+                  <div className="p-4 border rounded-lg space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-semibold">Restaurant Status</h4>
+                      {registrationStatus.restaurant?.registration_status === 'completed' ? (
+                        <Badge variant="success">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Registered
+                        </Badge>
+                      ) : registrationStatus.restaurant?.registration_status === 'in_progress' ? (
+                        <Badge variant="warning">
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          In Progress
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">Not Registered</Badge>
+                      )}
+                    </div>
+                    {registrationStatus.restaurant && (
+                      <div className="text-sm space-y-1 text-muted-foreground">
+                        {registrationStatus.restaurant.pumpd_subdomain && (
+                          <p>Subdomain: {registrationStatus.restaurant.pumpd_subdomain}</p>
+                        )}
+                        {registrationStatus.restaurant.pumpd_full_url && (
+                          <a 
+                            href={registrationStatus.restaurant.pumpd_full_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline flex items-center gap-1"
+                          >
+                            View Restaurant Page
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
+                        {registrationStatus.restaurant.registration_date && (
+                          <p>Registered: {new Date(registrationStatus.restaurant.registration_date).toLocaleDateString()}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2">
+                    {!registrationStatus.account && (
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          // Set type to account only
+                          setRegistrationType('account_only');
+                          // Pre-populate from restaurant email if available
+                          if (restaurant?.email) {
+                            setRegistrationEmail(restaurant.email);
+                          }
+                          // Generate default password hint
+                          if (restaurant?.name) {
+                            const cleaned = restaurant.name.replace(/[^a-zA-Z0-9]/g, '');
+                            const defaultPassword = cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase() + '789!';
+                            setRegistrationPassword(defaultPassword);
+                          }
+                          setRegistrationDialogOpen(true);
+                        }}
+                        disabled={registering}
+                      >
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Register Account
+                      </Button>
+                    )}
+                    
+                    {(!registrationStatus.restaurant || registrationStatus.restaurant.registration_status === 'failed') && (
+                      <Button 
+                        onClick={() => {
+                          // Pre-populate email and password from account if exists
+                          if (registrationStatus.account) {
+                            setRegistrationEmail(registrationStatus.account.email || '');
+                            setRegistrationPassword(registrationStatus.account.user_password_hint || '');
+                            // Pre-select registration type based on account's restaurant count
+                            if (registrationStatus.account.restaurant_count === 0) {
+                              setRegistrationType('existing_account_first_restaurant');
+                            } else {
+                              setRegistrationType('existing_account_additional_restaurant');
+                            }
+                          } else {
+                            // No existing account, pre-populate from restaurant data
+                            if (restaurant?.email) {
+                              setRegistrationEmail(restaurant.email);
+                            }
+                            // Generate default password hint
+                            if (restaurant?.name) {
+                              const cleaned = restaurant.name.replace(/[^a-zA-Z0-9]/g, '');
+                              const defaultPassword = cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase() + '789!';
+                              setRegistrationPassword(defaultPassword);
+                            }
+                          }
+                          setRegistrationDialogOpen(true);
+                        }}
+                        disabled={registering}
+                      >
+                        <LogIn className="h-4 w-4 mr-2" />
+                        Register Restaurant
+                      </Button>
+                    )}
+
+                    <Button 
+                      variant="outline"
+                      onClick={fetchRegistrationLogs}
+                    >
+                      <History className="h-4 w-4 mr-2" />
+                      View Registration Logs
+                    </Button>
+
+                    <Button 
+                      variant="outline"
+                      onClick={fetchRegistrationStatus}
+                      disabled={loadingRegistrationStatus}
+                    >
+                      <RefreshCw className={cn(
+                        "h-4 w-4 mr-2",
+                        loadingRegistrationStatus && "animate-spin"
+                      )} />
+                      Refresh Status
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 space-y-4">
+                  <p className="text-muted-foreground">No registration found for this restaurant</p>
+                  <div className="flex justify-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        // Set type to account only
+                        setRegistrationType('account_only');
+                        // Pre-populate from restaurant email if available
+                        if (restaurant?.email) {
+                          setRegistrationEmail(restaurant.email);
+                        }
+                        // Generate default password hint
+                        if (restaurant?.name) {
+                          const cleaned = restaurant.name.replace(/[^a-zA-Z0-9]/g, '');
+                          const defaultPassword = cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase() + '789!';
+                          setRegistrationPassword(defaultPassword);
+                        }
+                        setRegistrationDialogOpen(true);
+                      }}
+                      disabled={registering}
+                    >
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Register Account
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        // Pre-populate email and password from account if exists
+                        if (registrationStatus.account) {
+                          setRegistrationEmail(registrationStatus.account.email || '');
+                          setRegistrationPassword(registrationStatus.account.user_password_hint || '');
+                          // Pre-select registration type based on account's restaurant count
+                          if (registrationStatus.account.restaurant_count === 0) {
+                            setRegistrationType('existing_account_first_restaurant');
+                          } else {
+                            setRegistrationType('existing_account_additional_restaurant');
+                          }
+                        } else {
+                          // No existing account, pre-populate from restaurant data
+                          if (restaurant?.email) {
+                            setRegistrationEmail(restaurant.email);
+                          }
+                          // Generate default password hint
+                          if (restaurant?.name) {
+                            const cleaned = restaurant.name.replace(/[^a-zA-Z0-9]/g, '');
+                            const defaultPassword = cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase() + '789!';
+                            setRegistrationPassword(defaultPassword);
+                          }
+                        }
+                        setRegistrationDialogOpen(true);
+                      }}
+                      disabled={registering}
+                    >
+                      <LogIn className="h-4 w-4 mr-2" />
+                      Register Restaurant
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* CSV Menu Upload Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileSpreadsheet className="h-5 w-5" />
+                Menu CSV Upload
+              </CardTitle>
+              <CardDescription>
+                Upload a CSV file to import menu items to your Pumpd restaurant
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Prerequisites Status */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm">
+                  {registrationStatus?.account?.registration_status === 'completed' ? (
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4 text-gray-400" />
+                  )}
+                  <span className={registrationStatus?.account?.registration_status === 'completed' ? 'text-green-600' : 'text-gray-500'}>
+                    Account registered
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  {registrationStatus?.restaurant?.registration_status === 'completed' ? (
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4 text-gray-400" />
+                  )}
+                  <span className={registrationStatus?.restaurant?.registration_status === 'completed' ? 'text-green-600' : 'text-gray-500'}>
+                    Restaurant registered
+                  </span>
+                </div>
+              </div>
+
+              {/* File Upload Section */}
+              {registrationStatus?.account?.registration_status === 'completed' && 
+               registrationStatus?.restaurant?.registration_status === 'completed' ? (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="csv-file-input">Select CSV File</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="csv-file-input"
+                        type="file"
+                        accept=".csv,text/csv"
+                        onChange={handleCsvFileSelect}
+                        disabled={isUploading}
+                        className="flex-1"
+                      />
+                      {csvFile && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setCsvFile(null);
+                            setUploadError(null);
+                            setUploadStatus(null);
+                            const fileInput = document.getElementById('csv-file-input');
+                            if (fileInput) fileInput.value = '';
+                          }}
+                          disabled={isUploading}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    {csvFile && (
+                      <p className="text-sm text-muted-foreground">
+                        Selected: {csvFile.name} ({(csvFile.size / 1024).toFixed(2)} KB)
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Upload Button */}
+                  <Button
+                    onClick={handleCsvUpload}
+                    disabled={!csvFile || isUploading}
+                    className="w-full"
+                  >
+                    {isUploading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload Menu
+                      </>
+                    )}
+                  </Button>
+
+                  {/* Status Messages */}
+                  {uploadStatus === 'success' && (
+                    <Alert className="border-green-200 bg-green-50">
+                      <FileCheck className="h-4 w-4 text-green-600" />
+                      <AlertDescription className="text-green-800">
+                        Menu uploaded successfully! The items have been imported to your Pumpd restaurant.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {uploadError && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        {uploadError}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              ) : (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Both account and restaurant registration must be completed before you can upload a menu.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Website Customization Card */}
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Palette className="h-5 w-5" />
+                Website Customization
+              </CardTitle>
+              <CardDescription>
+                Generate and apply custom styling to your Pumpd website
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Prerequisites Status */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm">
+                  {registrationStatus?.account?.registration_status === 'completed' ? (
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-gray-400" />
+                  )}
+                  <span className={registrationStatus?.account?.registration_status === 'completed' ? 'text-green-600' : 'text-gray-500'}>
+                    Account registered
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  {registrationStatus?.restaurant?.registration_status === 'completed' ? (
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-gray-400" />
+                  )}
+                  <span className={registrationStatus?.restaurant?.registration_status === 'completed' ? 'text-green-600' : 'text-gray-500'}>
+                    Restaurant registered
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  {restaurant?.primary_color && restaurant?.secondary_color ? (
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-gray-400" />
+                  )}
+                  <span className={restaurant?.primary_color && restaurant?.secondary_color ? 'text-green-600' : 'text-gray-500'}>
+                    Theme colors configured
+                    {restaurant?.primary_color && restaurant?.secondary_color && (
+                      <span className="ml-2">
+                        <span 
+                          className="inline-block w-3 h-3 rounded-full border border-gray-300" 
+                          style={{ backgroundColor: restaurant.primary_color }}
+                          title={`Primary: ${restaurant.primary_color}`}
+                        />
+                        <span 
+                          className="inline-block w-3 h-3 rounded-full border border-gray-300 ml-1" 
+                          style={{ backgroundColor: restaurant.secondary_color }}
+                          title={`Secondary: ${restaurant.secondary_color}`}
+                        />
+                      </span>
+                    )}
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              {registrationStatus?.account?.registration_status === 'completed' && 
+               registrationStatus?.restaurant?.registration_status === 'completed' &&
+               restaurant?.primary_color && restaurant?.secondary_color ? (
+                <div className="space-y-4">
+                  {/* Mode Selector */}
+                  <div className="space-y-2">
+                    <Label>Configuration Method</Label>
+                    <RadioGroup value={customizationMode} onValueChange={handleModeChange}>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="generate" id="mode-generate" />
+                        <Label htmlFor="mode-generate" className="font-normal cursor-pointer">
+                          Generate new code injections
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="existing" id="mode-existing" />
+                        <Label htmlFor="mode-existing" className="font-normal cursor-pointer">
+                          Use existing HTML files
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  {/* Mode-specific UI */}
+                  {customizationMode === 'generate' ? (
+                    <>
+                      {/* Generate Code Injections Button */}
+                      <div className="space-y-2">
+                        <Button
+                          onClick={handleGenerateCodeInjections}
+                          disabled={isGenerating || isConfiguring}
+                          className="w-full"
+                          variant={codeGenerated ? "outline" : "default"}
+                        >
+                          {isGenerating ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Generating...
+                            </>
+                          ) : (
+                            <>
+                              <Code className="h-4 w-4 mr-2" />
+                              {codeGenerated ? 'Regenerate Code Injections' : 'Generate Code Injections'}
+                            </>
+                          )}
+                        </Button>
+                        {codeGenerated && (
+                          <p className="text-xs text-muted-foreground text-center">
+                            Code injections ready for configuration
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* File Path Inputs */}
+                      <div className="space-y-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="head-path">Head Injection File Path</Label>
+                          <Input
+                            id="head-path"
+                            type="text"
+                            placeholder="/path/to/head-injection.html"
+                            value={existingHeadPath}
+                            onChange={(e) => setExistingHeadPath(e.target.value)}
+                            disabled={isValidating || isConfiguring}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Full path to your head injection HTML file
+                          </p>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="body-path">Body Injection File Path</Label>
+                          <Input
+                            id="body-path"
+                            type="text"
+                            placeholder="/path/to/body-injection.html"
+                            value={existingBodyPath}
+                            onChange={(e) => setExistingBodyPath(e.target.value)}
+                            disabled={isValidating || isConfiguring}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Full path to your body injection HTML file
+                          </p>
+                        </div>
+
+                        {/* Validate Files Button */}
+                        <Button
+                          onClick={handleValidateFiles}
+                          disabled={!existingHeadPath || !existingBodyPath || isValidating || isConfiguring}
+                          className="w-full"
+                          variant={filesValidated ? "outline" : "default"}
+                        >
+                          {isValidating ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Validating...
+                            </>
+                          ) : (
+                            <>
+                              <FileCheck className="h-4 w-4 mr-2" />
+                              {filesValidated ? 'Files Validated ✓' : 'Validate Files'}
+                            </>
+                          )}
+                        </Button>
+                        {filesValidated && (
+                          <p className="text-xs text-muted-foreground text-center">
+                            Files validated and ready for configuration
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Configure Website Settings Button (shown for both modes) */}
+                  <Button
+                    onClick={handleConfigureWebsite}
+                    disabled={
+                      (customizationMode === 'generate' && !codeGenerated) ||
+                      (customizationMode === 'existing' && !filesValidated) ||
+                      isConfiguring || isGenerating || isValidating
+                    }
+                    className="w-full"
+                    variant="default"
+                  >
+                    {isConfiguring ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Configuring...
+                      </>
+                    ) : (
+                      <>
+                        <Settings className="h-4 w-4 mr-2" />
+                        Configure Website Settings
+                      </>
+                    )}
+                  </Button>
+
+                  {/* Status Messages */}
+                  {customizationStatus && (
+                    <Alert className={customizationStatus.success ? 'border-green-600' : 'border-destructive'}>
+                      {customizationStatus.success ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4" />
+                      )}
+                      <AlertDescription className={customizationStatus.success ? 'text-green-600' : ''}>
+                        {customizationStatus.message}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {/* Info Alert */}
+                  <Alert className="border-blue-200 bg-blue-50">
+                    <AlertCircle className="h-4 w-4 text-blue-600" />
+                    <AlertDescription className="text-blue-800 text-sm">
+                      <strong>Note:</strong> Website customization will use {restaurant?.theme === 'light' ? 'light' : 'dark'} theme mode.
+                      {customizationMode === 'generate' ? (
+                        <> First generate code injections, then apply them to your website.</>
+                      ) : (
+                        <> Validate your HTML files first, then apply them to your website.</>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                </div>
+              ) : (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    {!restaurant?.primary_color || !restaurant?.secondary_color ? (
+                      <>Theme colors must be configured in the Branding tab before customizing website.</>
+                    ) : (
+                      <>Account and restaurant registration must be completed before customizing website.</>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Payment & Services Configuration Card */}
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Payment & Services Configuration
+              </CardTitle>
+              <CardDescription>
+                Configure Stripe payments and service settings for your restaurant
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Prerequisites Status */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm">
+                  {registrationStatus?.account?.registration_status === 'completed' ? (
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-gray-400" />
+                  )}
+                  <span className={registrationStatus?.account?.registration_status === 'completed' ? 'text-green-600' : 'text-gray-500'}>
+                    Account registered
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  {registrationStatus?.restaurant?.registration_status === 'completed' ? (
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-gray-400" />
+                  )}
+                  <span className={registrationStatus?.restaurant?.registration_status === 'completed' ? 'text-green-600' : 'text-gray-500'}>
+                    Restaurant registered
+                  </span>
+                </div>
+                {restaurant?.stripe_connect_url && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <AlertCircle className="h-4 w-4 text-yellow-600" />
+                    <span className="text-yellow-600">
+                      Stripe Connect URL available - complete setup if not done
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Action buttons */}
+              {registrationStatus?.account?.registration_status === 'completed' && 
+               registrationStatus?.restaurant?.registration_status === 'completed' ? (
+                <div className="space-y-4">
+                  {/* Stripe configuration options */}
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="includeConnectLink"
+                        checked={includeConnectLink}
+                        onChange={(e) => setIncludeConnectLink(e.target.checked)}
+                        className="rounded border-gray-300"
+                      />
+                      <label htmlFor="includeConnectLink" className="text-sm text-gray-700">
+                        Include "Connect to Stripe" button (use if button is visible in UI)
+                      </label>
+                    </div>
+                    
+                    <div className="flex gap-4">
+                      <Button
+                        onClick={handleSetupStripePayments}
+                        disabled={isConfiguringPayments}
+                        className="flex items-center gap-2"
+                      >
+                        {isConfiguringPayments ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Configuring Stripe...
+                          </>
+                        ) : (
+                          <>
+                            <CreditCard className="h-4 w-4" />
+                            Setup Stripe Payments
+                          </>
+                        )}
+                      </Button>
+
+                      <Button
+                        onClick={handleConfigureServices}
+                        disabled={isConfiguringServices}
+                        className="flex items-center gap-2"
+                        variant="outline"
+                      >
+                        {isConfiguringServices ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Configuring Services...
+                          </>
+                        ) : (
+                          <>
+                            <Settings className="h-4 w-4" />
+                            Configure Services
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Payment Status/Results */}
+                  {paymentStatus && (
+                    <Alert className={paymentStatus.success ? 'border-green-500' : 'border-red-500'}>
+                      <AlertDescription>
+                        {paymentStatus.success ? (
+                          <>
+                            <CheckCircle className="inline h-4 w-4 text-green-500 mr-2" />
+                            {paymentStatus.message || 'Stripe configuration completed!'}
+                            {paymentStatus.stripeConnectUrl && (
+                              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded">
+                                <strong className="block mb-2">Complete Stripe setup:</strong>
+                                <a 
+                                  href={paymentStatus.stripeConnectUrl} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:text-blue-800 underline break-all flex items-center gap-1"
+                                >
+                                  {paymentStatus.stripeConnectUrl}
+                                  <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                                </a>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <AlertCircle className="inline h-4 w-4 text-red-500 mr-2" />
+                            {paymentStatus.error || 'Failed to configure Stripe payments'}
+                          </>
+                        )}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {/* Services Status/Results */}
+                  {servicesStatus && (
+                    <Alert className={servicesStatus.success ? 'border-green-500' : 'border-red-500'}>
+                      <AlertDescription>
+                        {servicesStatus.success ? (
+                          <>
+                            <CheckCircle className="inline h-4 w-4 text-green-500 mr-2" />
+                            {servicesStatus.message || 'Services configured successfully!'}
+                          </>
+                        ) : (
+                          <>
+                            <AlertCircle className="inline h-4 w-4 text-red-500 mr-2" />
+                            {servicesStatus.error || 'Failed to configure services'}
+                          </>
+                        )}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {/* Show existing Stripe URL if available */}
+                  {restaurant?.stripe_connect_url && !paymentStatus && (
+                    <Alert className="border-blue-500">
+                      <AlertDescription>
+                        <AlertCircle className="inline h-4 w-4 text-blue-500 mr-2" />
+                        <strong>Existing Stripe Connect URL:</strong>
+                        <a 
+                          href={restaurant.stripe_connect_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="block mt-2 text-blue-600 hover:text-blue-800 underline break-all"
+                        >
+                          {restaurant.stripe_connect_url}
+                          <ExternalLink className="inline h-3 w-3 ml-1" />
+                        </a>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              ) : (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Account and restaurant registration must be completed before configuring payments and services.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Onboarding User Management Card */}
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UserPlus className="h-5 w-5" />
+                Onboarding User Management
+              </CardTitle>
+              <CardDescription>
+                Create and manage onboarding users for restaurant setup
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Input fields */}
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium">User Name</label>
+                  <Input
+                    value={onboardingUserName}
+                    onChange={(e) => setOnboardingUserName(e.target.value)}
+                    placeholder="Restaurant Owner Name"
+                    className="mt-1"
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium">User Email</label>
+                  <Input
+                    type="email"
+                    value={onboardingUserEmail}
+                    onChange={(e) => setOnboardingUserEmail(e.target.value)}
+                    placeholder="owner@restaurant.com"
+                    className="mt-1"
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium">
+                    Password (optional - auto-generated if empty)
+                  </label>
+                  <Input
+                    type="password"
+                    value={onboardingUserPassword}
+                    onChange={(e) => setOnboardingUserPassword(e.target.value)}
+                    placeholder="Leave empty for auto-generation"
+                    className="mt-1"
+                  />
+                  {!onboardingUserPassword && restaurant?.name && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Will use: {generateDefaultPassword(restaurant.name)}
+                    </p>
+                  )}
+                </div>
+              </div>
+              
+              {/* Action buttons */}
+              <div className="flex gap-4">
+                <Button
+                  onClick={handleCreateOnboardingUser}
+                  disabled={isCreatingOnboardingUser || !onboardingUserName || !onboardingUserEmail}
+                  className="flex items-center gap-2"
+                >
+                  {isCreatingOnboardingUser ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Creating User...
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="h-4 w-4" />
+                      Create Onboarding User
+                    </>
+                  )}
+                </Button>
+                
+                <Button
+                  onClick={handleUpdateOnboardingRecord}
+                  disabled={isUpdatingOnboarding || !onboardingUserEmail}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  {isUpdatingOnboarding ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Updating Record...
+                    </>
+                  ) : (
+                    <>
+                      <Database className="h-4 w-4" />
+                      Update Onboarding Record
+                    </>
+                  )}
+                </Button>
+              </div>
+              
+              {/* Status displays */}
+              {onboardingUserStatus && (
+                <Alert className={onboardingUserStatus.success ? 'border-green-500' : 'border-red-500'}>
+                  <AlertDescription>
+                    {onboardingUserStatus.success ? (
+                      <>
+                        <CheckCircle className="inline h-4 w-4 text-green-500 mr-2" />
+                        {onboardingUserStatus.message || 'Onboarding user created successfully'}
+                        {onboardingUserStatus.userEmail && (
+                          <span className="block mt-1">
+                            Email: {onboardingUserStatus.userEmail}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle className="inline h-4 w-4 text-red-500 mr-2" />
+                        {onboardingUserStatus.error || 'Failed to create onboarding user'}
+                      </>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {onboardingUpdateStatus && (
+                <Alert className={onboardingUpdateStatus.success ? 'border-green-500' : 'border-red-500'}>
+                  <AlertDescription>
+                    {onboardingUpdateStatus.success ? (
+                      <>
+                        <CheckCircle className="inline h-4 w-4 text-green-500 mr-2" />
+                        Record updated successfully
+                        {onboardingUpdateStatus.onboardingId && (
+                          <span className="block mt-1 text-xs text-gray-600">
+                            Onboarding ID: {onboardingUpdateStatus.onboardingId}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle className="inline h-4 w-4 text-red-500 mr-2" />
+                        {onboardingUpdateStatus.error || 'Failed to update onboarding record'}
+                      </>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* Logo Candidate Selection Dialog */}
@@ -3331,6 +4938,217 @@ export default function RestaurantDetail() {
               ) : (
                 'Extract Details'
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Registration Type Selection Dialog */}
+      <Dialog open={registrationDialogOpen} onOpenChange={(open) => {
+        setRegistrationDialogOpen(open);
+        // Reset registration type when dialog is closed
+        if (!open) {
+          setRegistrationType('');
+          setRegistrationEmail('');
+          setRegistrationPassword('');
+          setShowPassword(false);
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {registrationType === 'account_only' ? 'Register Account on Pumpd' : 'Register Restaurant on Pumpd'}
+            </DialogTitle>
+            <DialogDescription>
+              {registrationType === 'account_only' 
+                ? 'Create a new Pumpd account for this restaurant'
+                : 'Select how you want to register this restaurant'
+              }
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {/* Only show radio group options if not account_only */}
+            {registrationType !== 'account_only' ? (
+              <RadioGroup value={registrationType} onValueChange={setRegistrationType}>
+                <div className="space-y-2">
+                  <div className="flex items-start space-x-2 p-3 border rounded-lg">
+                    <RadioGroupItem value="new_account_with_restaurant" id="new_account" />
+                    <div className="space-y-1">
+                      <Label htmlFor="new_account" className="font-medium">
+                        New Account with Restaurant
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Create a new Pumpd account and register this restaurant
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start space-x-2 p-3 border rounded-lg">
+                    <RadioGroupItem value="existing_account_first_restaurant" id="existing_first" />
+                    <div className="space-y-1">
+                      <Label htmlFor="existing_first" className="font-medium">
+                        Login to Existing Account - First Restaurant
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Login to an existing account and add this as the first restaurant
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start space-x-2 p-3 border rounded-lg">
+                    <RadioGroupItem value="existing_account_additional_restaurant" id="existing_additional" />
+                    <div className="space-y-1">
+                      <Label htmlFor="existing_additional" className="font-medium">
+                        Login to Existing Account - Additional Restaurant
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Login to an existing account that already has restaurants
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </RadioGroup>
+            ) : (
+              <div className="text-sm text-muted-foreground">
+                Enter your email and password to create a new Pumpd account.
+              </div>
+            )}
+
+            {/* Email and Password fields - show for all registration types */}
+            {registrationType && (
+              <div className="space-y-4 pt-4 border-t">
+                <div className="space-y-2">
+                  <Label htmlFor="registration-email">Email</Label>
+                  <Input
+                    id="registration-email"
+                    type="email"
+                    placeholder="Enter your Pumpd account email"
+                    value={registrationEmail}
+                    onChange={(e) => setRegistrationEmail(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="registration-password">Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="registration-password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter your Pumpd account password"
+                      value={registrationPassword}
+                      onChange={(e) => setRegistrationPassword(e.target.value)}
+                      className="pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Default format: Restaurantname789!
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRegistrationDialogOpen(false);
+                setRegistrationType('');
+                setRegistrationEmail('');
+                setRegistrationPassword('');
+                setShowPassword(false);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRegistration}
+              disabled={!registrationType || registering}
+            >
+              {registering ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Registering...
+                </>
+              ) : (
+                registrationType === 'account_only' ? 'Register Account' : 'Register Restaurant'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Registration Logs Dialog */}
+      <Dialog open={showRegistrationLogs} onOpenChange={setShowRegistrationLogs}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Registration Logs</DialogTitle>
+            <DialogDescription>
+              History of registration attempts for this restaurant
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {registrationLogs.length > 0 ? (
+              <div className="space-y-2">
+                {registrationLogs.map((log, index) => (
+                  <div key={index} className="p-3 border rounded-lg space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{log.action}</span>
+                        {log.status === 'success' ? (
+                          <Badge variant="success">Success</Badge>
+                        ) : log.status === 'in_progress' ? (
+                          <Badge variant="warning">In Progress</Badge>
+                        ) : (
+                          <Badge variant="destructive">Failed</Badge>
+                        )}
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {new Date(log.created_at).toLocaleString()}
+                      </span>
+                    </div>
+                    {log.error_message && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>{log.error_message}</AlertDescription>
+                      </Alert>
+                    )}
+                    {log.script_name && (
+                      <p className="text-sm text-muted-foreground">
+                        Script: {log.script_name}
+                      </p>
+                    )}
+                    {log.execution_time_ms && (
+                      <p className="text-sm text-muted-foreground">
+                        Execution time: {(log.execution_time_ms / 1000).toFixed(2)}s
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center py-8 text-muted-foreground">
+                No registration logs found
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowRegistrationLogs(false)}
+            >
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

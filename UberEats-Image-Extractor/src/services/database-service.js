@@ -2277,31 +2277,50 @@ async function bulkUpdateMenuItems(updates) {
       
       if (!error && updated) {
         console.log('[Database] Successfully updated item:', id);
-        // Handle image updates separately
+        // Handle image updates separately - ONLY if imageURL is explicitly provided
         if (imageURL !== undefined) {
-          // If imageURL is null, delete the image association
-          if (imageURL === null) {
-            // Delete existing image associations
-            await getSupabaseClient()
-              .from('item_images')
-              .delete()
-              .eq('menu_item_id', id);
-          } else if (imageURL) {
-            // First delete existing images
-            await getSupabaseClient()
-              .from('item_images')
-              .delete()
-              .eq('menu_item_id', id);
-            
-            // Then add the new image
-            await getSupabaseClient()
-              .from('item_images')
-              .insert({
-                menu_item_id: id,
-                url: imageURL
-              });
+          // Get existing images
+          const { data: existingImages } = await getSupabaseClient()
+            .from('item_images')
+            .select('id, url')
+            .eq('menu_item_id', id);
+          
+          const hasExistingImage = existingImages && existingImages.length > 0;
+          const existingImageUrl = hasExistingImage ? existingImages[0].url : null;
+          
+          // If imageURL is null or empty string, delete the image association
+          if (imageURL === null || imageURL === '') {
+            if (hasExistingImage) {
+              console.log('[Database] Deleting image association for item:', id);
+              await getSupabaseClient()
+                .from('item_images')
+                .delete()
+                .eq('menu_item_id', id);
+            }
+          } else if (imageURL && imageURL !== existingImageUrl) {
+            // Only update if the URL has actually changed
+            if (hasExistingImage) {
+              // Update existing image
+              console.log('[Database] Updating image URL for item:', id);
+              await getSupabaseClient()
+                .from('item_images')
+                .update({ url: imageURL })
+                .eq('menu_item_id', id);
+            } else {
+              // Create new image association
+              console.log('[Database] Creating new image association for item:', id);
+              await getSupabaseClient()
+                .from('item_images')
+                .insert({
+                  menu_item_id: id,
+                  url: imageURL,
+                  is_primary: true
+                });
+            }
           }
+          // If imageURL is the same as existing, do nothing
         }
+        // If imageURL is undefined, preserve existing images (don't touch them)
         
         // Fetch the updated item with its images
         const { data: itemWithImages } = await getSupabaseClient()
