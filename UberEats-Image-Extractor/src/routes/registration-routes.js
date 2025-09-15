@@ -1121,8 +1121,9 @@ router.post('/configure-website', async (req, res) => {
     const { data: restaurant, error: restaurantError } = await supabase
       .from('restaurants')
       .select(`
-        name, 
-        primary_color, 
+        name,
+        primary_color,
+        secondary_color,
         theme,
         logo_url,
         instagram_url,
@@ -1178,6 +1179,11 @@ router.post('/configure-website', async (req, res) => {
       `--head="${filePaths.headInjection}"`,
       `--body="${filePaths.bodyInjection}"`
     ];
+
+    // Add secondary color if available
+    if (restaurant.secondary_color) {
+      command.push(`--secondary="${restaurant.secondary_color}"`);
+    }
     
     // Add optional fields if available
     if (restaurant.logo_url) {

@@ -99,13 +99,18 @@ export default function Extractions() {
     );
   };
 
-  const handleViewResults = async (jobId) => {
-    try {
-      const response = await api.get(`/extractions/${jobId}`);
-      // Navigate to a detailed view with the results
-      navigate(`/extractions/${jobId}`, { state: { job: response.data } });
-    } catch (err) {
-      console.error('Failed to fetch extraction details:', err);
+  const handleViewResults = async (extraction) => {
+    // If extraction has a menu_id, navigate directly to MenuDetail
+    if (extraction.menu_id) {
+      navigate(`/menus/${extraction.menu_id}`);
+    } else {
+      // Fallback to old behavior for legacy extractions
+      try {
+        const response = await api.get(`/extractions/${extraction.job_id}`);
+        navigate(`/extractions/${extraction.job_id}`, { state: { job: response.data } });
+      } catch (err) {
+        console.error('Failed to fetch extraction details:', err);
+      }
     }
   };
 
@@ -314,7 +319,14 @@ export default function Extractions() {
                   
                   return (
                   <TableRow key={extraction.job_id}>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell 
+                      className="text-muted-foreground cursor-pointer hover:text-brand-blue transition-colors"
+                      onClick={() => {
+                        if (extraction.restaurants?.id) {
+                          navigate(`/restaurants/${extraction.restaurants.id}`);
+                        }
+                      }}
+                    >
                       {extraction.restaurants?.name || 'Unknown'}
                     </TableCell>
                     <TableCell>
@@ -337,8 +349,9 @@ export default function Extractions() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => handleViewResults(extraction.job_id)}
+                              onClick={() => handleViewResults(extraction)}
                               className="text-brand-blue hover:text-brand-blue hover:bg-brand-blue/10"
+                              title={extraction.menu_id ? "View menu" : "View extraction details"}
                             >
                               <Eye className="h-4 w-4" />
                             </Button>

@@ -201,7 +201,14 @@ async function importCSVMenu() {
       console.log('  ⚠️ No h4 elements found, continuing anyway...');
     }
     
-    await page.waitForLoadState('networkidle');
+    // Wait for DOM instead of network idle (dashboard has continuous polling)
+    try {
+      await page.waitForLoadState('domcontentloaded', { timeout: 10000 });
+    } catch (e) {
+      console.log('  ⚠️ Page load state timeout - continuing anyway');
+    }
+    // Give extra time for dashboard to fully load
+    await page.waitForTimeout(3000);
     await takeScreenshot(page, '02-dashboard-loaded');
     
     // STEP 2: Navigate to restaurant management with smart matching
@@ -368,7 +375,12 @@ async function importCSVMenu() {
     
     // Add extra wait to ensure page is fully loaded
     await page.waitForTimeout(2000);
-    await page.waitForLoadState('networkidle');
+    // Wait for DOM instead of network idle (dashboard has continuous polling)
+    try {
+      await page.waitForLoadState('domcontentloaded', { timeout: 10000 });
+    } catch (e) {
+      console.log('  ⚠️ Page load state timeout - continuing anyway');
+    }
     
     // Wait 3 seconds for page to fully load
     await page.waitForTimeout(3000);
@@ -407,7 +419,12 @@ async function importCSVMenu() {
     }
     
     // Wait for menu page to load
-    await page.waitForLoadState('networkidle');
+    // Wait for DOM instead of network idle (dashboard has continuous polling)
+    try {
+      await page.waitForLoadState('domcontentloaded', { timeout: 10000 });
+    } catch (e) {
+      console.log('  ⚠️ Page load state timeout - continuing anyway');
+    }
     await page.waitForTimeout(3000);
     await takeScreenshot(page, '04-menu-page');
     

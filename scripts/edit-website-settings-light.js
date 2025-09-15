@@ -63,6 +63,7 @@ const getArg = (name) => {
 const email = getArg('email');
 const password = getArg('password'); // NEW: Accept password as argument
 const primaryColor = getArg('primary');
+const secondaryColor = getArg('secondary'); // Secondary color for light theme
 const headPath = getArg('head');
 const bodyPath = getArg('body');
 const restaurantName = getArg('name');
@@ -110,6 +111,7 @@ async function editWebsiteSettingsLight() {
   console.log(`  Password: ${'*'.repeat(password.length)}`);
   console.log(`  Restaurant Name: ${restaurantName}`);
   console.log(`  Primary Color: ${primaryColor}`);
+  console.log(`  Secondary Color: ${secondaryColor || '#FFFBF2 (default cream)'}`);
   console.log(`  Head file: ${headPath} (${headCode.length} chars)`);
   console.log(`  Body file: ${bodyPath} (${bodyCode.length} chars)`);
   if (logoPath) console.log(`  Logo: ${logoPath}`);
@@ -576,36 +578,75 @@ async function editWebsiteSettingsLight() {
       await page.waitForTimeout(1000);
     }
     
-    // STEP 8: Set Primary Color
-    console.log('\n🎨 STEP 8: Setting Primary Color');
-    
-    const colorPickerSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj';
-    const colorInputSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input';
-    
-    try {
-      // Click on color picker to open it
-      await page.click(colorPickerSelector);
-      await page.waitForTimeout(500);
-      console.log('  ✓ Opened color picker');
-      
-      // Find and fill the color input
-      await page.fill(colorInputSelector, primaryColor);
-      console.log(`  ✓ Set primary color to ${primaryColor}`);
-      
-      // Click outside to close color picker
-      await page.keyboard.press('Escape');
-      await page.waitForTimeout(500);
-      
-      await takeScreenshot(page, '08-color-set');
-    } catch (error) {
-      console.log('  ⚠️ Using alternative color input method');
-      // Try to find any visible color input
-      const colorInput = page.locator('input[type="text"][value^="#"]').first();
-      await colorInput.click();
-      await colorInput.clear();
-      await colorInput.fill(primaryColor);
-      console.log(`  ✓ Set primary color to ${primaryColor} (fallback)`);
+    // STEP 8: Set all color configurations
+    console.log('\n🎨 STEP 8: Setting Color Configurations');
+
+    // Use secondary color or default cream for light theme backgrounds
+    const lightBgColor = secondaryColor || '#FFFBF2';
+
+    // Define selectors for each color field - IN REVERSE ORDER (bottom to top) to avoid picker overlap
+    const colorFields = [
+      {
+        name: 'Box & Popup Text',
+        pickerSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(6) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj',
+        inputSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(6) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input',
+        value: secondaryColor || primaryColor  // Use secondary if available, else primary
+      },
+      {
+        name: 'Box & Popup Background',
+        pickerSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(5) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj',
+        inputSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(5) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input',
+        value: '#FFFBF2'  // Cream background for boxes
+      },
+      {
+        name: 'Text',
+        pickerSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(4) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj',
+        inputSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(4) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input',
+        value: '#323232'  // Dark gray text for light mode
+      },
+      {
+        name: 'Background',
+        pickerSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(3) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj',
+        inputSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(3) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input',
+        value: '#FFFBF2'  // Cream background for light mode
+      },
+      {
+        name: 'Primary Text',
+        pickerSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(2) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj',
+        inputSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(2) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input',
+        value: '#FFFBF2'  // Cream text on primary
+      },
+      {
+        name: 'Primary',
+        pickerSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj',
+        inputSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input',
+        value: primaryColor
+      }
+    ];
+
+    // Set each color (in reverse order to avoid picker overlap)
+    for (const field of colorFields) {
+      try {
+        console.log(`  Setting ${field.name} color...`);
+
+        // Click on color picker to open it
+        await page.click(field.pickerSelector);
+        await page.waitForTimeout(500);
+
+        // Find and fill the color input - this clears existing value automatically
+        await page.fill(field.inputSelector, field.value);
+        console.log(`  ✓ Set ${field.name} to ${field.value}`);
+
+        // Press escape to close the color picker before moving to next
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(800);
+
+      } catch (error) {
+        console.log(`  ⚠️ Failed to set ${field.name} color:`, error.message);
+      }
     }
+
+    await takeScreenshot(page, '08-colors-configured');
     
     // STEP 9: Save color changes
     console.log('\n💾 STEP 9: Saving color configuration');
@@ -742,10 +783,48 @@ async function editWebsiteSettingsLight() {
         await topNavText.click();
         await page.waitForTimeout(1000);
       }
-      
-      // Click Upload Logo button
+
+      // First set nav bar colors
+      console.log('  Setting Nav Bar colors...');
+
+      // Always use cream for nav background in light theme
+      const navBgColor = '#FFFBF2';
+
+      // Set Nav Bar Background Color
+      const navBgPickerSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj.grid-2.sm.sm-gap.max300 > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj';
+      const navBgInputSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj.grid-2.sm.sm-gap.max300 > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input';
+
+      try {
+        await page.click(navBgPickerSelector);
+        await page.waitForTimeout(500);
+        await page.fill(navBgInputSelector, navBgColor);
+        console.log(`  ✓ Set Nav Bar Background to ${navBgColor}`);
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(500);
+      } catch (error) {
+        console.log('  ⚠️ Failed to set nav bar background color:', error.message);
+      }
+
+      // Set Nav Bar Text Color
+      const navTextPickerSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj.grid-2.sm.sm-gap.max300 > div:nth-child(2) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj > div';
+      const navTextInputSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj.grid-2.sm.sm-gap.max300 > div:nth-child(2) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input';
+
+      try {
+        await page.click(navTextPickerSelector);
+        await page.waitForTimeout(500);
+        const navTextColor = secondaryColor || primaryColor;  // Use secondary if available, else primary
+        await page.fill(navTextInputSelector, navTextColor);
+        console.log(`  ✓ Set Nav Bar Text to ${navTextColor}`);
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(500);
+      } catch (error) {
+        console.log('  ⚠️ Failed to set nav bar text color:', error.message);
+      }
+
+      // Now Upload Logo
+      console.log('  Uploading Logo...');
       const uploadLogoSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(3) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > button:nth-child(1)';
-      
+
       try {
         await page.click(uploadLogoSelector);
         console.log('  ✓ Clicked Upload Logo button');

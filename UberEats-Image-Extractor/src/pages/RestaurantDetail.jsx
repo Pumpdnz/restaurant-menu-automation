@@ -41,7 +41,8 @@ import {
   FileCheck,
   Code,
   XCircle,
-  Database
+  Database,
+  Download
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -2036,6 +2037,65 @@ export default function RestaurantDetail() {
     );
   };
 
+  const handleUploadImagesToCDN = async (menuId) => {
+    try {
+      toast({ 
+        title: "Uploading images to CDN...", 
+        description: "This may take a moment" 
+      });
+      
+      const response = await api.post(`/menus/${menuId}/upload-images`);
+      
+      if (response.data.success) {
+        toast({ 
+          title: "Success", 
+          description: `Uploaded ${response.data.uploadedCount || response.data.stats?.uploadedCount || 0} images to CDN` 
+        });
+        // Refresh restaurant data to show updated status
+        fetchRestaurantDetails();
+      }
+    } catch (error) {
+      console.error('Failed to upload images:', error);
+      toast({ 
+        title: "Upload failed", 
+        description: error.response?.data?.error || "Failed to upload images",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDownloadCSVWithCDN = async (menuId) => {
+    try {
+      const response = await api.get(`/menus/${menuId}/csv-with-cdn`, {
+        params: { download: 'true' },
+        responseType: 'text'
+      });
+      
+      const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const filename = `menu_${menuId}_cdn_export.csv`;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast({ 
+        title: "CSV exported", 
+        description: "Downloaded menu with CDN image URLs" 
+      });
+    } catch (error) {
+      console.error('Failed to export CSV:', error);
+      toast({ 
+        title: "Export failed", 
+        description: error.response?.data?.error || "Failed to export CSV",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Reusable component for platform URL fields
   const PlatformUrlField = ({ platform, platformName, urlValue, fieldName, placeholder }) => {
     const capabilities = PLATFORM_CAPABILITIES[platform];
@@ -3144,20 +3204,49 @@ export default function RestaurantDetail() {
               {restaurant?.menus && restaurant.menus.length > 0 ? (
                 <div className="space-y-2">
                   {restaurant.menus.slice(0, 5).map((menu) => (
-                    <div key={menu.id} className="flex items-center justify-between p-2 border rounded">
-                      <div>
-                        <span className="text-sm font-medium">Version {menu.version}</span>
-                        <span className="text-xs text-muted-foreground ml-2">
-                          {menu.platforms?.name || 'Unknown'}
+                    <div key={menu.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">Version {menu.version}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {menu.platforms?.name || 'Unknown'}
+                          </span>
+                          {menu.is_active && (
+                            <Badge className="bg-green-100 text-green-800">Active</Badge>
+                          )}
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          Created: {new Date(menu.created_at).toLocaleDateString()}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        {menu.is_active && (
-                          <Badge className="bg-green-100 text-green-800">Active</Badge>
-                        )}
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(menu.created_at).toLocaleDateString()}
-                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => navigate(`/menus/${menu.id}`)}
+                          className="text-brand-blue hover:text-brand-blue hover:bg-brand-blue/10"
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View Menu
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleUploadImagesToCDN(menu.id)}
+                          className="text-brand-green hover:text-brand-green hover:bg-brand-green/10"
+                        >
+                          <Upload className="h-4 w-4 mr-1" />
+                          Upload Images
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDownloadCSVWithCDN(menu.id)}
+                          className="text-brand-orange hover:text-brand-orange hover:bg-brand-orange/10"
+                        >
+                          <Download className="h-4 w-4 mr-1" />
+                          Download CSV
+                        </Button>
                       </div>
                     </div>
                   ))}

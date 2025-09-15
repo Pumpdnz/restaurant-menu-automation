@@ -184,10 +184,10 @@ async function loginAndRegisterRestaurant() {
     await page.waitForFunction(() => {
       const loader = document.querySelector('.cover-loader');
       return !loader || !loader.classList.contains('active');
-    }, { timeout: 10000 });
+    }, { timeout: 12000 });
     console.log('  ✓ Loading overlay gone');
     
-    await page.waitForTimeout(3000); // Extra wait
+    await page.waitForTimeout(15000); // Extra wait
     await takeScreenshot(page, '03-dashboard-loaded');
     
     // STEP 4: Navigate to restaurant creation
@@ -645,7 +645,15 @@ async function loginAndRegisterRestaurant() {
       console.log('  ✓ Restaurant created successfully!');
       console.log('  ✓ Returned to dashboard:', page.url());
       
-      await page.waitForLoadState('networkidle');
+      // Wait for restaurant list to be visible instead of network state
+      try {
+        // Wait for restaurant list container or manage buttons to appear
+        await page.waitForSelector('button:has-text("Manage")', { timeout: 10000 });
+        console.log('  ✓ Restaurant list loaded');
+      } catch (e) {
+        console.log('  ⚠️ Timeout waiting for restaurant list - continuing anyway');
+      }
+      // Give extra time for restaurant list to fully update
       await page.waitForTimeout(3000);
       
       await takeScreenshot(page, '16-restaurant-created-success');

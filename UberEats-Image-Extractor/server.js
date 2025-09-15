@@ -3386,6 +3386,36 @@ app.get('/api/restaurants', authMiddleware, async (req, res) => {
 });
 
 /**
+ * GET /api/restaurants/list
+ * Get lightweight list of restaurants for table display
+ * Only returns essential fields needed for the restaurants table
+ */
+app.get('/api/restaurants/list', authMiddleware, async (req, res) => {
+  try {
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+    
+    const restaurants = await db.getAllRestaurantsList();
+    
+    return res.json({
+      success: true,
+      count: restaurants.length,
+      restaurants: restaurants
+    });
+  } catch (error) {
+    console.error('[API] Error listing restaurants (lightweight):', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to list restaurants'
+    });
+  }
+});
+
+/**
  * GET /api/restaurants/:id/menus
  * Get all menus for a specific restaurant
  */

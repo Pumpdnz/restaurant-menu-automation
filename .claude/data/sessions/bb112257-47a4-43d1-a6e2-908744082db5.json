@@ -1,0 +1,7 @@
+{
+  "session_id": "bb112257-47a4-43d1-a6e2-908744082db5",
+  "prompts": [
+    "I need you to thoroughly investigate why executing a premium extraction for an existing restaurant \"Chaat Street\" completed successfully but created a new restaurant instead fo applying the extracted menu data to the existing restaurant.\\\nI went in through the RestaurantDetail page and used the extract menu button from the Platforms & Social Media links tab: [Image #1]\\\nInstead of applying the extraction to the existing new lead restaurant, the system created a new restaurant [Image #2]\\\nThink hard and investigate the premium extraction endpoint as a focus. Check whether it expects restaurant_id and then check whether the RestaurantDetail page is passing it",
+    "Yes this is correct, please create a comprehensive documentation file to plan this change"
+  ]
+}

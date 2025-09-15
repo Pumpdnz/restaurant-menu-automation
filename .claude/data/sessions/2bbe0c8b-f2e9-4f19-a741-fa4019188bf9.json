@@ -1,0 +1,6 @@
+{
+  "session_id": "2bbe0c8b-f2e9-4f19-a741-fa4019188bf9",
+  "prompts": [
+    "Now I need you to check te logic for moving a menu from one restaurant to another. Since this menu was created under the wrong restaurant I need to move it into the correct one to proceed with the onboarding. However, this menu contains option sets (due to it being a premium extraction) and we added the move menu feature in before premium extraction existed. Therefore I want to confirm the logic for moving a menu to ensure all data will stay related to each other correctly when I move the menu using the frontend UI Move Menu feature [Image #1]"
+  ]
+}

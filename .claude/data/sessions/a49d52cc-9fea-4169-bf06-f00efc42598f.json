@@ -1,0 +1,6 @@
+{
+  "session_id": "a49d52cc-9fea-4169-bf06-f00efc42598f",
+  "prompts": [
+    "I need you to thoroughly investigate what happens when a user begins an extraction (either standard or premium) and then navigates to another area of the app to continue with other features such as registering the restaurants account. Does the extraction continue without conflicts and is it safe for the user to navigate around the app without disturbing the extraction and then come back later?"
+  ]
+}

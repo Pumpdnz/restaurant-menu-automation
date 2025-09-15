@@ -51,7 +51,7 @@ export default function Restaurants() {
 
   const fetchRestaurants = async () => {
     try {
-      const response = await api.get('/restaurants');
+      const response = await api.get('/restaurants/list');
       const data = response.data.restaurants || [];
       // Sort by created date by default (newest first)
       const sorted = [...data].sort((a, b) => {
@@ -241,14 +241,16 @@ export default function Restaurants() {
                   restaurants.map((restaurant) => (
                     <TableRow key={restaurant.id}>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Store className="h-4 w-4 text-muted-foreground" />
-                          <div>
-                            <div className="font-medium">{restaurant.name}</div>
-                            {restaurant.address && (
-                              <div className="text-xs text-muted-foreground">{restaurant.address}</div>
-                            )}
+                        <div>
+                          <div 
+                            className="font-medium cursor-pointer hover:text-brand-blue transition-colors"
+                            onClick={() => handleViewRestaurant(restaurant.id)}
+                          >
+                            {restaurant.name}
                           </div>
+                          {restaurant.address && (
+                            <div className="text-xs text-muted-foreground">{restaurant.address}</div>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -277,12 +279,11 @@ export default function Restaurants() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Calendar className="h-3 w-3" />
+                        <span className="text-xs text-muted-foreground">
                           {restaurant.restaurant_platforms?.[0]?.last_scraped_at 
                             ? formatDate(restaurant.restaurant_platforms[0].last_scraped_at)
                             : '-'}
-                        </div>
+                        </span>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {formatDate(restaurant.created_at)}

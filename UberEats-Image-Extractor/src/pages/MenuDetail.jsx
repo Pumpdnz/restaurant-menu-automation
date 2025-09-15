@@ -15,7 +15,8 @@ import {
   TagIcon,
   ChevronDownIcon,
   TrashIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  DocumentTextIcon
 } from '@heroicons/react/24/outline';
 import EditableMenuItem from '../components/menu/EditableMenuItem';
 import OptionSetsManagement from '../components/menu/OptionSetsManagement';
@@ -793,6 +794,25 @@ export default function MenuDetail() {
               </p>
             </div>
           )}
+          {/* Navigation Buttons */}
+          <div className="mt-4 flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => navigate(`/restaurants/${menu.restaurant_id || menu.restaurants?.id}`)}
+              className="flex items-center gap-2"
+            >
+              <BuildingStorefrontIcon className="h-4 w-4" />
+              Manage Restaurant
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => navigate(`/menus?restaurant=${menu.restaurant_id || menu.restaurants?.id}`)}
+              className="flex items-center gap-2"
+            >
+              <DocumentTextIcon className="h-4 w-4" />
+              View All Menus
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

@@ -1014,7 +1014,7 @@ async function getMenuWithItems(menuId) {
       .from('menus')
       .select(`
         *,
-        restaurants (name, slug),
+        restaurants (id, name, slug),
         platforms (name),
         categories (
           id,
@@ -1156,6 +1156,48 @@ async function getAllRestaurants() {
     return data;
   } catch (error) {
     console.error('[Database] Error getting all restaurants:', error);
+    return [];
+  }
+}
+
+/**
+ * Get lightweight restaurant list for table display
+ * Only fetches essential fields needed for the restaurants table
+ */
+async function getAllRestaurantsList() {
+  if (!isDatabaseAvailable()) return [];
+  
+  const orgId = getCurrentOrganizationId();
+  console.log(`[Database] getAllRestaurantsList called with org ID: ${orgId}`);
+  
+  try {
+    const client = getSupabaseClient();
+    const { data, error } = await client
+      .from('restaurants')
+      .select(`
+        id,
+        name,
+        address,
+        contact_name,
+        contact_phone,
+        contact_email,
+        created_at,
+        email,
+        phone,
+        restaurant_platforms (
+          url,
+          last_scraped_at,
+          platforms (name)
+        )
+      `)
+      .eq('organisation_id', orgId)
+      .order('name');
+    
+    if (error) throw error;
+    console.log(`[Database] Found ${data?.length || 0} restaurants for org ${orgId} (lightweight)`);
+    return data;
+  } catch (error) {
+    console.error('[Database] Error getting restaurants list:', error);
     return [];
   }
 }
@@ -2897,6 +2939,7 @@ module.exports = {
   deleteRestaurant,
   updateRestaurantWorkflow,
   getAllRestaurants,
+  getAllRestaurantsList,
   getRestaurantById,
   getRestaurantDetails,
   getRestaurantMenus,

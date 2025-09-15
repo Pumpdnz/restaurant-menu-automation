@@ -377,27 +377,24 @@ export default function Menus() {
                         />
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-muted-foreground" />
-                          <div>
-                            <div className="font-medium">
-                              {menu.restaurants?.name || 'Unknown Restaurant'}
-                            </div>
-                            {menu.restaurants?.address && (
-                              <div className="text-xs text-muted-foreground">
-                                {menu.restaurants.address}
-                              </div>
-                            )}
+                        <div>
+                          <div 
+                            className="font-medium cursor-pointer hover:text-brand-blue transition-colors"
+                            onClick={() => navigate(`/restaurants/${menu.restaurants?.id}`)}
+                          >
+                            {menu.restaurants?.name || 'Unknown Restaurant'}
                           </div>
+                          {menu.restaurants?.address && (
+                            <div className="text-xs text-muted-foreground">
+                              {menu.restaurants.address}
+                            </div>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Package className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-sm font-mono">
-                            v{menu.version || '1.0'}
-                          </span>
-                        </div>
+                        <span className="text-sm font-mono">
+                          v{menu.version || '1.0'}
+                        </span>
                       </TableCell>
                       <TableCell>
                         {getPlatformBadge(menu.platforms?.name)}
@@ -411,16 +408,14 @@ export default function Menus() {
                         {getStatusBadge(menu.is_active)}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Calendar className="h-3 w-3" />
+                        <span className="text-xs text-muted-foreground">
                           {formatDate(menu.created_at)}
-                        </div>
+                        </span>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3" />
+                        <span className="text-xs text-muted-foreground">
                           {formatDate(menu.updated_at)}
-                        </div>
+                        </span>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
@@ -442,9 +437,9 @@ export default function Menus() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => handleViewMenu(menu.id)}
+                            onClick={() => navigate(`/menus?restaurant=${menu.restaurants?.id}`)}
                             className="text-brand-blue hover:text-brand-blue hover:bg-brand-blue/10"
-                            title="View menu details"
+                            title="View all menus for this restaurant"
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
