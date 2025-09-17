@@ -212,6 +212,7 @@ Focus ONLY on the "${categoryName}" category section.`;
    */
   async extractPremiumMenu(storeUrl, orgId, options = {}) {
     const {
+      restaurantId: providedRestaurantId = null,  // NEW: Accept restaurant ID from frontend
       extractOptionSets = true,
       validateImages = true,
       async = false,
@@ -252,10 +253,10 @@ Focus ONLY on the "${categoryName}" category section.`;
     
     console.log(`[${orgId}] Using restaurant name: ${restaurantName}`);
     
-    // Create/find restaurant FIRST (like standard extraction does)
-    let restaurantId = null;
+    // Restaurant resolution logic - use provided ID or create/find by name
+    let restaurantId = providedRestaurantId;  // Use provided ID if available
     let platformId = 1; // Default to UberEats
-    
+
     if (saveToDatabase) {
       try {
         // Get platform ID for UberEats
@@ -263,23 +264,39 @@ Focus ONLY on the "${categoryName}" category section.`;
         if (platform) {
           platformId = platform.id;
         }
-        
-        // Create or find restaurant
-        const restaurantResult = await databaseService.upsertRestaurant({
-          name: restaurantName,
-          url: storeUrl,
-          platformName: 'ubereats'
-        }, orgId);
-        
-        if (restaurantResult && restaurantResult.restaurant) {
-          restaurantId = restaurantResult.restaurant.id;
-          console.log(`[${orgId}] Restaurant created/found with ID: ${restaurantId}`);
+
+        // If restaurant ID provided, verify it exists
+        if (restaurantId) {
+          const existingRestaurant = await databaseService.getRestaurantById(restaurantId, orgId);
+          if (!existingRestaurant) {
+            throw new Error(`Restaurant with ID ${restaurantId} not found`);
+          }
+          console.log(`[${orgId}] Using existing restaurant with ID: ${restaurantId}`);
+
+          // Update restaurant platform URL if needed
+          await databaseService.updateRestaurantPlatformUrl({
+            restaurantId,
+            platformId,
+            url: storeUrl
+          }, orgId);
+
         } else {
-          // Restaurant creation returned null/undefined - this shouldn't happen
-          throw new Error('Restaurant creation failed - no restaurant data returned');
+          // Fall back to create/find by name (for standalone extractions)
+          const restaurantResult = await databaseService.upsertRestaurant({
+            name: restaurantName,
+            url: storeUrl,
+            platformName: 'ubereats'
+          }, orgId);
+
+          if (restaurantResult && restaurantResult.restaurant) {
+            restaurantId = restaurantResult.restaurant.id;
+            console.log(`[${orgId}] Restaurant created/found with ID: ${restaurantId}`);
+          } else {
+            throw new Error('Restaurant creation failed - no restaurant data returned');
+          }
         }
       } catch (error) {
-        console.error(`[${orgId}] Failed to create restaurant:`, error.message);
+        console.error(`[${orgId}] Failed to resolve restaurant:`, error.message);
         
         // Fail early - don't continue the extraction without a restaurant ID
         // This avoids wasting resources on extraction that will fail to save

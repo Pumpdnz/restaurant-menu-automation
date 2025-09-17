@@ -1,5 +1,19 @@
 # Multi-Platform Menu Extraction System Architecture
 
+## Executive Summary
+
+### System Status (January 2025)
+- **Production Ready**: UberEats, DoorDash
+- **Successfully Working**: FoodHub, Mobi2Go
+- **Ready to Test**: OrderMeal, NextOrder, DeliverEasy
+- **Needs Development**: Menulog, Bopple, ResDiary, Me&u, GloriaFood, Sipo, BookNOrder
+
+### Key Technical Decisions
+- **Unified Extraction Method**: All platforms use the same batch extraction process
+- **Image Strategy**: Images disabled for NZ platforms to prevent errors
+- **Schema Generation**: Dynamic schemas exclude imageURL for non-UberEats/DoorDash platforms
+- **Platform-Specific Prompts**: Custom category detection prompts for each platform
+
 ## Overview
 The UberEats Image Extractor has evolved into a comprehensive multi-platform menu extraction system supporting 15+ delivery and ordering platforms, with a focus on New Zealand platforms including Mobi2Go, DeliverEasy, FoodHub, OrderMeal, and NextOrder.
 
@@ -75,26 +89,36 @@ detectPlatform(url) {
 ### 4. Supported Platforms
 
 #### Tier 1: Fully Optimized (DO NOT MODIFY)
-| Platform | Domain | Extraction Method | Status |
-|----------|---------|------------------|---------|
-| UberEats | ubereats.com | firecrawl-structured | ✅ Production Ready |
-| DoorDash | doordash.com | firecrawl-structured | ✅ Production Ready |
+| Platform | Domain | Category Prompt | Image Extraction | Status |
+|----------|---------|-----------------|------------------|---------|
+| UberEats | ubereats.com | ✅ Custom Prompt | ✅ Enabled | ✅ Production Ready |
+| DoorDash | doordash.com | ✅ Custom Prompt | ✅ Enabled | ✅ Production Ready |
 
-#### Tier 2: NZ Platforms (Testing Required)
-| Platform | Domain | Extraction Method | Category Prompt | Status |
-|----------|---------|------------------|-----------------|---------|
-| OrderMeal | ordermeal.co.nz | firecrawl-generic | ✅ Defined | 🔄 Testing Needed |
-| NextOrder | nextorder.nz, nextorder.co.nz | firecrawl-generic | ✅ Defined | 🔄 Testing Needed |
-| FoodHub | foodhub.co.nz | firecrawl-generic | ✅ Defined | 🔄 Testing Needed |
-| Mobi2Go | mobi2go.com, scopa.co.nz, ljs.co.nz | firecrawl-generic | ✅ Defined | 🟢 2 Successful Extractions |
-| Menulog | menulog.co.nz | firecrawl-generic | ❌ Using Generic | 🔄 Testing Needed |
-| DeliverEasy | delivereasy.co.nz | firecrawl-generic | ✅ Defined | 🔄 Testing Needed |
-| Bopple | bopple.app | firecrawl-generic | ❌ Using Generic | 🔄 Testing Needed |
-| ResDiary | resdiary.com | firecrawl-generic | ❌ Using Generic | 🔄 Testing Needed |
-| Me&u | meandu.app | firecrawl-generic | ❌ Using Generic | 🔄 Testing Needed |
-| GloriaFood | gloriafood (embedded) | firecrawl-generic | ❌ Using Generic | 🔄 Testing Needed |
-| Sipo | sipocloudpos.com | firecrawl-generic | ❌ Using Generic | 🔄 Testing Needed |
-| BookNOrder | booknorder.co.nz | firecrawl-generic | ❌ Using Generic | 🔄 Testing Needed |
+#### Tier 2: Successfully Implemented NZ Platforms
+| Platform | Domain | Category Prompt | Image Extraction | Status |
+|----------|---------|-----------------|------------------|---------|
+| FoodHub | foodhub.co.nz, custom domains | ✅ Custom Prompt | ❌ Disabled | ✅ Working (Jan 2025) |
+| Mobi2Go | mobi2go.com, scopa.co.nz, ljs.co.nz | ✅ Custom Prompt | ❌ Disabled | ✅ Working (2+ Extractions) |
+
+#### Tier 3: NZ Platforms with Prompts (Testing Required)
+| Platform | Domain | Category Prompt | Image Extraction | Status |
+|----------|---------|-----------------|------------------|---------|
+| OrderMeal | ordermeal.co.nz | ✅ Defined | ❌ Disabled* | 🔄 Testing Needed |
+| NextOrder | nextorder.nz, nextorder.co.nz | ✅ Defined | ❌ Disabled | 🔄 Testing Needed |
+| DeliverEasy | delivereasy.co.nz | ✅ Defined | ❌ Disabled | 🔄 Testing Needed |
+
+*See [NZ Platform Image Extraction Plan](extraction-plans/nz-platform-image-extraction-plan.md) for future image enablement strategy
+
+#### Tier 4: Platforms Needing Custom Prompts
+| Platform | Domain | Category Prompt | Image Extraction | Status |
+|----------|---------|-----------------|------------------|---------|
+| Menulog | menulog.co.nz | ❌ Using Generic | ❌ Disabled | 🔴 Prompt Needed |
+| Bopple | bopple.app | ❌ Using Generic | ❌ Disabled | 🔴 Prompt Needed |
+| ResDiary | resdiary.com | ❌ Using Generic | ❌ Disabled | 🔴 Prompt Needed |
+| Me&u | meandu.app | ❌ Using Generic | ❌ Disabled | 🔴 Prompt Needed |
+| GloriaFood | gloriafood (embedded) | ❌ Using Generic | ❌ Disabled | 🔴 Prompt Needed |
+| Sipo | sipocloudpos.com | ❌ Using Generic | ❌ Disabled | 🔴 Prompt Needed |
+| BookNOrder | booknorder.co.nz | ❌ Using Generic | ❌ Disabled | 🔴 Prompt Needed |
 
 ### 5. Database Schema
 
@@ -123,7 +147,25 @@ detectPlatform(url) {
 - options (JSONB) -- Stores extraction configuration
 ```
 
-### 6. Key Technical Insights
+### 6. Recent Changes (January 2025)
+
+#### FoodHub Platform Fixes
+1. **URL Correction Logic**: Automatically appends `/order-now/` to FoodHub URLs for proper navigation
+2. **Category Detection Prompt**: Updated to target specific DOM structure with `id="category-section"`
+3. **Image Extraction Disabled**: Removed imageURL from schema to prevent incorrect URL construction
+
+#### Dynamic Schema Generation
+- **New Function**: `generateCategorySchema()` in firecrawl-service.js
+- **Platform-Based Logic**: Only UberEats/DoorDash include imageURL in extraction schemas
+- **Benefits**: Prevents Firecrawl from constructing/guessing image URLs for NZ platforms
+
+#### Image Extraction Strategy
+- **Decision**: Disable image extraction for all non-UberEats/DoorDash platforms
+- **Reason**: NZ platforms have inconsistent image URL structures that cause extraction errors
+- **Primary Goal**: Focus on accurate price and menu item data for NZ platforms
+- **Future Option**: Can selectively re-enable images for specific platforms if needed
+
+### 7. Key Technical Insights
 
 #### DEFAULT_PROMPT Usage
 - **Finding**: DEFAULT_PROMPT definitions exist in two locations but are NOT actively used
@@ -131,9 +173,17 @@ detectPlatform(url) {
   - firecrawl-service.js:20 - Exported but unused
 - **Actual Usage**: Platform-specific prompts are dynamically selected
 
-#### Extraction Method Differences
-- **firecrawl-structured**: Used for UberEats/DoorDash with complex JSON schemas
-- **firecrawl-generic**: Used for all NZ platforms with simpler extraction logic
+#### Unified Extraction Method (All Platforms)
+- **Single Method**: All platforms use the same batch extraction process
+- **Firecrawl v2 API**: Structured JSON extraction via `/v2/scrape` endpoint
+- **Two-Phase Process**:
+  1. Category detection (platform-specific prompts)
+  2. Per-category item extraction (platform-specific prompts)
+- **Key Differences**:
+  - Category detection prompts (customized per platform)
+  - Menu item extraction prompts (customized per platform)
+  - Schema configuration (imageURL included only for UberEats/DoorDash)
+  - Platform-specific URL corrections (e.g., FoodHub `/order-now/`)
 
 #### Category Detection Schema
 - Universal schema (CATEGORY_DETECTION_SCHEMA) works across all platforms
@@ -143,7 +193,32 @@ detectPlatform(url) {
   - itemCount (number)
   - selector (string, optional)
 
-### 7. Testing Methodology
+### 8. Platform-Specific Implementation Details
+
+#### FoodHub
+- **URL Handling**: Automatically appends `/order-now/` if not present
+- **Category Detection**: Targets `id="category-section"` with specific DOM structure
+- **Menu Items**: Extracts from category-specific URLs like `/order-now/entrees`
+- **Images**: Disabled to prevent incorrect URL construction
+
+#### Mobi2Go
+- **URL Patterns**: Multiple domains (mobi2go.com, scopa.co.nz, ljs.co.nz)
+- **Category Detection**: Works with card/tile layout
+- **Confirmed Working**: 2+ successful extractions
+
+#### OrderMeal (To Test)
+- **URL Pattern**: `ordermeal.co.nz/{restaurant-name}/`
+- **Expected Structure**: Vertical menu navigation
+
+#### NextOrder (To Test)
+- **URL Pattern**: `{restaurant}.nextorder.nz`
+- **Expected Structure**: Sticky navigation with clear sections
+
+#### DeliverEasy (To Test)
+- **URL Pattern**: `delivereasy.co.nz/{restaurant}-delivery`
+- **Expected Structure**: Traditional layout with numbered categories
+
+### 9. Testing Methodology
 
 #### Phase 1: Platform Detection Testing
 ```javascript
@@ -177,39 +252,43 @@ const testUrls = {
    - Menu items with correct data
 4. Download CSV to verify data quality
 
-### 8. Implementation Plan
+### 10. Implementation Plan (Updated January 2025)
 
-#### Step 1: Verify Existing NZ Platform Prompts (Week 1)
-- [x] OrderMeal - Has specific prompt
-- [x] Mobi2Go - Has specific prompt, 2 successful extractions
-- [x] NextOrder - Has specific prompt
-- [x] DeliverEasy - Has specific prompt
-- [x] FoodHub - Has specific prompt
+#### ✅ Completed Tasks
+- [x] **FoodHub** - Custom prompt created, URL correction logic added, image extraction disabled
+- [x] **Mobi2Go** - Confirmed working with 2+ successful extractions
+- [x] **Dynamic Schema Generation** - Created `generateCategorySchema()` function
+- [x] **Image Extraction Strategy** - Disabled for all NZ platforms
 
-#### Step 2: Test Each Platform (Week 2)
-Priority Order:
-1. **Mobi2Go** - Already working, verify consistency
-2. **OrderMeal** - Most straightforward structure
-3. **NextOrder** - Similar to OrderMeal
-4. **FoodHub** - May have variations
-5. **DeliverEasy** - Different URL structure
+#### 🔄 Immediate Next Steps (Priority Order)
 
-#### Step 3: Create Missing Platform Prompts (Week 3)
-Platforms needing custom prompts:
-- Menulog
-- Bopple
-- ResDiary
-- Me&u
-- GloriaFood
-- Sipo
-- BookNOrder
+##### 1. Test Tier 3 Platforms (Already have prompts)
+- [ ] **OrderMeal** - Test with real URL: `https://www.ordermeal.co.nz/konya-kebabs-dunedin/`
+- [ ] **NextOrder** - Test with real URL: `https://hambagu.nextorder.nz/`
+- [ ] **DeliverEasy** - Test with real URL: `https://www.delivereasy.co.nz/culture-burger-joint-nelson-delivery`
 
-#### Step 4: Optimization (Week 4)
-- Refine prompts based on test results
-- Add platform-specific handling for edge cases
-- Update documentation with findings
+##### 2. Create and Test Prompts for High-Priority Platforms
+- [ ] **Menulog** - Analyze structure and create custom prompt
+- [ ] **Bopple** - Test URL: `https://empirechicken.bopple.app/empirechicken/menu`
+- [ ] **Me&u** - Test URL: `https://www.meandu.app/wb-city/pickup/starters`
 
-### 9. Monitoring & Debugging
+##### 3. Handle Embedded/Complex Platforms
+- [ ] **GloriaFood** - Develop content-based detection
+- [ ] **ResDiary** - Handle query parameter structure
+- [ ] **Sipo** - Test with ID-based URLs
+
+##### 4. Final Platforms
+- [ ] **BookNOrder** - Test URL: `https://saharaindia.booknorder.co.nz/`
+
+#### 📋 Testing Checklist for Each Platform
+- [ ] Platform detection works correctly
+- [ ] Category detection returns all menu categories
+- [ ] Menu item extraction captures name, price, description
+- [ ] No image URL errors (imageURL excluded from schema)
+- [ ] CSV generation successful
+- [ ] Data saved to database correctly
+
+### 11. Monitoring & Debugging
 
 #### Key Log Points
 1. **Platform Detection**: server.js:3280
@@ -251,7 +330,7 @@ ORDER BY ej.created_at DESC
 LIMIT 10;
 ```
 
-### 10. Critical Notes
+### 12. Critical Notes
 
 #### DO NOT MODIFY
 - UberEats extraction logic (working perfectly)
@@ -264,7 +343,7 @@ LIMIT 10;
 - Image extraction optimization for NZ platforms
 - Menu item deduplication logic
 
-### 11. Success Metrics
+### 13. Success Metrics
 
 - **Category Detection Rate**: >95% of actual categories found
 - **Item Extraction Rate**: >90% of menu items captured
@@ -272,7 +351,7 @@ LIMIT 10;
 - **Image Capture**: >80% of available images downloaded
 - **Processing Time**: <2 minutes for 100 items
 
-### 12. Platform Detection Analysis & Recommendations
+### 14. Platform Detection Analysis & Recommendations
 
 #### Current Detection Issues
 
@@ -331,7 +410,7 @@ const ENHANCED_PLATFORM_CONFIG = {
 };
 ```
 
-### 13. Next Actions
+### 15. Next Actions
 
 1. ✅ Complete architecture documentation
 2. ✅ Add missing platforms to database

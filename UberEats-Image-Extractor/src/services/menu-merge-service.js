@@ -550,12 +550,20 @@ class MenuMergeService {
         }
       }
 
+      // Get unique categories from Menu 1 (base menu)
+      const { data: menu1Categories } = await this.supabase
+        .from('categories')
+        .select('id, name')
+        .eq('menu_id', baseMenuId)
+        .order('name');
+
       return {
         comparison: {
           mode: 'price-only',
           priceMatches,
           unmatchedBase,
           unmatchedPrice,
+          menu1Categories: menu1Categories || [],
           statistics: {
             totalBaseItems: baseItems.length,
             totalPriceItems: priceItems.length,
@@ -609,6 +617,11 @@ class MenuMergeService {
    * Preview merged menu based on decisions
    */
   async previewMerge(menuIds, decisions, includeUnique = {}, mergeMode = 'full') {
+    // Handle price-only mode differently
+    if (mergeMode === 'price-only') {
+      return this.previewPriceUpdate(menuIds, decisions);
+    }
+
     try {
       const mergedItems = [];
       const processedDuplicates = new Set();
@@ -813,12 +826,17 @@ class MenuMergeService {
    * Execute merge and create new menu
    */
   async executeMerge(menuIds, decisions, includeUnique = {}, mergeMode = 'full', menuName, performedBy = null) {
+    // Route to price update if in price-only mode
+    if (mergeMode === 'price-only') {
+      return this.executePriceUpdate(menuIds, decisions, performedBy);
+    }
+
     try {
       console.log('=== EXECUTE MERGE START ===');
       console.log('Menu IDs:', menuIds);
       console.log('Decisions count:', Object.keys(decisions).length);
       console.log('Decision types:', Object.values(decisions).map(d => d.action));
-      
+
       // Get restaurant info
       const { data: sourceMenus, error: menuError } = await this.supabase
         .from('menus')
@@ -1235,8 +1253,353 @@ class MenuMergeService {
     // Filter out any items without names
     const validItems = mergedItems.filter(item => item.name);
     console.log(`Returning ${validItems.length} valid items (filtered ${mergedItems.length - validItems.length} invalid items)`);
-    
+
     return validItems;
+  }
+
+  /**
+   * Preview price update changes
+   */
+  async previewPriceUpdate(menuIds, priceUpdateDecisions) {
+    const [baseMenuId, priceMenuId] = menuIds;
+
+    try {
+      const changes = {
+        pricesUpdated: [],
+        manualPricesSet: [],
+        itemsToAdd: []
+      };
+
+      // Preview price updates for matched items
+      if (priceUpdateDecisions.matches) {
+        for (const [menu1ItemId, matchData] of Object.entries(priceUpdateDecisions.matches)) {
+          if (matchData.confirmed) {
+            // Get current item details
+            const { data: currentItem } = await this.supabase
+              .from('menu_items')
+              .select('name, price')
+              .eq('id', menu1ItemId)
+              .single();
+
+            if (currentItem) {
+              let newPrice = matchData.manualPrice;
+
+              if (!newPrice && matchData.menu2ItemId) {
+                // Get price from Menu 2 item
+                const { data: menu2Item } = await this.supabase
+                  .from('menu_items')
+                  .select('price')
+                  .eq('id', matchData.menu2ItemId)
+                  .single();
+
+                if (menu2Item) {
+                  newPrice = menu2Item.price;
+                }
+              }
+
+              if (newPrice !== null && newPrice !== undefined) {
+                changes.pricesUpdated.push({
+                  itemName: currentItem.name,
+                  oldPrice: currentItem.price,
+                  newPrice: newPrice,
+                  difference: newPrice - currentItem.price
+                });
+              }
+            }
+          }
+        }
+      }
+
+      // Preview manual prices
+      if (priceUpdateDecisions.manualPrices) {
+        for (const [itemId, manualPrice] of Object.entries(priceUpdateDecisions.manualPrices)) {
+          if (manualPrice !== null && manualPrice !== undefined) {
+            const { data: currentItem } = await this.supabase
+              .from('menu_items')
+              .select('name, price')
+              .eq('id', itemId)
+              .single();
+
+            if (currentItem) {
+              changes.manualPricesSet.push({
+                itemName: currentItem.name,
+                oldPrice: currentItem.price,
+                newPrice: manualPrice,
+                difference: manualPrice - currentItem.price
+              });
+            }
+          }
+        }
+      }
+
+      // Preview Menu 2 items to add
+      if (priceUpdateDecisions.keepUnmatched?.menu2?.length > 0) {
+        for (const menu2ItemId of priceUpdateDecisions.keepUnmatched.menu2) {
+          const { data: item } = await this.supabase
+            .from('menu_items')
+            .select('name, price, categories(name)')
+            .eq('id', menu2ItemId)
+            .single();
+
+          if (item) {
+            const categoryName = priceUpdateDecisions.newCategories?.[menu2ItemId] ||
+                              item.categories?.name ||
+                              'Uncategorized';
+
+            changes.itemsToAdd.push({
+              itemName: item.name,
+              price: item.price,
+              category: categoryName
+            });
+          }
+        }
+      }
+
+      return {
+        preview: {
+          menu: {
+            name: 'Price Updated Menu (Preview)',
+            itemCount: changes.pricesUpdated.length + changes.manualPricesSet.length + changes.itemsToAdd.length,
+            changes
+          },
+          changes: {
+            pricesUpdated: changes.pricesUpdated.length,
+            manualPricesSet: changes.manualPricesSet.length,
+            itemsAdded: changes.itemsToAdd.length,
+            totalChanges: changes.pricesUpdated.length + changes.manualPricesSet.length + changes.itemsToAdd.length
+          }
+        }
+      };
+    } catch (error) {
+      console.error('Price update preview error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Execute price update for price-only mode
+   * Updates Menu 1 in-place with prices from Menu 2
+   */
+  async executePriceUpdate(menuIds, priceUpdateDecisions, performedBy = null) {
+    const [baseMenuId, priceMenuId] = menuIds;
+
+    try {
+      console.log('=== EXECUTE PRICE UPDATE START ===');
+      console.log('Base Menu ID:', baseMenuId);
+      console.log('Price Menu ID:', priceMenuId);
+      console.log('Matches count:', Object.keys(priceUpdateDecisions.matches || {}).length);
+      console.log('Menu 2 items to add:', priceUpdateDecisions.keepUnmatched?.menu2?.length || 0);
+
+      // Get base menu details including organization_id
+      const { data: baseMenu, error: menuError } = await this.supabase
+        .from('menus')
+        .select('restaurant_id, organisation_id')
+        .eq('id', baseMenuId)
+        .single();
+
+      if (menuError || !baseMenu) {
+        throw new Error('Failed to fetch base menu details');
+      }
+
+      console.log('Base menu organization_id:', baseMenu.organisation_id);
+
+      let pricesUpdated = 0;
+      let itemsAdded = 0;
+      let manualPricesSet = 0;
+
+      // 1. Update prices for matched items
+      if (priceUpdateDecisions.matches) {
+        console.log('Processing matches:', Object.entries(priceUpdateDecisions.matches).length);
+
+        for (const [menu1ItemId, matchData] of Object.entries(priceUpdateDecisions.matches)) {
+          console.log(`Processing match for item ${menu1ItemId}:`, {
+            confirmed: matchData.confirmed,
+            menu2ItemId: matchData.menu2ItemId,
+            manualPrice: matchData.manualPrice
+          });
+
+          if (matchData.confirmed) {
+            // Determine the price to use
+            let newPrice = matchData.manualPrice;
+
+            if (!newPrice && matchData.menu2ItemId) {
+              // Get price from Menu 2 item
+              const { data: menu2Item, error } = await this.supabase
+                .from('menu_items')
+                .select('price')
+                .eq('id', matchData.menu2ItemId)
+                .single();
+
+              if (!error && menu2Item) {
+                newPrice = menu2Item.price;
+              }
+            }
+
+            if (newPrice !== null && newPrice !== undefined) {
+              // Update Menu 1 item price in-place
+              const { error: updateError } = await this.supabase
+                .from('menu_items')
+                .update({
+                  price: newPrice,
+                  updated_at: new Date().toISOString(),
+                  last_price_update: new Date().toISOString(),
+                  price_update_source: priceMenuId
+                })
+                .eq('id', menu1ItemId);
+
+              if (!updateError) {
+                pricesUpdated++;
+              } else {
+                console.error(`Failed to update price for item ${menu1ItemId}:`, updateError);
+              }
+            }
+          }
+        }
+      }
+
+      // 2. Handle manual prices for unmatched Menu 1 items
+      if (priceUpdateDecisions.manualPrices) {
+        for (const [itemId, manualPrice] of Object.entries(priceUpdateDecisions.manualPrices)) {
+          if (manualPrice !== null && manualPrice !== undefined) {
+            const { error: updateError } = await this.supabase
+              .from('menu_items')
+              .update({
+                price: manualPrice,
+                updated_at: new Date().toISOString(),
+                last_price_update: new Date().toISOString()
+              })
+              .eq('id', itemId);
+
+            if (!updateError) {
+              manualPricesSet++;
+            } else {
+              console.error(`Failed to set manual price for item ${itemId}:`, updateError);
+            }
+          }
+        }
+      }
+
+      // 3. Add selected Menu 2 items to Menu 1
+      if (priceUpdateDecisions.keepUnmatched?.menu2?.length > 0) {
+        for (const menu2ItemId of priceUpdateDecisions.keepUnmatched.menu2) {
+          // Get full item data from Menu 2
+          const { data: item, error } = await this.supabase
+            .from('menu_items')
+            .select(`
+              *,
+              categories(name)
+            `)
+            .eq('id', menu2ItemId)
+            .single();
+
+          if (error || !item) {
+            console.error(`Failed to fetch Menu 2 item ${menu2ItemId}:`, error);
+            continue;
+          }
+
+          // Determine category for the new item
+          const categoryName = priceUpdateDecisions.newCategories?.[menu2ItemId] ||
+                              item.categories?.name ||
+                              'Uncategorized';
+
+          // Get or create category in Menu 1
+          const categoryId = await this.getOrCreateCategory(baseMenuId, categoryName);
+
+          if (categoryId) {
+            // Create new item in Menu 1 with organization_id
+            const { error: insertError } = await this.supabase
+              .from('menu_items')
+              .insert({
+                menu_id: baseMenuId,
+                category_id: categoryId,
+                name: item.name,
+                price: item.price,
+                description: item.description,
+                tags: item.tags || [],
+                organisation_id: baseMenu.organisation_id,
+                restaurant_id: baseMenu.restaurant_id
+              });
+
+            if (!insertError) {
+              itemsAdded++;
+            } else {
+              console.error(`Failed to add item ${item.name}:`, insertError);
+            }
+          }
+        }
+      }
+
+      // 4. Record the price update operation
+      await this.supabase
+        .from('price_update_operations')
+        .insert({
+          base_menu_id: baseMenuId,
+          price_source_menu_id: priceMenuId,
+          decisions: priceUpdateDecisions,
+          performed_by: performedBy,
+          performed_at: new Date().toISOString(),
+          statistics: {
+            prices_updated: pricesUpdated,
+            items_added: itemsAdded,
+            manual_prices_set: manualPricesSet
+          }
+        });
+
+      console.log('=== EXECUTE PRICE UPDATE END ===');
+      console.log(`Updated ${pricesUpdated} prices, set ${manualPricesSet} manual prices, added ${itemsAdded} items`);
+
+      return {
+        success: true,
+        menuId: baseMenuId,
+        statistics: {
+          pricesUpdated,
+          itemsAdded,
+          manualPricesSet
+        }
+      };
+    } catch (error) {
+      console.error('Price update execution error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get or create a category for a menu
+   */
+  async getOrCreateCategory(menuId, categoryName) {
+    try {
+      // Check if category exists
+      const { data: existing, error: findError } = await this.supabase
+        .from('categories')
+        .select('id')
+        .eq('menu_id', menuId)
+        .eq('name', categoryName)
+        .single();
+
+      if (existing) {
+        return existing.id;
+      }
+
+      // Create new category
+      const { data: newCategory, error: createError } = await this.supabase
+        .from('categories')
+        .insert({
+          menu_id: menuId,
+          name: categoryName
+        })
+        .select('id')
+        .single();
+
+      if (createError) {
+        console.error(`Failed to create category "${categoryName}":`, createError);
+        return null;
+      }
+
+      return newCategory.id;
+    } catch (error) {
+      console.error(`Error with category "${categoryName}":`, error);
+      return null;
+    }
   }
 }
 

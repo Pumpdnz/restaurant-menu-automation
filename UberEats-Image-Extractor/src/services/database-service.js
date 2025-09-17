@@ -186,6 +186,64 @@ async function upsertRestaurant(restaurantData, organisationId = null) {
 }
 
 /**
+ * Update restaurant platform URL
+ * Updates or creates a restaurant_platforms record for tracking platform-specific URLs
+ */
+async function updateRestaurantPlatformUrl(data, organisationId = null) {
+  if (!isDatabaseAvailable()) return null;
+
+  const { restaurantId, platformId, url } = data;
+  const orgId = organisationId || getCurrentOrganizationId();
+
+  try {
+    const client = getSupabaseClient();
+
+    // Check if platform URL already exists
+    const { data: existing } = await client
+      .from('restaurant_platforms')
+      .select('*')
+      .eq('restaurant_id', restaurantId)
+      .eq('platform_id', platformId)
+      .single();
+
+    if (existing) {
+      // Update existing URL
+      const { data: updated, error } = await client
+        .from('restaurant_platforms')
+        .update({
+          url,
+          last_scraped_at: new Date().toISOString()
+        })
+        .eq('restaurant_id', restaurantId)
+        .eq('platform_id', platformId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return updated;
+    } else {
+      // Insert new platform URL
+      const { data: inserted, error } = await client
+        .from('restaurant_platforms')
+        .insert({
+          restaurant_id: restaurantId,
+          platform_id: platformId,
+          url,
+          last_scraped_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return inserted;
+    }
+  } catch (error) {
+    console.error('[Database] Error updating restaurant platform URL:', error);
+    return null;
+  }
+}
+
+/**
  * Extraction Job Operations
  */
 async function createExtractionJob(jobData, organisationId = null) {
@@ -1205,9 +1263,11 @@ async function getAllRestaurantsList() {
 /**
  * Get restaurant by ID
  */
-async function getRestaurantById(restaurantId) {
+async function getRestaurantById(restaurantId, organisationId = null) {
   if (!isDatabaseAvailable()) return null;
-  
+
+  const orgId = organisationId || getCurrentOrganizationId();
+
   try {
     const client = getSupabaseClient();
     const { data, error } = await client
@@ -1221,8 +1281,9 @@ async function getRestaurantById(restaurantId) {
         )
       `)
       .eq('id', restaurantId)
+      .eq('organisation_id', orgId)
       .single();
-    
+
     if (error) throw error;
     return data;
   } catch (error) {
@@ -2934,6 +2995,7 @@ module.exports = {
   
   // Restaurant operations
   upsertRestaurant,
+  updateRestaurantPlatformUrl,
   createRestaurant,
   updateRestaurant,
   deleteRestaurant,

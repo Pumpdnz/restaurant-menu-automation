@@ -12,16 +12,20 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '../components/ui/tooltip';
+import { detectPlatform, extractRestaurantName } from '../utils/platform-detector';
 
 export default function NewExtraction() {
   const navigate = useNavigate();
   const [url, setUrl] = useState('');
   const [platform, setPlatform] = useState('');
+  const [detectedPlatform, setDetectedPlatform] = useState(null);
+  const [platformConfidence, setPlatformConfidence] = useState('none');
+  const [manualPlatformOverride, setManualPlatformOverride] = useState(false);
   const [restaurantName, setRestaurantName] = useState('');
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false); // Local loading state for immediate feedback
-  
+
   // Restaurant selection state
   const [restaurantMode, setRestaurantMode] = useState('auto'); // 'auto' or 'manual'
   const [restaurants, setRestaurants] = useState([]);
@@ -29,12 +33,31 @@ export default function NewExtraction() {
   const [searchQuery, setSearchQuery] = useState('');
   const [loadingRestaurants, setLoadingRestaurants] = useState(false);
   const [similarRestaurants, setSimilarRestaurants] = useState([]);
-  
+
   // Premium extraction state
   const [isPremiumMode, setIsPremiumMode] = useState(false);
   const [extractOptionSets, setExtractOptionSets] = useState(true);
   const [validateImages, setValidateImages] = useState(true);
-  
+
+  // Available platforms for manual selection
+  const availablePlatforms = [
+    { value: 'ubereats', label: 'UberEats' },
+    { value: 'doordash', label: 'DoorDash' },
+    { value: 'ordermeal', label: 'OrderMeal' },
+    { value: 'nextorder', label: 'NextOrder' },
+    { value: 'foodhub', label: 'FoodHub' },
+    { value: 'mobi2go', label: 'Mobi2Go' },
+    { value: 'menulog', label: 'Menulog' },
+    { value: 'delivereasy', label: 'DeliverEasy' },
+    { value: 'bopple', label: 'Bopple' },
+    { value: 'resdiary', label: 'ResDiary' },
+    { value: 'meandu', label: 'Me&u' },
+    { value: 'gloriafood', label: 'GloriaFood' },
+    { value: 'sipo', label: 'Sipo' },
+    { value: 'booknorder', label: 'BookNOrder' },
+    { value: 'website', label: 'Generic Website' }
+  ];
+
   // Get organization ID from localStorage
   const orgId = localStorage.getItem('currentOrgId');
 
@@ -67,65 +90,46 @@ export default function NewExtraction() {
   const handleUrlChange = (value) => {
     setUrl(value);
     setError(null);
-    
-    // Auto-detect platform
-    let detectedPlatform = '';
-    
+    setManualPlatformOverride(false);
+
+    if (!value) {
+      setDetectedPlatform(null);
+      setPlatformConfidence('none');
+      setPlatform('');
+      setRestaurantName('');
+      return;
+    }
+
     try {
-      const urlObj = new URL(value);
-      const hostname = urlObj.hostname.toLowerCase();
-      
-      if (hostname.includes('ubereats.com')) {
-        detectedPlatform = 'ubereats';
-      } else if (hostname.includes('doordash.com')) {
-        detectedPlatform = 'doordash';
-      } else if (hostname.includes('ordermeal.co.nz')) {
-        detectedPlatform = 'ordermeal';
-      } else if (hostname.includes('nextorder.co.nz')) {
-        detectedPlatform = 'nextorder';
-      } else if (hostname.includes('foodhub.co.nz')) {
-        detectedPlatform = 'foodhub';
-      } else if (hostname.includes('mobi2go.com')) {
-        detectedPlatform = 'mobi2go';
-      } else if (hostname.includes('menulog.co.nz')) {
-        detectedPlatform = 'menulog';
-      } else if (hostname.includes('delivereasy.co.nz')) {
-        detectedPlatform = 'delivereasy';
+      // Use the platform detector utility
+      const platformInfo = detectPlatform(value);
+      setDetectedPlatform(platformInfo);
+      setPlatformConfidence(platformInfo.confidence || 'none');
+
+      // Set platform if detected with high confidence
+      if (platformInfo.confidence === 'high' && !platformInfo.requiresManualSelection) {
+        setPlatform(platformInfo.name.toLowerCase());
       } else {
-        detectedPlatform = 'website';
+        // Require manual selection
+        setPlatform('');
       }
-      
-      setPlatform(detectedPlatform);
-      
-      // Extract restaurant name from URL
-      const pathParts = urlObj.pathname.split('/').filter(part => part);
-      let extractedName = '';
-      
-      if (detectedPlatform === 'ubereats' || detectedPlatform === 'doordash') {
-        const storeIndex = pathParts.indexOf('store');
-        if (storeIndex !== -1 && pathParts[storeIndex + 1]) {
-          extractedName = pathParts[storeIndex + 1];
-        }
-      } else if (pathParts[0]) {
-        extractedName = pathParts[0];
-      }
-      
+
+      // Extract restaurant name
+      const extractedName = extractRestaurantName(value, platformInfo);
       if (extractedName) {
         const formattedName = extractedName
-          .replace(/-/g, ' ')
-          .replace(/_/g, ' ')
-          .split(' ')
-          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          .split(/[\s-_]+/)
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
           .join(' ');
         setRestaurantName(formattedName);
-        
+
         // Check for similar restaurants
-        const similar = restaurants.filter(r => 
+        const similar = restaurants.filter(r =>
           r.name.toLowerCase().includes(formattedName.toLowerCase()) ||
           formattedName.toLowerCase().includes(r.name.toLowerCase())
         );
         setSimilarRestaurants(similar);
-        
+
         // If in manual mode, also update search query
         if (restaurantMode === 'manual') {
           setSearchQuery(formattedName);
@@ -239,15 +243,15 @@ export default function NewExtraction() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Basic validation
     if (!url) {
       setError('Please enter a restaurant URL');
       return;
     }
-    
+
     if (!platform) {
-      setError('Could not detect platform from URL');
+      setError('Please select a platform for this URL');
       return;
     }
     
@@ -295,11 +299,68 @@ export default function NewExtraction() {
                 disabled={isExtracting}
               />
             </div>
-            {platform && (
-              <div className="mt-2 space-y-1">
-                <p className="text-sm text-gray-500">
-                  Detected platform: <span className="font-medium capitalize">{platform}</span>
-                </p>
+            {/* Platform Detection and Selection */}
+            {url && (
+              <div className="mt-3 space-y-3">
+                {detectedPlatform && (
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                    <div className="flex items-center space-x-2">
+                      {platformConfidence === 'high' ? (
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <AlertCircle className="h-5 w-5 text-yellow-500" />
+                      )}
+                      <span className="text-sm text-gray-700">
+                        {platformConfidence === 'high' ? (
+                          <>Platform detected: <span className="font-medium">{detectedPlatform.name}</span></>
+                        ) : (
+                          <>Platform not detected - please select manually</>
+                        )}
+                      </span>
+                    </div>
+                    {platformConfidence === 'high' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setManualPlatformOverride(!manualPlatformOverride);
+                          if (manualPlatformOverride) {
+                            // Restore detected platform
+                            setPlatform(detectedPlatform.name.toLowerCase());
+                          } else {
+                            // Clear for manual selection
+                            setPlatform('');
+                          }
+                        }}
+                        className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                      >
+                        {manualPlatformOverride ? 'Use detected' : 'Override'}
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Platform selector - shown when no detection or manual override */}
+                {(platformConfidence !== 'high' || manualPlatformOverride) && (
+                  <div>
+                    <label htmlFor="platform" className="block text-sm font-medium text-gray-700 mb-1">
+                      Select Platform <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      id="platform"
+                      value={platform}
+                      onChange={(e) => setPlatform(e.target.value)}
+                      className="shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md px-3 py-2 border"
+                      required={platformConfidence !== 'high' || manualPlatformOverride}
+                    >
+                      <option value="">Choose a platform...</option>
+                      {availablePlatforms.map(p => (
+                        <option key={p.value} value={p.value}>
+                          {p.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
             )}
           </div>

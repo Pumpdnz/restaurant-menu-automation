@@ -163,25 +163,21 @@ IMPORTANT: Focus ONLY on identifying category names. DO NOT extract individual m
 IMPORTANT: Include ALL sections that group menu items, even if they have non-standard names.`;
 
 // OrderMeal-specific category detection prompt
-export const ORDERMEAL_CATEGORY_PROMPT = `I need you to identify all menu categories on this OrderMeal restaurant page. Follow these OrderMeal-specific steps:
+export const ORDERMEAL_CATEGORY_PROMPT = `I need you to identify all menu categories on this OrderMeal restaurant page. Follow these steps:
 
-1. Look for the menu navigation on the left side of the page (desktop) or dropdown menu (mobile)
-2. OrderMeal typically displays categories as a vertical list or sidebar navigation
-3. Common OrderMeal categories include:
-   - "Starters" or "Entrées"
-   - "Mains" or "Main Courses"
-   - "Sides"
-   - "Desserts"
-   - "Beverages" or "Drinks"
-   - "Specials" or "Chef's Specials"
-4. Check for any "View All" or expandable sections
-5. Some restaurants may have meal-based categories like "Breakfast", "Lunch", "Dinner"
-6. Look for combo or meal deal sections
-7. Record each category name exactly as shown
-8. Note the display order from top to bottom
+1. Scroll through the entire page slowly to ensure all content loads
+2. Look for the left sidebar menu with class="left-sidebar" or id="scrollMenuContainer"
+3. Find the navigation menu inside, typically in a <nav id="scrollMenu"> element
+4. Extract all category names from the navigation links. These are the section names that organize the menu items.
 
-IMPORTANT: Focus ONLY on category names, not individual items.
-IMPORTANT: OrderMeal may use icons next to categories - record the text name only.`;
+The categories are structured as:
+- Located in <li> elements within the navigation
+- Each category is an <a> tag with href="#menu[number]" or "#menupopular"
+- The text content of the <a> tag is the category name
+- Categories like "Most Popular", "Kebabs", "Wraps", "Drinks", "Sides", etc.
+
+IMPORTANT: Focus ONLY on identifying the category names and their positions. DO NOT extract individual menu items at this stage.
+IMPORTANT: Include "Most Popular" if present as it's often the first category.`;
 
 // Mobi2Go-specific category detection prompt
 export const MOBI2GO_CATEGORY_PROMPT = `I need you to identify all menu categories on this Mobi2Go restaurant page. Follow these Mobi2Go-specific steps:
@@ -246,31 +242,73 @@ export const DELIVEREASY_CATEGORY_PROMPT = `I need you to identify all menu cate
 IMPORTANT: DeliverEasy may repeat popular items - record each unique category once.
 IMPORTANT: Include delivery-specific categories like "Family Packs" if present.`;
 
-// FoodHub-specific category detection prompt  
-export const FOODHUB_CATEGORY_PROMPT = `I need you to identify all menu categories on this FoodHub restaurant page. Follow these FoodHub-specific steps:
+// FoodHub-specific category detection prompt
+export const FOODHUB_CATEGORY_PROMPT = `I need you to identify all menu categories on this FoodHub restaurant page. Follow these steps:
 
-1. FoodHub typically displays categories in a vertical layout
-2. Look for the menu structure which usually includes:
-   - Accordion-style expandable categories
-   - Category headers with item counts
-   - Icons or images next to category names
-3. FoodHub specific patterns:
-   - Categories may show number of items in parentheses
-   - Often has a search bar above categories
-   - May group categories under broader sections
-4. Common FoodHub categories:
-   - "Most Popular"
-   - "Starters & Sides"
-   - "Mains"
-   - "Kids Menu"
-   - "Beverages"
-5. Click to expand each category to verify it contains items
-6. Check for meal deal or combo sections
-7. Look for any dietary-specific categories (Vegetarian, Halal, etc.)
-8. Record the category name without the item count
+1. Scroll through the entire page slowly to ensure all content loads
+2. Look for the category sidebar menu or similar section with id="category-section"
+3. Extract the category navigation labels from the left sidebar menu. These are the section names that organize the menu items (like "Entrees", "Soups", "Curries", "Desserts").
+Each category name is in a <div> element with:
+  - dir="auto"
+  - role="link"
+  - data-class="category[CategoryName]" (like categoryEntrees, categorySoups)
+  - The actual text content is the category name
+IMPORTANT: Focus ONLY on identifying the category names and their positions. DO NOT extract individual menu items at this stage.`;
 
-IMPORTANT: FoodHub may nest subcategories - record all levels as separate categories.
-IMPORTANT: Don't skip collapsed categories - expand and record all.`;
+/**
+ * Generate a category-specific extraction schema
+ * @param {string} categoryName - The name of the category being extracted
+ * @param {boolean} includeImages - Whether to include imageURL in the schema (false for NZ platforms)
+ * @returns {Object} - The category-specific schema
+ */
+export function generateCategorySchema(categoryName, includeImages = true) {
+  const itemProperties = {
+    "dishName": {
+      "type": "string",
+      "description": "The name of the dish as displayed on the menu"
+    },
+    "dishPrice": {
+      "type": "number",
+      "description": "The price of the dish as a numerical value"
+    },
+    "dishDescription": {
+      "type": "string",
+      "description": "Full description of the dish including ingredients and preparation style. DO NOT include tags related to 'most liked' or 'Plus small'"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Any tags or attributes for this dish. DO NOT include tags related to 'Thumb up outline' or percentages. DO NOT include tags related to 'most liked' or 'Plus small'"
+    }
+  };
+
+  // Only add imageURL if needed (for UberEats/DoorDash)
+  if (includeImages) {
+    itemProperties["imageURL"] = {
+      "type": "string",
+      "description": "URL to the highest resolution image of the dish available"
+    };
+  }
+
+  return {
+    "type": "object",
+    "properties": {
+      "categoryName": {
+        "type": "string",
+        "description": `The name of this specific menu category: "${categoryName}"`
+      },
+      "menuItems": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": itemProperties,
+          "required": ["dishName", "dishPrice"]
+        }
+      }
+    },
+    "required": ["categoryName", "menuItems"]
+  };
+}
 
 // Option Sets Schema - for extracting option sets from individual menu item pages
 export const OPTION_SETS_SCHEMA = {

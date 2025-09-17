@@ -214,18 +214,32 @@ async function startBackgroundExtraction(jobId, url, categories, restaurantName 
       
       try {
         console.log(`[Job ${jobId}] Starting extraction for category: ${category.name}`);
-
-        // Determine if we should include images based on platform
-        // Only include images for UberEats and DoorDash
-        const includeImages = platformName.toLowerCase() === 'ubereats' ||
-                            platformName.toLowerCase() === 'doordash';
-
-        // Generate category-specific schema using the helper function
-        const categorySchema = generateCategorySchema(category.name, includeImages);
-
-        if (!includeImages) {
-          console.log(`[Job ${jobId}] Excluding imageURL from schema for ${platformName} platform`);
-        }
+        
+        // Create category-specific schema (same as existing code)
+        const categorySchema = {
+          "type": "object",
+          "properties": {
+            "categoryName": {
+              "type": "string", 
+              "description": `The name of this specific menu category: "${category.name}"`
+            },
+            "menuItems": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "dishName": { "type": "string", "description": "The name of the dish as displayed on the menu" },
+                  "dishPrice": { "type": "number", "description": "The price of the dish as a numerical value" },
+                  "dishDescription": { "type": "string", "description": "Full description of the dish including ingredients and preparation style. DO NOT include tags related to 'most liked' or 'Plus small'" },
+                  "imageURL": { "type": "string", "description": "URL to the highest resolution image of the dish available" },
+                  "tags": { "type": "array", "items": { "type": "string" }, "description": "Any tags or attributes for this dish. DO NOT include tags related to 'Thumb up outline' or percentages. DO NOT include tags related to 'most liked' or 'Plus small'" }
+                },
+                "required": ["dishName", "dishPrice"]
+              }
+            }
+          },
+          "required": ["categoryName", "menuItems"]
+        };
         
         // For FoodHub, construct category-specific URL
         let extractionUrl = url;

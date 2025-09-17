@@ -4,6 +4,7 @@ import api from '../services/api';
 import {
   GitMerge,
   ArrowLeft,
+  ArrowRight,
   CheckCircle,
   XCircle,
   AlertCircle,
@@ -14,7 +15,10 @@ import {
   Copy,
   Trash2,
   Edit3,
-  Save
+  Save,
+  Search,
+  Plus,
+  Minus
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -35,6 +39,656 @@ import {
 } from '../components/ui/dialog';
 import { Input } from '../components/ui/input';
 import { useToast } from '../components/ui/use-toast';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '../components/ui/select';
+
+// Price Update View Component
+const PriceUpdateView = ({ comparison, decisions, onDecisionChange, validation }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterMode, setFilterMode] = useState('all');
+  const [selectedMenu1Item, setSelectedMenu1Item] = useState(null);
+  const [showMatchDialog, setShowMatchDialog] = useState(false);
+  const [manualPriceInput, setManualPriceInput] = useState({});
+  const [manualMatches, setManualMatches] = useState([]); // Track manual matches separately
+  const [removedMatches, setRemovedMatches] = useState([]); // Track removed match IDs
+  const [customCategories, setCustomCategories] = useState([]); // Track all new custom categories
+
+  // Filter price matches based on search and filter mode
+  const filterMatches = (match) => {
+    if (searchTerm && !match.baseItem.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+        !match.priceItem.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+      return false;
+    }
+
+    if (filterMode === 'confirmed' && !decisions.matches[match.baseItem.id]?.confirmed) {
+      return false;
+    }
+    if (filterMode === 'unconfirmed' && decisions.matches[match.baseItem.id]?.confirmed) {
+      return false;
+    }
+
+    return true;
+  };
+
+  // Confirm a price match
+  const confirmMatch = (menu1ItemId) => {
+    const currentMatch = decisions.matches[menu1ItemId];
+    onDecisionChange({
+      ...decisions,
+      matches: {
+        ...decisions.matches,
+        [menu1ItemId]: {
+          ...currentMatch,
+          confirmed: !currentMatch.confirmed
+        }
+      }
+    });
+  };
+
+  // Remove a match
+  const removeMatch = (menu1ItemId) => {
+    const newMatches = { ...decisions.matches };
+    delete newMatches[menu1ItemId];
+
+    // Check if this was a manual match
+    const manualMatchIndex = manualMatches.findIndex(m => m.baseItem.id === menu1ItemId);
+    if (manualMatchIndex !== -1) {
+      // Remove from manual matches
+      setManualMatches(prev => prev.filter((_, i) => i !== manualMatchIndex));
+    } else {
+      // Add to removed matches list for original matches
+      setRemovedMatches(prev => [...prev, menu1ItemId]);
+    }
+
+    // Update decisions
+    onDecisionChange({
+      ...decisions,
+      matches: newMatches,
+      keepUnmatched: {
+        ...decisions.keepUnmatched,
+        menu1: [...decisions.keepUnmatched.menu1, menu1ItemId]
+      }
+    });
+  };
+
+  // Create manual match
+  const createManualMatch = (menu1ItemId, menu2ItemId) => {
+    const menu2Item = comparison.unmatchedPrice.find(item => item.id === menu2ItemId);
+    const menu1Item = comparison.unmatchedBase.find(item => item.id === menu1ItemId);
+
+    if (menu2Item && menu1Item) {
+      // Remove from unmatched lists
+      const newUnmatchedMenu1 = decisions.keepUnmatched.menu1.filter(id => id !== menu1ItemId);
+      const newUnmatchedMenu2 = decisions.keepUnmatched.menu2.filter(id => id !== menu2ItemId);
+
+      // Create new match object
+      const newMatch = {
+        groupId: `manual_${menu1ItemId}`,
+        baseItem: menu1Item,
+        priceItem: menu2Item,
+        priceDifference: menu2Item.price - menu1Item.price,
+        priceDifferencePercent: ((menu2Item.price - menu1Item.price) / menu1Item.price * 100).toFixed(1),
+        similarity: 1.0, // Manual match
+        isManual: true
+      };
+
+      // Add to manual matches state
+      setManualMatches(prev => [...prev, newMatch]);
+
+      onDecisionChange({
+        ...decisions,
+        matches: {
+          ...decisions.matches,
+          [menu1ItemId]: {
+            menu2ItemId: menu2ItemId,
+            menu2Item: menu2Item,
+            confirmed: false,
+            manualPrice: null,
+            priceDiff: menu2Item.price - menu1Item.price,
+            priceDiffPercent: ((menu2Item.price - menu1Item.price) / menu1Item.price * 100).toFixed(1)
+          }
+        },
+        keepUnmatched: {
+          menu1: newUnmatchedMenu1,
+          menu2: newUnmatchedMenu2
+        }
+      });
+    }
+
+    setShowMatchDialog(false);
+    setSelectedMenu1Item(null);
+  };
+
+  // Toggle keeping unmatched Menu 1 item
+  const toggleKeepMenu1Item = (itemId) => {
+    const isKept = decisions.keepUnmatched.menu1.includes(itemId);
+    onDecisionChange({
+      ...decisions,
+      keepUnmatched: {
+        ...decisions.keepUnmatched,
+        menu1: isKept
+          ? decisions.keepUnmatched.menu1.filter(id => id !== itemId)
+          : [...decisions.keepUnmatched.menu1, itemId]
+      }
+    });
+  };
+
+  // Toggle adding Menu 2 item
+  const toggleMenu2Item = (itemId) => {
+    const isSelected = decisions.keepUnmatched.menu2.includes(itemId);
+    onDecisionChange({
+      ...decisions,
+      keepUnmatched: {
+        ...decisions.keepUnmatched,
+        menu2: isSelected
+          ? decisions.keepUnmatched.menu2.filter(id => id !== itemId)
+          : [...decisions.keepUnmatched.menu2, itemId]
+      }
+    });
+  };
+
+  // Set manual price for Menu 1 item
+  const setManualPrice = (itemId, price) => {
+    onDecisionChange({
+      ...decisions,
+      manualPrices: {
+        ...decisions.manualPrices,
+        [itemId]: price
+      }
+    });
+  };
+
+  // Set category for Menu 2 item
+  const setItemCategory = (itemId, category) => {
+    // Check if it's a new custom category that we haven't seen before
+    if (category && !comparison.menu1Categories?.some(cat => cat.name === category) &&
+        !customCategories.includes(category)) {
+      setCustomCategories(prev => [...prev, category]);
+    }
+
+    onDecisionChange({
+      ...decisions,
+      newCategories: {
+        ...decisions.newCategories,
+        [itemId]: category
+      }
+    });
+  };
+
+  // Confirm all matches
+  const confirmAllMatches = () => {
+    const updatedMatches = { ...decisions.matches };
+    Object.keys(updatedMatches).forEach(key => {
+      updatedMatches[key] = { ...updatedMatches[key], confirmed: true };
+    });
+    onDecisionChange({
+      ...decisions,
+      matches: updatedMatches
+    });
+  };
+
+  if (!comparison) return null;
+
+  // Combine original and manual matches, excluding removed ones
+  const allMatches = [
+    ...(comparison.priceMatches || []).filter(m => !removedMatches.includes(m.baseItem.id)),
+    ...manualMatches
+  ];
+
+  // Filter unmatched items to exclude manually matched ones
+  const unmatchedBase = comparison.unmatchedBase?.filter(item =>
+    !manualMatches.some(m => m.baseItem.id === item.id)
+  ) || [];
+
+  const unmatchedPrice = comparison.unmatchedPrice?.filter(item =>
+    !manualMatches.some(m => m.priceItem.id === item.id)
+  ) || [];
+
+  // Combine existing categories with custom ones
+  const allCategories = [
+    ...(comparison.menu1Categories || []),
+    ...customCategories.map(name => ({ name, isCustom: true }))
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Statistics Bar */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="grid grid-cols-4 gap-4 text-center">
+            <div>
+              <div className="text-2xl font-bold">{comparison.statistics?.matched || 0}</div>
+              <div className="text-sm text-muted-foreground">Matched Items</div>
+            </div>
+            <div>
+              <div className={cn(
+                "text-2xl font-bold",
+                comparison.statistics?.averagePriceDifference < 0 ? "text-green-600" : "text-red-600"
+              )}>
+                ${Math.abs(comparison.statistics?.averagePriceDifference || 0)}
+              </div>
+              <div className="text-sm text-muted-foreground">Avg Price Change</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold">{comparison.statistics?.unmatchedInBase || 0}</div>
+              <div className="text-sm text-muted-foreground">Unmatched Menu 1</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold">{comparison.statistics?.unmatchedInPriceSource || 0}</div>
+              <div className="text-sm text-muted-foreground">Available Menu 2</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Search and Filter Bar */}
+      <div className="flex gap-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search items..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={filterMode} onValueChange={setFilterMode}>
+          <SelectTrigger className="w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Items</SelectItem>
+            <SelectItem value="confirmed">Confirmed Only</SelectItem>
+            <SelectItem value="unconfirmed">Unconfirmed Only</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Matched Items Section */}
+      {allMatches.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Matched Items ({allMatches.length})</CardTitle>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={confirmAllMatches}
+              >
+                Confirm All
+              </Button>
+            </div>
+            <CardDescription>
+              Items automatically matched between menus. Review and confirm price updates.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {allMatches
+                .filter(filterMatches)
+                .map(match => (
+                  <PriceMatchItem
+                    key={match.groupId}
+                    match={match}
+                    decision={decisions.matches[match.baseItem.id]}
+                    onConfirm={() => confirmMatch(match.baseItem.id)}
+                    onRemove={() => removeMatch(match.baseItem.id)}
+                  />
+                ))
+              }
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Unmatched Menu 1 Items */}
+      {unmatchedBase.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Unmatched Items - Menu 1 ({unmatchedBase.length})</CardTitle>
+            <CardDescription>
+              These items will keep their current prices unless manually updated
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {unmatchedBase.map(item => (
+                <UnmatchedMenu1Item
+                  key={item.id}
+                  item={item}
+                  menu2Items={unmatchedPrice}
+                  isKept={decisions.keepUnmatched.menu1.includes(item.id)}
+                  manualPrice={decisions.manualPrices[item.id]}
+                  onToggleKeep={() => toggleKeepMenu1Item(item.id)}
+                  onManualPrice={(price) => setManualPrice(item.id, price)}
+                  onSelectMatch={(menu2Id) => createManualMatch(item.id, menu2Id)}
+                />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Unmatched Menu 2 Items */}
+      {unmatchedPrice.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Available Items - Menu 2 ({unmatchedPrice.length})</CardTitle>
+            <CardDescription>
+              Select items to add to Menu 1 with their prices
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {unmatchedPrice.map(item => (
+                <UnmatchedMenu2Item
+                  key={item.id}
+                  item={item}
+                  categories={allCategories}
+                  isSelected={decisions.keepUnmatched.menu2.includes(item.id)}
+                  selectedCategory={decisions.newCategories[item.id]}
+                  onToggleSelect={() => toggleMenu2Item(item.id)}
+                  onCategoryChange={(category) => setItemCategory(item.id, category)}
+                />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+};
+
+// Price Match Item Component
+const PriceMatchItem = ({ match, decision, onConfirm, onRemove }) => {
+  const priceDiff = match.priceDifference || 0;
+  const priceDiffPercent = match.priceDifferencePercent || 0;
+  const isConfirmed = decision?.confirmed;
+
+  return (
+    <div className={cn(
+      "p-4 border rounded-lg transition-all",
+      isConfirmed && "border-green-500 bg-green-50"
+    )}>
+      <div className="grid grid-cols-12 gap-4 items-center">
+        {/* Menu 1 Item */}
+        <div className="col-span-4 flex items-center gap-3">
+          {match.baseItem.imageURL && (
+            <img
+              src={match.baseItem.imageURL}
+              className="w-12 h-12 rounded object-cover"
+              alt=""
+            />
+          )}
+          <div className="flex-1">
+            <div className="font-medium">{match.baseItem.name}</div>
+            <div className="text-sm text-muted-foreground">
+              Current: ${match.baseItem.price}
+            </div>
+            {match.baseItem.categoryName && (
+              <Badge variant="outline" className="text-xs mt-1">
+                {match.baseItem.categoryName}
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        {/* Arrow and Price Change */}
+        <div className="col-span-2 flex flex-col items-center">
+          <ArrowRight className="h-4 w-4 mb-1 text-muted-foreground" />
+          <div className={cn(
+            "text-sm font-medium",
+            priceDiff < 0 ? "text-green-600" : priceDiff > 0 ? "text-red-600" : "text-gray-600"
+          )}>
+            {priceDiff < 0 ? '↓' : priceDiff > 0 ? '↑' : '='}
+            ${Math.abs(priceDiff).toFixed(2)} ({priceDiffPercent}%)
+          </div>
+        </div>
+
+        {/* Menu 2 Item */}
+        <div className="col-span-4">
+          <div className="font-medium">{match.priceItem.name}</div>
+          <div className="text-sm text-muted-foreground">
+            New: ${match.priceItem.price}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="col-span-2 flex gap-2 justify-end">
+          {!isConfirmed ? (
+            <>
+              <Button size="sm" variant="outline" onClick={onConfirm}>
+                <CheckCircle className="h-4 w-4" />
+              </Button>
+              <Button size="sm" variant="ghost" onClick={onRemove}>
+                <XCircle className="h-4 w-4" />
+              </Button>
+            </>
+          ) : (
+            <Button size="sm" variant="ghost" onClick={onConfirm}>
+              <XCircle className="h-4 w-4 mr-1" /> Unconfirm
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Unmatched Menu 1 Item Component
+const UnmatchedMenu1Item = ({ item, menu2Items, isKept, manualPrice, onToggleKeep, onManualPrice, onSelectMatch }) => {
+  const [showPriceInput, setShowPriceInput] = useState(false);
+  const [priceValue, setPriceValue] = useState(manualPrice || item.price || '');
+
+  return (
+    <div className="p-3 border rounded-lg">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Checkbox
+            checked={isKept}
+            onCheckedChange={onToggleKeep}
+          />
+          <div>
+            <div className="font-medium">{item.name}</div>
+            <div className="text-sm text-muted-foreground">
+              Current: ${item.price}
+              {manualPrice && <span className="text-blue-600 ml-2">→ ${manualPrice}</span>}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <Select onValueChange={onSelectMatch}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Select match..." />
+            </SelectTrigger>
+            <SelectContent>
+              {menu2Items?.map(menu2Item => (
+                <SelectItem key={menu2Item.id} value={menu2Item.id}>
+                  {menu2Item.name} - ${menu2Item.price}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {showPriceInput ? (
+            <div className="flex items-center gap-1">
+              <Input
+                type="number"
+                step="0.01"
+                value={priceValue}
+                onChange={(e) => setPriceValue(e.target.value)}
+                className="w-24"
+                placeholder="Price"
+              />
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  onManualPrice(parseFloat(priceValue));
+                  setShowPriceInput(false);
+                }}
+              >
+                <CheckCircle className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowPriceInput(true)}
+            >
+              Manual Price
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Unmatched Menu 2 Item Component
+const UnmatchedMenu2Item = ({ item, categories, isSelected, selectedCategory, onToggleSelect, onCategoryChange }) => {
+  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+
+  // Check if selectedCategory is a custom category
+  const isCustomCategory = selectedCategory && categories.some(cat => cat.isCustom && cat.name === selectedCategory);
+
+  const handleCategoryChange = (value) => {
+    if (value === 'new') {
+      setShowNewCategoryInput(true);
+    } else {
+      onCategoryChange(value);
+      setShowNewCategoryInput(false);
+    }
+  };
+
+  const handleNewCategorySubmit = () => {
+    const trimmedName = newCategoryName.trim();
+    if (trimmedName) {
+      // Check if this category already exists
+      const categoryExists = categories.some(cat =>
+        (cat.name || cat) === trimmedName
+      );
+
+      if (categoryExists) {
+        // If it already exists, just select it
+        onCategoryChange(trimmedName);
+      } else {
+        // Otherwise, add it as a new category
+        onCategoryChange(trimmedName);
+      }
+
+      setShowNewCategoryInput(false);
+      setNewCategoryName('');
+    }
+  };
+
+  return (
+    <div className="p-3 border rounded-lg">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={onToggleSelect}
+          />
+          <div>
+            <div className="font-medium">{item.name}</div>
+            <div className="text-sm text-muted-foreground">
+              Price: ${item.price}
+            </div>
+            {item.categoryName && (
+              <Badge variant="outline" className="text-xs mt-1">
+                {item.categoryName}
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        {isSelected && (
+          showNewCategoryInput ? (
+            <div className="flex items-center gap-1">
+              <Input
+                type="text"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder="Category name..."
+                className="w-40"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleNewCategorySubmit();
+                  }
+                }}
+              />
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleNewCategorySubmit}
+              >
+                <CheckCircle className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setShowNewCategoryInput(false);
+                  setNewCategoryName('');
+                }}
+              >
+                <XCircle className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Select value={selectedCategory || item.categoryName || ''} onValueChange={handleCategoryChange}>
+                <SelectTrigger className="w-48">
+                  <SelectValue>
+                    {selectedCategory ? (
+                      <span className={isCustomCategory ? "font-medium" : ""}>
+                        {selectedCategory}
+                        {isCustomCategory && <span className="text-muted-foreground ml-1">(New)</span>}
+                      </span>
+                    ) : (
+                      item.categoryName || 'Select category...'
+                    )}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map(cat => (
+                    <SelectItem key={cat.id || cat.name} value={cat.name || cat}>
+                      {cat.name || cat}
+                      {cat.isCustom && <span className="text-muted-foreground ml-1">(New)</span>}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="new">+ New Category</SelectItem>
+                </SelectContent>
+              </Select>
+              {isCustomCategory && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    onCategoryChange(null);
+                    // Note: Could add logic here to remove unused custom categories
+                  }}
+                  title="Clear custom category"
+                >
+                  <XCircle className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          )
+        )}
+      </div>
+    </div>
+  );
+};
 
 export default function MenuMerge() {
   const navigate = useNavigate();
@@ -58,7 +712,18 @@ export default function MenuMerge() {
   const [menuName, setMenuName] = useState('');
   const [mergeSuccess, setMergeSuccess] = useState(false);
   const [mergeMode, setMergeMode] = useState('full'); // 'full' or 'price-only'
-  
+
+  // Price update specific state
+  const [priceUpdateDecisions, setPriceUpdateDecisions] = useState({
+    matches: {},      // { menu1ItemId: { menu2ItemId, confirmed: bool, manualPrice: null } }
+    keepUnmatched: {  // Which unmatched items to include
+      menu1: [],      // Array of menu1 item IDs to keep
+      menu2: []       // Array of menu2 item IDs to add
+    },
+    manualPrices: {}, // { menu1ItemId: customPrice }
+    newCategories: {} // { menu2ItemId: categoryName }
+  });
+
   // Get menu IDs from URL
   const menuIds = searchParams.get('menuIds')?.split(',') || [];
 
@@ -69,6 +734,13 @@ export default function MenuMerge() {
       navigate('/menus');
     }
   }, []);
+
+  // Re-run comparison when merge mode changes
+  useEffect(() => {
+    if (comparison && validation?.valid) {
+      compareMenus();
+    }
+  }, [mergeMode]);
 
   const validateMenus = async () => {
     setValidating(true);
@@ -103,35 +775,84 @@ export default function MenuMerge() {
         menuIds,
         mergeMode
       });
-      
+
       setComparison(response.data);
-      
-      // Debug: Log the unique items to see what's being shown
-      console.log('Unique items received:', response.data.comparison.uniqueItems);
-      console.log('Duplicate groups:', response.data.comparison.duplicateGroups);
-      
-      // Initialize decisions for duplicate groups
-      const initialDecisions = {};
-      response.data.comparison.duplicateGroups.forEach(group => {
-        // For exact matches (99%+), automatically use keep_menu1
-        const defaultAction = group.similarity >= 0.99 
-          ? 'keep_menu1' 
-          : (group.suggestedResolution?.recommended || 'keep_menu1');
-        
-        initialDecisions[group.groupId] = {
-          action: defaultAction,
-          similarity: group.similarity
-        };
-      });
-      setDecisions(initialDecisions);
-      
-      // Initialize include unique items (all included by default)
-      const initialUnique = {};
-      Object.keys(response.data.comparison.uniqueItems).forEach(menuId => {
-        initialUnique[menuId] = response.data.comparison.uniqueItems[menuId].map(item => item.id);
-      });
-      setIncludeUnique(initialUnique);
-      
+
+      // Check if we're in price-only mode
+      if (response.data.comparison && response.data.comparison.mode === 'price-only') {
+        // Initialize price update decisions
+        const initialMatches = {};
+        const menu1ItemsToKeep = [];
+
+        // Process price matches
+        if (response.data.comparison.priceMatches) {
+          response.data.comparison.priceMatches.forEach(match => {
+            // Auto-confirm matches above 0.85 similarity (high confidence)
+            // This is lower than 0.95 to ensure most automatic matches are confirmed
+            const autoConfirmed = match.similarity >= 0.85;
+            console.log(`Setting up match for ${match.baseItem.name}:`, {
+              similarity: match.similarity,
+              autoConfirmed,
+              baseItemId: match.baseItem.id,
+              priceItemId: match.priceItem.id
+            });
+
+            initialMatches[match.baseItem.id] = {
+              menu2ItemId: match.priceItem.id,
+              menu2Item: match.priceItem,
+              confirmed: autoConfirmed, // Auto-confirm high confidence matches
+              manualPrice: null,
+              priceDiff: match.priceDifference,
+              priceDiffPercent: match.priceDifferencePercent
+            };
+          });
+        }
+
+        // All unmatched Menu 1 items are kept by default
+        if (response.data.comparison.unmatchedBase) {
+          response.data.comparison.unmatchedBase.forEach(item => {
+            menu1ItemsToKeep.push(item.id);
+          });
+        }
+
+        setPriceUpdateDecisions({
+          matches: initialMatches,
+          keepUnmatched: {
+            menu1: menu1ItemsToKeep,
+            menu2: [] // Menu 2 items not selected by default
+          },
+          manualPrices: {},
+          newCategories: {}
+        });
+
+      } else {
+        // Original full merge logic
+        console.log('Unique items received:', response.data.comparison.uniqueItems);
+        console.log('Duplicate groups:', response.data.comparison.duplicateGroups);
+
+        // Initialize decisions for duplicate groups
+        const initialDecisions = {};
+        response.data.comparison.duplicateGroups.forEach(group => {
+          // For exact matches (99%+), automatically use keep_menu1
+          const defaultAction = group.similarity >= 0.99
+            ? 'keep_menu1'
+            : (group.suggestedResolution?.recommended || 'keep_menu1');
+
+          initialDecisions[group.groupId] = {
+            action: defaultAction,
+            similarity: group.similarity
+          };
+        });
+        setDecisions(initialDecisions);
+
+        // Initialize include unique items (all included by default)
+        const initialUnique = {};
+        Object.keys(response.data.comparison.uniqueItems).forEach(menuId => {
+          initialUnique[menuId] = response.data.comparison.uniqueItems[menuId].map(item => item.id);
+        });
+        setIncludeUnique(initialUnique);
+      }
+
     } catch (error) {
       console.error('Comparison failed:', error);
     } finally {
@@ -142,13 +863,19 @@ export default function MenuMerge() {
   const previewMerge = async () => {
     setPreviewing(true);
     try {
-      const response = await api.post('/menus/merge/preview', {
+      const payload = mergeMode === 'price-only' ? {
+        menuIds,
+        decisions: priceUpdateDecisions,
+        mergeMode
+      } : {
         menuIds,
         decisions,
         includeUnique,
         mergeMode
-      });
-      
+      };
+
+      const response = await api.post('/menus/merge/preview', payload);
+
       setPreview(response.data);
       setShowPreviewDialog(true);
     } catch (error) {
@@ -162,14 +889,21 @@ export default function MenuMerge() {
     setExecuting(true);
     setMergeSuccess(false);
     try {
-      const response = await api.post('/menus/merge/execute', {
+      const payload = mergeMode === 'price-only' ? {
+        menuIds,
+        decisions: priceUpdateDecisions,
+        mergeMode,
+        performedBy: 'user' // You might want to get this from auth context
+      } : {
         menuIds,
         decisions,
         includeUnique,
         mergeMode,
         menuName: menuName || 'Merged Menu',
         performedBy: 'user' // You might want to get this from auth context
-      });
+      };
+
+      const response = await api.post('/menus/merge/execute', payload);
       
       if (response.data.success) {
         // Set success state for visual feedback
@@ -336,7 +1070,7 @@ export default function MenuMerge() {
               className="bg-purple-600 hover:bg-purple-700"
             >
               <Save className="h-4 w-4 mr-2" />
-              Save Merged Menu
+              {mergeMode === 'price-only' ? 'Update Prices' : 'Save Merged Menu'}
             </Button>
           </div>
         </div>
@@ -435,22 +1169,32 @@ export default function MenuMerge() {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <Loader2 className="h-8 w-8 text-brand-blue animate-spin mx-auto mb-2" />
-            <p className="text-muted-foreground">Analyzing menus for duplicates...</p>
+            <p className="text-muted-foreground">Analyzing menus for {mergeMode === 'price-only' ? 'price updates' : 'duplicates'}...</p>
           </div>
         </div>
       ) : comparison && (
-        <Tabs defaultValue="duplicates" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="duplicates">
-              Duplicates ({comparison.statistics.duplicates})
-            </TabsTrigger>
-            <TabsTrigger value="unique">
-              Unique Items ({comparison.statistics.unique})
-            </TabsTrigger>
-            <TabsTrigger value="summary">
-              Summary
-            </TabsTrigger>
-          </TabsList>
+        comparison.comparison?.mode === 'price-only' ? (
+          // Price Update View
+          <PriceUpdateView
+            comparison={comparison.comparison}
+            decisions={priceUpdateDecisions}
+            onDecisionChange={setPriceUpdateDecisions}
+            validation={validation}
+          />
+        ) : (
+          // Original Full Merge View
+          <Tabs defaultValue="duplicates" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="duplicates">
+                Duplicates ({comparison.statistics.duplicates})
+              </TabsTrigger>
+              <TabsTrigger value="unique">
+                Unique Items ({comparison.statistics.unique})
+              </TabsTrigger>
+              <TabsTrigger value="summary">
+                Summary
+              </TabsTrigger>
+            </TabsList>
 
           {/* Duplicates Tab */}
           <TabsContent value="duplicates" className="space-y-4">
@@ -879,6 +1623,7 @@ export default function MenuMerge() {
             </Card>
           </TabsContent>
         </Tabs>
+        )
       )}
 
       {/* Save Dialog */}
@@ -894,16 +1639,20 @@ export default function MenuMerge() {
               {mergeSuccess ? (
                 <div className="flex items-center gap-2 text-green-600">
                   <CheckCircle className="h-5 w-5" />
-                  Merge Successful!
+                  {mergeMode === 'price-only' ? 'Prices Updated!' : 'Merge Successful!'}
                 </div>
               ) : (
-                'Save Merged Menu'
+                mergeMode === 'price-only' ? 'Confirm Price Update' : 'Save Merged Menu'
               )}
             </DialogTitle>
             <DialogDescription>
-              {mergeSuccess 
-                ? 'Your menu has been successfully merged. Redirecting...'
-                : 'Review the merge summary and provide a name for the new menu'
+              {mergeSuccess
+                ? mergeMode === 'price-only'
+                  ? 'Menu prices have been successfully updated. Redirecting...'
+                  : 'Your menu has been successfully merged. Redirecting...'
+                : mergeMode === 'price-only'
+                  ? 'Review the price changes below before updating'
+                  : 'Review the merge summary and provide a name for the new menu'
               }
             </DialogDescription>
           </DialogHeader>
@@ -911,31 +1660,52 @@ export default function MenuMerge() {
           {!mergeSuccess && preview && (
             <div className="space-y-4">
               <div className="grid grid-cols-3 gap-4 text-center">
-                <div className="p-3 border rounded">
-                  <div className="text-2xl font-bold">{preview.preview.menu.itemCount}</div>
-                  <div className="text-xs text-muted-foreground">Total Items</div>
-                </div>
-                <div className="p-3 border rounded">
-                  <div className="text-2xl font-bold">{preview.preview.changes.modified}</div>
-                  <div className="text-xs text-muted-foreground">Modified</div>
-                </div>
-                <div className="p-3 border rounded">
-                  <div className="text-2xl font-bold">{preview.preview.changes.excluded}</div>
-                  <div className="text-xs text-muted-foreground">Excluded</div>
-                </div>
+                {mergeMode === 'price-only' ? (
+                  <>
+                    <div className="p-3 border rounded">
+                      <div className="text-2xl font-bold">{preview.preview.changes.pricesUpdated || 0}</div>
+                      <div className="text-xs text-muted-foreground">Prices Updated</div>
+                    </div>
+                    <div className="p-3 border rounded">
+                      <div className="text-2xl font-bold">{preview.preview.changes.manualPricesSet || 0}</div>
+                      <div className="text-xs text-muted-foreground">Manual Prices</div>
+                    </div>
+                    <div className="p-3 border rounded">
+                      <div className="text-2xl font-bold">{preview.preview.changes.itemsAdded || 0}</div>
+                      <div className="text-xs text-muted-foreground">Items Added</div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="p-3 border rounded">
+                      <div className="text-2xl font-bold">{preview.preview.menu.itemCount}</div>
+                      <div className="text-xs text-muted-foreground">Total Items</div>
+                    </div>
+                    <div className="p-3 border rounded">
+                      <div className="text-2xl font-bold">{preview.preview.changes.modified}</div>
+                      <div className="text-xs text-muted-foreground">Modified</div>
+                    </div>
+                    <div className="p-3 border rounded">
+                      <div className="text-2xl font-bold">{preview.preview.changes.excluded}</div>
+                      <div className="text-xs text-muted-foreground">Excluded</div>
+                    </div>
+                  </>
+                )}
               </div>
-              
-              <div>
-                <Label htmlFor="menu-name">Menu Name</Label>
-                <Input
-                  id="menu-name"
-                  value={menuName}
-                  onChange={(e) => setMenuName(e.target.value)}
-                  placeholder="Enter a name for the merged menu"
-                  className="mt-1"
-                  disabled={executing}
-                />
-              </div>
+
+              {mergeMode !== 'price-only' && (
+                <div>
+                  <Label htmlFor="menu-name">Menu Name</Label>
+                  <Input
+                    id="menu-name"
+                    value={menuName}
+                    onChange={(e) => setMenuName(e.target.value)}
+                    placeholder="Enter a name for the merged menu"
+                    className="mt-1"
+                    disabled={executing}
+                  />
+                </div>
+              )}
             </div>
           )}
           
@@ -962,20 +1732,20 @@ export default function MenuMerge() {
               >
                 Cancel
               </Button>
-              <Button 
-                onClick={executeMerge} 
-                disabled={executing || !menuName || mergeSuccess}
+              <Button
+                onClick={executeMerge}
+                disabled={executing || (!menuName && mergeMode !== 'price-only') || mergeSuccess}
                 className="bg-purple-600 hover:bg-purple-700"
               >
                 {executing ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Merging...
+                    {mergeMode === 'price-only' ? 'Updating...' : 'Merging...'}
                   </>
                 ) : (
                   <>
                     <Save className="h-4 w-4 mr-2" />
-                    Save Merged Menu
+                    {mergeMode === 'price-only' ? 'Update Prices' : 'Save Merged Menu'}
                   </>
                 )}
               </Button>

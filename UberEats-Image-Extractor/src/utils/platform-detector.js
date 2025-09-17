@@ -2,6 +2,7 @@
  * Platform detection and configuration utility
  */
 
+// Primary platform configurations
 const PLATFORM_CONFIG = {
   'ubereats.com': {
     name: 'UberEats',
@@ -10,7 +11,7 @@ const PLATFORM_CONFIG = {
     supported: true
   },
   'doordash.com': {
-    name: 'DoorDash', 
+    name: 'DoorDash',
     type: 'delivery',
     extractionMethod: 'firecrawl-structured',
     supported: true
@@ -23,13 +24,13 @@ const PLATFORM_CONFIG = {
   },
   'nextorder.nz': {
     name: 'NextOrder',
-    type: 'ordering', 
+    type: 'ordering',
     extractionMethod: 'firecrawl-generic',
     supported: true
   },
   'nextorder.co.nz': {
     name: 'NextOrder',
-    type: 'ordering', 
+    type: 'ordering',
     extractionMethod: 'firecrawl-generic',
     supported: true
   },
@@ -94,7 +95,7 @@ const PLATFORM_CONFIG = {
     extractionMethod: 'firecrawl-generic',
     supported: true
   },
-  // Direct restaurant website patterns
+  // Direct restaurant website patterns - Mobi2Go
   'scopa.co.nz': {
     name: 'Mobi2Go',
     type: 'ordering',
@@ -109,39 +110,83 @@ const PLATFORM_CONFIG = {
   }
 };
 
+// FoodHub custom domains (restaurants using FoodHub on their own domain)
+const FOODHUB_CUSTOM_DOMAINS = [
+  'konyakebabs.co.nz',
+  'larubythaionline.co.nz',
+  'fusionkebab.co.nz',
+  'lakepizza.co.nz'
+];
+
+// GloriaFood domains (embedded widgets)
+const GLORIAFOOD_DOMAINS = [
+  'noi.co.nz',
+  'luckythai.co.nz'
+];
+
 /**
  * Detect platform from URL
  * @param {string} url - The URL to analyze
- * @returns {Object} Platform information
+ * @returns {Object} Platform information with detection confidence
  */
 function detectPlatform(url) {
   try {
     const urlObj = new URL(url);
     const hostname = urlObj.hostname.toLowerCase();
-    
+
     // Check for PDF files
     if (url.toLowerCase().endsWith('.pdf')) {
       return {
         name: 'PDF',
         type: 'document',
         extractionMethod: 'pdf-parse',
-        supported: false // PDF parsing not yet implemented
+        supported: false,
+        confidence: 'high'
       };
     }
-    
-    // Check each known platform
+
+    // Check each known platform with clear identifiers
     for (const [domain, config] of Object.entries(PLATFORM_CONFIG)) {
       if (hostname.includes(domain)) {
-        return config;
+        return {
+          ...config,
+          confidence: 'high',
+          requiresManualSelection: false
+        };
       }
     }
-    
-    // Default to generic website
+
+    // Check for subdomain patterns
+    if (hostname.endsWith('.nextorder.nz') || hostname.endsWith('.nextorder.co.nz')) {
+      return {
+        name: 'NextOrder',
+        type: 'ordering',
+        extractionMethod: 'firecrawl-generic',
+        supported: true,
+        confidence: 'high',
+        requiresManualSelection: false
+      };
+    }
+
+    if (hostname.endsWith('.booknorder.co.nz')) {
+      return {
+        name: 'BookNOrder',
+        type: 'ordering',
+        extractionMethod: 'firecrawl-generic',
+        supported: true,
+        confidence: 'high',
+        requiresManualSelection: false
+      };
+    }
+
+    // No platform detected - require manual selection
     return {
-      name: 'Website',
-      type: 'website',
+      name: 'Unknown',
+      type: 'unknown',
       extractionMethod: 'firecrawl-generic',
-      supported: true
+      supported: true,
+      confidence: 'none',
+      requiresManualSelection: true
     };
   } catch (error) {
     console.error('Error detecting platform:', error);
@@ -149,7 +194,9 @@ function detectPlatform(url) {
       name: 'Unknown',
       type: 'unknown',
       extractionMethod: 'firecrawl-generic',
-      supported: true
+      supported: true,
+      confidence: 'none',
+      requiresManualSelection: true
     };
   }
 }
@@ -386,7 +433,18 @@ function getExtractionConfig(platform) {
   }
 }
 
-module.exports = {
+// CommonJS exports for Node.js
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    detectPlatform,
+    extractRestaurantName,
+    getExtractionConfig,
+    PLATFORM_CONFIG
+  };
+}
+
+// ES6 exports for browser/React
+export {
   detectPlatform,
   extractRestaurantName,
   getExtractionConfig,
