@@ -98,7 +98,16 @@ export default function RestaurantDetail() {
     logo_thermal_adaptive_url: false,
     logo_favicon_url: true
   });
-  
+
+  const [colorsToUpdate, setColorsToUpdate] = useState({
+    primary_color: true,
+    secondary_color: true,
+    tertiary_color: true,
+    accent_color: true,
+    background_color: true,
+    theme: true
+  });
+
   // Platform extraction states
   const [extractionDialogOpen, setExtractionDialogOpen] = useState(false);
   const [extractionConfig, setExtractionConfig] = useState(null);
@@ -159,6 +168,23 @@ export default function RestaurantDetail() {
   const [onboardingUserEmail, setOnboardingUserEmail] = useState('');
   const [onboardingUserName, setOnboardingUserName] = useState('');
   const [onboardingUserPassword, setOnboardingUserPassword] = useState('');
+
+  // Finalise Setup states
+  const [isSettingUpSystemSettings, setIsSettingUpSystemSettings] = useState(false);
+  const [systemSettingsStatus, setSystemSettingsStatus] = useState(null);
+  const [isCreatingApiKey, setIsCreatingApiKey] = useState(false);
+  const [apiKeyStatus, setApiKeyStatus] = useState(null);
+  const [isConfiguringUberIntegration, setIsConfiguringUberIntegration] = useState(false);
+  const [uberIntegrationStatus, setUberIntegrationStatus] = useState(null);
+  const [receiptLogoVersion, setReceiptLogoVersion] = useState('logo_thermal_url');
+
+  // Setup completion tracking
+  const [setupCompletionStatus, setSetupCompletionStatus] = useState({
+    system_settings: false,
+    api_key: false,
+    uber_integration: false
+  });
+  const [loadingSetupStatus, setLoadingSetupStatus] = useState(false);
   
   const isNewRestaurant = id === 'new';
   
@@ -283,6 +309,7 @@ export default function RestaurantDetail() {
       // Fetch registration status if not a new restaurant
       if (!isNewRestaurant) {
         fetchRegistrationStatus();
+        fetchSetupCompletionStatus();
       }
     } catch (err) {
       console.error('Failed to fetch restaurant details:', err);
@@ -307,6 +334,32 @@ export default function RestaurantDetail() {
       // Don't show error for registration status as it's not critical
     } finally {
       setLoadingRegistrationStatus(false);
+    }
+  };
+
+  const fetchSetupCompletionStatus = async () => {
+    setLoadingSetupStatus(true);
+    try {
+      const response = await api.get(`/registration/setup-status/${id}`);
+      if (response.data.success && response.data.status) {
+        setSetupCompletionStatus(response.data.status);
+
+        // Also update individual status states for UI consistency
+        if (response.data.status.system_settings) {
+          setSystemSettingsStatus({ success: true });
+        }
+        if (response.data.status.api_key) {
+          setApiKeyStatus({ success: true });
+        }
+        if (response.data.status.uber_integration) {
+          setUberIntegrationStatus({ success: true });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch setup completion status:', err);
+      // Don't show error for setup status as it's not critical
+    } finally {
+      setLoadingSetupStatus(false);
     }
   };
 
@@ -884,6 +937,135 @@ export default function RestaurantDetail() {
     }
   };
 
+  // Finalise Setup Handlers
+  const handleSetupSystemSettings = async () => {
+    setIsSettingUpSystemSettings(true);
+    setSystemSettingsStatus(null);
+
+    try {
+      const response = await api.post('/registration/setup-system-settings', {
+        restaurantId: restaurant?.id || id,
+        receiptLogoVersion: receiptLogoVersion
+      });
+
+      setSystemSettingsStatus(response.data);
+
+      if (response.data.success) {
+        // Update completion status
+        setSetupCompletionStatus(prev => ({
+          ...prev,
+          system_settings: true
+        }));
+        toast({
+          title: "Success",
+          description: "System settings configured successfully",
+        });
+      } else {
+        toast({
+          title: "Warning",
+          description: response.data.message || "Configuration completed with warnings",
+          variant: "warning"
+        });
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || error.message;
+      setSystemSettingsStatus({
+        success: false,
+        error: errorMessage
+      });
+      toast({
+        title: "Error",
+        description: errorMessage || "Failed to configure system settings",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSettingUpSystemSettings(false);
+    }
+  };
+
+  const handleCreateApiKey = async () => {
+    setIsCreatingApiKey(true);
+    setApiKeyStatus(null);
+
+    try {
+      const response = await api.post('/registration/create-api-key', {
+        restaurantId: restaurant?.id || id
+      });
+
+      setApiKeyStatus(response.data);
+
+      if (response.data.success) {
+        // Update completion status
+        setSetupCompletionStatus(prev => ({
+          ...prev,
+          api_key: true
+        }));
+        toast({
+          title: "Success",
+          description: "API key created successfully",
+        });
+      } else {
+        toast({
+          title: "Warning",
+          description: response.data.message || "API key creation completed with warnings",
+          variant: "warning"
+        });
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || error.message;
+      setApiKeyStatus({
+        success: false,
+        error: errorMessage
+      });
+      toast({
+        title: "Error",
+        description: errorMessage || "Failed to create API key",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCreatingApiKey(false);
+    }
+  };
+
+  const handleConfigureUberIntegration = async () => {
+    setIsConfiguringUberIntegration(true);
+    setUberIntegrationStatus(null);
+
+    try {
+      const response = await api.post('/registration/configure-uber-integration', {
+        restaurantId: restaurant?.id || id
+      });
+
+      setUberIntegrationStatus(response.data);
+
+      if (response.data.success) {
+        toast({
+          title: "Success",
+          description: "Uber integration configured successfully",
+        });
+      } else {
+        toast({
+          title: "Warning",
+          description: response.data.message || "Configuration completed with warnings",
+          variant: "warning"
+        });
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || error.message;
+      setUberIntegrationStatus({
+        success: false,
+        error: errorMessage
+      });
+      toast({
+        title: "Error",
+        description: errorMessage || "Failed to configure Uber integration",
+        variant: "destructive"
+      });
+    } finally {
+      setIsConfiguringUberIntegration(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setError(null);
@@ -1342,59 +1524,72 @@ export default function RestaurantDetail() {
         const versions = Object.keys(versionsToUpdate)
           .filter(key => versionsToUpdate[key]);
 
+        // Build colorsToUpdate array based on checkboxes
+        const colors = Object.keys(colorsToUpdate)
+          .filter(key => colorsToUpdate[key]);
+
         const response = await api.post('/website-extraction/process-selected-logo', {
           logoUrl: newLogoUrl,
           websiteUrl: restaurant.website_url || '',
           restaurantId: id,
-          versionsToUpdate: processMode === 'replace' ? versions : undefined
+          versionsToUpdate: processMode === 'replace' ? versions : undefined,
+          colorsToUpdate: processMode === 'replace' ? colors : undefined
         });
 
         if (response.data.success) {
           const data = response.data.data;
-          
+
           // Update local state with processed logo and colors
           const updates = {};
-          
-          if (data.logoVersions?.original) {
+
+          // Only update selected versions if in 'replace' mode, otherwise update all
+          const isReplaceMode = processMode === 'replace';
+          const shouldUpdate = (versionKey) => !isReplaceMode || versions.includes(versionKey);
+
+          if (shouldUpdate('logo_url') && data.logoVersions?.original) {
             updates.logo_url = data.logoVersions.original;
           }
-          if (data.logoVersions?.nobg) {
+          if (shouldUpdate('logo_nobg_url') && data.logoVersions?.nobg) {
             updates.logo_nobg_url = data.logoVersions.nobg;
           }
-          if (data.logoVersions?.standard) {
+          if (shouldUpdate('logo_standard_url') && data.logoVersions?.standard) {
             updates.logo_standard_url = data.logoVersions.standard;
           }
-          if (data.logoVersions?.thermal) {
+          if (shouldUpdate('logo_thermal_url') && data.logoVersions?.thermal) {
             updates.logo_thermal_url = data.logoVersions.thermal;
           }
-          if (data.logoVersions?.thermal_alt) {
+          if (shouldUpdate('logo_thermal_alt_url') && data.logoVersions?.thermal_alt) {
             updates.logo_thermal_alt_url = data.logoVersions.thermal_alt;
           }
-          if (data.logoVersions?.thermal_contrast) {
+          if (shouldUpdate('logo_thermal_contrast_url') && data.logoVersions?.thermal_contrast) {
             updates.logo_thermal_contrast_url = data.logoVersions.thermal_contrast;
           }
-          if (data.logoVersions?.thermal_adaptive) {
+          if (shouldUpdate('logo_thermal_adaptive_url') && data.logoVersions?.thermal_adaptive) {
             updates.logo_thermal_adaptive_url = data.logoVersions.thermal_adaptive;
           }
-          if (data.logoVersions?.favicon) {
+          if (shouldUpdate('logo_favicon_url') && data.logoVersions?.favicon) {
             updates.logo_favicon_url = data.logoVersions.favicon;
           }
-          if (data.colors?.primaryColor) {
+
+          // Update colors based on selection (only in replace mode)
+          const shouldUpdateColor = (colorKey) => !isReplaceMode || colors.includes(colorKey);
+
+          if (shouldUpdateColor('primary_color') && data.colors?.primaryColor) {
             updates.primary_color = data.colors.primaryColor;
           }
-          if (data.colors?.secondaryColor) {
+          if (shouldUpdateColor('secondary_color') && data.colors?.secondaryColor) {
             updates.secondary_color = data.colors.secondaryColor;
           }
-          if (data.colors?.tertiaryColor) {
+          if (shouldUpdateColor('tertiary_color') && data.colors?.tertiaryColor) {
             updates.tertiary_color = data.colors.tertiaryColor;
           }
-          if (data.colors?.accentColor) {
+          if (shouldUpdateColor('accent_color') && data.colors?.accentColor) {
             updates.accent_color = data.colors.accentColor;
           }
-          if (data.colors?.backgroundColor) {
+          if (shouldUpdateColor('background_color') && data.colors?.backgroundColor) {
             updates.background_color = data.colors.backgroundColor;
           }
-          if (data.colors?.theme) {
+          if (shouldUpdateColor('theme') && data.colors?.theme) {
             updates.theme = data.colors.theme;
           }
 
@@ -1536,12 +1731,18 @@ export default function RestaurantDetail() {
     return 'website';
   };
 
-  const handlePlatformExtraction = (url, platformName) => {
-    const platform = detectPlatformFromUrl(url);
+  const handlePlatformExtraction = (url, platform) => {
+    // Use the platform identifier directly since it's provided from the platform links
+    // This handles platforms like Mobi2go, FoodHub that use custom domains
+    // The platform parameter is already lowercase (e.g., "mobi2go", "foodhub")
+
+    // Create a proper display name for the platform
+    const platformDisplayName = platform.charAt(0).toUpperCase() + platform.slice(1);
+
     setExtractionConfig({
       url,
       platform,
-      platformName,
+      platformName: platformDisplayName,
       restaurantId: id,
       restaurantName: restaurant?.name || 'Unknown Restaurant'
     });
@@ -1576,6 +1777,7 @@ export default function RestaurantDetail() {
         // Use standard extraction endpoint
         response = await api.post('/extractions/start', {
           url: extractionConfig.url,
+          platform: extractionConfig.platform, // Include platform to avoid detection issues
           restaurantId: extractionConfig.restaurantId,
           extractionType: 'batch',
           options: {
@@ -2142,7 +2344,7 @@ export default function RestaurantDetail() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => handlePlatformExtraction(urlValue, platformName)}
+                  onClick={() => handlePlatformExtraction(urlValue, platform)}
                   disabled={isExtracting}
                 >
                   <FileSearch className="h-3 w-3 mr-1" />
@@ -4099,7 +4301,7 @@ export default function RestaurantDetail() {
                     Password (optional - auto-generated if empty)
                   </label>
                   <Input
-                    type="password"
+                    type="text"
                     value={onboardingUserPassword}
                     onChange={(e) => setOnboardingUserPassword(e.target.value)}
                     placeholder="Leave empty for auto-generation"
@@ -4194,6 +4396,276 @@ export default function RestaurantDetail() {
                       <>
                         <AlertCircle className="inline h-4 w-4 text-red-500 mr-2" />
                         {onboardingUpdateStatus.error || 'Failed to update onboarding record'}
+                      </>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Finalise Setup Card */}
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                Finalise Setup
+              </CardTitle>
+              <CardDescription>
+                Complete the restaurant configuration with system settings, API key creation, and Uber integration
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Prerequisites Check */}
+              <Alert>
+                <AlertDescription>
+                  <div className="space-y-2">
+                    <p className="font-medium">Prerequisites:</p>
+                    <ul className="list-disc list-inside text-sm space-y-1">
+                      <li>Restaurant must have a Pumpd account created</li>
+                      <li>User credentials must be available in the database</li>
+                      <li>Restaurant must be registered on the platform</li>
+                    </ul>
+                  </div>
+                </AlertDescription>
+              </Alert>
+
+              {/* Receipt Logo Selection */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Receipt Logo Selection
+                </label>
+                <div className="flex items-center gap-4">
+                  <Select value={receiptLogoVersion} onValueChange={setReceiptLogoVersion}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Select receipt logo version" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {restaurant?.logo_url && (
+                        <SelectItem value="logo_url">Original Logo</SelectItem>
+                      )}
+                      {restaurant?.logo_nobg_url && (
+                        <SelectItem value="logo_nobg_url">No Background Logo</SelectItem>
+                      )}
+                      {restaurant?.logo_standard_url && (
+                        <SelectItem value="logo_standard_url">Standard Logo</SelectItem>
+                      )}
+                      {restaurant?.logo_thermal_url && (
+                        <SelectItem value="logo_thermal_url">Thermal Logo</SelectItem>
+                      )}
+                      {restaurant?.logo_thermal_alt_url && (
+                        <SelectItem value="logo_thermal_alt_url">Thermal Alt Logo</SelectItem>
+                      )}
+                      {restaurant?.logo_thermal_contrast_url && (
+                        <SelectItem value="logo_thermal_contrast_url">Thermal High Contrast</SelectItem>
+                      )}
+                      {restaurant?.logo_thermal_adaptive_url && (
+                        <SelectItem value="logo_thermal_adaptive_url">Thermal Adaptive</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {receiptLogoVersion && restaurant?.[receiptLogoVersion] && (
+                    <div className="flex items-center gap-2">
+                      <img
+                        src={restaurant[receiptLogoVersion]}
+                        alt="Selected receipt logo"
+                        className="h-12 w-12 object-contain border rounded p-1"
+                      />
+                      <Badge variant="secondary">Selected</Badge>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  This logo will be converted to PNG format and used for receipts
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Setup System Settings Button */}
+                <Card className="border-2 hover:border-brand-blue transition-colors">
+                  <CardContent className="p-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Settings className="h-8 w-8 text-brand-blue" />
+                        {systemSettingsStatus?.success && (
+                          <CheckCircle className="h-5 w-5 text-green-500" />
+                        )}
+                      </div>
+                      <div>
+                        <h4 className="font-semibold">System Settings</h4>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Configure GST, pickup times, and other system settings
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleSetupSystemSettings}
+                        disabled={isSettingUpSystemSettings || !restaurant?.id}
+                        className="w-full"
+                        variant={systemSettingsStatus?.success ? "outline" : "default"}
+                      >
+                        {isSettingUpSystemSettings ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Configuring...
+                          </>
+                        ) : systemSettingsStatus?.success ? (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Reconfigure
+                          </>
+                        ) : (
+                          <>
+                            <Settings className="h-4 w-4 mr-2" />
+                            Setup Settings
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Create API Key Button */}
+                <Card className="border-2 hover:border-brand-blue transition-colors">
+                  <CardContent className="p-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Code className="h-8 w-8 text-brand-blue" />
+                        {apiKeyStatus?.success && (
+                          <CheckCircle className="h-5 w-5 text-green-500" />
+                        )}
+                      </div>
+                      <div>
+                        <h4 className="font-semibold">API Key</h4>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Generate API key for online ordering integration
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleCreateApiKey}
+                        disabled={isCreatingApiKey || !restaurant?.id || !setupCompletionStatus.system_settings}
+                        className="w-full"
+                        variant={apiKeyStatus?.success ? "outline" : "default"}
+                      >
+                        {isCreatingApiKey ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Creating...
+                          </>
+                        ) : apiKeyStatus?.success ? (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Regenerate
+                          </>
+                        ) : (
+                          <>
+                            <Code className="h-4 w-4 mr-2" />
+                            Create API Key
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Configure Uber Integration Button */}
+                <Card className="border-2 hover:border-brand-blue transition-colors">
+                  <CardContent className="p-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Link2 className="h-8 w-8 text-brand-blue" />
+                        {uberIntegrationStatus?.success && (
+                          <CheckCircle className="h-5 w-5 text-green-500" />
+                        )}
+                      </div>
+                      <div>
+                        <h4 className="font-semibold">Uber Integration</h4>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Complete Uber OAuth and configure integration
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleConfigureUberIntegration}
+                        disabled={isConfiguringUberIntegration || !restaurant?.id || !setupCompletionStatus.api_key}
+                        className="w-full"
+                        variant={uberIntegrationStatus?.success ? "outline" : "default"}
+                      >
+                        {isConfiguringUberIntegration ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Configuring...
+                          </>
+                        ) : uberIntegrationStatus?.success ? (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Reconfigure
+                          </>
+                        ) : (
+                          <>
+                            <Link2 className="h-4 w-4 mr-2" />
+                            Configure Uber
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Status Messages */}
+              {systemSettingsStatus && (
+                <Alert className={systemSettingsStatus.success ? 'border-green-500' : 'border-red-500'}>
+                  <AlertDescription>
+                    {systemSettingsStatus.success ? (
+                      <>
+                        <CheckCircle className="inline h-4 w-4 text-green-500 mr-2" />
+                        {systemSettingsStatus.message || 'System settings configured successfully'}
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle className="inline h-4 w-4 text-red-500 mr-2" />
+                        {systemSettingsStatus.error || 'Failed to configure system settings'}
+                      </>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {apiKeyStatus && (
+                <Alert className={apiKeyStatus.success ? 'border-green-500' : 'border-red-500'}>
+                  <AlertDescription>
+                    {apiKeyStatus.success ? (
+                      <>
+                        <CheckCircle className="inline h-4 w-4 text-green-500 mr-2" />
+                        {apiKeyStatus.message || 'API key created successfully'}
+                        {apiKeyStatus.apiKey && (
+                          <div className="mt-2 p-2 bg-gray-100 rounded font-mono text-sm">
+                            {apiKeyStatus.apiKey}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle className="inline h-4 w-4 text-red-500 mr-2" />
+                        {apiKeyStatus.error || 'Failed to create API key'}
+                      </>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {uberIntegrationStatus && (
+                <Alert className={uberIntegrationStatus.success ? 'border-green-500' : 'border-red-500'}>
+                  <AlertDescription>
+                    {uberIntegrationStatus.success ? (
+                      <>
+                        <CheckCircle className="inline h-4 w-4 text-green-500 mr-2" />
+                        {uberIntegrationStatus.message || 'Uber integration configured successfully'}
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle className="inline h-4 w-4 text-red-500 mr-2" />
+                        {uberIntegrationStatus.error || 'Failed to configure Uber integration'}
                       </>
                     )}
                   </AlertDescription>
@@ -4752,6 +5224,87 @@ export default function RestaurantDetail() {
                       />
                       <span className="text-sm">Logo (Favicon) - 32x32 browser icon</span>
                     </label>
+
+                    {/* Color Selection */}
+                    {processMode === 'replace' && (
+                      <>
+                        <div className="mt-4 mb-2 pt-3 border-t">
+                          <p className="text-sm font-medium text-gray-700">Brand Colors to Update:</p>
+                        </div>
+
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={colorsToUpdate.primary_color}
+                            onChange={(e) => setColorsToUpdate(prev => ({
+                              ...prev,
+                              primary_color: e.target.checked
+                            }))}
+                          />
+                          <span className="text-sm">Primary Color</span>
+                        </label>
+
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={colorsToUpdate.secondary_color}
+                            onChange={(e) => setColorsToUpdate(prev => ({
+                              ...prev,
+                              secondary_color: e.target.checked
+                            }))}
+                          />
+                          <span className="text-sm">Secondary Color</span>
+                        </label>
+
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={colorsToUpdate.tertiary_color}
+                            onChange={(e) => setColorsToUpdate(prev => ({
+                              ...prev,
+                              tertiary_color: e.target.checked
+                            }))}
+                          />
+                          <span className="text-sm">Tertiary Color</span>
+                        </label>
+
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={colorsToUpdate.accent_color}
+                            onChange={(e) => setColorsToUpdate(prev => ({
+                              ...prev,
+                              accent_color: e.target.checked
+                            }))}
+                          />
+                          <span className="text-sm">Accent Color</span>
+                        </label>
+
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={colorsToUpdate.background_color}
+                            onChange={(e) => setColorsToUpdate(prev => ({
+                              ...prev,
+                              background_color: e.target.checked
+                            }))}
+                          />
+                          <span className="text-sm">Background Color</span>
+                        </label>
+
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={colorsToUpdate.theme}
+                            onChange={(e) => setColorsToUpdate(prev => ({
+                              ...prev,
+                              theme: e.target.checked
+                            }))}
+                          />
+                          <span className="text-sm">Theme (Light/Dark)</span>
+                        </label>
+                      </>
+                    )}
                   </div>
                 )}
               </div>

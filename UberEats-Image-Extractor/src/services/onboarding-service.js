@@ -69,10 +69,11 @@ async function getOnboardingIdByEmail(email) {
 
   try {
     console.log('[Onboarding Service] Looking up onboarding record for:', email);
-    
+
+    // First get the onboarding_id using RPC
     const { data, error } = await onboardingSupabase
-      .rpc('get_onboarding_id_by_email', { 
-        user_email: email 
+      .rpc('get_onboarding_id_by_email', {
+        user_email: email
       });
 
     if (error) {
@@ -85,8 +86,40 @@ async function getOnboardingIdByEmail(email) {
       return null;
     }
 
-    console.log('[Onboarding Service] Found onboarding record:', data[0].onboarding_id);
-    return data[0];
+    const onboardingId = data[0].onboarding_id;
+    console.log('[Onboarding Service] Found onboarding record:', onboardingId);
+
+    // Now fetch the full record with all fields including GST and Google OAuth
+    const { data: fullRecord, error: fetchError } = await onboardingSupabase
+      .from('user_onboarding')
+      .select('*')
+      .eq('id', onboardingId)
+      .single();
+
+    if (fetchError) {
+      console.error('[Onboarding Service] Error fetching full record:', fetchError);
+      throw fetchError;
+    }
+
+    if (!fullRecord) {
+      console.log('[Onboarding Service] Full record not found for ID:', onboardingId);
+      return data[0]; // Return the basic data if full record not found
+    }
+
+    // Log what fields we actually got
+    console.log('[Onboarding Service] Full record fields:', {
+      has_gst: !!fullRecord.gst_number,
+      gst_number: fullRecord.gst_number || 'not set',
+      has_google_oauth: !!fullRecord.google_oauth_client_id,
+      google_oauth_client_id: fullRecord.google_oauth_client_id ? '***' + fullRecord.google_oauth_client_id.slice(-4) : 'not set'
+    });
+
+    // Return the full record with the onboarding_id included
+    return {
+      ...data[0],
+      ...fullRecord,
+      onboarding_id: onboardingId // Ensure onboarding_id is included
+    };
   } catch (error) {
     console.error('[Onboarding Service] Failed to get onboarding ID:', error);
     throw error;

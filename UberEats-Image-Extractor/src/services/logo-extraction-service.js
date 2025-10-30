@@ -516,6 +516,7 @@ async function removeBackgroundFromBuffer(imageBuffer) {
     });
     formData.append('size', 'regular');
     formData.append('type', 'product');
+    formData.append('crop', 'true');
     
     const response = await axios.post('https://api.remove.bg/v1.0/removebg', formData, {
       headers: {
@@ -576,9 +577,13 @@ async function processLogoVersions(logoBuffer) {
         const noBgBuffer = await removeBackgroundFromBuffer(logoBuffer);
         
         if (noBgBuffer) {
-          // Successfully removed background
-          versions.nobg = `data:image/png;base64,${noBgBuffer.toString('base64')}`;
-          console.log('[Logo Extraction] Background removed via API');
+          // Successfully removed background, apply trim to remove any remaining whitespace
+          const trimmedBuffer = await sharp(noBgBuffer)
+            .trim()
+            .png()
+            .toBuffer();
+          versions.nobg = `data:image/png;base64,${trimmedBuffer.toString('base64')}`;
+          console.log('[Logo Extraction] Background removed via API and trimmed');
         } else {
           // API failed or not configured, use original
           console.log('[Logo Extraction] Using original as no-bg version');

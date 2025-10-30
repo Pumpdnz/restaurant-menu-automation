@@ -106,6 +106,12 @@ export default function ExtractionDetail() {
             created_at: statusResponse.data.startTime ? new Date(statusResponse.data.startTime).toISOString() : null
           };
           
+          // If completed and has menuId, redirect to MenuDetail
+          if (statusResponse.data.status === 'completed' && menuId) {
+            navigate(`/menus/${menuId}`, { replace: true });
+            return;
+          }
+          
           // Set premium progress details
           setPremiumProgress(statusResponse.data.progress);
           status = statusResponse.data.status;
@@ -118,6 +124,13 @@ export default function ExtractionDetail() {
         // API returns { success: true, job: {...} }
         jobData = jobResponse.data.job || jobResponse.data;
         status = jobData.state || jobData.status;
+        
+        // If completed and has menu_id/menuId, redirect to MenuDetail
+        if ((status === 'completed' || status === 'complete') && (jobData.menu_id || jobData.menuId)) {
+          const menuId = jobData.menu_id || jobData.menuId;
+          navigate(`/menus/${menuId}`, { replace: true });
+          return;
+        }
       }
       
       setJob(jobData);
@@ -164,6 +177,9 @@ export default function ExtractionDetail() {
           const resultsResponse = await extractionAPI.getPremiumResults(jobId);
           
           if (resultsResponse.data.success && resultsResponse.data.menuId) {
+            // Redirect to MenuDetail instead of loading data here
+            navigate(`/menus/${resultsResponse.data.menuId}`, { replace: true });
+            return;
             // Load the menu from database with option sets
             const menuResponse = await api.get(`/menus/${resultsResponse.data.menuId}`);
             if (menuResponse.data.success && menuResponse.data.menu) {
@@ -212,6 +228,9 @@ export default function ExtractionDetail() {
             }
           }
         } else if (jobData.menuId) {
+          // Redirect to MenuDetail for standard extractions
+          navigate(`/menus/${jobData.menuId}`, { replace: true });
+          return;
           // Use database API for standard extractions
           const menuResponse = await api.get(`/menus/${jobData.menuId}`);
           if (menuResponse.data.success && menuResponse.data.menu) {

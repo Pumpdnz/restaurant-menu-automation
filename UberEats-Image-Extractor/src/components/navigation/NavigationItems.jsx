@@ -9,6 +9,7 @@ import {
   History,
   Settings,
   Shield,
+  Video,
 } from 'lucide-react';
 import {
   SidebarGroup,
@@ -29,6 +30,7 @@ const NavigationItems = ({ collapsed }) => {
     { href: '/restaurants', label: 'Restaurants', icon: Store },
     { href: '/extractions', label: 'Extractions', icon: Download },
     { href: '/menus', label: 'Menus', icon: Menu },
+    { href: '/social-media', label: 'Social Media', icon: Video },
     { href: '/analytics', label: 'Analytics', icon: BarChart },
     { href: '/history', label: 'History', icon: History },
     { href: '/settings', label: 'Settings', icon: Settings },

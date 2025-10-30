@@ -51,8 +51,8 @@ export default function NewExtraction() {
     { value: 'delivereasy', label: 'DeliverEasy' },
     { value: 'bopple', label: 'Bopple' },
     { value: 'resdiary', label: 'ResDiary' },
-    { value: 'meandu', label: 'Me&u' },
-    { value: 'gloriafood', label: 'GloriaFood' },
+    { value: 'meandu', label: 'Me&u (Not Supported)', disabled: true },
+    { value: 'gloriafood', label: 'GloriaFood (Not Supported)', disabled: true },
     { value: 'sipo', label: 'Sipo' },
     { value: 'booknorder', label: 'BookNOrder' },
     { value: 'website', label: 'Generic Website' }
@@ -254,7 +254,18 @@ export default function NewExtraction() {
       setError('Please select a platform for this URL');
       return;
     }
-    
+
+    // Block unsupported platforms
+    if (platform.toLowerCase() === 'meandu' || platform.toLowerCase() === 'me&u') {
+      setError('Me&u platform is not currently supported due to its complex multi-menu structure. Please try extracting from a different platform.');
+      return;
+    }
+
+    if (platform.toLowerCase() === 'gloriafood') {
+      setError('GloriaFood platform is not currently supported as the menu requires dialog interaction. Please try extracting from a different platform.');
+      return;
+    }
+
     // In manual mode, require restaurant selection
     if (restaurantMode === 'manual' && !selectedRestaurantId) {
       setError('Please select a restaurant from the list');
@@ -354,7 +365,7 @@ export default function NewExtraction() {
                     >
                       <option value="">Choose a platform...</option>
                       {availablePlatforms.map(p => (
-                        <option key={p.value} value={p.value}>
+                        <option key={p.value} value={p.value} disabled={p.disabled}>
                           {p.label}
                         </option>
                       ))}

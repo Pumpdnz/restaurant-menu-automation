@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { exec } = require('child_process');
+const { exec, spawn } = require('child_process');
 const { promisify } = require('util');
 const execAsync = promisify(exec);
 const multer = require('multer');
@@ -44,28 +44,35 @@ router.get('/status/:restaurantId', async (req, res) => {
   
   try {
     const { supabase } = require('../services/database-service');
-    
-    // Get account registration status
-    const { data: account, error: accountError } = await supabase
-      .from('pumpd_accounts')
-      .select('*')
-      .eq('organisation_id', organisationId)
-      .eq('restaurant_id', restaurantId)
-      .single();
-    
-    // Get restaurant registration status
+
+    // Get restaurant registration status with associated account
     const { data: pumpdRestaurant, error: restaurantError } = await supabase
       .from('pumpd_restaurants')
-      .select('*')
+      .select('*, pumpd_accounts(*)')
       .eq('organisation_id', organisationId)
       .eq('restaurant_id', restaurantId)
       .single();
-    
+
+    // Extract the account from the restaurant relationship
+    const account = pumpdRestaurant?.pumpd_accounts || null;
+
+    // If no restaurant found, try to get account directly (for backward compatibility)
+    let fallbackAccount = null;
+    if (!pumpdRestaurant && !account) {
+      const { data: directAccount } = await supabase
+        .from('pumpd_accounts')
+        .select('*')
+        .eq('organisation_id', organisationId)
+        .eq('restaurant_id', restaurantId)
+        .single();
+      fallbackAccount = directAccount;
+    }
+
     res.json({
       success: true,
-      account: account || null,
+      account: account || fallbackAccount || null,
       pumpdRestaurant: pumpdRestaurant || null,
-      hasAccount: !!account && account.registration_status === 'completed',
+      hasAccount: !!(account || fallbackAccount) && (account?.registration_status === 'completed' || fallbackAccount?.registration_status === 'completed'),
       hasRestaurant: !!pumpdRestaurant && pumpdRestaurant.registration_status === 'completed'
     });
   } catch (error) {
@@ -576,22 +583,36 @@ router.post('/register-restaurant', async (req, res) => {
       const subdomain = subdomainMatch ? subdomainMatch[1] : restaurant.slug;
       
       // Parse restaurant ID from stdout
-      const restaurantIdMatch = stdout.match(/RestaurantID:\s*([a-f0-9-]+)/);
+      // Restaurant IDs are in format: RES followed by alphanumeric characters (e.g., REShTCa6OoFcRJM2zWdM9g4S)
+      const restaurantIdMatch = stdout.match(/RestaurantID:\s*(RES[A-Za-z0-9_-]+)/);
       const pumpdRestaurantId = restaurantIdMatch ? restaurantIdMatch[1] : null;
       
       // Update restaurant registration status with the Pumpd restaurant ID
+      // Only set dashboard URLs if we have a valid restaurant ID
+      const updateData = {
+        registration_status: 'completed',
+        registration_date: new Date().toISOString(),
+        pumpd_restaurant_id: pumpdRestaurantId, // Save the Pumpd platform restaurant ID
+        pumpd_subdomain: subdomain,
+        pumpd_full_url: `https://${subdomain}.pumpd.co.nz`
+      };
+
+      // Only set the dashboard URLs if we successfully extracted the restaurant ID
+      if (pumpdRestaurantId) {
+        updateData.dashboard_url = `https://admin.pumpd.co.nz/restaurant/${pumpdRestaurantId}`;
+        updateData.settings_url = `https://admin.pumpd.co.nz/restaurant/${pumpdRestaurantId}/settings`;
+        updateData.menu_url = `https://admin.pumpd.co.nz/restaurant/${pumpdRestaurantId}/menus`;
+      } else {
+        console.log('  ⚠️ Warning: Could not extract restaurant ID from script output');
+        // Don't set incorrect URLs - leave them null
+        updateData.dashboard_url = null;
+        updateData.settings_url = null;
+        updateData.menu_url = null;
+      }
+
       await supabase
         .from('pumpd_restaurants')
-        .update({
-          registration_status: 'completed',
-          registration_date: new Date().toISOString(),
-          pumpd_restaurant_id: pumpdRestaurantId, // Save the Pumpd platform restaurant ID
-          pumpd_subdomain: subdomain,
-          pumpd_full_url: `https://${subdomain}.pumpd.co.nz`,
-          dashboard_url: pumpdRestaurantId ? `https://admin.pumpd.co.nz/restaurant/${pumpdRestaurantId}` : `https://admin.pumpd.co.nz/restaurants/${subdomain}`,
-          settings_url: pumpdRestaurantId ? `https://admin.pumpd.co.nz/restaurant/${pumpdRestaurantId}/settings` : `https://admin.pumpd.co.nz/restaurants/${subdomain}/settings`,
-          menu_url: pumpdRestaurantId ? `https://admin.pumpd.co.nz/restaurant/${pumpdRestaurantId}/menu` : `https://admin.pumpd.co.nz/restaurants/${subdomain}/menu`
-        })
+        .update(updateData)
         .eq('id', pumpdRestaurant.id);
       
       // Update account if it was a new registration
@@ -767,24 +788,38 @@ router.post('/upload-csv-menu', upload.single('csvFile'), async (req, res) => {
     }
     
     console.log('[CSV Upload] Restaurant found:', restaurant.name);
-    
-    // Get account credentials from pumpd_accounts
-    const { data: account, error: accountError } = await supabase
-      .from('pumpd_accounts')
-      .select('email, user_password_hint')
+
+    // Get account credentials through pumpd_restaurants relationship
+    const { data: pumpdRestaurant, error: pumpdRestError } = await supabase
+      .from('pumpd_restaurants')
+      .select('*, pumpd_accounts(email, user_password_hint)')
       .eq('restaurant_id', restaurantId)
       .eq('organisation_id', organisationId)
       .single();
-    
-    if (accountError || !account) {
+
+    const account = pumpdRestaurant?.pumpd_accounts || null;
+
+    // Fallback to direct account lookup for backward compatibility
+    let finalAccount = account;
+    if (!finalAccount && !pumpdRestError) {
+      const { data: directAccount } = await supabase
+        .from('pumpd_accounts')
+        .select('email, user_password_hint')
+        .eq('restaurant_id', restaurantId)
+        .eq('organisation_id', organisationId)
+        .single();
+      finalAccount = directAccount;
+    }
+
+    if (!finalAccount) {
       throw new Error('Restaurant account not found. Please ensure the restaurant is registered on Pumpd first.');
     }
     
-    if (!account.email || !account.user_password_hint) {
+    if (!finalAccount.email || !finalAccount.user_password_hint) {
       throw new Error('Restaurant account credentials are incomplete. Please re-register the account.');
     }
-    
-    console.log('[CSV Upload] Account found:', account.email);
+
+    console.log('[CSV Upload] Account found:', finalAccount.email);
     
     // Execute updated import-csv-menu.js script with smart matching
     const scriptPath = path.join(__dirname, '../../../scripts/restaurant-registration/import-csv-menu.js');
@@ -793,8 +828,8 @@ router.post('/upload-csv-menu', upload.single('csvFile'), async (req, res) => {
     const command = [
       'node',
       scriptPath,
-      `--email="${account.email}"`,
-      `--password="${account.user_password_hint}"`,
+      `--email="${finalAccount.email}"`,
+      `--password="${finalAccount.user_password_hint}"`,
       `--name="${restaurant.name}"`,
       `--csvFile="${csvFile.path}"`
     ].join(' ');
@@ -1013,46 +1048,78 @@ router.post('/generate-code-injections', async (req, res) => {
     
     // Prepare script arguments
     const scriptPath = path.join(__dirname, '../../../scripts/ordering-page-customization.js');
-    
-    // Build command with proper escaping
-    let command = [
-      'node',
-      scriptPath,
-      `--primary="${restaurant.primary_color}"`,
-      `--secondary="${restaurant.secondary_color}"`,
-      `--name="${restaurant.name.replace(/"/g, '\\"')}"`
-    ];
-    
-    // Add lightmode flag only if theme is explicitly "light"
-    if (restaurant.theme === 'light') {
-      command.push('--lightmode');
-    }
-    
-    command = command.join(' ');
-    
-    console.log('[Code Generation] Executing command...');
-    
-    const { stdout, stderr } = await execAsync(command, {
-      env: { ...process.env },
-      timeout: 60000 // 1 minute timeout
-    });
-    
-    console.log('[Code Generation] Script output:', stdout);
-    if (stderr) {
-      console.error('[Code Generation] Script stderr:', stderr);
-    }
-    
-    // Parse output to find generated file paths
     const sanitizedName = restaurant.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     const outputDir = path.join(__dirname, '../../../generated-code', sanitizedName);
-    
+
+    // Build arguments array for spawn
+    const args = [
+      scriptPath,
+      `--primary=${restaurant.primary_color}`,
+      `--secondary=${restaurant.secondary_color}`,
+      `--name=${restaurant.name}`,
+      '--keep-browser-open'
+    ];
+
+    // Add lightmode flag only if theme is explicitly "light"
+    if (restaurant.theme === 'light') {
+      args.push('--lightmode');
+    }
+
+    console.log('[Code Generation] Spawning script in background...');
+
+    // Spawn the process in detached mode so it can continue running
+    const child = spawn('node', args, {
+      detached: true,
+      stdio: 'ignore',
+      env: { ...process.env }
+    });
+
+    // Unref so parent process doesn't wait for child
+    child.unref();
+
+    console.log('[Code Generation] Process spawned, polling for completion...');
+
+    // Poll for completion.json file
+    const completionPath = path.join(outputDir, 'completion.json');
+    const maxAttempts = 60; // 60 seconds timeout
+    const pollInterval = 1000; // Check every second
+
+    let attempts = 0;
+    let completionFound = false;
+
+    while (attempts < maxAttempts && !completionFound) {
+      try {
+        await fs.access(completionPath);
+        // File exists, read and validate it
+        const completionData = await fs.readFile(completionPath, 'utf-8');
+        const completion = JSON.parse(completionData);
+
+        if (completion.success) {
+          console.log('[Code Generation] ✓ Completion marker found');
+          completionFound = true;
+          break;
+        }
+      } catch (error) {
+        // File doesn't exist yet, continue polling
+      }
+
+      attempts++;
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+    }
+
+    if (!completionFound) {
+      throw new Error('Script timed out waiting for completion. The script may still be running in the background.');
+    }
+
+    // Define file paths for verification
     const filePaths = {
       headInjection: path.join(outputDir, 'head-injection.html'),
       bodyInjection: path.join(outputDir, 'body-injection.html'),
-      configuration: path.join(outputDir, 'configuration.json')
+      configuration: path.join(outputDir, 'configuration.json'),
+      completion: completionPath
     };
-    
-    // Verify files exist
+
+    // Verify all required files exist
     for (const [key, filePath] of Object.entries(filePaths)) {
       try {
         await fs.access(filePath);
@@ -1064,12 +1131,12 @@ router.post('/generate-code-injections', async (req, res) => {
     }
     
     console.log('[Code Generation] Success! Files generated at:', outputDir);
-    
+    console.log('[Code Generation] Browser remains open for manual adjustments');
+
     res.json({
       success: true,
-      message: 'Code injections generated successfully',
-      filePaths,
-      output: stdout
+      message: 'Code injections generated successfully. Browser remains open for manual configuration.',
+      filePaths
     });
     
   } catch (error) {
@@ -1125,7 +1192,7 @@ router.post('/configure-website', async (req, res) => {
         primary_color,
         secondary_color,
         theme,
-        logo_url,
+        logo_nobg_url,
         instagram_url,
         facebook_url,
         address,
@@ -1142,38 +1209,52 @@ router.post('/configure-website', async (req, res) => {
     
     console.log('[Website Config] Restaurant found:', restaurant.name);
     console.log('[Website Config] Theme:', restaurant.theme || 'dark');
-    
-    // Get account credentials from pumpd_accounts
-    const { data: account, error: accountError } = await supabase
-      .from('pumpd_accounts')
-      .select('email, user_password_hint')
+
+    // Get account credentials through pumpd_restaurants relationship
+    const { data: pumpdRestaurant, error: pumpdRestError } = await supabase
+      .from('pumpd_restaurants')
+      .select('*, pumpd_accounts(email, user_password_hint)')
       .eq('restaurant_id', restaurantId)
       .eq('organisation_id', organisationId)
       .single();
-    
-    if (accountError || !account) {
+
+    const account = pumpdRestaurant?.pumpd_accounts || null;
+
+    // Fallback to direct account lookup for backward compatibility
+    let finalAccount = account;
+    if (!finalAccount && !pumpdRestError) {
+      const { data: directAccount } = await supabase
+        .from('pumpd_accounts')
+        .select('email, user_password_hint')
+        .eq('restaurant_id', restaurantId)
+        .eq('organisation_id', organisationId)
+        .single();
+      finalAccount = directAccount;
+    }
+
+    if (!finalAccount) {
       throw new Error('Restaurant account not found. Please ensure the restaurant is registered on Pumpd first.');
     }
     
-    if (!account.email || !account.user_password_hint) {
+    if (!finalAccount.email || !finalAccount.user_password_hint) {
       throw new Error('Restaurant account credentials are incomplete. Please re-register the account.');
     }
-    
-    console.log('[Website Config] Account found:', account.email);
-    
+
+    console.log('[Website Config] Account found:', finalAccount.email);
+
     // Select appropriate script based on theme
     const isDark = restaurant.theme !== 'light';
     const scriptName = isDark ? 'edit-website-settings-dark.js' : 'edit-website-settings-light.js';
     const scriptPath = path.join(__dirname, '../../../scripts', scriptName);
-    
+
     console.log('[Website Config] Using script:', scriptName);
-    
+
     // Build command with all arguments
     let command = [
       'node',
       scriptPath,
-      `--email="${account.email}"`,
-      `--password="${account.user_password_hint}"`,
+      `--email="${finalAccount.email}"`,
+      `--password="${finalAccount.user_password_hint}"`,
       `--name="${restaurant.name.replace(/"/g, '\\"')}"`,
       `--primary="${restaurant.primary_color}"`,
       `--head="${filePaths.headInjection}"`,
@@ -1186,25 +1267,25 @@ router.post('/configure-website', async (req, res) => {
     }
     
     // Add optional fields if available
-    if (restaurant.logo_url) {
+    if (restaurant.logo_nobg_url) {
       // Check if it's a base64 data URL
-      if (restaurant.logo_url.startsWith('data:image')) {
+      if (restaurant.logo_nobg_url.startsWith('data:image')) {
         // Convert base64 to PNG file
-        const logoPath = await convertBase64ToPng(restaurant.logo_url);
+        const logoPath = await convertBase64ToPng(restaurant.logo_nobg_url);
         if (logoPath) {
           command.push(`--logo="${logoPath}"`);
           tempFiles.push(logoPath); // Track for cleanup
         }
-      } else if (restaurant.logo_url.startsWith('http')) {
+      } else if (restaurant.logo_nobg_url.startsWith('http')) {
         // Download logo to temp location
-        const logoPath = await downloadLogoIfNeeded(restaurant.logo_url);
+        const logoPath = await downloadLogoIfNeeded(restaurant.logo_nobg_url);
         if (logoPath) {
           command.push(`--logo="${logoPath}"`);
           tempFiles.push(logoPath); // Track for cleanup
         }
       } else {
         // Local path
-        command.push(`--logo="${restaurant.logo_url}"`);
+        command.push(`--logo="${restaurant.logo_nobg_url}"`);
       }
     }
     
@@ -1383,13 +1464,13 @@ async function convertBase64ToPng(dataUrl) {
  */
 async function cleanupTempFiles(files) {
   if (!files || files.length === 0) return;
-  
+
   for (const filePath of files) {
     try {
       await fs.unlink(filePath);
-      console.log(`[Website Config] ✓ Cleaned up temporary file: ${filePath}`);
+      console.log(`[Cleanup] ✓ Cleaned up temporary file: ${filePath}`);
     } catch (error) {
-      console.warn(`[Website Config] ⚠️ Could not clean up temporary file ${filePath}:`, error.message);
+      console.warn(`[Cleanup] ⚠️ Could not clean up temporary file ${filePath}:`, error.message);
     }
   }
 }
@@ -1459,37 +1540,51 @@ router.post('/configure-payment', async (req, res) => {
     }
     
     console.log('[Payment Config] Restaurant found:', restaurant.name);
-    
-    // Get account credentials from pumpd_accounts
-    const { data: account, error: accountError } = await supabase
-      .from('pumpd_accounts')
-      .select('email, user_password_hint')
+
+    // Get account credentials through pumpd_restaurants relationship
+    const { data: pumpdRestaurant, error: pumpdRestError } = await supabase
+      .from('pumpd_restaurants')
+      .select('*, pumpd_accounts(email, user_password_hint)')
       .eq('restaurant_id', restaurantId)
       .eq('organisation_id', organisationId)
       .single();
-    
-    if (accountError || !account) {
+
+    const account = pumpdRestaurant?.pumpd_accounts || null;
+
+    // Fallback to direct account lookup for backward compatibility
+    let finalAccount = account;
+    if (!finalAccount && !pumpdRestError) {
+      const { data: directAccount } = await supabase
+        .from('pumpd_accounts')
+        .select('email, user_password_hint')
+        .eq('restaurant_id', restaurantId)
+        .eq('organisation_id', organisationId)
+        .single();
+      finalAccount = directAccount;
+    }
+
+    if (!finalAccount) {
       throw new Error('Restaurant account not found. Please ensure the restaurant is registered on Pumpd first.');
     }
     
-    if (!account.email || !account.user_password_hint) {
+    if (!finalAccount.email || !finalAccount.user_password_hint) {
       throw new Error('Restaurant account credentials are incomplete. Please re-register the account.');
     }
-    
-    console.log('[Payment Config] Account found:', account.email);
-    
+
+    console.log('[Payment Config] Account found:', finalAccount.email);
+
     // Choose script based on includeConnectLink parameter
     const scriptName = includeConnectLink ? 'setup-stripe-payments.js' : 'setup-stripe-payments-no-link.js';
     const scriptPath = path.join(__dirname, '../../../scripts', scriptName);
-    
+
     console.log('[Payment Config] Using script:', scriptName);
-    
+
     // Build command with proper escaping
     const command = [
       'node',
       scriptPath,
-      `--email="${account.email}"`,
-      `--password="${account.user_password_hint}"`,
+      `--email="${finalAccount.email}"`,
+      `--password="${finalAccount.user_password_hint}"`,
       `--name="${restaurant.name.replace(/"/g, '\\"')}"`
     ].join(' ');
     
@@ -1594,34 +1689,48 @@ router.post('/configure-services', async (req, res) => {
     }
     
     console.log('[Services Config] Restaurant found:', restaurant.name);
-    
-    // Get account credentials from pumpd_accounts
-    const { data: account, error: accountError } = await supabase
-      .from('pumpd_accounts')
-      .select('email, user_password_hint')
+
+    // Get account credentials through pumpd_restaurants relationship
+    const { data: pumpdRestaurant, error: pumpdRestError } = await supabase
+      .from('pumpd_restaurants')
+      .select('*, pumpd_accounts(email, user_password_hint)')
       .eq('restaurant_id', restaurantId)
       .eq('organisation_id', organisationId)
       .single();
-    
-    if (accountError || !account) {
+
+    const account = pumpdRestaurant?.pumpd_accounts || null;
+
+    // Fallback to direct account lookup for backward compatibility
+    let finalAccount = account;
+    if (!finalAccount && !pumpdRestError) {
+      const { data: directAccount } = await supabase
+        .from('pumpd_accounts')
+        .select('email, user_password_hint')
+        .eq('restaurant_id', restaurantId)
+        .eq('organisation_id', organisationId)
+        .single();
+      finalAccount = directAccount;
+    }
+
+    if (!finalAccount) {
       throw new Error('Restaurant account not found. Please ensure the restaurant is registered on Pumpd first.');
     }
     
-    if (!account.email || !account.user_password_hint) {
+    if (!finalAccount.email || !finalAccount.user_password_hint) {
       throw new Error('Restaurant account credentials are incomplete. Please re-register the account.');
     }
-    
-    console.log('[Services Config] Account found:', account.email);
-    
+
+    console.log('[Services Config] Account found:', finalAccount.email);
+
     // Execute setup-services-settings.js script
     const scriptPath = path.join(__dirname, '../../../scripts/setup-services-settings.js');
-    
+
     // Build command with proper escaping
     const command = [
       'node',
       scriptPath,
-      `--email="${account.email}"`,
-      `--password="${account.user_password_hint}"`,
+      `--email="${finalAccount.email}"`,
+      `--password="${finalAccount.user_password_hint}"`,
       `--name="${restaurant.name.replace(/"/g, '\\"')}"`
     ].join(' ');
     
@@ -1848,7 +1957,7 @@ router.post('/update-onboarding-record', async (req, res) => {
     const { supabase } = require('../services/database-service');
     const onboardingService = require('../services/onboarding-service');
     
-    // Get restaurant details including stripe_connect_url
+    // Get restaurant details including stripe_connect_url AND contact fields
     const { data: restaurant, error: restaurantError } = await supabase
       .from('restaurants')
       .select(`
@@ -1865,7 +1974,10 @@ router.post('/update-onboarding-record', async (req, res) => {
         hosted_logo_url,
         stripe_connect_url,
         cuisine,
-        metadata
+        metadata,
+        contact_name,
+        contact_phone,
+        organisation_name
       `)
       .eq('id', restaurantId)
       .eq('organisation_id', organisationId)
@@ -1874,7 +1986,19 @@ router.post('/update-onboarding-record', async (req, res) => {
     if (restaurantError || !restaurant) {
       throw new Error('Restaurant not found');
     }
-    
+
+    // Get the pumpd_restaurant_id from the pumpd_restaurants table
+    const { data: pumpdRestaurant, error: pumpdRestError } = await supabase
+      .from('pumpd_restaurants')
+      .select('pumpd_restaurant_id')
+      .eq('restaurant_id', restaurantId)
+      .eq('organisation_id', organisationId)
+      .single();
+
+    if (pumpdRestError) {
+      console.warn('[Onboarding] No pumpd_restaurant record found:', pumpdRestError.message);
+    }
+
     console.log('[Onboarding] Getting onboarding record for:', userEmail);
     
     // Get onboarding record
@@ -1892,16 +2016,20 @@ router.post('/update-onboarding-record', async (req, res) => {
     // Format operating hours
     const formattedHours = onboardingService.formatOperatingHours(restaurant.opening_hours);
     
-    // Prepare update data
-    // Note: organisation_name should be left blank or use restaurant name, 
-    // NOT the extractor app's organisation
+    // Prepare update data with proper field mappings:
+    // 1. organisation_name: restaurants.organisation_name -> user_onboarding.organisation_name
+    // 2. restaurant_id: pumpd_restaurants.pumpd_restaurant_id -> user_onboarding.restaurant_id
+    // 3. contact_person: restaurants.contact_name -> user_onboarding.contact_person
+    // 4. director_mobile_number: restaurants.contact_phone -> user_onboarding.director_mobile_number
     const updateData = {
       restaurant_name: restaurant.name,
-      organisation_name: additionalData.organisationName || '', // Leave blank unless explicitly provided
+      organisation_name: restaurant.organisation_name || '', // Map from restaurants.organisation_name
+      restaurant_id: pumpdRestaurant?.pumpd_restaurant_id || null, // Map from pumpd_restaurants.pumpd_restaurant_id
       address: restaurant.address || additionalData.address || '',
       email: restaurant.email || userEmail,
       phone: restaurant.phone || additionalData.phone || '',
-      contact_person: contactPerson || additionalData.contactPerson || '',
+      contact_person: restaurant.contact_name || contactPerson || additionalData.contactPerson || '', // Map from restaurants.contact_name
+      director_mobile_number: restaurant.contact_phone || '', // Map from restaurants.contact_phone
       venue_operating_hours: formattedHours || additionalData.operatingHours || 'Hours not set',
       primary_color: restaurant.primary_color || '#3f92ff',
       secondary_color: restaurant.secondary_color || null,
@@ -1963,6 +2091,785 @@ router.post('/update-onboarding-record', async (req, res) => {
     res.status(500).json({ 
       success: false, 
       error: error.message 
+    });
+  }
+});
+
+/**
+ * Setup System Settings endpoint
+ * Configures GST, pickup times, and other system settings using user credentials
+ */
+router.post('/setup-system-settings', async (req, res) => {
+  const { restaurantId, receiptLogoVersion } = req.body;
+  const organisationId = req.user?.organisationId;
+
+  console.log('[System Settings] Request received:', {
+    restaurantId,
+    receiptLogoVersion,
+    organisationId,
+    hasOrgId: !!organisationId
+  });
+
+  if (!restaurantId) {
+    return res.status(400).json({ success: false, error: 'Restaurant ID required' });
+  }
+
+  if (!organisationId) {
+    console.error('[System Settings] No organisation ID in request');
+    return res.status(401).json({
+      success: false,
+      error: 'Organisation context required'
+    });
+  }
+
+  try {
+    const { exec } = require('child_process');
+    const { promisify } = require('util');
+    const execAsync = promisify(exec);
+    const path = require('path');
+    const onboardingService = require('../services/onboarding-service');
+    const { supabase } = require('../services/database-service');
+
+    // Get restaurant details
+    console.log('[System Settings] Querying restaurant:', {
+      id: restaurantId,
+      organisation_id: organisationId
+    });
+
+    const { data: restaurant, error: restaurantError } = await supabase
+      .from('restaurants')
+      .select('*')
+      .eq('id', restaurantId)
+      .eq('organisation_id', organisationId)
+      .single();
+
+    if (restaurantError || !restaurant) {
+      console.error('[System Settings] Restaurant query error:', restaurantError);
+      console.error('[System Settings] Query params were:', {
+        id: restaurantId,
+        organisation_id: organisationId
+      });
+      throw new Error('Restaurant not found');
+    }
+
+    // Get user account through pumpd_restaurants relationship
+    const { data: pumpdRestaurant, error: pumpdRestError } = await supabase
+      .from('pumpd_restaurants')
+      .select('*, pumpd_accounts(email, user_password_hint)')
+      .eq('restaurant_id', restaurantId)
+      .eq('organisation_id', organisationId)
+      .single();
+
+    const account = pumpdRestaurant?.pumpd_accounts || null;
+
+    // Fallback to direct account lookup for backward compatibility
+    let finalAccount = account;
+    if (!finalAccount && !pumpdRestError) {
+      const { data: directAccount } = await supabase
+        .from('pumpd_accounts')
+        .select('email, user_password_hint')
+        .eq('restaurant_id', restaurantId)
+        .eq('organisation_id', organisationId)
+        .single();
+      finalAccount = directAccount;
+    }
+
+    if (!finalAccount || !finalAccount.user_password_hint) {
+      throw new Error('User account credentials not found. Please create a Pumpd account first.');
+    }
+
+    // Get GST number and Google OAuth from onboarding database
+    let gstNumber = null;
+    let googleOAuthClientId = null;
+    try {
+      const onboardingRecord = await onboardingService.getOnboardingIdByEmail(finalAccount.email);
+      console.log('[System Settings] Onboarding record retrieved for:', finalAccount.email);
+
+      if (onboardingRecord) {
+        // Log what we received
+        console.log('[System Settings] Onboarding record has fields:', {
+          has_gst_number: !!onboardingRecord.gst_number,
+          has_google_oauth_client_id: !!onboardingRecord.google_oauth_client_id,
+          fields: Object.keys(onboardingRecord).join(', ')
+        });
+
+        if (onboardingRecord.gst_number) {
+          gstNumber = onboardingRecord.gst_number;
+          console.log('[System Settings] Found GST number from onboarding:', gstNumber);
+        } else {
+          console.log('[System Settings] No GST number in onboarding record');
+        }
+
+        if (onboardingRecord.google_oauth_client_id) {
+          googleOAuthClientId = onboardingRecord.google_oauth_client_id;
+          console.log('[System Settings] Found Google OAuth Client ID from onboarding:', googleOAuthClientId);
+        } else {
+          console.log('[System Settings] No Google OAuth Client ID in onboarding record');
+        }
+      } else {
+        console.log('[System Settings] No onboarding record found for:', finalAccount.email);
+      }
+    } catch (error) {
+      console.log('[System Settings] Could not retrieve onboarding data:', error.message);
+    }
+
+    // Process receipt logo
+    let receiptLogoPath = null;
+    const tempFiles = []; // Track temp files for cleanup
+
+    if (receiptLogoVersion && restaurant[receiptLogoVersion]) {
+      const logoUrl = restaurant[receiptLogoVersion];
+
+      // Check if it's a base64 image
+      if (logoUrl.startsWith('data:image')) {
+        // Convert base64 to PNG file
+        console.log('[System Settings] Converting base64 receipt logo to PNG...');
+        const convertedPath = await convertBase64ToPng(logoUrl);
+        if (convertedPath) {
+          receiptLogoPath = convertedPath;
+          tempFiles.push(convertedPath); // Track for cleanup
+          console.log('[System Settings] Receipt logo converted to PNG:', convertedPath);
+        } else {
+          console.log('[System Settings] Failed to convert receipt logo, skipping...');
+        }
+      } else if (logoUrl.startsWith('http')) {
+        // For HTTP URLs, download the logo
+        console.log('[System Settings] Downloading receipt logo from URL...');
+        const downloadedPath = await downloadLogoIfNeeded(logoUrl);
+        if (downloadedPath) {
+          receiptLogoPath = downloadedPath;
+          tempFiles.push(downloadedPath); // Track for cleanup
+          console.log('[System Settings] Receipt logo downloaded to:', downloadedPath);
+        }
+      } else {
+        // For local paths, pass as-is
+        receiptLogoPath = logoUrl;
+        console.log('[System Settings] Using local receipt logo path');
+      }
+    }
+
+    // Prepare script arguments
+    const scriptPath = path.resolve(__dirname, '../../../scripts/setup-system-settings-user.js');
+    const args = [
+      'node',
+      scriptPath,
+      `--email="${finalAccount.email}"`,
+      `--password="${finalAccount.user_password_hint}"`,
+      `--name="${restaurant.name.replace(/"/g, '\\"')}"`,
+      gstNumber ? `--gst="${gstNumber}"` : '',
+      googleOAuthClientId ? `--google-oauth="${googleOAuthClientId}"` : '',
+      receiptLogoPath ? `--receiptLogo="${receiptLogoPath}"` : ''
+    ].filter(Boolean);
+
+    const command = args.join(' ');
+
+    console.log('[System Settings] Executing script for restaurant:', restaurant.name);
+    console.log('[System Settings] Script arguments:', {
+      email: finalAccount.email,
+      hasPassword: !!finalAccount.user_password_hint,
+      restaurantName: restaurant.name,
+      gstNumber: gstNumber || 'not provided',
+      googleOAuthClientId: googleOAuthClientId || 'not provided',
+      receiptLogoPath: receiptLogoPath || 'not provided'
+    });
+
+    // Execute the script
+    const { stdout, stderr } = await execAsync(command, {
+      env: { ...process.env, DEBUG_MODE: 'false' },
+      timeout: 180000 // 3 minute timeout
+    });
+
+    console.log('[System Settings] Script completed');
+
+    // Parse script output to extract webhook secret and other data
+    let scriptResult = null;
+    let webhookSecret = null;
+
+    try {
+      const resultMatch = stdout.match(/### SCRIPT_RESULT_START ###\s*(.*?)\s*### SCRIPT_RESULT_END ###/s);
+      if (resultMatch && resultMatch[1]) {
+        scriptResult = JSON.parse(resultMatch[1]);
+        webhookSecret = scriptResult.webhookSecret;
+        console.log('[System Settings] Extracted webhook secret from script output');
+      }
+    } catch (parseError) {
+      console.log('[System Settings] Could not parse script result:', parseError.message);
+    }
+
+    // Clean up temporary files
+    await cleanupTempFiles(tempFiles);
+
+    // Update ONBOARDING database with webhook secret
+    if (webhookSecret) {
+      try {
+        const onboardingRecord = await onboardingService.getOnboardingIdByEmail(finalAccount.email);
+        if (onboardingRecord && onboardingRecord.onboarding_id) {
+          await onboardingService.updateOnboardingRecord(onboardingRecord.onboarding_id, {
+            webhook_secret: webhookSecret
+          });
+          console.log('[System Settings] Updated onboarding database with webhook secret');
+        }
+      } catch (onboardingError) {
+        console.error('[System Settings] Could not update onboarding database:', onboardingError.message);
+      }
+    }
+
+    // Update MAIN database (pumpd_restaurants) with completion status
+    try {
+      // Get existing setup_completion to merge with new data
+      const { data: existingRestaurant } = await supabase
+        .from('pumpd_restaurants')
+        .select('setup_completion')
+        .eq('restaurant_id', restaurantId)
+        .eq('organisation_id', organisationId)
+        .single();
+
+      const existingCompletion = existingRestaurant?.setup_completion || {};
+
+      const updateData = {
+        webhook_secret: webhookSecret,
+        system_settings_completed_at: new Date().toISOString(),
+        setup_completion: {
+          ...existingCompletion,
+          system_settings: true,
+          system_settings_date: new Date().toISOString(),
+          system_settings_data: {
+            hasGst: !!gstNumber,
+            hasGoogleOAuth: !!googleOAuthClientId,
+            hasReceiptLogo: !!receiptLogoPath,
+            webhookConfigured: !!webhookSecret
+          }
+        },
+        updated_at: new Date().toISOString()
+      };
+
+      await supabase
+        .from('pumpd_restaurants')
+        .update(updateData)
+        .eq('restaurant_id', restaurantId)
+        .eq('organisation_id', organisationId);
+
+      console.log('[System Settings] Updated main database with completion status');
+    } catch (updateError) {
+      console.error('[System Settings] Could not update main database:', updateError.message);
+    }
+
+    // Log success
+    await supabase
+      .from('registration_logs')
+      .insert({
+        organisation_id: organisationId,
+        restaurant_id: restaurantId,
+        action: 'system_settings_setup',
+        status: 'completed',
+        metadata: {
+          gstNumber: !!gstNumber,
+          googleOAuthClientId: !!googleOAuthClientId,
+          receiptLogo: !!receiptLogoPath,
+          webhookSecret: webhookSecret ? '***' + webhookSecret.slice(-4) : null
+        },
+        initiated_by: req.user?.email || 'system'
+      });
+
+    res.json({
+      success: true,
+      message: 'System settings configured successfully',
+      hasGst: !!gstNumber,
+      webhookConfigured: !!webhookSecret
+    });
+
+  } catch (error) {
+    console.error('[System Settings] Setup error:', error);
+
+    // tempFiles is declared in try block, so check if it exists
+    if (typeof tempFiles !== 'undefined' && tempFiles && tempFiles.length > 0) {
+      await cleanupTempFiles(tempFiles);
+    }
+
+    // Log the failure
+    const { supabase } = require('../services/database-service');
+
+    await supabase
+      .from('registration_logs')
+      .insert({
+        organisation_id: organisationId,
+        restaurant_id: restaurantId,
+        action: 'system_settings_setup',
+        status: 'failed',
+        error_message: error.message,
+        initiated_by: req.user?.email || 'system'
+      });
+
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Create API Key endpoint
+ * Creates an API key for the restaurant using user credentials
+ */
+router.post('/create-api-key', async (req, res) => {
+  const { restaurantId } = req.body;
+  const organisationId = req.user?.organisationId;
+
+  if (!restaurantId) {
+    return res.status(400).json({ success: false, error: 'Restaurant ID required' });
+  }
+
+  if (!organisationId) {
+    return res.status(401).json({
+      success: false,
+      error: 'Organisation context required'
+    });
+  }
+
+  try {
+    const { exec } = require('child_process');
+    const { promisify } = require('util');
+    const execAsync = promisify(exec);
+    const path = require('path');
+    const { supabase } = require('../services/database-service');
+
+    // Get restaurant details
+    const { data: restaurant, error: restaurantError } = await supabase
+      .from('restaurants')
+      .select('*')
+      .eq('id', restaurantId)
+      .eq('organisation_id', organisationId)
+      .single();
+
+    if (restaurantError || !restaurant) {
+      console.error('[API Key] Restaurant query error:', restaurantError);
+      throw new Error('Restaurant not found');
+    }
+
+    // Get user account through pumpd_restaurants relationship
+    const { data: pumpdRestaurant, error: pumpdRestError } = await supabase
+      .from('pumpd_restaurants')
+      .select('*, pumpd_accounts(email, user_password_hint)')
+      .eq('restaurant_id', restaurantId)
+      .eq('organisation_id', organisationId)
+      .single();
+
+    const account = pumpdRestaurant?.pumpd_accounts || null;
+
+    // Fallback to direct account lookup for backward compatibility
+    let finalAccount = account;
+    if (!finalAccount && !pumpdRestError) {
+      const { data: directAccount } = await supabase
+        .from('pumpd_accounts')
+        .select('email, user_password_hint')
+        .eq('restaurant_id', restaurantId)
+        .eq('organisation_id', organisationId)
+        .single();
+      finalAccount = directAccount;
+    }
+
+    if (!finalAccount || !finalAccount.user_password_hint) {
+      throw new Error('User account credentials not found. Please create a Pumpd account first.');
+    }
+
+    // Prepare script arguments
+    const scriptPath = path.resolve(__dirname, '../../../scripts/create-api-key-user.js');
+    const command = [
+      'node',
+      scriptPath,
+      `--email="${finalAccount.email}"`,
+      `--password="${finalAccount.user_password_hint}"`,
+      `--name="${restaurant.name.replace(/"/g, '\\"')}"`
+    ].join(' ');
+
+    console.log('[API Key] Creating API key for restaurant:', restaurant.name);
+
+    // Execute the script
+    const { stdout, stderr } = await execAsync(command, {
+      env: { ...process.env, DEBUG_MODE: 'false' },
+      timeout: 180000 // 3 minute timeout
+    });
+
+    // Extract API key from output if available
+    let apiKey = null;
+    let scriptResult = null;
+
+    // First try to parse JSON output
+    const resultMatch = stdout.match(/### SCRIPT_RESULT_START ###\s*(.*?)\s*### SCRIPT_RESULT_END ###/s);
+    if (resultMatch && resultMatch[1]) {
+      try {
+        scriptResult = JSON.parse(resultMatch[1]);
+        apiKey = scriptResult.apiKey;
+        console.log('[API Key] Extracted API key from JSON output');
+      } catch (parseError) {
+        console.error('[API Key] Failed to parse JSON output:', parseError);
+      }
+    }
+
+    // Fallback to regex matching if JSON parsing failed
+    if (!apiKey) {
+      const apiKeyMatch = stdout.match(/API Key:\s*([a-zA-Z0-9-]+)/);
+      if (apiKeyMatch) {
+        apiKey = apiKeyMatch[1];
+        console.log('[API Key] Extracted API key using regex fallback');
+      }
+    }
+
+    // Update onboarding database with API key
+    if (apiKey && finalAccount.email) {
+      try {
+        const onboardingService = require('../services/onboarding-service');
+
+        // Get onboarding record
+        const onboardingRecord = await onboardingService.getOnboardingIdByEmail(finalAccount.email);
+
+        if (onboardingRecord && onboardingRecord.onboarding_id) {
+          // Update with API key
+          await onboardingService.updateOnboardingRecord(onboardingRecord.onboarding_id, {
+            restaurant_api_key: apiKey
+          });
+
+          console.log('[API Key] ✓ Saved API key to onboarding database');
+        } else {
+          console.warn('[API Key] Could not find onboarding record for email:', finalAccount.email);
+        }
+      } catch (onboardingError) {
+        console.error('[API Key] Failed to update onboarding database:', onboardingError);
+        // Don't fail the whole request if onboarding update fails
+      }
+    }
+
+    // Update completion status in pumpd_restaurants
+    try {
+      const { data: existingRestaurant } = await supabase
+        .from('pumpd_restaurants')
+        .select('setup_completion')
+        .eq('restaurant_id', restaurantId)
+        .eq('organisation_id', organisationId)
+        .single();
+
+      const existingCompletion = existingRestaurant?.setup_completion || {};
+
+      await supabase
+        .from('pumpd_restaurants')
+        .update({
+          api_key_created_at: new Date().toISOString(),
+          setup_completion: {
+            ...existingCompletion,
+            api_key: true,
+            api_key_date: new Date().toISOString()
+          },
+          updated_at: new Date().toISOString()
+        })
+        .eq('restaurant_id', restaurantId)
+        .eq('organisation_id', organisationId);
+
+      console.log('[API Key] Updated completion status');
+    } catch (updateError) {
+      console.error('[API Key] Could not update completion status:', updateError.message);
+    }
+
+    // Log success
+    await supabase
+      .from('registration_logs')
+      .insert({
+        organisation_id: organisationId,
+        restaurant_id: restaurantId,
+        action: 'api_key_creation',
+        status: 'completed',
+        metadata: { hasApiKey: !!apiKey },
+        initiated_by: req.user?.email || 'system'
+      });
+
+    res.json({
+      success: true,
+      message: 'API key created successfully',
+      apiKey: apiKey
+    });
+
+  } catch (error) {
+    console.error('[API Key] Creation error:', error);
+
+    // Log the failure
+    const { supabase } = require('../services/database-service');
+
+    await supabase
+      .from('registration_logs')
+      .insert({
+        organisation_id: organisationId,
+        restaurant_id: restaurantId,
+        action: 'api_key_creation',
+        status: 'failed',
+        error_message: error.message,
+        initiated_by: req.user?.email || 'system'
+      });
+
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Configure Uber Integration endpoint
+ * Configures Uber OAuth and integration using user credentials
+ */
+router.post('/configure-uber-integration', async (req, res) => {
+  const { restaurantId } = req.body;
+  const organisationId = req.user?.organisationId;
+
+  if (!restaurantId) {
+    return res.status(400).json({ success: false, error: 'Restaurant ID required' });
+  }
+
+  if (!organisationId) {
+    return res.status(401).json({
+      success: false,
+      error: 'Organisation context required'
+    });
+  }
+
+  try {
+    const { exec } = require('child_process');
+    const { promisify } = require('util');
+    const execAsync = promisify(exec);
+    const path = require('path');
+    const onboardingService = require('../services/onboarding-service');
+    const { supabase } = require('../services/database-service');
+
+    // Get restaurant details
+    const { data: restaurant, error: restaurantError } = await supabase
+      .from('restaurants')
+      .select('*')
+      .eq('id', restaurantId)
+      .eq('organisation_id', organisationId)
+      .single();
+
+    if (restaurantError || !restaurant) {
+      console.error('[Uber Integration] Restaurant query error:', restaurantError);
+      throw new Error('Restaurant not found');
+    }
+
+    // Get user account through pumpd_restaurants relationship
+    const { data: pumpdRestaurant, error: pumpdRestError } = await supabase
+      .from('pumpd_restaurants')
+      .select('*, pumpd_accounts(email, user_password_hint)')
+      .eq('restaurant_id', restaurantId)
+      .eq('organisation_id', organisationId)
+      .single();
+
+    const account = pumpdRestaurant?.pumpd_accounts || null;
+
+    // Fallback to direct account lookup for backward compatibility
+    let finalAccount = account;
+    if (!finalAccount && !pumpdRestError) {
+      const { data: directAccount } = await supabase
+        .from('pumpd_accounts')
+        .select('email, user_password_hint')
+        .eq('restaurant_id', restaurantId)
+        .eq('organisation_id', organisationId)
+        .single();
+      finalAccount = directAccount;
+    }
+
+    if (!finalAccount || !finalAccount.user_password_hint) {
+      throw new Error('User account credentials not found. Please create a Pumpd account first.');
+    }
+
+    // Get onboarding data from onboarding database
+    let onboardingData = {};
+    try {
+      const onboardingRecord = await onboardingService.getOnboardingIdByEmail(finalAccount.email);
+      if (onboardingRecord) {
+        onboardingData = {
+          nzbn: onboardingRecord.nzbn || '',
+          companyName: onboardingRecord.company_name || '',
+          tradingName: onboardingRecord.trading_name || '',
+          directorName: onboardingRecord.director_name || '',
+          directorMobile: onboardingRecord.director_mobile_number || ''
+        };
+        console.log('[Uber Integration] Retrieved onboarding data:', {
+          hasNzbn: !!onboardingData.nzbn,
+          hasCompanyName: !!onboardingData.companyName,
+          hasTradingName: !!onboardingData.tradingName,
+          hasDirectorName: !!onboardingData.directorName,
+          hasDirectorMobile: !!onboardingData.directorMobile
+        });
+      }
+    } catch (error) {
+      console.error('[Uber Integration] Could not retrieve onboarding data:', error.message);
+    }
+
+    // Validate required onboarding data
+    if (!onboardingData.nzbn || !onboardingData.companyName || !onboardingData.tradingName ||
+        !onboardingData.directorName || !onboardingData.directorMobile) {
+      throw new Error('Missing required onboarding data. Please ensure all business details are provided.');
+    }
+
+    // Prepare script arguments
+    const scriptPath = path.resolve(__dirname, '../../../scripts/finalise-onboarding-user.js');
+    const command = [
+      'node',
+      scriptPath,
+      `--email="${finalAccount.email}"`,
+      `--password="${finalAccount.user_password_hint}"`,
+      `--nzbn="${onboardingData.nzbn}"`,
+      `--company-name="${onboardingData.companyName.replace(/"/g, '\\"')}"`,
+      `--trading-name="${onboardingData.tradingName.replace(/"/g, '\\"')}"`,
+      `--director-name="${onboardingData.directorName.replace(/"/g, '\\"')}"`,
+      `--director-mobile="${onboardingData.directorMobile}"`
+    ].join(' ');
+
+    console.log('[Uber Integration] Configuring Uber integration for restaurant:', restaurant.name);
+
+    // Execute the script
+    const { stdout, stderr } = await execAsync(command, {
+      env: { ...process.env, DEBUG_MODE: 'false' },
+      timeout: 300000 // 5 minute timeout for OAuth flow
+    });
+
+    // Update completion status in pumpd_restaurants
+    try {
+      const { data: existingRestaurant } = await supabase
+        .from('pumpd_restaurants')
+        .select('setup_completion')
+        .eq('restaurant_id', restaurantId)
+        .eq('organisation_id', organisationId)
+        .single();
+
+      const existingCompletion = existingRestaurant?.setup_completion || {};
+
+      await supabase
+        .from('pumpd_restaurants')
+        .update({
+          uber_integration_completed_at: new Date().toISOString(),
+          setup_completion: {
+            ...existingCompletion,
+            uber_integration: true,
+            uber_integration_date: new Date().toISOString()
+          },
+          updated_at: new Date().toISOString()
+        })
+        .eq('restaurant_id', restaurantId)
+        .eq('organisation_id', organisationId);
+
+      console.log('[Uber Integration] Updated completion status in pumpd_restaurants');
+    } catch (updateError) {
+      console.error('[Uber Integration] Could not update completion status:', updateError.message);
+    }
+
+    // Log success
+    await supabase
+      .from('registration_logs')
+      .insert({
+        organisation_id: organisationId,
+        restaurant_id: restaurantId,
+        action: 'uber_integration_setup',
+        status: 'completed',
+        metadata: {
+          hasNzbn: !!onboardingData.nzbn,
+          hasDirectorInfo: !!onboardingData.directorName
+        },
+        initiated_by: req.user?.email || 'system'
+      });
+
+    res.json({
+      success: true,
+      message: 'Uber integration configured successfully'
+    });
+
+  } catch (error) {
+    console.error('[Uber Integration] Configuration error:', error);
+
+    // Log the failure
+    const { supabase } = require('../services/database-service');
+
+    await supabase
+      .from('registration_logs')
+      .insert({
+        organisation_id: organisationId,
+        restaurant_id: restaurantId,
+        action: 'uber_integration_setup',
+        status: 'failed',
+        error_message: error.message,
+        initiated_by: req.user?.email || 'system'
+      });
+
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Get setup completion status for a restaurant
+ */
+router.get('/setup-status/:restaurantId', async (req, res) => {
+  const { restaurantId } = req.params;
+  const organisationId = req.user?.organisationId;
+
+  if (!organisationId) {
+    return res.status(401).json({
+      success: false,
+      error: 'Organisation context required'
+    });
+  }
+
+  try {
+    const { supabase } = require('../services/database-service');
+
+    // Get pumpd_restaurants record with setup completion status
+    const { data: pumpdRestaurant, error } = await supabase
+      .from('pumpd_restaurants')
+      .select(`
+        setup_completion,
+        system_settings_completed_at,
+        api_key_created_at,
+        uber_integration_completed_at,
+        webhook_secret
+      `)
+      .eq('restaurant_id', restaurantId)
+      .eq('organisation_id', organisationId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      throw error;
+    }
+
+    // If no record exists, nothing is completed
+    if (!pumpdRestaurant) {
+      return res.json({
+        success: true,
+        status: {
+          system_settings: false,
+          api_key: false,
+          uber_integration: false
+        }
+      });
+    }
+
+    // Return completion status
+    res.json({
+      success: true,
+      status: {
+        system_settings: pumpdRestaurant.setup_completion?.system_settings || !!pumpdRestaurant.system_settings_completed_at,
+        api_key: pumpdRestaurant.setup_completion?.api_key || !!pumpdRestaurant.api_key_created_at,
+        uber_integration: pumpdRestaurant.setup_completion?.uber_integration || !!pumpdRestaurant.uber_integration_completed_at,
+        webhook_configured: !!pumpdRestaurant.webhook_secret
+      },
+      completion_dates: {
+        system_settings: pumpdRestaurant.system_settings_completed_at,
+        api_key: pumpdRestaurant.api_key_created_at,
+        uber_integration: pumpdRestaurant.uber_integration_completed_at
+      }
+    });
+  } catch (error) {
+    console.error('[Setup Status] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 });

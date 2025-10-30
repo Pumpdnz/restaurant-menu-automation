@@ -74,13 +74,15 @@ const PLATFORM_CONFIG = {
     name: 'Me&u',
     type: 'ordering',
     extractionMethod: 'firecrawl-generic',
-    supported: true
+    supported: false,
+    blockedReason: 'Complex multi-menu structure requires special handling'
   },
   'gloriafood': {
     name: 'GloriaFood',
     type: 'ordering',
     extractionMethod: 'firecrawl-generic',
-    supported: true,
+    supported: false,
+    blockedReason: 'Menu requires dialog interaction that cannot be automated',
     note: 'Embedded in restaurant websites'
   },
   'sipocloudpos.com': {

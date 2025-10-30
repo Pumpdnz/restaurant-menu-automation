@@ -1,10 +1,11 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Toaster } from './components/ui/toaster';
 import { useOrganizationSync } from './hooks/useOrganizationSync';
+import api from './services/api';
 
 // Layout
 import LayoutNew from './components/layout/LayoutNew';
@@ -26,6 +27,9 @@ import Settings from './pages/Settings';
 // Super Admin Pages
 import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
 
+// Social Media Pages
+import SocialMediaDashboard from './pages/SocialMediaDashboard';
+
 // Auth Pages
 import { LoginPage } from './pages/Login';
 import { SignupPage } from './pages/Signup';
@@ -45,6 +49,75 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// ExtractionRedirect component to handle routing logic
+function ExtractionRedirect() {
+  const { jobId } = useParams();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [checking, setChecking] = useState(true);
+  const [error, setError] = useState(null);
+  
+  useEffect(() => {
+    checkExtractionStatus();
+  }, [jobId]);
+  
+  const checkExtractionStatus = async () => {
+    try {
+      // Always check the extraction status first, regardless of poll parameter
+      const response = await api.get(`/extractions/${jobId}`);
+      
+      if (response.data.success && response.data.job) {
+        const job = response.data.job;
+        
+        // If extraction has a menu_id, redirect to MenuDetail
+        if (job.menu_id || job.menuId) {
+          const menuId = job.menu_id || job.menuId;
+          console.log(`[ExtractionRedirect] Redirecting to menu: ${menuId}`);
+          navigate(`/menus/${menuId}`, { replace: true });
+          return;
+        }
+        
+        // If extraction is completed but no menu_id (legacy), show ExtractionDetail
+        if (job.status === 'completed' || job.state === 'completed') {
+          console.log('[ExtractionRedirect] Completed extraction without menu_id, showing ExtractionDetail');
+          setChecking(false);
+          return;
+        }
+        
+        // If extraction is still running, show ExtractionDetail for polling
+        if (job.status === 'running' || job.state === 'running' || job.status === 'pending') {
+          console.log('[ExtractionRedirect] Extraction still running, showing ExtractionDetail for polling');
+          setChecking(false);
+          return;
+        }
+      }
+      
+      // If we get here, show ExtractionDetail as fallback
+      setChecking(false);
+    } catch (err) {
+      console.error('[ExtractionRedirect] Error checking extraction status:', err);
+      // On error, show ExtractionDetail as fallback
+      setError(err.message);
+      setChecking(false);
+    }
+  };
+  
+  // While checking, show loading state
+  if (checking) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-blue mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Checking extraction status...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // If not redirected and check is complete, show ExtractionDetail
+  return <ExtractionDetail />;
+}
 
 // App content component that uses hooks
 function AppContent() {
@@ -76,14 +149,20 @@ function AppContent() {
           <Route path="restaurants/:id" element={<RestaurantDetail />} />
           <Route path="extractions" element={<Extractions />} />
           <Route path="extractions/new" element={<NewExtraction />} />
-          <Route path="extractions/:jobId" element={<ExtractionDetail />} />
+          <Route path="extractions/:jobId" element={<ExtractionRedirect />} />
           <Route path="menus" element={<Menus />} />
           <Route path="menus/merge" element={<MenuMerge />} />
           <Route path="menus/:id" element={<MenuDetail />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="history" element={<History />} />
           <Route path="settings" element={<Settings />} />
-          
+
+          {/* Social Media Routes */}
+          <Route path="social-media" element={<SocialMediaDashboard />} />
+          {/* Legacy redirects for backward compatibility */}
+          <Route path="social-media/videos" element={<Navigate to="/social-media?tab=videos" replace />} />
+          <Route path="social-media/generate" element={<Navigate to="/social-media?tab=videos" replace />} />
+
           {/* Admin Only Routes */}
           <Route 
             path="settings/organization" 

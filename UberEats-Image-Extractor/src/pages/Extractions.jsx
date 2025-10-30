@@ -304,13 +304,44 @@ export default function Extractions() {
                     if (!url) return 'Unknown';
                     try {
                       const hostname = new URL(url).hostname.toLowerCase();
+                      const pathname = new URL(url).pathname.toLowerCase();
+
+                      // Tier 1 platforms
                       if (hostname.includes('ubereats.com')) return 'UberEats';
                       if (hostname.includes('doordash.com')) return 'DoorDash';
-                      if (hostname.includes('delivereasy.co.nz')) return 'Delivereasy';
+
+                      // NZ platforms
+                      if (hostname.includes('delivereasy.co.nz')) return 'DeliverEasy';
                       if (hostname.includes('ordermeal.co.nz')) return 'OrderMeal';
                       if (hostname.includes('menulog.co.nz')) return 'Menulog';
                       if (hostname.includes('mobi2go.com')) return 'Mobi2Go';
                       if (hostname.includes('foodhub.co.nz')) return 'FoodHub';
+                      if (hostname.includes('nextorder.nz') || hostname.includes('nextorder.co.nz')) return 'NextOrder';
+                      if (hostname.includes('sipocloudpos.com')) return 'Sipo';
+                      if (hostname.includes('booknorder.co.nz')) return 'BookNOrder';
+                      if (hostname.includes('bopple.app')) return 'Bopple';
+                      if (hostname.includes('resdiary.com')) return 'ResDiary';
+                      if (hostname.includes('meandu.app')) return 'Me&u';
+
+                      // Check for GloriaFood embedded widget patterns
+                      if (pathname.includes('gloriafood') ||
+                          pathname.includes('online-ordering') ||
+                          hostname.includes('noi.co.nz') ||
+                          hostname.includes('luckythai.co.nz')) {
+                        return 'GloriaFood';
+                      }
+
+                      // Check for known FoodHub custom domains
+                      const foodhubDomains = ['konyakebabs.co.nz', 'larubythaionline.co.nz', 'fusionkebab.co.nz', 'lakepizza.co.nz'];
+                      if (foodhubDomains.some(domain => hostname.includes(domain))) {
+                        return 'FoodHub';
+                      }
+
+                      // Check for known Mobi2Go restaurant domains
+                      if (hostname.includes('scopa.co.nz') || hostname.includes('ljs.co.nz')) {
+                        return 'Mobi2Go';
+                      }
+
                       return 'Website';
                     } catch {
                       return 'Unknown';

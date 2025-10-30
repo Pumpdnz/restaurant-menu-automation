@@ -15,6 +15,7 @@ const optionSetsService = require('./option-sets-extraction-service');
 const optionSetsDeduplicationService = require('./option-sets-deduplication-service');
 const imageValidationService = require('./image-validation-service');
 const databaseService = require('./database-service');
+const rateLimiter = require('./rate-limiter-service');
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 
@@ -63,6 +64,9 @@ Common categories include: Starters, Mains, Desserts, Beverages, etc.
 Return ONLY the category names, nothing else.`;
     
     try {
+      // Wait for rate limiter approval
+      await rateLimiter.acquireSlot(`categories-${orgId}`);
+
       const response = await axios.post(
         `${this.firecrawlApiUrl}/v2/scrape`,
         {
@@ -74,13 +78,14 @@ Return ONLY the category names, nothing else.`;
           }],
           onlyMainContent: true,
           waitFor: 3000,
-          timeout: 60000
+          timeout: 90000  // Firecrawl timeout (increased by 50%)
         },
         {
           headers: {
             'Authorization': `Bearer ${this.firecrawlApiKey}`,
             'Content-Type': 'application/json'
-          }
+          },
+          timeout: 135000  // Axios timeout (increased by 50%)
         }
       );
       
@@ -161,8 +166,11 @@ To find the modal URL:
 - This is critical for extracting option sets later
 
 Focus ONLY on the "${categoryName}" category section.`;
-    
+
     try {
+      // Wait for rate limiter approval
+      await rateLimiter.acquireSlot(`category-items-${categoryName}-${orgId}`);
+
       const response = await axios.post(
         `${this.firecrawlApiUrl}/v2/scrape`,
         {
@@ -174,7 +182,7 @@ Focus ONLY on the "${categoryName}" category section.`;
           }],
           onlyMainContent: true,
           waitFor: 3000,
-          timeout: 90000,
+          timeout: 135000,  // Firecrawl timeout (increased by 50%)
           includeTags: ['main', 'article', 'section', 'div', 'a', 'h1', 'h2', 'h3', 'span', 'button'],
           excludeTags: ['header', 'footer', 'nav', 'aside', 'script', 'style', 'noscript']
         },
@@ -182,7 +190,8 @@ Focus ONLY on the "${categoryName}" category section.`;
           headers: {
             'Authorization': `Bearer ${this.firecrawlApiKey}`,
             'Content-Type': 'application/json'
-          }
+          },
+          timeout: 180000  // Axios timeout (increased by 50%)
         }
       );
       
@@ -462,9 +471,11 @@ Focus ONLY on the "${categoryName}" category section.`;
       let allItems = [];
       
       // Process categories with concurrency control
-      const concurrencyLimit = 2;
+      const concurrencyLimit = parseInt(process.env.FIRECRAWL_CONCURRENCY_LIMIT) || 2;
       const categoryResults = [];
-      
+      const processingQueue = [...categories];
+      const activePromises = new Map();
+
       // Helper function to process a single category
       const processCategory = async (category) => {
         try {
@@ -477,26 +488,37 @@ Focus ONLY on the "${categoryName}" category section.`;
           return { category, items: [], success: false, error: error.message };
         }
       };
-      
-      // Process categories in batches
-      for (let i = 0; i < categories.length; i += concurrencyLimit) {
-        const batch = categories.slice(i, i + concurrencyLimit);
-        const batchPromises = batch.map(category => processCategory(category));
-        
-        try {
-          const batchResults = await Promise.all(batchPromises);
-          categoryResults.push(...batchResults);
-          
-          // Collect successful items
-          for (const result of batchResults) {
+
+      // Process categories with Promise.race pattern for optimal slot utilization
+      while (processingQueue.length > 0 || activePromises.size > 0) {
+        // Start new processes up to the concurrency limit
+        while (processingQueue.length > 0 && activePromises.size < concurrencyLimit) {
+          const category = processingQueue.shift();
+          const promise = processCategory(category);
+          const categoryId = `${category}_${Date.now()}`;
+          activePromises.set(categoryId, promise);
+
+          // Handle promise completion
+          promise.then((result) => {
+            activePromises.delete(categoryId);
+            categoryResults.push(result);
+
+            // Collect successful items
             if (result.success) {
               allItems = allItems.concat(result.items);
             }
-          }
-          
-          console.log(`[${orgId}] Completed batch ${Math.floor(i/concurrencyLimit) + 1}/${Math.ceil(categories.length/concurrencyLimit)}, total items: ${allItems.length}`);
-        } catch (error) {
-          console.error(`[${orgId}] Error processing batch:`, error);
+
+            // Progress update
+            console.log(`[${orgId}] Category "${result.category}" complete: ${result.items?.length || 0} items (${categoryResults.length}/${categories.length} categories done)`);
+          }).catch((error) => {
+            activePromises.delete(categoryId);
+            console.error(`[${orgId}] Unexpected error in category processing:`, error);
+          });
+        }
+
+        // Wait for at least one to complete if we have active promises
+        if (activePromises.size > 0) {
+          await Promise.race(activePromises.values());
         }
       }
       
@@ -514,10 +536,10 @@ Focus ONLY on the "${categoryName}" category section.`;
         jobInfo.progress.phase = 'extracting_option_sets';
         console.log(`[${orgId}] Phase 4: Extracting option sets`);
         
+        // Concurrency limit now read from env in the option sets service
         const optionSetsResult = await optionSetsService.batchExtract(
           itemsWithCleanUrls,
-          orgId,
-          2  // Concurrency limit of 2 for Firecrawl API
+          orgId
         );
         
         itemsWithOptionSets = optionSetsResult.items;
@@ -658,6 +680,7 @@ Focus ONLY on the "${categoryName}" category section.`;
             // The savedMenu object contains { menu, categories, items }
             // We need the items array which has the saved menu items with their IDs
             const menuItems = savedMenu.items || [];
+            const savedCategories = savedMenu.categories || [];
             
             // Count items that actually have option sets
             const itemsWithActualOptionSets = itemsWithOptionSets.filter(item => 
@@ -695,13 +718,27 @@ Focus ONLY on the "${categoryName}" category section.`;
                   const junctionEntries = [];
                   const menuItemsToUpdate = [];
                   
+                  // Create a map to track which (menu_item_id, option_set_id) pairs we've already added
+                  const junctionEntryMap = new Map();
+
                   for (const processedItem of deduplicatedData.processedItems) {
-                    // Find the saved menu item by matching name
+                    // Find the saved menu item by matching name AND category for better accuracy
                     const itemName = processedItem.dishName || processedItem.name;
-                    const savedItem = menuItems.find(mi => mi.name === itemName);
-                    
+                    const categoryName = processedItem.categoryName || processedItem.category;
+
+                    // Try to match by both name and category first, then fall back to just name
+                    let savedItem = menuItems.find(mi =>
+                      mi.name === itemName &&
+                      savedCategories.find(cat => cat.id === mi.category_id)?.name === categoryName
+                    );
+
                     if (!savedItem) {
-                      console.log(`[${orgId}] WARNING: Could not find saved menu item for "${itemName}"`);
+                      // Fall back to matching by name only (first match)
+                      savedItem = menuItems.find(mi => mi.name === itemName);
+                    }
+
+                    if (!savedItem) {
+                      console.log(`[${orgId}] WARNING: Could not find saved menu item for "${itemName}" in category "${categoryName}"`);
                       continue;
                     }
                     
@@ -710,11 +747,20 @@ Focus ONLY on the "${categoryName}" category section.`;
                       for (const ref of processedItem.optionSetReferences) {
                         const realOptionSetId = tempIdToRealId.get(ref.masterSetId);
                         if (realOptionSetId) {
-                          junctionEntries.push({
-                            menu_item_id: savedItem.id,
-                            option_set_id: realOptionSetId,
-                            display_order: ref.displayOrder || 0
-                          });
+                          // Create a unique key for this junction entry
+                          const junctionKey = `${savedItem.id}_${realOptionSetId}`;
+
+                          // Only add if we haven't already added this combination
+                          if (!junctionEntryMap.has(junctionKey)) {
+                            junctionEntries.push({
+                              menu_item_id: savedItem.id,
+                              option_set_id: realOptionSetId,
+                              display_order: ref.displayOrder || 0
+                            });
+                            junctionEntryMap.set(junctionKey, true);
+                          } else {
+                            console.log(`[${orgId}] Skipping duplicate junction entry for item ${savedItem.name} and option set ${realOptionSetId}`);
+                          }
                         }
                       }
                       menuItemsToUpdate.push({ 
@@ -738,11 +784,21 @@ Focus ONLY on the "${categoryName}" category section.`;
                       for (let i = 0; i < savedUniqueSets.length; i++) {
                         const uniqueSet = savedUniqueSets[i];
                         const originalSet = processedItem.uniqueOptionSets[i];
-                        junctionEntries.push({
-                          menu_item_id: savedItem.id,
-                          option_set_id: uniqueSet.id,
-                          display_order: originalSet.displayOrder || i
-                        });
+
+                        // Create a unique key for this junction entry
+                        const junctionKey = `${savedItem.id}_${uniqueSet.id}`;
+
+                        // Only add if we haven't already added this combination
+                        if (!junctionEntryMap.has(junctionKey)) {
+                          junctionEntries.push({
+                            menu_item_id: savedItem.id,
+                            option_set_id: uniqueSet.id,
+                            display_order: originalSet.displayOrder || i
+                          });
+                          junctionEntryMap.set(junctionKey, true);
+                        } else {
+                          console.log(`[${orgId}] Skipping duplicate junction entry for item ${savedItem.name} and unique option set ${uniqueSet.id}`);
+                        }
                       }
                       
                       menuItemsToUpdate.push({ 

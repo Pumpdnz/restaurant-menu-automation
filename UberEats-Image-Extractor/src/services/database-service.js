@@ -852,10 +852,26 @@ async function bulkCreateJunctionEntries(junctionEntries, orgId) {
       created_at: new Date().toISOString()
     }));
     
-    // Batch insert junction entries
+    // Deduplicate entries before inserting to prevent constraint violations
+    const uniqueEntries = new Map();
+    entriesToInsert.forEach(entry => {
+      const key = `${entry.menu_item_id}_${entry.option_set_id}`;
+      if (!uniqueEntries.has(key)) {
+        uniqueEntries.set(key, entry);
+      } else {
+        console.log(`[Database] Filtering out duplicate junction entry for menu_item_id: ${entry.menu_item_id}, option_set_id: ${entry.option_set_id}`);
+      }
+    });
+
+    const dedupedEntries = Array.from(uniqueEntries.values());
+
+    // Batch insert junction entries with ON CONFLICT DO NOTHING
     const { data: savedEntries, error } = await client
       .from('menu_item_option_sets')
-      .insert(entriesToInsert)
+      .upsert(dedupedEntries, {
+        onConflict: 'menu_item_id,option_set_id',
+        ignoreDuplicates: true
+      })
       .select();
     
     if (error) {

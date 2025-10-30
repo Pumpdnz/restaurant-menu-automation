@@ -40,6 +40,9 @@ const db = require('./src/services/database-service');
 // Import UploadCare service for CDN uploads
 const UploadCareService = require('./src/services/uploadcare-service');
 
+// Import rate limiter for Firecrawl API
+const rateLimiter = require('./src/services/rate-limiter-service');
+
 // Import auth middleware
 const { authMiddleware } = require('./middleware/auth');
 
@@ -203,8 +206,8 @@ async function startBackgroundExtraction(jobId, url, categories, restaurantName 
     const categoryResults = [];
     const failedCategories = [];
 
-    // Process categories with concurrency limit of 2
-    const concurrencyLimit = 2;
+    // Process categories with configurable concurrency limit
+    const concurrencyLimit = parseInt(process.env.FIRECRAWL_CONCURRENCY_LIMIT) || 2;
     const processingQueue = [...categories];
     const activePromises = new Map();
 
@@ -279,14 +282,14 @@ async function startBackgroundExtraction(jobId, url, categories, restaurantName 
           onlyMainContent: true,
           waitFor: 3000,  // Increased from 2000 to 3000ms
           blockAds: true,
-          timeout: 180000,
+          timeout: 270000,  // Firecrawl timeout (increased by 50%)
           // maxAge removed to force fresh scraping
           skipTlsVerification: true,
           removeBase64Images: true
         };
-        
+
         const apiEndpoint = `${FIRECRAWL_API_URL}/v2/scrape`;
-        
+
         // COMPREHENSIVE DEBUG LOGGING - FULL SCHEMA AND PROMPT
         console.log(`[Job ${jobId}] ========== FIRECRAWL REQUEST FOR: ${category.name} ==========`);
         console.log(`[Job ${jobId}] FULL SCHEMA:`);
@@ -295,17 +298,21 @@ async function startBackgroundExtraction(jobId, url, categories, restaurantName 
         console.log(categoryPrompt);
         console.log(`[Job ${jobId}] REQUEST URL: ${apiEndpoint}`);
         console.log(`[Job ${jobId}] PAYLOAD SUMMARY: waitFor=${categoryPayload.waitFor}ms, timeout=${categoryPayload.timeout}ms, maxAge=${categoryPayload.maxAge}s`);
-        
+
         // Make request to Firecrawl API
         const axiosInstance = axios.create({
-          timeout: 240000,
+          timeout: 360000,  // Axios timeout (increased by 50%)
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${FIRECRAWL_API_KEY}`
           }
         });
-        
+
         console.log(`[Job ${jobId}] Sending request to Firecrawl...`);
+
+        // Wait for rate limiter approval
+        await rateLimiter.acquireSlot(`batch-category-${category.name}`);
+
         const requestStartTime = Date.now();
         const categoryResponse = await axiosInstance.post(apiEndpoint, categoryPayload);
         const requestTime = Date.now() - requestStartTime;
@@ -1002,7 +1009,7 @@ app.post('/api/scan-categories', async (req, res) => {
       onlyMainContent: true,
       waitFor: 3000, // Wait 3 seconds for page to load properly
       blockAds: true, // Block ads and cookie popups
-      timeout: 90000, // 1.5 minute timeout (category scan should be faster than full extraction)
+      timeout: 135000, // Firecrawl timeout (increased by 50%)
       // maxAge removed to force fresh scraping
       skipTlsVerification: true,
       removeBase64Images: true
@@ -1014,7 +1021,7 @@ app.post('/api/scan-categories', async (req, res) => {
     
     // Create axios instance
     const axiosInstance = axios.create({
-      timeout: 120000, // 2 minute timeout 
+      timeout: 180000, // Axios timeout (increased by 50%)
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${FIRECRAWL_API_KEY}`
@@ -1174,7 +1181,7 @@ app.post('/api/extract-images-for-category', async (req, res) => {
       onlyMainContent: true,
       waitFor: 2000,
       blockAds: true,
-      timeout: 120000,
+      timeout: 180000,  // Firecrawl timeout (increased by 50%)
       // maxAge removed to force fresh scraping
       skipTlsVerification: true,
       removeBase64Images: true
@@ -1203,10 +1210,10 @@ app.post('/api/extract-images-for-category', async (req, res) => {
           'Authorization': `Bearer ${FIRECRAWL_API_KEY}`,
           'Content-Type': 'application/json'
         },
-        timeout: 180000
+        timeout: 270000  // Axios timeout (increased by 50%)
       }
     );
-    
+
     // Log the response for debugging
     console.log('Firecrawl response received');
     
@@ -1406,27 +1413,31 @@ app.post('/api/batch-extract-categories', async (req, res) => {
           onlyMainContent: true,
           waitFor: 3000,  // Increased from 2000 to 3000ms
           blockAds: true,
-          timeout: 180000, // 3 minute timeout per category
+          timeout: 270000, // Firecrawl timeout (increased by 50%)
           // maxAge removed to force fresh scraping
           skipTlsVerification: true,
           removeBase64Images: true
         };
-        
+
         const apiEndpoint = `${FIRECRAWL_API_URL}/v2/scrape`;
-        
+
         console.log(`Category extraction payload for "${category.name}":`, JSON.stringify(categoryPayload, null, 2));
-        
+
         // Create axios instance
         const axiosInstance = axios.create({
-          timeout: 240000, // 4 minute timeout (longer than the scrape timeout)
+          timeout: 360000, // Axios timeout (increased by 50%)
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${FIRECRAWL_API_KEY}`
           }
         });
-        
+
         // Make request to Firecrawl API
         console.log(`[Job ${jobId}] Sending request to Firecrawl...`);
+
+        // Wait for rate limiter approval
+        await rateLimiter.acquireSlot(`batch-category-item-${category.name}`);
+
         const requestStartTime = Date.now();
         const categoryResponse = await axiosInstance.post(apiEndpoint, categoryPayload);
         const requestTime = Date.now() - requestStartTime;
@@ -1802,19 +1813,19 @@ app.post('/api/scan-menu-items', async (req, res) => {
       onlyMainContent: true,
       waitFor: 3000, // Wait 3 seconds for page to load properly
       blockAds: true, // Block ads and cookie popups
-      timeout: 120000, // 2 minute timeout
+      timeout: 180000, // Firecrawl timeout (increased by 50%)
       // maxAge removed to force fresh scraping
       skipTlsVerification: true,
       removeBase64Images: true
     };
-    
+
     const apiEndpoint = `${FIRECRAWL_API_URL}/v2/scrape`;
-    
+
     console.log('Menu items URL scan payload:', JSON.stringify(payload, null, 2));
-    
+
     // Create axios instance
     const axiosInstance = axios.create({
-      timeout: 180000, // 3 minute timeout 
+      timeout: 270000, // Axios timeout (increased by 50%)
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${FIRECRAWL_API_KEY}`
@@ -1964,19 +1975,19 @@ app.post('/api/batch-extract-option-sets', async (req, res) => {
           onlyMainContent: true,
           waitFor: 3000,  // Increased from 2000 to 3000ms
           blockAds: true,
-          timeout: 90000, // 1.5 minute timeout per item
+          timeout: 135000, // Firecrawl timeout (increased by 50%)
           // maxAge removed to force fresh scraping
           skipTlsVerification: true,
           removeBase64Images: true
         };
-        
+
         const apiEndpoint = `${FIRECRAWL_API_URL}/v2/scrape`;
-        
+
         console.log(`Option sets extraction payload for "${itemName}":`, JSON.stringify(optionSetsPayload, null, 2));
-        
+
         // Create axios instance
         const axiosInstance = axios.create({
-          timeout: 120000, // 2 minute timeout
+          timeout: 180000, // Axios timeout (increased by 50%)
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${FIRECRAWL_API_KEY}`
@@ -2998,7 +3009,7 @@ async function processSyncUpload(batchId, menuId, images, restaurantName) {
     await db.updateUploadBatch(batchId, {
       uploaded_count: results.successful.length,
       failed_count: results.failed.length,
-      status: results.failed.length === 0 ? 'completed' : 'partial',
+      status: results.successful.length === 0 ? 'failed' : 'completed',
       metadata: {
         completedAt: new Date().toISOString()
       }
@@ -3059,8 +3070,7 @@ async function processAsyncUpload(batchId, menuId, images, restaurantName) {
     await db.updateUploadBatch(batchId, {
       uploaded_count: results.successful.length,
       failed_count: results.failed.length,
-      status: results.failed.length === 0 ? 'completed' : 
-              results.successful.length === 0 ? 'failed' : 'partial',
+      status: results.successful.length === 0 ? 'failed' : 'completed',
       metadata: {
         completedAt: new Date().toISOString(),
         duration: results.completedAt - results.startedAt
@@ -3482,6 +3492,160 @@ app.get('/api/restaurants/:id/menus', authMiddleware, async (req, res) => {
     return res.status(500).json({
       success: false,
       error: error.message || 'Failed to get restaurant menus'
+    });
+  }
+});
+
+/**
+ * GET /api/restaurants/logos
+ * Get all restaurant logos for the authenticated user's organization
+ * Used by ReferenceImageSelector component for social media image generation
+ *
+ * Returns restaurants that have logo URLs
+ */
+app.get('/api/restaurants/logos', authMiddleware, async (req, res) => {
+  try {
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+
+    const organisationId = req.user?.organisationId || req.user?.organisation?.id;
+
+    if (!organisationId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Organization ID not found'
+      });
+    }
+
+    // Fetch restaurants with logos
+    const { data: restaurants, error } = await db.supabase
+      .from('restaurants')
+      .select('id, name, logo_url, brand_colors')
+      .eq('organisation_id', organisationId)
+      .not('logo_url', 'is', null)
+      .order('name', { ascending: true });
+
+    if (error) {
+      console.error('[API] Error fetching restaurant logos:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch restaurant logos'
+      });
+    }
+
+    // Format the response
+    const formattedLogos = restaurants.map(restaurant => ({
+      id: restaurant.id,
+      name: restaurant.name,
+      logo_url: restaurant.logo_url,
+      brand_colors: restaurant.brand_colors,
+      type: 'logo' // Identify this as a logo image
+    }));
+
+    return res.json({
+      success: true,
+      count: formattedLogos.length,
+      logos: formattedLogos
+    });
+  } catch (error) {
+    console.error('[API] Error in /api/restaurants/logos:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Internal server error'
+    });
+  }
+});
+
+/**
+ * GET /api/menus/images
+ * Get all menu item images for the authenticated user's organization
+ * Used by ImageSelector component for social media video generation
+ * IMPORTANT: This route must come BEFORE /api/menus/:id to avoid route conflicts
+ *
+ * Query params:
+ * - restaurantId (optional): Filter images by restaurant
+ */
+app.get('/api/menus/images', authMiddleware, async (req, res) => {
+  try {
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+
+    const organisationId = req.user?.organisationId || req.user?.organisation?.id;
+    const { restaurantId } = req.query;
+
+    if (!organisationId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Organization ID not found'
+      });
+    }
+
+    // Build query with optional restaurant filter
+    let query = db.supabase
+      .from('item_images')
+      .select(`
+        id,
+        url,
+        cdn_url,
+        menu_item_id,
+        menu_items!inner (
+          name,
+          id,
+          menu_id,
+          menus!inner (
+            id,
+            restaurant_id
+          )
+        )
+      `)
+      .eq('organisation_id', organisationId);
+
+    // Add restaurant filter if provided
+    if (restaurantId) {
+      query = query.eq('menu_items.menus.restaurant_id', restaurantId);
+    }
+
+    const { data: images, error } = await query
+      .order('created_at', { ascending: false })
+      .limit(500); // Limit to prevent excessive data transfer
+
+    if (error) {
+      console.error('[API] Error fetching menu images:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch menu images'
+      });
+    }
+
+    // Transform the data to match ImageSelector expectations
+    const formattedImages = images.map(img => ({
+      id: img.id,
+      url: img.url,
+      cdn_url: img.cdn_url,
+      item_name: img.menu_items?.name || 'Unknown Item',
+      menu_item_id: img.menu_item_id,
+      restaurant_id: img.menu_items?.menus?.restaurant_id
+    }));
+
+    return res.json({
+      success: true,
+      count: formattedImages.length,
+      images: formattedImages,
+      restaurantId: restaurantId || null
+    });
+  } catch (error) {
+    console.error('[API] Error in /api/menus/images:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Internal server error'
     });
   }
 });
@@ -4284,19 +4448,23 @@ app.post('/api/extractions/start', async (req, res) => {
           }],
           onlyMainContent: true,
           waitFor: 3000,  // Increased from 2000 to 3000ms
-          timeout: 90000,
+          timeout: 135000,  // Firecrawl timeout (increased by 50%)
           maxAge: parseInt(process.env.FIRECRAWL_CACHE_MAX_AGE || '172800')
         };
-        
+
         console.log(`[Job ${jobId}] Scanning for categories...`);
         console.log(`[Job ${jobId}] DEBUG - Category Detection Prompt:`, categoryPrompt.substring(0, 200) + '...');
         console.log(`[Job ${jobId}] DEBUG - Category Detection Schema:`, JSON.stringify(CATEGORY_DETECTION_SCHEMA, null, 2));
+
+        // Wait for rate limiter approval
+        await rateLimiter.acquireSlot(`category-scan-${jobId}`);
+
         const scanResponse = await axios.post(`${FIRECRAWL_API_URL}/v2/scrape`, scanPayload, {
           headers: {
             'Authorization': `Bearer ${FIRECRAWL_API_KEY}`,
             'Content-Type': 'application/json'
           },
-          timeout: 95000
+          timeout: 202500  // Axios timeout (increased by 50%)
         });
         
         // Extract categories from the response - check multiple possible locations
@@ -4705,25 +4873,25 @@ app.delete('/api/menus/:id', async (req, res) => {
 app.get('/api/menus', authMiddleware, async (req, res) => {
   try {
     const { restaurant } = req.query;
-    
+
     if (!db.isDatabaseAvailable()) {
       return res.status(503).json({
         success: false,
         error: 'Database service unavailable'
       });
     }
-    
+
     // If restaurant filter is provided, get menus for that restaurant
     if (restaurant) {
       const menus = await db.getRestaurantMenus(restaurant);
       const restaurantData = await db.getRestaurantById(restaurant);
-      
+
       // Add restaurant data to each menu since getRestaurantMenus doesn't include it
       const menusWithRestaurant = menus.map(menu => ({
         ...menu,
         restaurants: restaurantData
       }));
-      
+
       return res.json({
         success: true,
         restaurant: restaurantData,
@@ -4731,10 +4899,10 @@ app.get('/api/menus', authMiddleware, async (req, res) => {
         menus: menusWithRestaurant
       });
     }
-    
+
     // Otherwise, get all menus with restaurant data
     const allMenus = await db.getAllMenus();
-    
+
     return res.json({
       success: true,
       count: allMenus.length,
@@ -6705,16 +6873,18 @@ app.post('/api/website-extraction/logo-candidates', async (req, res) => {
  */
 app.post('/api/website-extraction/process-selected-logo', async (req, res) => {
   try {
-    const { logoUrl, websiteUrl, restaurantId, additionalImages = [] } = req.body;
-    
+    const { logoUrl, websiteUrl, restaurantId, additionalImages = [], versionsToUpdate = [], colorsToUpdate = [] } = req.body;
+
     if (!logoUrl) {
       return res.status(400).json({
         success: false,
         error: 'Logo URL is required'
       });
     }
-    
+
     console.log('[API] Processing selected logo:', logoUrl);
+    console.log('[API] Versions to update:', versionsToUpdate);
+    console.log('[API] Colors to update:', colorsToUpdate);
     console.log('[API] Additional images to save:', additionalImages.length);
     
     // Import logo service locally
@@ -6764,23 +6934,66 @@ app.post('/api/website-extraction/process-selected-logo', async (req, res) => {
     
     // Update restaurant if ID provided
     if (restaurantId && db.isDatabaseAvailable()) {
-      const updateData = {
-        logo_url: logoVersions?.original,
-        logo_nobg_url: logoVersions?.nobg,
-        logo_standard_url: logoVersions?.standard,
-        logo_thermal_url: logoVersions?.thermal,
-        logo_thermal_alt_url: logoVersions?.thermal_alt,
-        logo_thermal_contrast_url: logoVersions?.thermal_contrast,
-        logo_thermal_adaptive_url: logoVersions?.thermal_adaptive,
-        logo_favicon_url: logoVersions?.favicon,
-        primary_color: colors?.primaryColor,
-        secondary_color: colors?.secondaryColor,
-        tertiary_color: colors?.tertiaryColor,
-        accent_color: colors?.accentColor,
-        background_color: colors?.backgroundColor,
-        theme: colors?.theme,
-        brand_colors: colors?.brandColors || []
+      // Map database column names to logoVersions keys
+      const logoVersionMapping = {
+        'logo_url': 'original',
+        'logo_nobg_url': 'nobg',
+        'logo_standard_url': 'standard',
+        'logo_thermal_url': 'thermal',
+        'logo_thermal_alt_url': 'thermal_alt',
+        'logo_thermal_contrast_url': 'thermal_contrast',
+        'logo_thermal_adaptive_url': 'thermal_adaptive',
+        'logo_favicon_url': 'favicon'
       };
+
+      // Build updateData - only include selected logo versions
+      const updateData = {};
+
+      // Add only selected logo versions
+      if (versionsToUpdate.length > 0) {
+        // Only update specific versions selected by user
+        versionsToUpdate.forEach(versionKey => {
+          if (logoVersionMapping[versionKey] && logoVersions?.[logoVersionMapping[versionKey]]) {
+            updateData[versionKey] = logoVersions[logoVersionMapping[versionKey]];
+          }
+        });
+      } else {
+        // If no specific versions selected, update all (backward compatibility)
+        updateData.logo_url = logoVersions?.original;
+        updateData.logo_nobg_url = logoVersions?.nobg;
+        updateData.logo_standard_url = logoVersions?.standard;
+        updateData.logo_thermal_url = logoVersions?.thermal;
+        updateData.logo_thermal_alt_url = logoVersions?.thermal_alt;
+        updateData.logo_thermal_contrast_url = logoVersions?.thermal_contrast;
+        updateData.logo_thermal_adaptive_url = logoVersions?.thermal_adaptive;
+        updateData.logo_favicon_url = logoVersions?.favicon;
+      }
+
+      // Update colors based on selection
+      const shouldUpdateColor = (colorKey) => colorsToUpdate.length === 0 || colorsToUpdate.includes(colorKey);
+
+      if (shouldUpdateColor('primary_color') && colors?.primaryColor) {
+        updateData.primary_color = colors.primaryColor;
+      }
+      if (shouldUpdateColor('secondary_color') && colors?.secondaryColor) {
+        updateData.secondary_color = colors.secondaryColor;
+      }
+      if (shouldUpdateColor('tertiary_color') && colors?.tertiaryColor) {
+        updateData.tertiary_color = colors.tertiaryColor;
+      }
+      if (shouldUpdateColor('accent_color') && colors?.accentColor) {
+        updateData.accent_color = colors.accentColor;
+      }
+      if (shouldUpdateColor('background_color') && colors?.backgroundColor) {
+        updateData.background_color = colors.backgroundColor;
+      }
+      if (shouldUpdateColor('theme') && colors?.theme) {
+        updateData.theme = colors.theme;
+      }
+      // Always include brand_colors array if any color is being updated
+      if (colorsToUpdate.length === 0 || colorsToUpdate.length > 0) {
+        updateData.brand_colors = colors?.brandColors || [];
+      }
       
       // Add saved images if any
       if (savedImages.length > 0) {
@@ -6788,7 +7001,8 @@ app.post('/api/website-extraction/process-selected-logo', async (req, res) => {
       }
       
       await db.updateRestaurantWorkflow(restaurantId, updateData);
-      console.log('[API] Updated restaurant with selected logo, colors, and', savedImages.length, 'additional images');
+      const updatedVersionsCount = Object.keys(updateData).filter(key => key.startsWith('logo_')).length;
+      console.log('[API] Updated restaurant:', updatedVersionsCount, 'logo versions, colors, and', savedImages.length, 'additional images');
     }
     
     return res.json({
@@ -7314,6 +7528,13 @@ app.get('/api/exports/history', async (req, res) => {
 // Import and use registration routes (with auth middleware)
 const registrationRoutes = require('./src/routes/registration-routes');
 app.use('/api/registration', authMiddleware, registrationRoutes);
+
+/**
+ * === SOCIAL MEDIA VIDEO GENERATION ROUTES ===
+ */
+// Import and use social media routes (with auth middleware)
+const socialMediaRoutes = require('./src/routes/social-media-routes');
+app.use('/api/social-media', authMiddleware, socialMediaRoutes);
 
 /**
  * Serve static files and handle SPA routes
@@ -8151,7 +8372,7 @@ app.get('/api/super-admin/users/:userId', superAdminMiddleware, async (req, res)
 /**
  * Start the server
  */
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`\n[Server] UberEats Image Extractor API`);
   console.log(`[Server] Running on port ${PORT}`);
   console.log(`[Server] Firecrawl API Version: v2`);
@@ -8309,3 +8530,12 @@ app.listen(PORT, () => {
     console.log(`\n✅ Firecrawl API configured and ready`);
   }
 });
+
+// Configure server timeouts to handle long-running Firecrawl requests
+// Set to 9 minutes (540000ms) to exceed the longest axios timeout (360000ms)
+server.keepAliveTimeout = 540000; // 9 minutes (increased by 50%)
+server.headersTimeout = 545000; // Slightly longer than keepAliveTimeout to prevent race conditions
+
+console.log(`[Server] Timeout Configuration:`);
+console.log(`[Server]   - Keep-Alive Timeout: ${server.keepAliveTimeout / 1000}s`);
+console.log(`[Server]   - Headers Timeout: ${server.headersTimeout / 1000}s`);

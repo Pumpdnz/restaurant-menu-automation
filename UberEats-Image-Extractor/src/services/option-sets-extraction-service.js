@@ -1,11 +1,12 @@
 /**
  * Option Sets Extraction Service for UberEats Menu Items
- * 
+ *
  * Extracts customization options (option sets) from clean item URLs
  * Based on the successful testing documented in extraction_debug_log.md
  */
 
 const axios = require('axios');
+const rateLimiter = require('./rate-limiter-service');
 
 class OptionSetsExtractionService {
   constructor() {
@@ -163,7 +164,7 @@ Also identify what type of page this is (item detail, main menu, error page, etc
         onlyMainContent: true,
         waitFor: 3000,
         blockAds: true,
-        timeout: 60000,
+        timeout: 90000,  // Firecrawl timeout (increased by 50%)
         skipTlsVerification: true,
         actions: [
           // Wait for page to load
@@ -182,7 +183,10 @@ Also identify what type of page this is (item detail, main menu, error page, etc
           }
         ]
       };
-      
+
+      // Wait for rate limiter approval
+      await rateLimiter.acquireSlot(`option-sets-${itemName}-${orgId}`);
+
       const response = await axios.post(
         `${this.firecrawlApiUrl}/v2/scrape`,
         payload,
@@ -191,7 +195,7 @@ Also identify what type of page this is (item detail, main menu, error page, etc
             'Authorization': `Bearer ${this.firecrawlApiKey}`,
             'Content-Type': 'application/json'
           },
-          timeout: 90000
+          timeout: 135000  // Axios timeout (increased by 50%)
         }
       );
       
@@ -247,12 +251,15 @@ Also identify what type of page this is (item detail, main menu, error page, etc
    * Extract option sets from multiple clean URLs with concurrency control
    * @param {Array} items - Array of items with cleanUrl property
    * @param {string} orgId - Organization ID
-   * @param {number} concurrencyLimit - Max concurrent requests (default 2)
+   * @param {number} concurrencyLimit - Max concurrent requests (optional, reads from env)
    * @returns {object} Batch extraction results
    */
-  async batchExtract(items, orgId, concurrencyLimit = 2) {
+  async batchExtract(items, orgId, concurrencyLimit = null) {
+    // Use env variable with fallback to parameter or default
+    const limit = concurrencyLimit || parseInt(process.env.FIRECRAWL_CONCURRENCY_LIMIT) || 2;
+
     console.log(`[${orgId}] Starting batch option sets extraction for ${items.length} items`);
-    console.log(`[${orgId}] Concurrency limit: ${concurrencyLimit}`);
+    console.log(`[${orgId}] Concurrency limit: ${limit}`);
     
     const results = [];
     const resultMap = new Map(); // To maintain order
@@ -346,7 +353,7 @@ Also identify what type of page this is (item detail, main menu, error page, etc
     // Process queue with concurrency control
     while (processingQueue.length > 0 || activePromises.size > 0) {
       // Start new processes up to the concurrency limit
-      while (processingQueue.length > 0 && activePromises.size < concurrencyLimit) {
+      while (processingQueue.length > 0 && activePromises.size < limit) {
         const itemData = processingQueue.shift();
         const promise = processItem(itemData);
         const promiseId = `item_${itemData.index}`;
