@@ -7,15 +7,16 @@
  * with restaurant-specific colors and presets, then extracts the code injections
  * 
  * Usage:
- *   node ordering-page-customization.js --email="email@example.com" --password="password" --primary="#XXXXXX" --secondary="#XXXXXX" --name="Restaurant Name" [--lightmode]
- * 
+ *   node ordering-page-customization.js --email="email@example.com" --password="password" --primary="#XXXXXX" --secondary="#XXXXXX" --name="Restaurant Name" [--lightmode] [--keep-browser-open]
+ *
  * Arguments:
- *   --email       Login email (optional, uses default if not provided)
- *   --password    Login password (optional, uses default if not provided)
- *   --primary     Primary color hex code
- *   --secondary   Secondary color hex code
- *   --name        Restaurant name
- *   --lightmode   Enable light mode (optional, dark mode by default)
+ *   --email              Login email (optional, uses default if not provided)
+ *   --password           Login password (optional, uses default if not provided)
+ *   --primary            Primary color hex code
+ *   --secondary          Secondary color hex code
+ *   --name               Restaurant name
+ *   --lightmode          Enable light mode (optional, dark mode by default)
+ *   --keep-browser-open  Keep browser open after completion for manual adjustments
  */
 
 import { createRequire } from 'module';
@@ -44,6 +45,7 @@ const primaryColor = getArg('primary') || '#E6B800'; // Default to Noi's golden 
 const secondaryColor = getArg('secondary') || '#F2D966'; // Default to Noi's light golden
 const restaurantName = getArg('name') || 'Noi';
 const lightMode = args.includes('--lightmode');
+const keepBrowserOpen = args.includes('--keep-browser-open');
 
 // Login credentials
 const LOGIN_EMAIL = email;
@@ -407,7 +409,23 @@ async function customizeOrderingPage() {
     const configPath = path.join(outputDir, 'configuration.json');
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
     console.log(`  ✓ Configuration saved to: ${configPath}\n`);
-    
+
+    // Write completion file to signal successful generation
+    const completion = {
+      success: true,
+      timestamp: new Date().toISOString(),
+      restaurant: restaurantName,
+      filesGenerated: {
+        headInjection: path.join(outputDir, 'head-injection.html'),
+        bodyInjection: path.join(outputDir, 'body-injection.html'),
+        configuration: configPath
+      }
+    };
+
+    const completionPath = path.join(outputDir, 'completion.json');
+    fs.writeFileSync(completionPath, JSON.stringify(completion, null, 2));
+    console.log(`  ✓ Completion marker saved to: ${completionPath}\n`);
+
     console.log('✅ Ordering Page Customization Complete!');
     console.log(`📁 All files saved to: ${outputDir}`);
     
@@ -420,10 +438,17 @@ async function customizeOrderingPage() {
     console.log(`📸 Error screenshot saved to: ${screenshotPath}`);
     
   } finally {
-    // Keep browser open for manual inspection if needed
-    console.log('\n⏸️  Browser will remain open for 10 seconds for inspection...');
-    await page.waitForTimeout(10000);
-    await browser.close();
+    if (keepBrowserOpen) {
+      console.log('\n⏸️  Browser kept open for manual configuration...');
+      console.log('💡 Close the browser window manually when done, or press Ctrl+C to exit.');
+      // Keep process alive but don't wait indefinitely
+      await new Promise(() => {}); // Infinite promise - process stays alive
+    } else {
+      // Keep browser open for manual inspection if needed
+      console.log('\n⏸️  Browser will remain open for 10 seconds for inspection...');
+      await page.waitForTimeout(10000);
+      await browser.close();
+    }
   }
 }
 
