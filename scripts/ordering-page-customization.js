@@ -99,17 +99,14 @@ async function customizeOrderingPage() {
     
     // Step 5: Click "Ordering Page" in navigation
     console.log('📋 Step 5: Navigating to Ordering Page...');
-    const orderingPageSelector = '#root > div.group\\/sidebar-wrapper.flex.min-h-svh.w-full.has-\\[\\[data-variant\\=inset\\]\\]\\:bg-sidebar > div > div > div.duration-200.fixed.inset-y-0.z-10.hidden.h-svh.w-\\[--sidebar-width\\].transition-\\[left\\,right\\,width\\].ease-linear.md\\:flex.left-0.group-data-\\[collapsible\\=offcanvas\\]\\:left-\\[calc\\(var\\(--sidebar-width\\)\\*-1\\)\\].group-data-\\[collapsible\\=icon\\]\\:w-\\[--sidebar-width-icon\\].group-data-\\[side\\=left\\]\\:border-r.group-data-\\[side\\=right\\]\\:border-l.overflow-visible > div > div.flex.min-h-0.flex-1.flex-col.gap-2.overflow-auto.group-data-\\[collapsible\\=icon\\]\\:overflow-hidden > nav > button:nth-child(5)';
-    
+    const orderingPageSelector = page.locator('nav button:has-text("Ordering Page")').first();
+    await orderingPageSelector.click();
+    console.log('  ✓ Clicked Ordering Page button');
     try {
-      await page.click(orderingPageSelector, { timeout: 5000 });
+      await orderingPageSelector.click();
+      console.log('  ✓ Clicked Ordering Page button');
     } catch {
-      // Fallback: try simpler selectors
-      try {
-        await page.click('button:has-text("Ordering Page")');
-      } catch {
-        await page.click('nav button:nth-child(5)');
-      }
+      throw new Error('Could not find Ordering Page button');
     }
     await page.waitForTimeout(3000);
     console.log('  ✓ Ordering Page loaded\n');
