@@ -20,7 +20,7 @@ interface FeatureFlag {
   ratePerItem: number;
 }
 
-interface FeatureFlags {
+type FeatureFlags = Record<string, FeatureFlag> & {
   standardExtraction: FeatureFlag;
   premiumExtraction: FeatureFlag;
   logoExtraction: FeatureFlag;
@@ -31,7 +31,7 @@ interface FeatureFlags {
   csvWithImagesDownload: FeatureFlag;
   imageUploadToCDN: FeatureFlag;
   imageZipDownload: FeatureFlag;
-}
+};
 
 const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   standardExtraction: { enabled: true, ratePerItem: 0.10 },
@@ -283,7 +283,7 @@ export function OrganizationCreateModal({ open, onClose, onSuccess }: Organizati
             <h3 className="text-sm font-medium text-gray-700">Feature Configuration</h3>
             <FeatureFlagsEditor
               featureFlags={featureFlags}
-              onChange={setFeatureFlags}
+              onChange={(flags) => setFeatureFlags(flags as FeatureFlags)}
               disabled={loading}
             />
           </div>

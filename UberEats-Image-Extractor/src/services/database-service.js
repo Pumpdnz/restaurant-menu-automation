@@ -1240,10 +1240,10 @@ async function getAllRestaurants() {
  */
 async function getAllRestaurantsList() {
   if (!isDatabaseAvailable()) return [];
-  
+
   const orgId = getCurrentOrganizationId();
   console.log(`[Database] getAllRestaurantsList called with org ID: ${orgId}`);
-  
+
   try {
     const client = getSupabaseClient();
     const { data, error } = await client
@@ -1252,12 +1252,27 @@ async function getAllRestaurantsList() {
         id,
         name,
         address,
+        city,
+        cuisine,
         contact_name,
         contact_phone,
         contact_email,
         created_at,
         email,
         phone,
+        subdomain,
+        organisation_name,
+        lead_type,
+        lead_category,
+        lead_engagement_source,
+        lead_warmth,
+        lead_stage,
+        lead_status,
+        icp_rating,
+        last_contacted,
+        demo_store_built,
+        demo_store_url,
+        assigned_sales_rep,
         restaurant_platforms (
           url,
           last_scraped_at,
@@ -1266,7 +1281,7 @@ async function getAllRestaurantsList() {
       `)
       .eq('organisation_id', orgId)
       .order('name');
-    
+
     if (error) throw error;
     console.log(`[Database] Found ${data?.length || 0} restaurants for org ${orgId} (lightweight)`);
     return data;
@@ -1562,48 +1577,93 @@ async function toggleMenuStatus(menuId, isActive) {
  */
 async function deleteMenu(menuId) {
   if (!isDatabaseAvailable()) return false;
-  
+
   try {
-    // First, get all menu_items for this menu to delete associated images
+    // Delete upload_batches associated with this menu first
+    const { error: batchesError } = await getSupabaseClient()
+      .from('upload_batches')
+      .delete()
+      .eq('menu_id', menuId);
+
+    if (batchesError) {
+      console.error('[Database] Error deleting upload batches:', batchesError);
+      // Continue with deletion even if batches fail
+    }
+
+    // Get all menu_items for this menu to delete associated data
     const { data: menuItems, error: itemsError } = await getSupabaseClient()
       .from('menu_items')
       .select('id')
       .eq('menu_id', menuId);
-    
+
     if (itemsError) throw itemsError;
-    
-    // Delete associated item_images if there are menu items
+
+    // Delete associated data if there are menu items
     if (menuItems && menuItems.length > 0) {
       const itemIds = menuItems.map(item => item.id);
-      
+
+      // Delete menu_item_option_sets
+      const { error: optionSetsError } = await getSupabaseClient()
+        .from('menu_item_option_sets')
+        .delete()
+        .in('menu_item_id', itemIds);
+
+      if (optionSetsError) {
+        console.error('[Database] Error deleting menu item option sets:', optionSetsError);
+        // Continue with deletion
+      }
+
+      // Delete price_history
+      const { error: priceHistoryError } = await getSupabaseClient()
+        .from('price_history')
+        .delete()
+        .in('menu_item_id', itemIds);
+
+      if (priceHistoryError) {
+        console.error('[Database] Error deleting price history:', priceHistoryError);
+        // Continue with deletion
+      }
+
+      // Delete item_images
       const { error: imagesError } = await getSupabaseClient()
         .from('item_images')
         .delete()
         .in('menu_item_id', itemIds);
-      
+
       if (imagesError) {
         console.error('[Database] Error deleting item images:', imagesError);
-        // Continue with deletion even if images fail
+        // Continue with deletion
       }
     }
-    
+
     // Delete all menu_items for this menu
     const { error: deleteItemsError } = await getSupabaseClient()
       .from('menu_items')
       .delete()
       .eq('menu_id', menuId);
-    
+
     if (deleteItemsError) throw deleteItemsError;
-    
+
+    // Delete categories for this menu
+    const { error: categoriesError } = await getSupabaseClient()
+      .from('categories')
+      .delete()
+      .eq('menu_id', menuId);
+
+    if (categoriesError) {
+      console.error('[Database] Error deleting categories:', categoriesError);
+      // Continue with deletion
+    }
+
     // Finally, delete the menu itself
     const { data, error: deleteMenuError } = await getSupabaseClient()
       .from('menus')
       .delete()
       .eq('id', menuId)
       .select();
-    
+
     if (deleteMenuError) throw deleteMenuError;
-    
+
     // Return true if a menu was deleted
     return data && data.length > 0;
   } catch (error) {
@@ -1853,11 +1913,11 @@ async function deleteExtraction(jobId) {
       }
     }
     
-    // Delete extraction logs associated with this job
+    // Delete extraction logs associated with this job (using UUID)
     const { error: logsError } = await getSupabaseClient()
       .from('extraction_logs')
       .delete()
-      .eq('job_id', jobId);
+      .eq('extraction_job_id', extractionUuid);
     
     if (logsError) {
       console.error('[Database] Error deleting extraction logs:', logsError);
@@ -2014,46 +2074,112 @@ async function updateRestaurant(restaurantId, updates) {
  */
 async function deleteRestaurant(restaurantId) {
   if (!isDatabaseAvailable()) return false;
-  
+
   try {
-    // First, find all extraction jobs for this restaurant
+    // Delete tasks associated with this restaurant
+    const { error: tasksError } = await getSupabaseClient()
+      .from('tasks')
+      .delete()
+      .eq('restaurant_id', restaurantId);
+
+    if (tasksError) {
+      console.error('[Database] Error deleting tasks:', tasksError);
+      // Continue with deletion
+    }
+
+    // Delete registration_logs associated with this restaurant
+    const { error: logsError } = await getSupabaseClient()
+      .from('registration_logs')
+      .delete()
+      .eq('restaurant_id', restaurantId);
+
+    if (logsError) {
+      console.error('[Database] Error deleting registration logs:', logsError);
+      // Continue with deletion
+    }
+
+    // Delete pumpd_restaurants associated with this restaurant
+    const { error: pumpdRestError } = await getSupabaseClient()
+      .from('pumpd_restaurants')
+      .delete()
+      .eq('restaurant_id', restaurantId);
+
+    if (pumpdRestError) {
+      console.error('[Database] Error deleting pumpd restaurants:', pumpdRestError);
+      // Continue with deletion
+    }
+
+    // Delete pumpd_accounts associated with this restaurant
+    const { error: pumpdAccError } = await getSupabaseClient()
+      .from('pumpd_accounts')
+      .delete()
+      .eq('restaurant_id', restaurantId);
+
+    if (pumpdAccError) {
+      console.error('[Database] Error deleting pumpd accounts:', pumpdAccError);
+      // Continue with deletion
+    }
+
+    // Delete restaurant_platforms associated with this restaurant
+    const { error: platformsError } = await getSupabaseClient()
+      .from('restaurant_platforms')
+      .delete()
+      .eq('restaurant_id', restaurantId);
+
+    if (platformsError) {
+      console.error('[Database] Error deleting restaurant platforms:', platformsError);
+      // Continue with deletion
+    }
+
+    // Delete merge_operations associated with this restaurant
+    const { error: mergeOpsError } = await getSupabaseClient()
+      .from('merge_operations')
+      .delete()
+      .eq('restaurant_id', restaurantId);
+
+    if (mergeOpsError) {
+      console.error('[Database] Error deleting merge operations:', mergeOpsError);
+      // Continue with deletion
+    }
+
+    // Find all extraction jobs for this restaurant
     const { data: extractions, error: extractionError } = await getSupabaseClient()
       .from('extraction_jobs')
       .select('job_id')
       .eq('restaurant_id', restaurantId);
-    
+
     if (extractionError) throw extractionError;
-    
+
     // Delete all associated extractions (which will cascade delete menus, menu_items, and item_images)
     if (extractions && extractions.length > 0) {
       for (const extraction of extractions) {
         await deleteExtraction(extraction.job_id);
       }
     }
-    
+
     // Find and delete any remaining menus that might not have extraction_job_id
     const { data: menus, error: menuError } = await getSupabaseClient()
       .from('menus')
       .select('id')
       .eq('restaurant_id', restaurantId);
-    
+
     if (menuError) throw menuError;
-    
+
     if (menus && menus.length > 0) {
       for (const menu of menus) {
         await deleteMenu(menu.id);
       }
     }
-    
+
     // Finally, delete the restaurant itself
     const { data, error: deleteError } = await getSupabaseClient()
       .from('restaurants')
       .delete()
       .eq('id', restaurantId)
       .select();
-    
+
     if (deleteError) throw deleteError;
-    
+
     // Return true if a restaurant was deleted
     return data && data.length > 0;
   } catch (error) {
@@ -3000,12 +3126,13 @@ async function findCDNImageByUrl(originalUrl) {
 // Export all functions
 module.exports = {
   get supabase() { return supabase; },
+  getSupabaseClient,
   initializeDatabase,
   isDatabaseAvailable,
   setCurrentOrganizationId,
   getCurrentOrganizationId,
   setUserSupabaseClient,
-  
+
   // Platform operations
   getPlatformByName,
   

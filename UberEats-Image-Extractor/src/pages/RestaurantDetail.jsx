@@ -53,7 +53,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { 
+import { DateTimePicker } from '../components/ui/date-time-picker';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -2239,6 +2240,41 @@ export default function RestaurantDetail() {
     );
   };
 
+  const getWarmthBadge = (warmth) => {
+    if (!warmth) return null;
+    const colors = {
+      frozen: 'bg-blue-100 text-blue-800 border-blue-200',
+      cold: 'bg-gray-100 text-gray-800 border-gray-200',
+      warm: 'bg-orange-100 text-orange-800 border-orange-200',
+      hot: 'bg-red-100 text-red-800 border-red-200'
+    };
+    return (
+      <Badge variant="outline" className={cn('capitalize', colors[warmth])}>
+        {warmth}
+      </Badge>
+    );
+  };
+
+  const getStageBadge = (stage) => {
+    if (!stage) return null;
+    const colors = {
+      uncontacted: 'bg-gray-100 text-gray-800',
+      reached_out: 'bg-blue-100 text-blue-800',
+      in_talks: 'bg-purple-100 text-purple-800',
+      demo_booked: 'bg-green-100 text-green-800',
+      rebook_demo: 'bg-yellow-100 text-yellow-800',
+      contract_sent: 'bg-indigo-100 text-indigo-800',
+      closed_won: 'bg-green-100 text-green-800',
+      closed_lost: 'bg-red-100 text-red-800',
+      reengaging: 'bg-orange-100 text-orange-800'
+    };
+    return (
+      <Badge variant="outline" className={colors[stage]}>
+        {stage?.replace(/_/g, ' ')}
+      </Badge>
+    );
+  };
+
   const handleUploadImagesToCDN = async (menuId) => {
     try {
       toast({ 
@@ -2492,6 +2528,7 @@ export default function RestaurantDetail() {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="contact">Contact & Lead</TabsTrigger>
+          <TabsTrigger value="sales">Sales Info</TabsTrigger>
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="configuration">Configuration</TabsTrigger>
           <TabsTrigger value="platforms">Platforms & Social</TabsTrigger>
@@ -2737,6 +2774,281 @@ export default function RestaurantDetail() {
                   />
                 ) : (
                   <p className="text-sm mt-1">{restaurant?.user_email || '-'}</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Sales Info Tab */}
+        <TabsContent value="sales" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Sales Information</CardTitle>
+              <CardDescription>Lead tracking, categorization, and sales pipeline management</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Lead Type */}
+              <div>
+                <Label>Lead Type</Label>
+                {isEditing ? (
+                  <Select
+                    value={editedData.lead_type || ''}
+                    onValueChange={(value) => handleFieldChange('lead_type', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select lead type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="inbound">Inbound</SelectItem>
+                      <SelectItem value="outbound">Outbound</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-sm mt-1 capitalize">{restaurant?.lead_type || '-'}</p>
+                )}
+              </div>
+
+              {/* Lead Category */}
+              <div>
+                <Label>Lead Category</Label>
+                {isEditing ? (
+                  <Select
+                    value={editedData.lead_category || ''}
+                    onValueChange={(value) => handleFieldChange('lead_category', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="paid_ads">Paid Ads</SelectItem>
+                      <SelectItem value="organic_content">Organic Content</SelectItem>
+                      <SelectItem value="warm_outreach">Warm Outreach</SelectItem>
+                      <SelectItem value="cold_outreach">Cold Outreach</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-sm mt-1">{restaurant?.lead_category?.replace(/_/g, ' ') || '-'}</p>
+                )}
+              </div>
+
+              {/* Lead Engagement Source */}
+              <div>
+                <Label>Lead Engagement Source</Label>
+                {isEditing ? (
+                  <Select
+                    value={editedData.lead_engagement_source || ''}
+                    onValueChange={(value) => handleFieldChange('lead_engagement_source', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select engagement source" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="meta_ad_form">Meta Ad Form</SelectItem>
+                      <SelectItem value="landing_page_demo_booking">Landing Page Demo Booking</SelectItem>
+                      <SelectItem value="website_demo_booking">Website Demo Booking</SelectItem>
+                      <SelectItem value="website_live_chat">Website Live Chat</SelectItem>
+                      <SelectItem value="inbound_social_media_message">Inbound Social Media Message</SelectItem>
+                      <SelectItem value="inbound_email">Inbound Email</SelectItem>
+                      <SelectItem value="inbound_call">Inbound Call</SelectItem>
+                      <SelectItem value="cold_social_media_message">Cold Social Media Message</SelectItem>
+                      <SelectItem value="cold_email">Cold Email</SelectItem>
+                      <SelectItem value="cold_call">Cold Call</SelectItem>
+                      <SelectItem value="inbound_referral">Inbound Referral</SelectItem>
+                      <SelectItem value="outbound_referral">Outbound Referral</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-sm mt-1">{restaurant?.lead_engagement_source?.replace(/_/g, ' ') || '-'}</p>
+                )}
+              </div>
+
+              {/* Lead Warmth */}
+              <div>
+                <Label>Lead Warmth</Label>
+                {isEditing ? (
+                  <Select
+                    value={editedData.lead_warmth || ''}
+                    onValueChange={(value) => handleFieldChange('lead_warmth', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select warmth" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="frozen">Frozen</SelectItem>
+                      <SelectItem value="cold">Cold</SelectItem>
+                      <SelectItem value="warm">Warm</SelectItem>
+                      <SelectItem value="hot">Hot</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="mt-1">
+                    {restaurant?.lead_warmth ? getWarmthBadge(restaurant.lead_warmth) : '-'}
+                  </div>
+                )}
+              </div>
+
+              {/* Lead Stage */}
+              <div>
+                <Label>Lead Stage</Label>
+                {isEditing ? (
+                  <Select
+                    value={editedData.lead_stage || ''}
+                    onValueChange={(value) => handleFieldChange('lead_stage', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select stage" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="uncontacted">Uncontacted</SelectItem>
+                      <SelectItem value="reached_out">Reached Out</SelectItem>
+                      <SelectItem value="in_talks">In Talks</SelectItem>
+                      <SelectItem value="demo_booked">Demo Booked</SelectItem>
+                      <SelectItem value="rebook_demo">Rebook Demo</SelectItem>
+                      <SelectItem value="contract_sent">Contract Sent</SelectItem>
+                      <SelectItem value="closed_won">Closed Won</SelectItem>
+                      <SelectItem value="closed_lost">Closed Lost</SelectItem>
+                      <SelectItem value="reengaging">Reengaging</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="mt-1">
+                    {restaurant?.lead_stage ? getStageBadge(restaurant.lead_stage) : '-'}
+                  </div>
+                )}
+              </div>
+
+              {/* Lead Status */}
+              <div>
+                <Label>Lead Status</Label>
+                {isEditing ? (
+                  <Select
+                    value={editedData.lead_status || ''}
+                    onValueChange={(value) => handleFieldChange('lead_status', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                      <SelectItem value="ghosted">Ghosted</SelectItem>
+                      <SelectItem value="reengaging">Reengaging</SelectItem>
+                      <SelectItem value="closed">Closed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-sm mt-1 capitalize">{restaurant?.lead_status || '-'}</p>
+                )}
+              </div>
+
+              {/* ICP Rating */}
+              <div>
+                <Label>ICP Rating (0-10)</Label>
+                {isEditing ? (
+                  <Select
+                    value={editedData.icp_rating?.toString() || ''}
+                    onValueChange={(value) => handleFieldChange('icp_rating', parseInt(value))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select rating" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((rating) => (
+                        <SelectItem key={rating} value={rating.toString()}>
+                          {rating}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-sm mt-1">
+                    {restaurant?.icp_rating !== null && restaurant?.icp_rating !== undefined
+                      ? `${restaurant.icp_rating}/10`
+                      : '-'}
+                  </p>
+                )}
+              </div>
+
+              {/* Last Contacted */}
+              <div>
+                <Label>Last Contacted</Label>
+                {isEditing ? (
+                  <DateTimePicker
+                    value={editedData.last_contacted ? new Date(editedData.last_contacted) : null}
+                    onChange={(date) => handleFieldChange('last_contacted', date ? date.toISOString() : null)}
+                    placeholder="Set last contacted"
+                  />
+                ) : (
+                  <p className="text-sm mt-1">
+                    {restaurant?.last_contacted
+                      ? new Date(restaurant.last_contacted).toLocaleString()
+                      : '-'}
+                  </p>
+                )}
+              </div>
+
+              {/* Demo Store Built */}
+              <div>
+                <Label>Demo Store Built</Label>
+                {isEditing ? (
+                  <div className="flex items-center space-x-2 mt-2">
+                    <Checkbox
+                      id="demo_store_built"
+                      checked={editedData.demo_store_built || false}
+                      onCheckedChange={(checked) => handleFieldChange('demo_store_built', checked)}
+                    />
+                    <label
+                      htmlFor="demo_store_built"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      Yes
+                    </label>
+                  </div>
+                ) : (
+                  <p className="text-sm mt-1">{restaurant?.demo_store_built ? 'Yes' : 'No'}</p>
+                )}
+              </div>
+
+              {/* Demo Store URL - conditional rendering */}
+              {(isEditing ? editedData.demo_store_built : restaurant?.demo_store_built) && (
+                <div>
+                  <Label>Demo Store URL</Label>
+                  {isEditing ? (
+                    <Input
+                      value={editedData.demo_store_url || ''}
+                      onChange={(e) => handleFieldChange('demo_store_url', e.target.value)}
+                      placeholder="https://demo-restaurant.pumpd.co.nz"
+                    />
+                  ) : (
+                    <p className="text-sm mt-1">
+                      {restaurant?.demo_store_url ? (
+                        <a
+                          href={restaurant.demo_store_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-brand-blue hover:underline"
+                        >
+                          {restaurant.demo_store_url}
+                        </a>
+                      ) : '-'}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Assigned Sales Rep */}
+              <div>
+                <Label>Assigned Sales Rep</Label>
+                {isEditing ? (
+                  <Input
+                    value={editedData.assigned_sales_rep || ''}
+                    onChange={(e) => handleFieldChange('assigned_sales_rep', e.target.value)}
+                    placeholder="User ID (UUID)"
+                  />
+                ) : (
+                  <p className="text-sm mt-1">{restaurant?.assigned_sales_rep || '-'}</p>
                 )}
               </div>
             </CardContent>

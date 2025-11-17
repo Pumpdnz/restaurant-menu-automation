@@ -10,6 +10,9 @@ import {
   Settings,
   Shield,
   Video,
+  CheckSquare,
+  FileText,
+  ClipboardList,
 } from 'lucide-react';
 import {
   SidebarGroup,
@@ -28,6 +31,9 @@ const NavigationItems = ({ collapsed }) => {
   const navigationItems = [
     { href: '/', label: 'Dashboard', icon: Home },
     { href: '/restaurants', label: 'Restaurants', icon: Store },
+    { href: '/tasks', label: 'Tasks', icon: CheckSquare },
+    { href: '/task-templates', label: 'Task Templates', icon: ClipboardList },
+    { href: '/message-templates', label: 'Message Templates', icon: FileText },
     { href: '/extractions', label: 'Extractions', icon: Download },
     { href: '/menus', label: 'Menus', icon: Menu },
     { href: '/social-media', label: 'Social Media', icon: Video },

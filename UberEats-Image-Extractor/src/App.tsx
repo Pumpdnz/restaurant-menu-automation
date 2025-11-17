@@ -23,6 +23,9 @@ import MenuMerge from './pages/MenuMerge';
 import Analytics from './pages/Analytics';
 import History from './pages/History';
 import Settings from './pages/Settings';
+import Tasks from './pages/Tasks';
+import MessageTemplates from './pages/MessageTemplates';
+import TaskTemplates from './pages/TaskTemplates';
 
 // Super Admin Pages
 import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
@@ -153,6 +156,9 @@ function AppContent() {
           <Route path="menus" element={<Menus />} />
           <Route path="menus/merge" element={<MenuMerge />} />
           <Route path="menus/:id" element={<MenuDetail />} />
+          <Route path="tasks" element={<Tasks />} />
+          <Route path="task-templates" element={<TaskTemplates />} />
+          <Route path="message-templates" element={<MessageTemplates />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="history" element={<History />} />
           <Route path="settings" element={<Settings />} />

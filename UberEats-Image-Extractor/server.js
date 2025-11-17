@@ -7537,6 +7537,19 @@ const socialMediaRoutes = require('./src/routes/social-media-routes');
 app.use('/api/social-media', authMiddleware, socialMediaRoutes);
 
 /**
+ * === SALES TASK MANAGEMENT ROUTES ===
+ */
+// Import and use task management routes (with auth middleware)
+const tasksRoutes = require('./src/routes/tasks-routes');
+app.use('/api/tasks', authMiddleware, tasksRoutes);
+
+const taskTemplatesRoutes = require('./src/routes/task-templates-routes');
+app.use('/api/task-templates', authMiddleware, taskTemplatesRoutes);
+
+const messageTemplatesRoutes = require('./src/routes/message-templates-routes');
+app.use('/api/message-templates', authMiddleware, messageTemplatesRoutes);
+
+/**
  * Serve static files and handle SPA routes
  */
 // Serve the main HTML file for client-side routing (SPA)
