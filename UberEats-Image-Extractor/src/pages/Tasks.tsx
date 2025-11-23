@@ -21,7 +21,8 @@ import {
   ChevronDown,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Workflow
 } from 'lucide-react';
 import {
   Table,
@@ -420,6 +421,27 @@ export default function Tasks() {
 
       // Then open the follow-up task modal
       setModals({ ...modals, followUp: taskId });
+    } catch (error) {
+      console.error('Failed to complete task:', error);
+    }
+  };
+
+  const handleCompleteWithStartSequence = async (task: any) => {
+    try {
+      if (!task?.restaurants) {
+        console.error('No restaurant data available');
+        return;
+      }
+
+      // First, complete the current task
+      await api.patch(`/tasks/${task.id}/complete`);
+
+      // Then open the sequence modal
+      setSequenceRestaurant({
+        id: task.restaurants.id,
+        name: task.restaurants.name
+      });
+      setModals({ ...modals, startSequence: true });
     } catch (error) {
       console.error('Failed to complete task:', error);
     }
@@ -1282,6 +1304,13 @@ export default function Tasks() {
                             <DropdownMenuItem onClick={() => handleCompleteWithFollowUp(task.id)}>
                               <CheckCircle2 className="h-4 w-4 mr-2" />
                               Complete & Set Follow-up
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleCompleteWithStartSequence(task)}
+                              disabled={!task?.restaurants}
+                            >
+                              <Workflow className="h-4 w-4 mr-2" />
+                              Complete & Start Sequence
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

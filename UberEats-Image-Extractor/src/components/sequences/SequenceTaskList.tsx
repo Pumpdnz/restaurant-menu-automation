@@ -29,6 +29,7 @@ import {
   ChevronUp,
   ChevronDown,
   Clock,
+  Workflow,
 } from 'lucide-react';
 import { TaskTypeQuickView } from '../tasks/TaskTypeQuickView';
 import { useToast } from '../../hooks/use-toast';
@@ -147,6 +148,41 @@ export function SequenceTaskList({
       }
       if (onTaskClick) {
         onTaskClick(taskId);
+      }
+    } catch (error) {
+      console.error('Failed to complete task:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to complete task',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleCompleteAndStartSequence = async (task: Task) => {
+    try {
+      if (!task?.restaurants) {
+        toast({
+          title: 'Error',
+          description: 'No restaurant data available',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      await api.patch(`/tasks/${task.id}/complete`);
+      toast({
+        title: 'Task completed',
+        description: 'Opening sequence selection...',
+      });
+      if (onRefresh) {
+        onRefresh();
+      }
+      if (onStartSequence) {
+        onStartSequence({
+          id: task.restaurants.id,
+          name: task.restaurants.name
+        });
       }
     } catch (error) {
       console.error('Failed to complete task:', error);
@@ -421,6 +457,13 @@ export function SequenceTaskList({
                             <DropdownMenuItem onClick={() => handleCompleteAndFollowUp(task.id)}>
                               <CheckCircle2 className="h-4 w-4 text-brand-green mr-2" />
                               Complete & Set Follow-up
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleCompleteAndStartSequence(task)}
+                              disabled={!task?.restaurants}
+                            >
+                              <Workflow className="h-4 w-4 text-brand-green mr-2" />
+                              Complete & Start Sequence
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

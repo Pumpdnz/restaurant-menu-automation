@@ -24,6 +24,7 @@ import {
   Edit,
   Copy,
   ChevronDown,
+  Workflow,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -223,6 +224,40 @@ export function RestaurantTasksList({ restaurantId, onCreateTask, onEditTask, on
       // Trigger create task modal with follow-up mode
       if (onFollowUpTask) {
         onFollowUpTask(taskId);
+      }
+    } catch (error) {
+      console.error('Failed to complete task:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to complete task',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleCompleteAndStartSequence = async (task: any) => {
+    try {
+      if (!task?.restaurants) {
+        toast({
+          title: 'Error',
+          description: 'No restaurant data available',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      await api.patch(`/tasks/${task.id}/complete`);
+      toast({
+        title: 'Task completed',
+        description: 'Opening sequence selection...',
+      });
+      await fetchTasks();
+      // Trigger start sequence modal
+      if (onStartSequence) {
+        onStartSequence({
+          id: task.restaurants.id,
+          name: task.restaurants.name
+        });
       }
     } catch (error) {
       console.error('Failed to complete task:', error);
@@ -540,6 +575,13 @@ export function RestaurantTasksList({ restaurantId, onCreateTask, onEditTask, on
                             <DropdownMenuItem onClick={() => handleCompleteAndFollowUp(task.id)}>
                               <CheckCircle2 className="h-4 w-4 text-brand-green mr-2" />
                               Complete & Set Follow-up
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleCompleteAndStartSequence(task)}
+                              disabled={!task?.restaurants}
+                            >
+                              <Workflow className="h-4 w-4 text-brand-green mr-2" />
+                              Complete & Start Sequence
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
