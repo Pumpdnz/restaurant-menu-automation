@@ -24,9 +24,14 @@ import {
   FileText,
   ExternalLink,
   Instagram,
-  Facebook
+  Facebook,
+  Copy,
+  Check
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { InfoField, formatCurrency, formatPercentage, formatWebsiteType } from '../demo-meeting/InfoField';
+import { BooleanField } from '../demo-meeting/BooleanField';
+import { TagList } from '../demo-meeting/TagList';
 
 interface TaskDetailModalProps {
   open: boolean;
@@ -39,6 +44,7 @@ export function TaskDetailModal({ open, taskId, onClose }: TaskDetailModalProps)
   const [loading, setLoading] = useState(true);
   const [task, setTask] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && taskId) {
@@ -59,6 +65,16 @@ export function TaskDetailModal({ open, taskId, onClose }: TaskDetailModalProps)
       setError('Failed to load task details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const copyToClipboard = async (text: string, field: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch (error) {
+      console.error('Failed to copy:', error);
     }
   };
 
@@ -308,6 +324,149 @@ export function TaskDetailModal({ open, taskId, onClose }: TaskDetailModalProps)
             </div>
           )}
 
+          {/* Demo Meeting Qualification */}
+          {task.type === 'demo_meeting' && task.restaurants && (
+            <div className="space-y-4 border-t pt-4">
+              <div className="text-sm font-semibold">Demo Qualification</div>
+
+              {/* Meeting Link - Prominent */}
+              {task.restaurants.meeting_link && (
+                <div className="bg-brand-blue/10 border border-brand-blue/30 p-4 rounded-lg">
+                  <div className="text-xs font-medium text-brand-blue mb-2">Meeting Link</div>
+                  <a
+                    href={task.restaurants.meeting_link.startsWith('http') ? task.restaurants.meeting_link : `https://${task.restaurants.meeting_link}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-base font-medium text-brand-blue hover:underline flex items-center gap-2 break-all"
+                  >
+                    {task.restaurants.meeting_link}
+                    <ExternalLink className="h-4 w-4 shrink-0" />
+                  </a>
+                </div>
+              )}
+
+              {/* Contact & Business Context */}
+              {(task.restaurants.contact_role || task.restaurants.number_of_venues || task.restaurants.point_of_sale || task.restaurants.online_ordering_platform) && (
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+                    Contact & Business Context
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <InfoField label="Contact Role" value={task.restaurants.contact_role} />
+                    <InfoField label="Number of Venues" value={task.restaurants.number_of_venues} />
+                    <InfoField label="Point of Sale" value={task.restaurants.point_of_sale} />
+                    <InfoField label="Online Ordering Platform" value={task.restaurants.online_ordering_platform} />
+                  </div>
+                </div>
+              )}
+
+              {/* Delivery Setup */}
+              {(task.restaurants.online_ordering_handles_delivery !== null || task.restaurants.self_delivery !== null) && (
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+                    Delivery Setup
+                  </div>
+                  <div className="space-y-2">
+                    <BooleanField
+                      label="Platform Handles Delivery"
+                      value={task.restaurants.online_ordering_handles_delivery}
+                    />
+                    <BooleanField
+                      label="Self Delivery"
+                      value={task.restaurants.self_delivery}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* UberEats Metrics */}
+              {(task.restaurants.weekly_uber_sales_volume || task.restaurants.uber_aov || task.restaurants.uber_markup || task.restaurants.uber_profitability || task.restaurants.uber_profitability_description) && (
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+                    UberEats Metrics
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <InfoField
+                      label="Weekly Sales Volume"
+                      value={task.restaurants.weekly_uber_sales_volume}
+                      formatter={formatCurrency}
+                    />
+                    <InfoField
+                      label="Average Order Value"
+                      value={task.restaurants.uber_aov}
+                      formatter={formatCurrency}
+                    />
+                    <InfoField
+                      label="Menu Markup"
+                      value={task.restaurants.uber_markup}
+                      formatter={formatPercentage}
+                    />
+                    <InfoField
+                      label="Profitability"
+                      value={task.restaurants.uber_profitability}
+                      formatter={formatPercentage}
+                    />
+                  </div>
+                  {task.restaurants.uber_profitability_description && (
+                    <div className="mt-3">
+                      <InfoField
+                        label="Profitability Details"
+                        value={task.restaurants.uber_profitability_description}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Marketing & Website */}
+              {(task.restaurants.current_marketing_description || task.restaurants.website_type) && (
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+                    Marketing & Website
+                  </div>
+                  <div className="space-y-3">
+                    <InfoField
+                      label="Current Marketing"
+                      value={task.restaurants.current_marketing_description}
+                    />
+                    <InfoField
+                      label="Website Type"
+                      value={task.restaurants.website_type}
+                      formatter={formatWebsiteType}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Sales Context */}
+              {(task.restaurants.painpoints?.length > 0 || task.restaurants.core_selling_points?.length > 0 || task.restaurants.features_to_highlight?.length > 0 || task.restaurants.possible_objections?.length > 0) && (
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+                    Sales Context
+                  </div>
+                  <div className="space-y-4">
+                    <TagList label="Painpoints" items={task.restaurants.painpoints} />
+                    <TagList label="Core Selling Points" items={task.restaurants.core_selling_points} />
+                    <TagList label="Features to Highlight" items={task.restaurants.features_to_highlight} />
+                    <TagList label="Possible Objections" items={task.restaurants.possible_objections} />
+                  </div>
+                </div>
+              )}
+
+              {/* Additional Details */}
+              {task.restaurants.details && (
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                    Additional Details
+                  </div>
+                  <p className="text-sm whitespace-pre-wrap bg-muted/30 p-3 rounded-md">
+                    {task.restaurants.details}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Task Template */}
           {task.task_templates && (
             <div>
@@ -319,10 +478,60 @@ export function TaskDetailModal({ open, taskId, onClose }: TaskDetailModalProps)
             </div>
           )}
 
+          {/* Email Subject Line (for email tasks) */}
+          {task.type === 'email' && (task.subject_line_rendered || task.subject_line) && (
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <div className="text-sm font-medium">Email Subject</div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2"
+                  onClick={() => copyToClipboard(task.subject_line_rendered || task.subject_line, 'Subject')}
+                >
+                  {copiedField === 'Subject' ? (
+                    <>
+                      <Check className="h-3 w-3 mr-1 text-green-600" />
+                      <span className="text-xs">Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3 w-3 mr-1" />
+                      <span className="text-xs">Copy</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+              <div className="bg-blue-50 border border-blue-200 p-3 rounded-md">
+                <p className="text-sm font-medium text-blue-900">{task.subject_line_rendered || task.subject_line}</p>
+              </div>
+            </div>
+          )}
+
           {/* Rendered Message (with variables replaced) - Show FIRST for communication tasks */}
           {task.message_rendered && (
             <div>
-              <div className="text-sm font-medium mb-1">Message Preview</div>
+              <div className="flex items-center justify-between mb-1">
+                <div className="text-sm font-medium">Message Preview</div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2"
+                  onClick={() => copyToClipboard(task.message_rendered, 'Message')}
+                >
+                  {copiedField === 'Message' ? (
+                    <>
+                      <Check className="h-3 w-3 mr-1 text-green-600" />
+                      <span className="text-xs">Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3 w-3 mr-1" />
+                      <span className="text-xs">Copy</span>
+                    </>
+                  )}
+                </Button>
+              </div>
               <div className="bg-blue-50 border border-blue-200 p-3 rounded-md">
                 <p className="text-sm whitespace-pre-wrap">{task.message_rendered}</p>
               </div>

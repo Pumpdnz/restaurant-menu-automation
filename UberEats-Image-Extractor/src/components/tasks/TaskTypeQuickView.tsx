@@ -17,18 +17,29 @@ import {
   Facebook,
   ExternalLink,
   Copy,
-  Check
+  Check,
+  CheckCircle2,
+  ArrowRight,
+  Workflow
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { formatCurrency, formatPercentage, formatWebsiteType } from '../demo-meeting/InfoField';
+import { TagItem } from '../../lib/qualification-constants';
+import api from '../../services/api';
 
 interface TaskTypeQuickViewProps {
   task: any;
   children: React.ReactNode;
+  onTaskCompleted?: () => void;
+  onFollowUpRequested?: (taskId: string) => void;
+  onStartSequenceRequested?: (restaurant: { id: string; name: string }) => void;
 }
 
-export function TaskTypeQuickView({ task, children }: TaskTypeQuickViewProps) {
+export function TaskTypeQuickView({ task, children, onTaskCompleted, onFollowUpRequested, onStartSequenceRequested }: TaskTypeQuickViewProps) {
   const { toast } = useToast();
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [isCompleting, setIsCompleting] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   const copyToClipboard = async (text: string, field: string) => {
     try {
@@ -46,6 +57,87 @@ export function TaskTypeQuickView({ task, children }: TaskTypeQuickViewProps) {
         description: "Failed to copy to clipboard",
         variant: "destructive"
       });
+    }
+  };
+
+  const handleCompleteTask = async () => {
+    if (!task?.id) return;
+
+    setIsCompleting(true);
+    try {
+      await api.patch(`/tasks/${task.id}/complete`);
+      toast({
+        title: "Task Completed",
+        description: "Task has been marked as complete",
+      });
+      setIsOpen(false); // Close popover
+      if (onTaskCompleted) {
+        onTaskCompleted();
+      }
+    } catch (error) {
+      console.error('Failed to complete task:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete task",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCompleting(false);
+    }
+  };
+
+  const handleCompleteWithFollowUp = async () => {
+    if (!task?.id) return;
+
+    setIsCompleting(true);
+    try {
+      await api.patch(`/tasks/${task.id}/complete`);
+      setIsOpen(false); // Close popover
+      toast({
+        title: "Task Completed",
+        description: "Opening follow-up task creation...",
+      });
+      if (onFollowUpRequested) {
+        onFollowUpRequested(task.id);
+      }
+    } catch (error) {
+      console.error('Failed to complete task:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete task",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCompleting(false);
+    }
+  };
+
+  const handleCompleteWithStartSequence = async () => {
+    if (!task?.id || !task?.restaurants) return;
+
+    setIsCompleting(true);
+    try {
+      await api.patch(`/tasks/${task.id}/complete`);
+      setIsOpen(false); // Close popover
+      toast({
+        title: "Task Completed",
+        description: "Opening sequence selection...",
+      });
+      if (onStartSequenceRequested) {
+        onStartSequenceRequested({
+          id: task.restaurants.id,
+          name: task.restaurants.name
+        });
+      }
+    } catch (error) {
+      console.error('Failed to complete task:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete task",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCompleting(false);
     }
   };
 
@@ -107,6 +199,24 @@ export function TaskTypeQuickView({ task, children }: TaskTypeQuickViewProps) {
   const renderEmailView = () => (
     <div className="space-y-3">
       <div className="text-sm font-semibold">Email Task</div>
+
+      {/* Email Subject Line */}
+      {(task.subject_line_rendered || task.subject_line) && (
+        <div
+          className="bg-blue-50 border border-blue-200 p-3 rounded-md cursor-pointer hover:bg-blue-100 transition-colors"
+          onClick={() => copyToClipboard(task.subject_line_rendered || task.subject_line, 'Subject')}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-xs font-medium text-blue-900">Email Subject (Click to copy)</div>
+            {copiedField === 'Subject' ? (
+              <Check className="h-3 w-3 text-green-600" />
+            ) : (
+              <Copy className="h-3 w-3 text-blue-600" />
+            )}
+          </div>
+          <p className="text-sm font-medium text-blue-900">{task.subject_line_rendered || task.subject_line}</p>
+        </div>
+      )}
 
       {/* Rendered Message Preview */}
       {task.message_rendered && (
@@ -343,6 +453,227 @@ export function TaskTypeQuickView({ task, children }: TaskTypeQuickViewProps) {
     </div>
   );
 
+  const renderDemoMeetingView = () => (
+    <div className="space-y-3">
+      <div className="text-sm font-semibold">Demo Meeting</div>
+
+      {/* Meeting Link - Prominent Display */}
+      {task.restaurants?.meeting_link && (
+        <div className="bg-brand-blue/10 border border-brand-blue/30 p-3 rounded-md">
+          <div className="text-xs font-medium text-brand-blue mb-2">Meeting Link</div>
+          <a
+            href={task.restaurants.meeting_link.startsWith('http') ? task.restaurants.meeting_link : `https://${task.restaurants.meeting_link}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="text-sm font-medium text-brand-blue hover:underline flex items-center gap-1 break-all"
+          >
+            {task.restaurants.meeting_link}
+            <ExternalLink className="h-3 w-3 shrink-0" />
+          </a>
+        </div>
+      )}
+
+      {/* Contact Information */}
+      <div className="space-y-1">
+        <div className="text-xs font-medium text-muted-foreground mb-2">Contact Information</div>
+        {task.restaurants?.contact_name && (
+          <ContactField
+            icon={User}
+            label="Contact Name"
+            value={task.restaurants.contact_name}
+            field="Contact Name"
+          />
+        )}
+        {task.restaurants?.contact_role && (
+          <ContactField
+            icon={User}
+            label="Contact Role"
+            value={task.restaurants.contact_role}
+            field="Contact Role"
+          />
+        )}
+        {task.restaurants?.contact_phone && (
+          <ContactField
+            icon={Phone}
+            label="Contact Phone"
+            value={task.restaurants.contact_phone}
+            field="Contact Phone"
+          />
+        )}
+        {task.restaurants?.contact_email && (
+          <ContactField
+            icon={Mail}
+            label="Contact Email"
+            value={task.restaurants.contact_email}
+            field="Contact Email"
+          />
+        )}
+      </div>
+
+      {/* Business Context - Collapsed with Extended Qualification Data */}
+      {(task.restaurants?.number_of_venues ||
+        task.restaurants?.point_of_sale ||
+        task.restaurants?.online_ordering_platform ||
+        task.restaurants?.weekly_uber_sales_volume ||
+        task.restaurants?.uber_aov ||
+        task.restaurants?.uber_markup ||
+        task.restaurants?.uber_profitability ||
+        task.restaurants?.current_marketing_description ||
+        task.restaurants?.website_type ||
+        (task.restaurants?.painpoints && task.restaurants.painpoints.length > 0) ||
+        (task.restaurants?.core_selling_points && task.restaurants.core_selling_points.length > 0) ||
+        (task.restaurants?.features_to_highlight && task.restaurants.features_to_highlight.length > 0) ||
+        (task.restaurants?.possible_objections && task.restaurants.possible_objections.length > 0)) && (
+        <details className="border rounded-md p-2">
+          <summary className="cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground">
+            Business Context & Qualification Data
+          </summary>
+          <div className="mt-3 space-y-3 text-xs">
+            {/* Basic Business Info */}
+            {(task.restaurants?.number_of_venues || task.restaurants?.point_of_sale || task.restaurants?.online_ordering_platform) && (
+              <div className="space-y-1">
+                <div className="font-semibold text-foreground mb-1">Business Setup</div>
+                {task.restaurants?.number_of_venues && (
+                  <div><span className="font-medium">Venues:</span> {task.restaurants.number_of_venues}</div>
+                )}
+                {task.restaurants?.point_of_sale && (
+                  <div><span className="font-medium">POS:</span> {task.restaurants.point_of_sale}</div>
+                )}
+                {task.restaurants?.online_ordering_platform && (
+                  <div><span className="font-medium">Ordering Platform:</span> {task.restaurants.online_ordering_platform}</div>
+                )}
+                {task.restaurants?.online_ordering_handles_delivery !== null && task.restaurants?.online_ordering_handles_delivery !== undefined && (
+                  <div><span className="font-medium">Platform Handles Delivery:</span> {task.restaurants.online_ordering_handles_delivery ? 'Yes' : 'No'}</div>
+                )}
+                {task.restaurants?.self_delivery !== null && task.restaurants?.self_delivery !== undefined && (
+                  <div><span className="font-medium">Self Delivery:</span> {task.restaurants.self_delivery ? 'Yes' : 'No'}</div>
+                )}
+                {task.restaurants?.website_type && (
+                  <div><span className="font-medium">Website:</span> {formatWebsiteType(task.restaurants.website_type)}</div>
+                )}
+              </div>
+            )}
+
+            {/* UberEats Metrics */}
+            {(task.restaurants?.weekly_uber_sales_volume || task.restaurants?.uber_aov || task.restaurants?.uber_markup || task.restaurants?.uber_profitability) && (
+              <div className="space-y-1 border-t pt-2">
+                <div className="font-semibold text-foreground mb-1">UberEats Metrics</div>
+                {task.restaurants?.weekly_uber_sales_volume && (
+                  <div><span className="font-medium">Weekly Sales:</span> {formatCurrency(task.restaurants.weekly_uber_sales_volume)}</div>
+                )}
+                {task.restaurants?.uber_aov && (
+                  <div><span className="font-medium">AOV:</span> {formatCurrency(task.restaurants.uber_aov)}</div>
+                )}
+                {task.restaurants?.uber_markup && (
+                  <div><span className="font-medium">Markup:</span> {formatPercentage(task.restaurants.uber_markup)}</div>
+                )}
+                {task.restaurants?.uber_profitability && (
+                  <div><span className="font-medium">Profitability:</span> {formatPercentage(task.restaurants.uber_profitability)}</div>
+                )}
+                {task.restaurants?.uber_profitability_description && (
+                  <div className="text-muted-foreground italic mt-1">{task.restaurants.uber_profitability_description}</div>
+                )}
+              </div>
+            )}
+
+            {/* Marketing */}
+            {task.restaurants?.current_marketing_description && (
+              <div className="space-y-1 border-t pt-2">
+                <div className="font-semibold text-foreground mb-1">Current Marketing</div>
+                <div className="text-muted-foreground">{task.restaurants.current_marketing_description}</div>
+              </div>
+            )}
+
+            {/* Painpoints */}
+            {task.restaurants?.painpoints && task.restaurants.painpoints.length > 0 && (
+              <div className="space-y-1 border-t pt-2">
+                <div className="font-semibold text-foreground mb-1">Painpoints ({task.restaurants.painpoints.length})</div>
+                <div className="flex flex-wrap gap-1">
+                  {task.restaurants.painpoints.slice(0, 5).map((item: TagItem, index: number) => (
+                    <Badge key={index} variant={item.type === 'predefined' ? 'default' : 'secondary'} className="text-xs">
+                      {item.value}
+                    </Badge>
+                  ))}
+                  {task.restaurants.painpoints.length > 5 && (
+                    <Badge variant="outline" className="text-xs">
+                      +{task.restaurants.painpoints.length - 5} more
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Core Selling Points */}
+            {task.restaurants?.core_selling_points && task.restaurants.core_selling_points.length > 0 && (
+              <div className="space-y-1 border-t pt-2">
+                <div className="font-semibold text-foreground mb-1">Selling Points ({task.restaurants.core_selling_points.length})</div>
+                <div className="flex flex-wrap gap-1">
+                  {task.restaurants.core_selling_points.slice(0, 5).map((item: TagItem, index: number) => (
+                    <Badge key={index} variant={item.type === 'predefined' ? 'default' : 'secondary'} className="text-xs">
+                      {item.value}
+                    </Badge>
+                  ))}
+                  {task.restaurants.core_selling_points.length > 5 && (
+                    <Badge variant="outline" className="text-xs">
+                      +{task.restaurants.core_selling_points.length - 5} more
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Features to Highlight */}
+            {task.restaurants?.features_to_highlight && task.restaurants.features_to_highlight.length > 0 && (
+              <div className="space-y-1 border-t pt-2">
+                <div className="font-semibold text-foreground mb-1">Features ({task.restaurants.features_to_highlight.length})</div>
+                <div className="flex flex-wrap gap-1">
+                  {task.restaurants.features_to_highlight.slice(0, 5).map((item: TagItem, index: number) => (
+                    <Badge key={index} variant={item.type === 'predefined' ? 'default' : 'secondary'} className="text-xs">
+                      {item.value}
+                    </Badge>
+                  ))}
+                  {task.restaurants.features_to_highlight.length > 5 && (
+                    <Badge variant="outline" className="text-xs">
+                      +{task.restaurants.features_to_highlight.length - 5} more
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Possible Objections */}
+            {task.restaurants?.possible_objections && task.restaurants.possible_objections.length > 0 && (
+              <div className="space-y-1 border-t pt-2">
+                <div className="font-semibold text-foreground mb-1">Objections ({task.restaurants.possible_objections.length})</div>
+                <div className="flex flex-wrap gap-1">
+                  {task.restaurants.possible_objections.slice(0, 5).map((item: TagItem, index: number) => (
+                    <Badge key={index} variant={item.type === 'predefined' ? 'destructive' : 'secondary'} className="text-xs">
+                      {item.value}
+                    </Badge>
+                  ))}
+                  {task.restaurants.possible_objections.length > 5 && (
+                    <Badge variant="outline" className="text-xs">
+                      +{task.restaurants.possible_objections.length - 5} more
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Additional Details */}
+            {task.restaurants?.details && (
+              <div className="space-y-1 border-t pt-2">
+                <div className="font-semibold text-foreground mb-1">Additional Notes</div>
+                <div className="text-muted-foreground whitespace-pre-wrap">{task.restaurants.details}</div>
+              </div>
+            )}
+          </div>
+        </details>
+      )}
+    </div>
+  );
+
   const renderContent = () => {
     switch (task.type) {
       case 'email':
@@ -353,6 +684,8 @@ export function TaskTypeQuickView({ task, children }: TaskTypeQuickViewProps) {
         return renderCallView();
       case 'social_message':
         return renderSocialMessageView();
+      case 'demo_meeting':
+        return renderDemoMeetingView();
       case 'internal_activity':
       default:
         return renderInternalActivityView();
@@ -360,12 +693,49 @@ export function TaskTypeQuickView({ task, children }: TaskTypeQuickViewProps) {
   };
 
   return (
-    <Popover>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         {children}
       </PopoverTrigger>
       <PopoverContent className="w-96 max-h-[500px] overflow-y-auto" align="start">
-        {renderContent()}
+        <div className="space-y-3">
+          {renderContent()}
+
+          {/* Action Buttons */}
+          {task.status !== 'completed' && task.status !== 'cancelled' && (
+            <div className="pt-3 border-t space-y-2">
+              <Button
+                onClick={handleCompleteTask}
+                disabled={isCompleting}
+                className="w-full"
+                size="sm"
+                variant="outline"
+              >
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                {isCompleting ? 'Completing...' : 'Mark Complete'}
+              </Button>
+              <Button
+                onClick={handleCompleteWithFollowUp}
+                disabled={isCompleting}
+                className="w-full"
+                size="sm"
+              >
+                <ArrowRight className="h-4 w-4 mr-2" />
+                Complete & Set Follow-Up
+              </Button>
+              <Button
+                onClick={handleCompleteWithStartSequence}
+                disabled={isCompleting || !task?.restaurants}
+                className="w-full"
+                size="sm"
+                variant="tertiary"
+              >
+                <Workflow className="h-4 w-4 mr-2" />
+                Complete & Start Sequence
+              </Button>
+            </div>
+          )}
+        </div>
       </PopoverContent>
     </Popover>
   );

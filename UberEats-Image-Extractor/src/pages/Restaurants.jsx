@@ -48,6 +48,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../components/ui/dialog';
+import { TaskCell } from '../components/restaurants/TaskCell';
+import { CreateTaskModal } from '../components/tasks/CreateTaskModal';
 
 export default function Restaurants() {
   const navigate = useNavigate();
@@ -57,18 +59,31 @@ export default function Restaurants() {
   const [filteredRestaurants, setFilteredRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [createTaskFor, setCreateTaskFor] = useState(null);
+  const [followUpTaskId, setFollowUpTaskId] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, restaurantId: null, restaurantName: null });
   const [sortField, setSortField] = useState('created_at');
   const [sortDirection, setSortDirection] = useState('desc');
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(true);
 
   // Initialize filters from URL params
+  const getLeadStageDefaults = () => {
+    const urlParam = searchParams.get('lead_stage');
+    if (!urlParam) {
+      // No URL param, use defaults
+      return ['uncontacted', 'reached_out', 'in_talks', 'demo_booked', 'rebook_demo', 'contract_sent', 'reengaging'];
+    }
+    const stages = urlParam.split(',').filter(Boolean);
+    // If URL param exists but is empty, use defaults
+    return stages.length > 0 ? stages : ['uncontacted', 'reached_out', 'in_talks', 'demo_booked', 'rebook_demo', 'contract_sent', 'reengaging'];
+  };
+
   const [filters, setFilters] = useState({
     search: searchParams.get('search') || '',
     lead_type: searchParams.get('lead_type')?.split(',').filter(Boolean) || [],
     lead_category: searchParams.get('lead_category')?.split(',').filter(Boolean) || [],
     lead_warmth: searchParams.get('lead_warmth')?.split(',').filter(Boolean) || [],
-    lead_stage: searchParams.get('lead_stage')?.split(',').filter(Boolean) || [],
+    lead_stage: getLeadStageDefaults(),
     lead_status: searchParams.get('lead_status')?.split(',').filter(Boolean) || [],
     demo_store_built: searchParams.get('demo_store_built') || 'all',
     icp_rating_min: searchParams.get('icp_rating_min') || ''
@@ -210,7 +225,20 @@ export default function Restaurants() {
     setFilters(prev => ({ ...prev, [key]: value }));
   };
 
-  const clearFilters = () => {
+  const resetFilters = () => {
+    setFilters({
+      search: '',
+      lead_type: [],
+      lead_category: [],
+      lead_warmth: [],
+      lead_stage: ['uncontacted', 'reached_out', 'in_talks', 'demo_booked', 'rebook_demo', 'contract_sent', 'reengaging'],
+      lead_status: [],
+      demo_store_built: 'all',
+      icp_rating_min: ''
+    });
+  };
+
+  const clearAllFilters = () => {
     setFilters({
       search: '',
       lead_type: [],
@@ -228,6 +256,17 @@ export default function Restaurants() {
       if (Array.isArray(value)) return value.length > 0;
       return value !== 'all' && value !== '';
     });
+  };
+
+  const isFiltersAtDefault = () => {
+    return filters.search === '' &&
+      filters.lead_type.length === 0 &&
+      filters.lead_category.length === 0 &&
+      filters.lead_warmth.length === 0 &&
+      JSON.stringify(filters.lead_stage) === JSON.stringify(['uncontacted', 'reached_out', 'in_talks', 'demo_booked', 'rebook_demo', 'contract_sent', 'reengaging']) &&
+      filters.lead_status.length === 0 &&
+      filters.demo_store_built === 'all' &&
+      filters.icp_rating_min === '';
   };
 
   const getActiveFiltersCount = () => {
@@ -284,7 +323,7 @@ export default function Restaurants() {
 
     return (
       <Select value={warmth} onValueChange={(v) => handleUpdateRestaurantField(restaurantId, 'lead_warmth', v)}>
-        <SelectTrigger className="h-7 w-full border-0 bg-transparent p-0">
+        <SelectTrigger className="h-7 w-full border-0 bg-transparent p-0" hideChevron>
           <Badge variant="outline" className={cn('capitalize cursor-pointer hover:opacity-80', colors[warmth] || colors.cold)}>
             {warmth}
           </Badge>
@@ -335,7 +374,7 @@ export default function Restaurants() {
 
     return (
       <Select value={stage} onValueChange={(v) => handleUpdateRestaurantField(restaurantId, 'lead_stage', v)}>
-        <SelectTrigger className="h-7 w-full border-0 bg-transparent p-0">
+        <SelectTrigger className="h-7 w-full border-0 bg-transparent p-0" hideChevron>
           <Badge variant="outline" className={cn('capitalize cursor-pointer hover:opacity-80 text-xs', colors[stage] || colors.uncontacted)}>
             {stage.replace(/_/g, ' ')}
           </Badge>
@@ -375,7 +414,7 @@ export default function Restaurants() {
 
     return (
       <Select value={rating.toString()} onValueChange={(v) => handleUpdateRestaurantField(restaurantId, 'icp_rating', parseInt(v))}>
-        <SelectTrigger className="h-7 w-full border-0 bg-transparent p-0">
+        <SelectTrigger className="h-7 w-full border-0 bg-transparent p-0" hideChevron>
           <div className="flex items-center gap-1 cursor-pointer hover:opacity-80">
             <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
             <span className="text-sm font-medium">{rating}</span>
@@ -412,7 +451,7 @@ export default function Restaurants() {
         value={isBuilt ? 'true' : 'false'}
         onValueChange={(v) => handleUpdateRestaurantField(restaurantId, 'demo_store_built', v === 'true')}
       >
-        <SelectTrigger className="h-7 w-full border-0 bg-transparent p-0">
+        <SelectTrigger className="h-7 w-full border-0 bg-transparent p-0" hideChevron>
           <Badge
             variant="outline"
             className={cn(
@@ -507,7 +546,7 @@ export default function Restaurants() {
 
     return (
       <Select value={type} onValueChange={(v) => handleUpdateRestaurantField(restaurantId, 'lead_type', v)}>
-        <SelectTrigger className="h-7 w-full border-0 bg-transparent p-0">
+        <SelectTrigger className="h-7 w-full border-0 bg-transparent p-0" hideChevron>
           <Badge variant="outline" className={cn('capitalize cursor-pointer hover:opacity-80', colors[type])}>
             {type}
           </Badge>
@@ -546,7 +585,7 @@ export default function Restaurants() {
 
     return (
       <Select value={category} onValueChange={(v) => handleUpdateRestaurantField(restaurantId, 'lead_category', v)}>
-        <SelectTrigger className="h-7 w-full border-0 bg-transparent p-0">
+        <SelectTrigger className="h-7 w-full border-0 bg-transparent p-0" hideChevron>
           <Badge variant="outline" className={cn('capitalize cursor-pointer hover:opacity-80 text-xs', colors[category])}>
             {category.replace(/_/g, ' ')}
           </Badge>
@@ -589,7 +628,7 @@ export default function Restaurants() {
 
     return (
       <Select value={status} onValueChange={(v) => handleUpdateRestaurantField(restaurantId, 'lead_status', v)}>
-        <SelectTrigger className="h-7 w-full border-0 bg-transparent p-0">
+        <SelectTrigger className="h-7 w-full border-0 bg-transparent p-0" hideChevron>
           <Badge variant="outline" className={cn('capitalize cursor-pointer hover:opacity-80', colors[status])}>
             {status}
           </Badge>
@@ -670,11 +709,21 @@ export default function Restaurants() {
               <Filter className="h-4 w-4 text-muted-foreground" />
               <h3 className="font-medium">Filter Restaurants</h3>
             </div>
-            {hasActiveFilters() && (
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
-                <X className="h-4 w-4 mr-1" />
-                Clear All
-              </Button>
+            {(hasActiveFilters() || !isFiltersAtDefault()) && (
+              <div className="flex gap-2">
+                {hasActiveFilters() && (
+                  <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+                    <X className="h-4 w-4 mr-1" />
+                    Clear All
+                  </Button>
+                )}
+                {!isFiltersAtDefault() && (
+                  <Button variant="ghost" size="sm" onClick={resetFilters}>
+                    <X className="h-4 w-4 mr-1" />
+                    Reset to Default
+                  </Button>
+                )}
+              </div>
             )}
           </div>
 
@@ -825,18 +874,19 @@ export default function Restaurants() {
                 </TableHead>
                 <TableHead className="min-w-[180px]">Lead Contact</TableHead>
                 <TableHead className="min-w-[110px]">Lead Type</TableHead>
-                <TableHead className="min-w-[130px]">Lead Category</TableHead>
+                <TableHead className="min-w-[150px]">Lead Category</TableHead>
                 <TableHead className="min-w-[110px]">Lead Status</TableHead>
                 <TableHead className="min-w-[100px]">Warmth</TableHead>
                 <TableHead className="min-w-[130px]">Stage</TableHead>
+                <TableHead className="min-w-[180px]">Tasks</TableHead>
                 <TableHead
-                  className="min-w-[100px] cursor-pointer hover:bg-muted/50"
+                  className="min-w-[120px] cursor-pointer hover:bg-muted/50"
                   onClick={() => handleSort('icp_rating')}
                 >
                   ICP Rating
                   {getSortIcon('icp_rating')}
                 </TableHead>
-                <TableHead className="min-w-[100px]">Demo Store</TableHead>
+                <TableHead className="min-w-[110px]">Demo Store</TableHead>
                 <TableHead
                   className="min-w-[120px] cursor-pointer hover:bg-muted/50"
                   onClick={() => handleSort('last_contacted')}
@@ -845,7 +895,7 @@ export default function Restaurants() {
                   {getSortIcon('last_contacted')}
                 </TableHead>
                 <TableHead
-                  className="min-w-[100px] cursor-pointer hover:bg-muted/50"
+                  className="min-w-[110px] cursor-pointer hover:bg-muted/50"
                   onClick={() => handleSort('created_at')}
                 >
                   Created
@@ -857,7 +907,7 @@ export default function Restaurants() {
             <TableBody>
               {filteredRestaurants.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={12} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={13} className="text-center text-muted-foreground py-8">
                     {hasActiveFilters()
                       ? "No restaurants match your filters. Try adjusting your criteria."
                       : "No restaurants found. Add a restaurant to get started."}
@@ -918,6 +968,16 @@ export default function Restaurants() {
                     </TableCell>
                     <TableCell>
                       {getStageBadge(restaurant.lead_stage, restaurant.id)}
+                    </TableCell>
+                    <TableCell>
+                      <TaskCell
+                        task={restaurant.oldest_task}
+                        restaurantName={restaurant.name}
+                        restaurantId={restaurant.id}
+                        onCreateTask={() => setCreateTaskFor(restaurant)}
+                        onTaskCompleted={fetchRestaurants}
+                        onFollowUpRequested={(taskId) => setFollowUpTaskId(taskId)}
+                      />
                     </TableCell>
                     <TableCell>
                       {getIcpRatingBadge(restaurant.icp_rating, restaurant.id)}
@@ -1080,6 +1140,32 @@ export default function Restaurants() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Create Task Modal */}
+      {createTaskFor && (
+        <CreateTaskModal
+          open={!!createTaskFor}
+          onClose={() => setCreateTaskFor(null)}
+          onSuccess={() => {
+            setCreateTaskFor(null);
+            fetchRestaurants();
+          }}
+          restaurantId={createTaskFor.id}
+        />
+      )}
+
+      {/* Follow-Up Task Modal */}
+      {followUpTaskId && (
+        <CreateTaskModal
+          open={!!followUpTaskId}
+          onClose={() => setFollowUpTaskId(null)}
+          onSuccess={() => {
+            setFollowUpTaskId(null);
+            fetchRestaurants();
+          }}
+          followUpFromTaskId={followUpTaskId}
+        />
+      )}
     </div>
   );
 }

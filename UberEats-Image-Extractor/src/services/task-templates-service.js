@@ -16,7 +16,7 @@ async function listTemplates(filters = {}) {
     .select(`
       *,
       message_templates (
-        id, name, type, message_content
+        id, name, type, message_content, subject_line
       )
     `)
     .eq('organisation_id', getCurrentOrganizationId())
@@ -46,7 +46,7 @@ async function getTemplateById(id) {
     .select(`
       *,
       message_templates (
-        id, name, type, message_content
+        id, name, type, message_content, subject_line
       )
     `)
     .eq('id', id)
@@ -73,7 +73,7 @@ async function createTemplate(templateData) {
     .select(`
       *,
       message_templates (
-        id, name, type, message_content
+        id, name, type, message_content, subject_line
       )
     `)
     .single();
@@ -101,7 +101,7 @@ async function updateTemplate(id, updates) {
     .select(`
       *,
       message_templates (
-        id, name, type, message_content
+        id, name, type, message_content, subject_line
       )
     `)
     .single();
@@ -168,6 +168,7 @@ async function duplicateTemplate(id, newName) {
     priority: template.priority,
     message_template_id: template.message_template_id,
     default_message: template.default_message,
+    subject_line: template.subject_line,
     organisation_id: getCurrentOrganizationId(),
     created_by: template.created_by,
     is_active: template.is_active

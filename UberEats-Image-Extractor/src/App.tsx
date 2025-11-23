@@ -26,6 +26,7 @@ import Settings from './pages/Settings';
 import Tasks from './pages/Tasks';
 import MessageTemplates from './pages/MessageTemplates';
 import TaskTemplates from './pages/TaskTemplates';
+import Sequences from './pages/Sequences';
 
 // Super Admin Pages
 import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
@@ -158,6 +159,9 @@ function AppContent() {
           <Route path="menus/:id" element={<MenuDetail />} />
           <Route path="tasks" element={<Tasks />} />
           <Route path="task-templates" element={<TaskTemplates />} />
+          <Route path="sequences" element={<Sequences />} />
+          {/* Redirect old sequence-templates route to new tab-based page */}
+          <Route path="sequence-templates" element={<Navigate to="/sequences?tab=templates" replace />} />
           <Route path="message-templates" element={<MessageTemplates />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="history" element={<History />} />

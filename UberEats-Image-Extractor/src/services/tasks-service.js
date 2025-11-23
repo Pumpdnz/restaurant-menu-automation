@@ -5,6 +5,8 @@
 
 const { getSupabaseClient, getCurrentOrganizationId } = require('./database-service');
 const variableReplacementService = require('./variable-replacement-service');
+const sequenceProgressionService = require('./sequence-progression-service');
+const qualificationService = require('./qualification-service');
 
 /**
  * List tasks with filtering and sorting
@@ -20,7 +22,15 @@ async function listTasks(filters = {}, sort = {}) {
       restaurants (
         id, name, contact_name, contact_email, contact_phone,
         phone, email, instagram_url, facebook_url,
-        city, cuisine, subdomain, organisation_name, demo_store_url
+        city, cuisine, subdomain, organisation_name, demo_store_url,
+        lead_type, lead_category, lead_warmth, lead_stage, lead_status,
+        demo_store_built, icp_rating,
+        contact_role, number_of_venues, point_of_sale,
+        online_ordering_platform, online_ordering_handles_delivery, self_delivery,
+        weekly_uber_sales_volume, uber_aov, uber_markup, uber_profitability,
+        uber_profitability_description, current_marketing_description, website_type,
+        painpoints, core_selling_points, features_to_highlight, possible_objections,
+        details, meeting_link
       ),
       task_templates (
         id, name
@@ -77,7 +87,15 @@ async function getTaskById(id) {
         id, name, contact_name, contact_email, contact_phone,
         phone, email, instagram_url, facebook_url,
         city, cuisine, subdomain, organisation_name, demo_store_url,
-        ubereats_url, doordash_url
+        ubereats_url, doordash_url,
+        lead_type, lead_category, lead_warmth, lead_stage, lead_status,
+        demo_store_built, icp_rating,
+        contact_role, number_of_venues, point_of_sale,
+        online_ordering_platform, online_ordering_handles_delivery, self_delivery,
+        weekly_uber_sales_volume, uber_aov, uber_markup, uber_profitability,
+        uber_profitability_description, current_marketing_description, website_type,
+        painpoints, core_selling_points, features_to_highlight, possible_objections,
+        details, meeting_link
       ),
       task_templates (
         id, name, description
@@ -122,6 +140,7 @@ async function createTask(taskData) {
       taskData.description = taskData.description || template.description;
       taskData.type = taskData.type || template.type;
       taskData.priority = taskData.priority || template.priority;
+      taskData.subject_line = taskData.subject_line || template.subject_line;
 
       // If template has message template, use it ONLY if user hasn't specified one
       if (template.message_template_id && template.message_templates) {
@@ -132,6 +151,10 @@ async function createTask(taskData) {
         // Only use template's message if user hasn't provided custom message
         if (!taskData.message) {
           taskData.message = template.message_templates.message_content;
+        }
+        // Only use template's subject_line if user hasn't provided one
+        if (!taskData.subject_line && template.message_templates.subject_line) {
+          taskData.subject_line = template.message_templates.subject_line;
         }
       } else if (template.default_message && !taskData.message) {
         // Only use default message if user hasn't provided one
@@ -146,8 +169,8 @@ async function createTask(taskData) {
     }
   }
 
-  // If task has a restaurant and message, perform variable replacement
-  if (taskData.restaurant_id && taskData.message) {
+  // If task has a restaurant and message/subject_line, perform variable replacement
+  if (taskData.restaurant_id && (taskData.message || taskData.subject_line)) {
     const { data: restaurant, error: restaurantError } = await client
       .from('restaurants')
       .select('*')
@@ -157,10 +180,48 @@ async function createTask(taskData) {
     if (restaurantError) {
       console.error('Error fetching restaurant for variable replacement:', restaurantError);
     } else if (restaurant) {
-      taskData.message_rendered = await variableReplacementService.replaceVariables(
-        taskData.message,
-        restaurant
-      );
+      if (taskData.message) {
+        taskData.message_rendered = await variableReplacementService.replaceVariables(
+          taskData.message,
+          restaurant
+        );
+      }
+      if (taskData.subject_line) {
+        taskData.subject_line_rendered = await variableReplacementService.replaceVariables(
+          taskData.subject_line,
+          restaurant
+        );
+      }
+    }
+  }
+
+  // Handle demo_meeting type - update restaurant with qualification data
+  if (taskData.type === 'demo_meeting') {
+    if (!taskData.restaurant_id) {
+      throw new Error('restaurant_id is required for demo_meeting tasks');
+    }
+
+    if (taskData.qualification_data) {
+      try {
+        // Update restaurant with qualification data
+        await qualificationService.updateRestaurantQualification(
+          taskData.restaurant_id,
+          taskData.qualification_data
+        );
+
+        // Store qualification data in task metadata for historical reference
+        taskData.metadata = {
+          ...(taskData.metadata || {}),
+          qualification_data: taskData.qualification_data,
+          qualification_snapshot_at: new Date().toISOString()
+        };
+
+        // Remove qualification_data from taskData (it's now in metadata)
+        delete taskData.qualification_data;
+      } catch (error) {
+        console.error('Failed to update restaurant qualification:', error);
+        throw new Error(`Failed to update restaurant qualification: ${error.message}`);
+      }
     }
   }
 
@@ -176,7 +237,19 @@ async function createTask(taskData) {
     .insert(taskData)
     .select(`
       *,
-      restaurants (id, name),
+      restaurants (
+        id, name, contact_name, contact_email, contact_phone,
+        phone, email, instagram_url, facebook_url,
+        city, cuisine, subdomain, organisation_name, demo_store_url,
+        lead_type, lead_category, lead_warmth, lead_stage, lead_status,
+        demo_store_built, icp_rating,
+        contact_role, number_of_venues, point_of_sale,
+        online_ordering_platform, online_ordering_handles_delivery, self_delivery,
+        weekly_uber_sales_volume, uber_aov, uber_markup, uber_profitability,
+        uber_profitability_description, current_marketing_description, website_type,
+        painpoints, core_selling_points, features_to_highlight, possible_objections,
+        details, meeting_link
+      ),
       task_templates (id, name),
       message_templates (id, name)
     `)
@@ -199,12 +272,56 @@ async function createTask(taskData) {
 async function updateTask(id, updates) {
   const client = getSupabaseClient();
 
-  // If message is being updated and task has restaurant, re-render
-  if (updates.message) {
-    const task = await getTaskById(id);
-    if (task && task.restaurant_id) {
+  // Get current task to check type and for other operations
+  const task = await getTaskById(id);
+
+  if (!task) {
+    throw new Error('Task not found');
+  }
+
+  // Handle demo_meeting type updates - update only changed fields on restaurant
+  if (task.type === 'demo_meeting' && updates.qualification_data_changes) {
+    if (!task.restaurant_id) {
+      throw new Error('Task has no associated restaurant');
+    }
+
+    try {
+      // Update only changed fields on restaurant
+      await qualificationService.updateChangedFields(
+        task.restaurant_id,
+        updates.qualification_data_changes
+      );
+
+      // Update task metadata with merged qualification data
+      const currentQualData = task.metadata?.qualification_data || {};
+      updates.metadata = {
+        ...(task.metadata || {}),
+        qualification_data: {
+          ...currentQualData,
+          ...updates.qualification_data_changes
+        },
+        last_qualification_update: new Date().toISOString()
+      };
+
+      // Remove temporary field from updates
+      delete updates.qualification_data_changes;
+    } catch (error) {
+      console.error('Failed to update restaurant qualification:', error);
+      throw new Error(`Failed to update restaurant qualification: ${error.message}`);
+    }
+  }
+
+  // If message or subject_line is being updated and task has restaurant, re-render
+  if (task.restaurant_id) {
+    if (updates.message) {
       updates.message_rendered = await variableReplacementService.replaceVariables(
         updates.message,
+        task.restaurants
+      );
+    }
+    if (updates.subject_line) {
+      updates.subject_line_rendered = await variableReplacementService.replaceVariables(
+        updates.subject_line,
         task.restaurants
       );
     }
@@ -232,10 +349,39 @@ async function updateTask(id, updates) {
  * @returns {Promise<object>} Completed task
  */
 async function completeTask(id) {
-  return updateTask(id, {
-    status: 'completed',
-    completed_at: new Date().toISOString()
-  });
+  const client = getSupabaseClient();
+
+  // Update task status
+  const { data: task, error } = await client
+    .from('tasks')
+    .update({
+      status: 'completed',
+      completed_at: new Date().toISOString()
+    })
+    .eq('id', id)
+    .eq('organisation_id', getCurrentOrganizationId())
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error completing task:', error);
+    throw error;
+  }
+
+  // ✅ SEQUENCE PROGRESSION HOOK
+  if (task.sequence_instance_id) {
+    try {
+      await sequenceProgressionService.activateNextTask(
+        task.sequence_instance_id,
+        task.id
+      );
+    } catch (err) {
+      // Log error but don't fail task completion
+      console.error('Error activating next task in sequence:', err);
+    }
+  }
+
+  return task;
 }
 
 /**
@@ -244,10 +390,45 @@ async function completeTask(id) {
  * @returns {Promise<object>} Cancelled task
  */
 async function cancelTask(id) {
-  return updateTask(id, {
-    status: 'cancelled',
-    cancelled_at: new Date().toISOString()
-  });
+  const client = getSupabaseClient();
+
+  // Get task info first
+  const { data: task } = await client
+    .from('tasks')
+    .select('sequence_instance_id, status')
+    .eq('id', id)
+    .single();
+
+  // Update task status
+  const { data: cancelledTask, error } = await client
+    .from('tasks')
+    .update({
+      status: 'cancelled',
+      cancelled_at: new Date().toISOString()
+    })
+    .eq('id', id)
+    .eq('organisation_id', getCurrentOrganizationId())
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error cancelling task:', error);
+    throw error;
+  }
+
+  // ✅ SEQUENCE PROGRESSION HOOK (if task was active)
+  if (task && task.sequence_instance_id && task.status === 'active') {
+    try {
+      await sequenceProgressionService.activateNextTask(
+        task.sequence_instance_id,
+        id
+      );
+    } catch (err) {
+      console.error('Error activating next task in sequence:', err);
+    }
+  }
+
+  return cancelledTask;
 }
 
 /**
@@ -256,7 +437,32 @@ async function cancelTask(id) {
  * @returns {Promise<void>}
  */
 async function deleteTask(id) {
-  const { error } = await getSupabaseClient()
+  const client = getSupabaseClient();
+
+  // Fetch task first to check for sequence
+  const { data: task } = await client
+    .from('tasks')
+    .select('sequence_instance_id')
+    .eq('id', id)
+    .eq('organisation_id', getCurrentOrganizationId())
+    .single();
+
+  // ✅ SEQUENCE DELETION HOOK
+  if (task && task.sequence_instance_id) {
+    try {
+      await sequenceProgressionService.handleTaskDeletion(
+        task.sequence_instance_id,
+        id
+      );
+      return; // handleTaskDeletion already deletes the task
+    } catch (err) {
+      console.error('Error handling sequence task deletion:', err);
+      throw err;
+    }
+  }
+
+  // Regular task deletion (not part of sequence)
+  const { error } = await client
     .from('tasks')
     .delete()
     .eq('id', id)

@@ -54,6 +54,7 @@ export function CreateTaskTemplateModal({
     priority: 'medium',
     message_template_id: '',
     default_message: '',
+    subject_line: '',
     is_active: true
   });
 
@@ -95,6 +96,7 @@ export function CreateTaskTemplateModal({
         priority: template.priority || 'medium',
         message_template_id: template.message_template_id || '',
         default_message: template.default_message || '',
+        subject_line: template.subject_line || '',
         is_active: template.is_active !== undefined ? template.is_active : true
       });
     } catch (err: any) {
@@ -116,7 +118,7 @@ export function CreateTaskTemplateModal({
 
   const handleMessageTemplateSelect = (templateId: string) => {
     if (!templateId || templateId === 'none') {
-      setFormData({ ...formData, message_template_id: '', default_message: '' });
+      setFormData({ ...formData, message_template_id: '', default_message: '', subject_line: '' });
       return;
     }
 
@@ -125,7 +127,8 @@ export function CreateTaskTemplateModal({
       setFormData({
         ...formData,
         message_template_id: templateId,
-        default_message: '' // Clear default message when template is selected
+        default_message: '', // Clear default message when template is selected
+        subject_line: template.subject_line || ''
       });
     }
   };
@@ -187,6 +190,7 @@ export function CreateTaskTemplateModal({
       priority: 'medium',
       message_template_id: '',
       default_message: '',
+      subject_line: '',
       is_active: true
     });
   };
@@ -254,13 +258,14 @@ export function CreateTaskTemplateModal({
               <Label>Type *</Label>
               <Select
                 value={formData.type}
-                onValueChange={(v) => setFormData({ ...formData, type: v, message_template_id: '', default_message: '' })}
+                onValueChange={(v) => setFormData({ ...formData, type: v, message_template_id: '', default_message: '', subject_line: '' })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="internal_activity">Internal Activity</SelectItem>
+                  <SelectItem value="demo_meeting">Demo Meeting</SelectItem>
                   <SelectItem value="email">Email</SelectItem>
                   <SelectItem value="call">Call</SelectItem>
                   <SelectItem value="social_message">Social Message</SelectItem>
@@ -333,21 +338,40 @@ export function CreateTaskTemplateModal({
                 )}
               </div>
 
-              {/* Default Message (only if no message template selected) */}
+              {/* Default Subject Line and Message (only if no message template selected) */}
               {!formData.message_template_id && (
-                <div className="space-y-2">
-                  <Label htmlFor="default_message">Default Message</Label>
-                  <Textarea
-                    id="default_message"
-                    value={formData.default_message}
-                    onChange={(e) => setFormData({ ...formData, default_message: e.target.value })}
-                    placeholder="Use variables like {restaurant_name}, {contact_name}, etc."
-                    rows={5}
-                    className="font-mono text-sm"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Available variables: {'{restaurant_name}'}, {'{contact_name}'}, {'{first_name}'}, {'{city}'}, {'{cuisine}'}, {'{demo_store_url}'}
-                  </p>
+                <div className="space-y-4">
+                  {/* Subject Line (only for email type) */}
+                  {formData.type === 'email' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="subject_line">Default Email Subject Line</Label>
+                      <Input
+                        id="subject_line"
+                        value={formData.subject_line}
+                        onChange={(e) => setFormData({ ...formData, subject_line: e.target.value })}
+                        placeholder="Enter email subject... (supports variables like {restaurant_name})"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Tip: Use variables for personalization
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Default Message */}
+                  <div className="space-y-2">
+                    <Label htmlFor="default_message">Default Message</Label>
+                    <Textarea
+                      id="default_message"
+                      value={formData.default_message}
+                      onChange={(e) => setFormData({ ...formData, default_message: e.target.value })}
+                      placeholder="Use variables like {restaurant_name}, {contact_name}, etc."
+                      rows={5}
+                      className="font-mono text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Available variables: {'{restaurant_name}'}, {'{contact_name}'}, {'{first_name}'}, {'{city}'}, {'{cuisine}'}, {'{demo_store_url}'}
+                    </p>
+                  </div>
                 </div>
               )}
             </div>

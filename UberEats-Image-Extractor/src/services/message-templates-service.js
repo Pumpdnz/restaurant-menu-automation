@@ -58,9 +58,15 @@ async function getTemplateById(id) {
  * @returns {Promise<object>} Created template
  */
 async function createTemplate(templateData) {
-  // Extract variables from message content
-  const variables = variableReplacementService.extractVariables(templateData.message_content);
-  templateData.available_variables = variables;
+  // Extract variables from message content and subject line
+  const messageVariables = variableReplacementService.extractVariables(templateData.message_content);
+  const subjectVariables = templateData.subject_line
+    ? variableReplacementService.extractVariables(templateData.subject_line)
+    : [];
+
+  // Combine and deduplicate variables
+  const allVariables = [...new Set([...messageVariables, ...subjectVariables])];
+  templateData.available_variables = allVariables;
 
   const { data, error } = await getSupabaseClient()
     .from('message_templates')
@@ -83,11 +89,21 @@ async function createTemplate(templateData) {
  * @returns {Promise<object>} Updated template
  */
 async function updateTemplate(id, updates) {
-  // Re-extract variables if message content changed
-  if (updates.message_content) {
-    updates.available_variables = variableReplacementService.extractVariables(
-      updates.message_content
-    );
+  // Re-extract variables if message content or subject line changed
+  if (updates.message_content || updates.subject_line) {
+    // Get current template to merge variables
+    const current = await getTemplateById(id);
+
+    const messageContent = updates.message_content || current.message_content;
+    const subjectLine = updates.subject_line !== undefined ? updates.subject_line : current.subject_line;
+
+    const messageVariables = variableReplacementService.extractVariables(messageContent);
+    const subjectVariables = subjectLine
+      ? variableReplacementService.extractVariables(subjectLine)
+      : [];
+
+    // Combine and deduplicate variables
+    updates.available_variables = [...new Set([...messageVariables, ...subjectVariables])];
   }
 
   const { data, error } = await getSupabaseClient()
@@ -164,13 +180,19 @@ async function previewTemplate(templateId, restaurantId = null) {
     }
 
     if (restaurant) {
-      const rendered = await variableReplacementService.replaceVariables(
+      const renderedMessage = await variableReplacementService.replaceVariables(
         template.message_content,
         restaurant
       );
+      const renderedSubject = template.subject_line
+        ? await variableReplacementService.replaceVariables(template.subject_line, restaurant)
+        : null;
+
       return {
         original: template.message_content,
-        rendered,
+        rendered: renderedMessage,
+        subject_line_original: template.subject_line,
+        subject_line_rendered: renderedSubject,
         variables: template.available_variables,
         restaurant: {
           id: restaurant.id,
@@ -198,14 +220,19 @@ async function previewTemplate(templateId, restaurantId = null) {
     icp_rating: 8
   };
 
-  const rendered = await variableReplacementService.replaceVariables(
+  const renderedMessage = await variableReplacementService.replaceVariables(
     template.message_content,
     sampleData
   );
+  const renderedSubject = template.subject_line
+    ? await variableReplacementService.replaceVariables(template.subject_line, sampleData)
+    : null;
 
   return {
     original: template.message_content,
-    rendered,
+    rendered: renderedMessage,
+    subject_line_original: template.subject_line,
+    subject_line_rendered: renderedSubject,
     variables: template.available_variables,
     usingSampleData: true
   };
@@ -252,6 +279,7 @@ async function duplicateTemplate(id, newName) {
     description: template.description,
     type: template.type,
     message_content: template.message_content,
+    subject_line: template.subject_line,
     available_variables: template.available_variables,
     organisation_id: getCurrentOrganizationId(),
     is_active: template.is_active

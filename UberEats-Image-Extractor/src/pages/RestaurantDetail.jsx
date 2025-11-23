@@ -42,7 +42,9 @@ import {
   Code,
   XCircle,
   Database,
-  Download
+  Download,
+  Plus,
+  Workflow
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -66,6 +68,20 @@ import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Checkbox } from '../components/ui/checkbox';
 import { cn } from '../lib/utils';
 import api from '../services/api';
+import { SequenceProgressCard } from '../components/sequences/SequenceProgressCard';
+import { StartSequenceModal } from '../components/sequences/StartSequenceModal';
+import {
+  useRestaurantSequences,
+  usePauseSequence,
+  useResumeSequence,
+  useCancelSequence,
+  useFinishSequence
+} from '../hooks/useSequences';
+import { QualificationForm } from '../components/demo-meeting/QualificationForm';
+import { QualificationDataDisplay } from '../components/demo-meeting/QualificationDataDisplay';
+import { RestaurantTasksList } from '../components/tasks/RestaurantTasksList';
+import { CreateTaskModal } from '../components/tasks/CreateTaskModal';
+import { EditTaskModal } from '../components/tasks/EditTaskModal';
 
 export default function RestaurantDetail() {
   const { id } = useParams();
@@ -116,7 +132,26 @@ export default function RestaurantDetail() {
   const [extractionMode, setExtractionMode] = useState('standard'); // 'standard' or 'premium'
   const [extractOptionSets, setExtractOptionSets] = useState(true);
   const [validateImages, setValidateImages] = useState(true);
-  
+
+  // Sequence states
+  const [startSequenceModalOpen, setStartSequenceModalOpen] = useState(false);
+
+  // Task modal states
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
+  const [editTaskId, setEditTaskId] = useState(null);
+  const [duplicateTaskId, setDuplicateTaskId] = useState(null);
+  const [followUpTaskId, setFollowUpTaskId] = useState(null);
+  const [tasksRefreshKey, setTasksRefreshKey] = useState(0);
+
+  // Fetch restaurant sequences
+  const { data: restaurantSequences, isLoading: sequencesLoading, refetch: refetchSequences } = useRestaurantSequences(id);
+
+  // Sequence action mutations
+  const pauseSequenceMutation = usePauseSequence();
+  const resumeSequenceMutation = useResumeSequence();
+  const cancelSequenceMutation = useCancelSequence();
+  const finishSequenceMutation = useFinishSequence();
+
   // New states for URL search and details extraction
   const [searchingForUrl, setSearchingForUrl] = useState({});
   const [extractingDetails, setExtractingDetails] = useState(false);
@@ -377,6 +412,51 @@ export default function RestaurantDetail() {
         variant: "destructive"
       });
     }
+  };
+
+  // Sequence action handlers
+  const handlePauseSequence = async (instanceId) => {
+    await pauseSequenceMutation.mutateAsync(instanceId);
+    refetchSequences();
+  };
+
+  const handleResumeSequence = async (instanceId) => {
+    await resumeSequenceMutation.mutateAsync(instanceId);
+    refetchSequences();
+  };
+
+  const handleCancelSequence = async (instanceId) => {
+    if (window.confirm('Are you sure you want to cancel this sequence? This will delete all pending tasks.')) {
+      await cancelSequenceMutation.mutateAsync(instanceId);
+      refetchSequences();
+    }
+  };
+
+  const handleFinishSequence = async (instanceId, option) => {
+    if (!window.confirm('Are you sure you want to finish this sequence? Active tasks will be marked complete and pending tasks will be cancelled.')) {
+      return;
+    }
+
+    await finishSequenceMutation.mutateAsync(instanceId);
+    refetchSequences();
+
+    // Handle the different finish options
+    if (option === 'finish-followup') {
+      // Find the last active task from the sequence to use as follow-up source
+      const sequence = restaurantSequences?.data?.find(s => s.id === instanceId);
+      const lastActiveTask = sequence?.tasks?.find(t => t.status === 'active');
+
+      if (lastActiveTask) {
+        setFollowUpTaskId(lastActiveTask.id);
+      } else {
+        // If no active task found, just open the create task modal
+        setTaskModalOpen(true);
+      }
+    } else if (option === 'finish-start-new') {
+      // Open the start sequence modal
+      setStartSequenceModalOpen(true);
+    }
+    // For 'finish-only', do nothing extra
   };
 
   const handleRegistration = async () => {
@@ -2529,6 +2609,7 @@ export default function RestaurantDetail() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="contact">Contact & Lead</TabsTrigger>
           <TabsTrigger value="sales">Sales Info</TabsTrigger>
+          <TabsTrigger value="tasks-sequences">Tasks and Sequences</TabsTrigger>
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="configuration">Configuration</TabsTrigger>
           <TabsTrigger value="platforms">Platforms & Social</TabsTrigger>
@@ -3049,6 +3130,20 @@ export default function RestaurantDetail() {
                   />
                 ) : (
                   <p className="text-sm mt-1">{restaurant?.assigned_sales_rep || '-'}</p>
+                )}
+              </div>
+
+              {/* Qualification Data Section */}
+              <div className="col-span-2 border-t pt-6 mt-6">
+                <h3 className="text-lg font-semibold mb-4">Demo Qualification Data</h3>
+
+                {isEditing ? (
+                  <QualificationForm
+                    data={editedData}
+                    onChange={handleFieldChange}
+                  />
+                ) : (
+                  <QualificationDataDisplay data={restaurant} />
                 )}
               </div>
             </CardContent>
@@ -3777,6 +3872,161 @@ export default function RestaurantDetail() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Tasks and Sequences Tab */}
+        <TabsContent value="tasks-sequences" className="space-y-6">
+          {/* Standalone Tasks Section - Moved to top */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">Standalone Tasks</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Tasks not part of any sequence
+                </p>
+              </div>
+              <Button onClick={() => setTaskModalOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Task
+              </Button>
+            </div>
+
+            <RestaurantTasksList
+              restaurantId={id}
+              onCreateTask={() => setTaskModalOpen(true)}
+              onEditTask={(taskId) => setEditTaskId(taskId)}
+              onDuplicateTask={(taskId) => setDuplicateTaskId(taskId)}
+              onFollowUpTask={(taskId) => setFollowUpTaskId(taskId)}
+              refreshKey={tasksRefreshKey}
+            />
+          </div>
+
+          {/* Divider */}
+          <div className="border-t my-6" />
+
+          {/* Sequences Section */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">Active Sequences</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Automated task sequences for this restaurant
+                </p>
+              </div>
+              <Button onClick={() => setStartSequenceModalOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Start Sequence
+              </Button>
+            </div>
+          </div>
+
+          {/* Loading State */}
+          {sequencesLoading && (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          {/* Sequences List */}
+          {!sequencesLoading && restaurantSequences?.data && restaurantSequences.data.length > 0 && (
+            <div className="space-y-4">
+              {restaurantSequences.data.map((instance) => (
+                <SequenceProgressCard
+                  key={instance.id}
+                  instance={instance}
+                  compact={false}
+                  onPause={handlePauseSequence}
+                  onResume={handleResumeSequence}
+                  onCancel={handleCancelSequence}
+                  onFinish={handleFinishSequence}
+                  onRefresh={refetchSequences}
+                  hideRestaurantLink={true}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!sequencesLoading && (!restaurantSequences?.data || restaurantSequences.data.length === 0) && (
+            <Card className="p-12">
+              <div className="flex flex-col items-center justify-center text-center space-y-4">
+                <div className="rounded-full bg-muted p-4">
+                  <Workflow className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold">No active sequences</h3>
+                  <p className="text-sm text-muted-foreground max-w-md">
+                    Start a sequence to automate follow-up tasks and streamline your workflow.
+                    Sequences help you stay organized and ensure nothing falls through the cracks.
+                  </p>
+                </div>
+                <Button onClick={() => setStartSequenceModalOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Start Your First Sequence
+                </Button>
+              </div>
+            </Card>
+          )}
+
+          {/* Start Sequence Modal */}
+          {restaurant && (
+            <StartSequenceModal
+              open={startSequenceModalOpen}
+              onClose={() => setStartSequenceModalOpen(false)}
+              restaurant={restaurant}
+            />
+          )}
+
+          {/* Task Modals */}
+          {taskModalOpen && !duplicateTaskId && !followUpTaskId && (
+            <CreateTaskModal
+              open={taskModalOpen}
+              onClose={() => setTaskModalOpen(false)}
+              onSuccess={() => {
+                setTaskModalOpen(false);
+                setTasksRefreshKey(prev => prev + 1);
+              }}
+              restaurantId={id}
+            />
+          )}
+
+          {duplicateTaskId && (
+            <CreateTaskModal
+              open={!!duplicateTaskId}
+              onClose={() => setDuplicateTaskId(null)}
+              onSuccess={() => {
+                setDuplicateTaskId(null);
+                setTasksRefreshKey(prev => prev + 1);
+              }}
+              restaurantId={id}
+              duplicateFromTaskId={duplicateTaskId}
+            />
+          )}
+
+          {followUpTaskId && (
+            <CreateTaskModal
+              open={!!followUpTaskId}
+              onClose={() => setFollowUpTaskId(null)}
+              onSuccess={() => {
+                setFollowUpTaskId(null);
+                setTasksRefreshKey(prev => prev + 1);
+              }}
+              restaurantId={id}
+              followUpFromTaskId={followUpTaskId}
+            />
+          )}
+
+          {editTaskId && (
+            <EditTaskModal
+              open={!!editTaskId}
+              taskId={editTaskId}
+              onClose={() => setEditTaskId(null)}
+              onSuccess={() => {
+                setEditTaskId(null);
+                setTasksRefreshKey(prev => prev + 1);
+              }}
+            />
+          )}
         </TabsContent>
 
         {/* Registration Tab */}

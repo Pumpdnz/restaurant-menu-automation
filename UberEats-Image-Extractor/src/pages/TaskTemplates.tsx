@@ -272,7 +272,12 @@ export default function TaskTemplates() {
               templates.map((template: any) => (
                 <TableRow key={template.id}>
                   <TableCell>
-                    <div className="font-medium">{template.name}</div>
+                    <div
+                      className="font-medium cursor-pointer hover:text-brand-blue"
+                      onClick={() => setModals({ ...modals, edit: template.id })}
+                    >
+                      {template.name}
+                    </div>
                     {template.description && (
                       <div className="text-xs text-muted-foreground mt-1">
                         {template.description}

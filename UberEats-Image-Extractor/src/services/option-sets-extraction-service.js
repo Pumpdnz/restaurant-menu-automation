@@ -150,8 +150,9 @@ Also identify what type of page this is (item detail, main menu, error page, etc
    */
   async extractFromCleanUrl(cleanUrl, itemName, orgId) {
     console.log(`[${orgId}] Extracting option sets for "${itemName}" from: ${cleanUrl}`);
-    
+
     try {
+      // Base payload configuration
       const payload = {
         url: cleanUrl,
         formats: [
@@ -165,8 +166,17 @@ Also identify what type of page this is (item detail, main menu, error page, etc
         waitFor: 3000,
         blockAds: true,
         timeout: 90000,  // Firecrawl timeout (increased by 50%)
-        skipTlsVerification: true,
-        actions: [
+        skipTlsVerification: true
+      };
+
+      // Conditionally add actions based on environment variable
+      // Default: NO actions (as of Nov 2025, UberEats doesn't require popup dismissal)
+      // Set ENABLE_ACTIONS_ON_OPTION_SETS_EXTRACTIONS=true to re-enable if UberEats changes
+      const enableActions = process.env.ENABLE_ACTIONS_ON_OPTION_SETS_EXTRACTIONS === 'true';
+
+      if (enableActions) {
+        console.log(`[${orgId}] Actions enabled for option sets extraction`);
+        payload.actions = [
           // Wait for page to load
           {
             type: 'wait',
@@ -181,8 +191,8 @@ Also identify what type of page this is (item detail, main menu, error page, etc
             type: 'wait',
             milliseconds: 2000
           }
-        ]
-      };
+        ];
+      }
 
       // Wait for rate limiter approval
       await rateLimiter.acquireSlot(`option-sets-${itemName}-${orgId}`);

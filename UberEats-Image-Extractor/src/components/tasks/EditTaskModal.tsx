@@ -21,6 +21,8 @@ import {
 } from '../ui/select';
 import { DateTimePicker } from '../ui/date-time-picker';
 import { useToast } from '../../hooks/use-toast';
+import { QualificationForm } from '../demo-meeting/QualificationForm';
+import { QualificationData } from '../../lib/qualification-constants';
 
 interface EditTaskModalProps {
   open: boolean;
@@ -41,10 +43,15 @@ export function EditTaskModal({ open, taskId, onClose, onSuccess }: EditTaskModa
     type: 'internal_activity',
     priority: 'medium',
     status: 'pending',
-    message: ''
+    message: '',
+    subject_line: ''
   });
 
   const [dueDate, setDueDate] = useState<Date | null>(null);
+
+  // Qualification data state (for demo_meeting type)
+  const [originalQualData, setOriginalQualData] = useState<QualificationData>({});
+  const [qualificationData, setQualificationData] = useState<QualificationData>({});
 
   useEffect(() => {
     if (open && taskId) {
@@ -66,7 +73,8 @@ export function EditTaskModal({ open, taskId, onClose, onSuccess }: EditTaskModa
         type: task.type || 'internal_activity',
         priority: task.priority || 'medium',
         status: task.status || 'pending',
-        message: task.message || ''
+        message: task.message || '',
+        subject_line: task.subject_line || ''
       });
 
       // Set due date if exists
@@ -74,6 +82,17 @@ export function EditTaskModal({ open, taskId, onClose, onSuccess }: EditTaskModa
         setDueDate(new Date(task.due_date));
       } else {
         setDueDate(null);
+      }
+
+      // Load qualification data for demo_meeting tasks
+      if (task.type === 'demo_meeting' && task.metadata?.qualification_data) {
+        const qualData = task.metadata.qualification_data;
+        setOriginalQualData(qualData);
+        setQualificationData(qualData);
+      } else {
+        // Reset qualification data for non-demo_meeting tasks
+        setOriginalQualData({});
+        setQualificationData({});
       }
     } catch (err: any) {
       console.error('Failed to fetch task:', err);
@@ -101,6 +120,42 @@ export function EditTaskModal({ open, taskId, onClose, onSuccess }: EditTaskModa
         updateData.due_date = dueDate.toISOString();
       } else {
         updateData.due_date = null;
+      }
+
+      // For demo_meeting tasks, track changed qualification fields
+      if (formData.type === 'demo_meeting') {
+        const changedFields: Record<string, any> = {};
+
+        // Compare each field in qualificationData with originalQualData
+        (Object.keys(qualificationData) as Array<keyof QualificationData>).forEach((key) => {
+          const currentValue = qualificationData[key];
+          const originalValue = originalQualData[key];
+
+          // Deep comparison for arrays (painpoints, core_selling_points, etc.)
+          if (Array.isArray(currentValue) && Array.isArray(originalValue)) {
+            if (JSON.stringify(currentValue) !== JSON.stringify(originalValue)) {
+              changedFields[key] = currentValue;
+            }
+          }
+          // Simple comparison for primitives
+          else if (currentValue !== originalValue) {
+            changedFields[key] = currentValue;
+          }
+        });
+
+        // Also check for fields that were in original but removed (set to null/undefined)
+        (Object.keys(originalQualData) as Array<keyof QualificationData>).forEach((key) => {
+          if (!(key in qualificationData) || qualificationData[key] === null || qualificationData[key] === undefined) {
+            if (originalQualData[key] !== null && originalQualData[key] !== undefined) {
+              changedFields[key] = null;
+            }
+          }
+        });
+
+        // Only send changed fields if there are any
+        if (Object.keys(changedFields).length > 0) {
+          updateData.qualification_data_changes = changedFields;
+        }
       }
 
       const response = await api.patch(`/tasks/${taskId}`, updateData);
@@ -232,6 +287,7 @@ export function EditTaskModal({ open, taskId, onClose, onSuccess }: EditTaskModa
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="internal_activity">Internal Activity</SelectItem>
+                  <SelectItem value="demo_meeting">Demo Meeting</SelectItem>
                   <SelectItem value="email">Email</SelectItem>
                   <SelectItem value="call">Call</SelectItem>
                   <SelectItem value="social_message">Social Message</SelectItem>
@@ -270,19 +326,48 @@ export function EditTaskModal({ open, taskId, onClose, onSuccess }: EditTaskModa
 
           {/* Message (for communication tasks) */}
           {['email', 'social_message', 'text'].includes(formData.type) && (
-            <div className="space-y-2">
-              <Label htmlFor="message">Message</Label>
-              <Textarea
-                id="message"
-                value={formData.message}
-                onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                placeholder="Use variables like {restaurant_name}, {contact_name}, etc."
-                rows={5}
-              />
-              <p className="text-xs text-muted-foreground">
-                Available variables: {'{restaurant_name}'}, {'{contact_name}'}, {'{first_name}'}, {'{city}'}, {'{cuisine}'}, {'{demo_store_url}'}
-              </p>
+            <div className="space-y-4">
+              {/* Subject Line (for email tasks only) */}
+              {formData.type === 'email' && (
+                <div className="space-y-2">
+                  <Label htmlFor="subject_line">Email Subject Line</Label>
+                  <Input
+                    id="subject_line"
+                    value={formData.subject_line}
+                    onChange={(e) => setFormData({ ...formData, subject_line: e.target.value })}
+                    placeholder="Enter email subject... (supports variables like {restaurant_name})"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Tip: Use variables for personalization
+                  </p>
+                </div>
+              )}
+
+              {/* Message Textarea */}
+              <div className="space-y-2">
+                <Label htmlFor="message">Message</Label>
+                <Textarea
+                  id="message"
+                  value={formData.message}
+                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                  placeholder="Use variables like {restaurant_name}, {contact_name}, etc."
+                  rows={5}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Available variables: {'{restaurant_name}'}, {'{contact_name}'}, {'{first_name}'}, {'{city}'}, {'{cuisine}'}, {'{demo_store_url}'}
+                </p>
+              </div>
             </div>
+          )}
+
+          {/* Qualification Form (for demo_meeting tasks) */}
+          {formData.type === 'demo_meeting' && (
+            <QualificationForm
+              data={qualificationData}
+              onChange={(field, value) => {
+                setQualificationData(prev => ({ ...prev, [field]: value }));
+              }}
+            />
           )}
         </div>
 

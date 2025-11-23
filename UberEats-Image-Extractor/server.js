@@ -7549,6 +7549,12 @@ app.use('/api/task-templates', authMiddleware, taskTemplatesRoutes);
 const messageTemplatesRoutes = require('./src/routes/message-templates-routes');
 app.use('/api/message-templates', authMiddleware, messageTemplatesRoutes);
 
+const sequenceTemplatesRoutes = require('./src/routes/sequence-templates-routes');
+app.use('/api/sequence-templates', authMiddleware, sequenceTemplatesRoutes);
+
+const sequenceInstancesRoutes = require('./src/routes/sequence-instances-routes');
+app.use('/api/sequence-instances', authMiddleware, sequenceInstancesRoutes);
+
 /**
  * Serve static files and handle SPA routes
  */

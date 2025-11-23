@@ -21,6 +21,8 @@ import {
 } from '../ui/select';
 import { DateTimePicker } from '../ui/date-time-picker';
 import { useToast } from '../../hooks/use-toast';
+import { QualificationForm } from '../demo-meeting/QualificationForm';
+import { QualificationData } from '../../lib/qualification-constants';
 
 interface CreateTaskModalProps {
   open: boolean;
@@ -51,10 +53,12 @@ export function CreateTaskModal({ open, onClose, onSuccess, restaurantId, duplic
     restaurant_id: restaurantId || '',
     task_template_id: '',
     message_template_id: '',
-    message: ''
+    message: '',
+    subject_line: ''
   });
 
   const [dueDate, setDueDate] = useState<Date | null>(null);
+  const [qualificationData, setQualificationData] = useState<QualificationData>({});
 
   useEffect(() => {
     if (open) {
@@ -115,7 +119,8 @@ export function CreateTaskModal({ open, onClose, onSuccess, restaurantId, duplic
         restaurant_id: task.restaurant_id || restaurantId || '',
         task_template_id: task.task_template_id || '',
         message_template_id: task.message_template_id || '',
-        message: task.message || ''
+        message: task.message || '',
+        subject_line: task.subject_line || ''
       });
 
       // Set due date if exists
@@ -126,6 +131,11 @@ export function CreateTaskModal({ open, onClose, onSuccess, restaurantId, duplic
       // Set selected message template if present
       if (task.message_template_id) {
         setSelectedMessageTemplate(task.message_template_id);
+      }
+
+      // Load qualification data for demo_meeting tasks
+      if (task.type === 'demo_meeting' && task.metadata?.qualification_data) {
+        setQualificationData(task.metadata.qualification_data);
       }
     } catch (error) {
       console.error('Failed to fetch task for duplication:', error);
@@ -147,7 +157,8 @@ export function CreateTaskModal({ open, onClose, onSuccess, restaurantId, duplic
         restaurant_id: task.restaurant_id || restaurantId || '',
         task_template_id: task.task_template_id || '',
         message_template_id: task.message_template_id || '',
-        message: task.message || ''
+        message: task.message || '',
+        subject_line: task.subject_line || ''
       });
 
       // Clear due date for follow-up task
@@ -156,6 +167,11 @@ export function CreateTaskModal({ open, onClose, onSuccess, restaurantId, duplic
       // Set selected message template if present
       if (task.message_template_id) {
         setSelectedMessageTemplate(task.message_template_id);
+      }
+
+      // Load qualification data for demo_meeting tasks
+      if (task.type === 'demo_meeting' && task.metadata?.qualification_data) {
+        setQualificationData(task.metadata.qualification_data);
       }
     } catch (error) {
       console.error('Failed to fetch task for follow-up:', error);
@@ -174,7 +190,7 @@ export function CreateTaskModal({ open, onClose, onSuccess, restaurantId, duplic
   const handleMessageTemplateSelect = async (templateId: string) => {
     if (!templateId || templateId === 'none') {
       setSelectedMessageTemplate('');
-      setFormData({ ...formData, message_template_id: '', message: '' });
+      setFormData({ ...formData, message_template_id: '', message: '', subject_line: '' });
       return;
     }
 
@@ -184,7 +200,8 @@ export function CreateTaskModal({ open, onClose, onSuccess, restaurantId, duplic
       setFormData({
         ...formData,
         message_template_id: templateId,
-        message: template.message_content
+        message: template.message_content,
+        subject_line: template.subject_line || ''
       });
     }
   };
@@ -199,7 +216,8 @@ export function CreateTaskModal({ open, onClose, onSuccess, restaurantId, duplic
         type: 'internal_activity',
         priority: 'medium',
         message_template_id: '',
-        message: ''
+        message: '',
+        subject_line: ''
       });
       setSelectedMessageTemplate('');
       return;
@@ -221,7 +239,10 @@ export function CreateTaskModal({ open, onClose, onSuccess, restaurantId, duplic
         message_template_id: hasMessageTemplate ? template.message_template_id : '',
         message: hasMessageTemplate
           ? (template.message_templates.message_content || '')
-          : (template.default_message || '')
+          : (template.default_message || ''),
+        subject_line: hasMessageTemplate
+          ? (template.message_templates.subject_line || '')
+          : (template.subject_line || '')
       });
 
       // Set the selected message template if present
@@ -260,6 +281,11 @@ export function CreateTaskModal({ open, onClose, onSuccess, restaurantId, duplic
         cleanedData.due_date = dueDate.toISOString();
       }
 
+      // Add qualification_data for demo_meeting tasks
+      if (formData.type === 'demo_meeting') {
+        cleanedData.qualification_data = qualificationData;
+      }
+
       const response = await api.post('/tasks', cleanedData);
       if (response.data.success) {
         toast({
@@ -291,10 +317,12 @@ export function CreateTaskModal({ open, onClose, onSuccess, restaurantId, duplic
       restaurant_id: restaurantId || '',
       task_template_id: '',
       message_template_id: '',
-      message: ''
+      message: '',
+      subject_line: ''
     });
     setDueDate(null);
     setSelectedMessageTemplate('');
+    setQualificationData({});
   };
 
   return (
@@ -404,6 +432,7 @@ export function CreateTaskModal({ open, onClose, onSuccess, restaurantId, duplic
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="internal_activity">Internal Activity</SelectItem>
+                  <SelectItem value="demo_meeting">Demo Meeting</SelectItem>
                   <SelectItem value="email">Email</SelectItem>
                   <SelectItem value="call">Call</SelectItem>
                   <SelectItem value="social_message">Social Message</SelectItem>
@@ -476,6 +505,22 @@ export function CreateTaskModal({ open, onClose, onSuccess, restaurantId, duplic
                 </Select>
               </div>
 
+              {/* Subject Line (for email tasks only) */}
+              {formData.type === 'email' && (
+                <div className="space-y-2">
+                  <Label htmlFor="subject_line">Email Subject Line</Label>
+                  <Input
+                    id="subject_line"
+                    value={formData.subject_line}
+                    onChange={(e) => setFormData({ ...formData, subject_line: e.target.value })}
+                    placeholder="Enter email subject... (supports variables like {restaurant_name})"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Tip: Use variables for personalization
+                  </p>
+                </div>
+              )}
+
               {/* Message Textarea */}
               <div className="space-y-2">
                 <Label htmlFor="message">Message</Label>
@@ -491,6 +536,15 @@ export function CreateTaskModal({ open, onClose, onSuccess, restaurantId, duplic
                 </p>
               </div>
             </div>
+          )}
+
+          {/* Qualification Form (for demo_meeting tasks) */}
+          {formData.type === 'demo_meeting' && (
+            <QualificationForm
+              data={qualificationData}
+              onChange={(field, value) => setQualificationData(prev => ({ ...prev, [field]: value }))}
+              restaurantId={formData.restaurant_id}
+            />
           )}
         </div>
 

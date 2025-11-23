@@ -55,6 +55,7 @@ export function CreateMessageTemplateModal({
     description: '',
     type: 'social_message',
     message_content: '',
+    subject_line: '',
     is_active: true
   });
 
@@ -72,10 +73,12 @@ export function CreateMessageTemplateModal({
   }, [open, templateId, duplicateFromId]);
 
   useEffect(() => {
-    // Extract variables from message content
-    const variables = extractVariablesFromText(formData.message_content);
-    setExtractedVariables(variables);
-  }, [formData.message_content]);
+    // Extract variables from message content and subject line
+    const messageVars = extractVariablesFromText(formData.message_content);
+    const subjectVars = extractVariablesFromText(formData.subject_line);
+    const allVars = [...new Set([...messageVars, ...subjectVars])]; // Deduplicate
+    setExtractedVariables(allVars);
+  }, [formData.message_content, formData.subject_line]);
 
   const extractVariablesFromText = (text: string): string[] => {
     if (!text) return [];
@@ -104,6 +107,7 @@ export function CreateMessageTemplateModal({
         description: template.description || '',
         type: template.type || 'social_message',
         message_content: template.message_content || '',
+        subject_line: template.subject_line || '',
         is_active: template.is_active !== undefined ? template.is_active : true
       });
     } catch (err: any) {
@@ -139,7 +143,8 @@ export function CreateMessageTemplateModal({
   const renderPreview = () => {
     if (!showPreview || !previewRestaurant) return null;
 
-    let preview = formData.message_content;
+    let messagePreview = formData.message_content;
+    let subjectPreview = formData.subject_line;
 
     // Simple variable replacement for preview
     const variableMap: { [key: string]: any } = {
@@ -173,13 +178,27 @@ export function CreateMessageTemplateModal({
     extractedVariables.forEach(variable => {
       // Check if variable exists in map (to handle empty strings correctly)
       const value = variable in variableMap ? variableMap[variable] : `{${variable}}`;
-      preview = preview.replace(new RegExp(`{${variable}}`, 'g'), value !== '' ? value : '-');
+      messagePreview = messagePreview.replace(new RegExp(`{${variable}}`, 'g'), value !== '' ? value : '-');
+      if (subjectPreview) {
+        subjectPreview = subjectPreview.replace(new RegExp(`{${variable}}`, 'g'), value !== '' ? value : '-');
+      }
     });
 
     return (
-      <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
-        <div className="text-sm font-medium mb-2">Preview:</div>
-        <div className="text-sm whitespace-pre-wrap">{preview}</div>
+      <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md space-y-3">
+        <div className="text-sm font-medium">Preview:</div>
+        {formData.type === 'email' && subjectPreview && (
+          <div>
+            <div className="text-xs font-medium text-blue-900 mb-1">Subject:</div>
+            <div className="text-sm font-medium text-blue-900">{subjectPreview}</div>
+          </div>
+        )}
+        <div>
+          {formData.type === 'email' && subjectPreview && (
+            <div className="text-xs font-medium text-blue-900 mb-1">Message:</div>
+          )}
+          <div className="text-sm whitespace-pre-wrap">{messagePreview}</div>
+        </div>
       </div>
     );
   };
@@ -225,6 +244,7 @@ export function CreateMessageTemplateModal({
       description: '',
       type: 'social_message',
       message_content: '',
+      subject_line: '',
       is_active: true
     });
     setExtractedVariables([]);
@@ -337,6 +357,23 @@ export function CreateMessageTemplateModal({
               </div>
             </div>
           </div>
+
+          {/* Subject Line (for email type only) */}
+          {formData.type === 'email' && (
+            <div className="space-y-2">
+              <Label htmlFor="subject_line">Email Subject Line</Label>
+              <Input
+                id="subject_line"
+                value={formData.subject_line}
+                onChange={(e) => setFormData({ ...formData, subject_line: e.target.value })}
+                placeholder="Enter email subject... (supports variables like {restaurant_name})"
+                className="font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                Tip: Use variables for personalization (e.g., "Demo for {'{restaurant_name}'}")
+              </p>
+            </div>
+          )}
 
           {/* Message Content */}
           <div className="space-y-2">

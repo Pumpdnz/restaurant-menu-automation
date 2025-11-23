@@ -13,6 +13,7 @@ import {
   CheckSquare,
   FileText,
   ClipboardList,
+  Workflow,
 } from 'lucide-react';
 import {
   SidebarGroup,
@@ -33,6 +34,7 @@ const NavigationItems = ({ collapsed }) => {
     { href: '/restaurants', label: 'Restaurants', icon: Store },
     { href: '/tasks', label: 'Tasks', icon: CheckSquare },
     { href: '/task-templates', label: 'Task Templates', icon: ClipboardList },
+    { href: '/sequences', label: 'Sequences', icon: Workflow },
     { href: '/message-templates', label: 'Message Templates', icon: FileText },
     { href: '/extractions', label: 'Extractions', icon: Download },
     { href: '/menus', label: 'Menus', icon: Menu },

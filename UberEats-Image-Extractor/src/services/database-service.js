@@ -1206,10 +1206,10 @@ async function getActiveMenuItems(restaurantId, platformId = null) {
  */
 async function getAllRestaurants() {
   if (!isDatabaseAvailable()) return [];
-  
+
   const orgId = getCurrentOrganizationId();
   console.log(`[Database] getAllRestaurants called with org ID: ${orgId}`);
-  
+
   try {
     const client = getSupabaseClient();
     const { data, error } = await client
@@ -1224,7 +1224,7 @@ async function getAllRestaurants() {
       `)
       .eq('organisation_id', orgId)
       .order('name');
-    
+
     if (error) throw error;
     console.log(`[Database] Found ${data?.length || 0} restaurants for org ${orgId}`);
     return data;
@@ -1246,7 +1246,9 @@ async function getAllRestaurantsList() {
 
   try {
     const client = getSupabaseClient();
-    const { data, error } = await client
+
+    // 1. Fetch restaurants
+    const { data: restaurants, error } = await client
       .from('restaurants')
       .select(`
         id,
@@ -1283,8 +1285,84 @@ async function getAllRestaurantsList() {
       .order('name');
 
     if (error) throw error;
-    console.log(`[Database] Found ${data?.length || 0} restaurants for org ${orgId} (lightweight)`);
-    return data;
+    console.log(`[Database] Found ${restaurants?.length || 0} restaurants for org ${orgId} (lightweight)`);
+
+    if (!restaurants || restaurants.length === 0) {
+      return [];
+    }
+
+    // 2. Fetch all active tasks for these restaurants
+    const restaurantIds = restaurants.map(r => r.id);
+    const { data: allTasks, error: tasksError } = await client
+      .from('tasks')
+      .select(`
+        id,
+        name,
+        type,
+        status,
+        priority,
+        due_date,
+        created_at,
+        restaurant_id,
+        message_rendered,
+        subject_line,
+        subject_line_rendered,
+        restaurants (
+          contact_name,
+          contact_role,
+          contact_phone,
+          contact_email,
+          phone,
+          email,
+          meeting_link,
+          number_of_venues,
+          point_of_sale,
+          online_ordering_platform,
+          online_ordering_handles_delivery,
+          self_delivery,
+          weekly_uber_sales_volume,
+          uber_aov,
+          uber_markup,
+          uber_profitability,
+          uber_profitability_description,
+          current_marketing_description,
+          website_type,
+          painpoints,
+          core_selling_points,
+          features_to_highlight,
+          possible_objections,
+          instagram_url,
+          facebook_url
+        )
+      `)
+      .in('restaurant_id', restaurantIds)
+      .not('status', 'in', '(completed,cancelled)')
+      .order('due_date', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: true });
+
+    if (tasksError) {
+      console.error('[Database] Error fetching tasks:', tasksError);
+      // Continue without tasks if fetch fails
+    }
+
+    // 3. Create map of restaurant_id -> oldest task
+    const tasksMap = {};
+    if (allTasks && allTasks.length > 0) {
+      allTasks.forEach(task => {
+        if (!tasksMap[task.restaurant_id]) {
+          tasksMap[task.restaurant_id] = task;
+        }
+      });
+      console.log(`[Database] Found ${allTasks.length} active tasks across ${Object.keys(tasksMap).length} restaurants`);
+    }
+
+    // 4. Attach oldest_task to each restaurant
+    const restaurantsWithTasks = restaurants.map(r => ({
+      ...r,
+      oldest_task: tasksMap[r.id] || null
+    }));
+
+    return restaurantsWithTasks;
   } catch (error) {
     console.error('[Database] Error getting restaurants list:', error);
     return [];
