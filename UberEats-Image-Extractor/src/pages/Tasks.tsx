@@ -60,6 +60,7 @@ import { CreateTaskModal } from '../components/tasks/CreateTaskModal';
 import { EditTaskModal } from '../components/tasks/EditTaskModal';
 import { TaskDetailModal } from '../components/tasks/TaskDetailModal';
 import { TaskTypeQuickView } from '../components/tasks/TaskTypeQuickView';
+import { StartSequenceModal } from '../components/sequences/StartSequenceModal';
 import { DateRange } from 'react-day-picker';
 
 export default function Tasks() {
@@ -111,12 +112,15 @@ export default function Tasks() {
     direction: 'asc'
   });
 
+  const [sequenceRestaurant, setSequenceRestaurant] = useState(null);
+
   const [modals, setModals] = useState({
     create: false,
     edit: null,
     detail: null,
     duplicate: null,
-    followUp: null
+    followUp: null,
+    startSequence: false
   });
 
   // NZ Timezone utility functions
@@ -1232,6 +1236,10 @@ export default function Tasks() {
                       task={task}
                       onTaskCompleted={fetchTasks}
                       onFollowUpRequested={(taskId) => setModals({ ...modals, followUp: taskId })}
+                      onStartSequenceRequested={(restaurant) => {
+                        setSequenceRestaurant(restaurant);
+                        setModals({ ...modals, startSequence: true });
+                      }}
                     >
                       <div className="flex items-center gap-1 cursor-pointer hover:bg-muted/50 rounded px-2 py-1 -mx-2 -my-1 transition-colors">
                         {getTypeIcon(task.type)}
@@ -1347,6 +1355,18 @@ export default function Tasks() {
             fetchTasks(); // Refresh to show the completed task
           }}
           onSuccess={fetchTasks}
+        />
+      )}
+
+      {modals.startSequence && sequenceRestaurant && (
+        <StartSequenceModal
+          open={modals.startSequence}
+          onClose={() => {
+            setModals({ ...modals, startSequence: false });
+            setSequenceRestaurant(null);
+            fetchTasks();
+          }}
+          restaurant={sequenceRestaurant}
         />
       )}
     </div>

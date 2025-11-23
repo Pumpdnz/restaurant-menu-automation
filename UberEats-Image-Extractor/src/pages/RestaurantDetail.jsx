@@ -3897,6 +3897,9 @@ export default function RestaurantDetail() {
               onEditTask={(taskId) => setEditTaskId(taskId)}
               onDuplicateTask={(taskId) => setDuplicateTaskId(taskId)}
               onFollowUpTask={(taskId) => setFollowUpTaskId(taskId)}
+              onStartSequence={(restaurant) => {
+                setStartSequenceModalOpen(true);
+              }}
               refreshKey={tasksRefreshKey}
             />
           </div>

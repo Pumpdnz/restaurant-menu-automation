@@ -50,6 +50,7 @@ import {
 } from '../components/ui/dialog';
 import { TaskCell } from '../components/restaurants/TaskCell';
 import { CreateTaskModal } from '../components/tasks/CreateTaskModal';
+import { StartSequenceModal } from '../components/sequences/StartSequenceModal';
 
 export default function Restaurants() {
   const navigate = useNavigate();
@@ -60,6 +61,9 @@ export default function Restaurants() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [createTaskFor, setCreateTaskFor] = useState(null);
+  const [startSequenceFor, setStartSequenceFor] = useState(null);
+  const [sequenceRestaurant, setSequenceRestaurant] = useState(null);
+  const [startSequenceModalOpen, setStartSequenceModalOpen] = useState(false);
   const [followUpTaskId, setFollowUpTaskId] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, restaurantId: null, restaurantName: null });
   const [sortField, setSortField] = useState('created_at');
@@ -975,8 +979,13 @@ export default function Restaurants() {
                         restaurantName={restaurant.name}
                         restaurantId={restaurant.id}
                         onCreateTask={() => setCreateTaskFor(restaurant)}
+                        onStartSequence={() => setStartSequenceFor(restaurant)}
                         onTaskCompleted={fetchRestaurants}
                         onFollowUpRequested={(taskId) => setFollowUpTaskId(taskId)}
+                        onStartSequenceRequested={(restaurant) => {
+                          setSequenceRestaurant(restaurant);
+                          setStartSequenceModalOpen(true);
+                        }}
                       />
                     </TableCell>
                     <TableCell>
@@ -1164,6 +1173,34 @@ export default function Restaurants() {
             fetchRestaurants();
           }}
           followUpFromTaskId={followUpTaskId}
+        />
+      )}
+
+      {/* Start Sequence Modal - Feature 3 (from dropdown) */}
+      {startSequenceFor && (
+        <StartSequenceModal
+          open={!!startSequenceFor}
+          onClose={() => {
+            setStartSequenceFor(null);
+            fetchRestaurants();
+          }}
+          restaurant={{
+            id: startSequenceFor.id,
+            name: startSequenceFor.name
+          }}
+        />
+      )}
+
+      {/* Start Sequence Modal - Feature 2 (from complete & start) */}
+      {startSequenceModalOpen && sequenceRestaurant && (
+        <StartSequenceModal
+          open={startSequenceModalOpen}
+          onClose={() => {
+            setStartSequenceModalOpen(false);
+            setSequenceRestaurant(null);
+            fetchRestaurants();
+          }}
+          restaurant={sequenceRestaurant}
         />
       )}
     </div>

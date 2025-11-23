@@ -41,6 +41,7 @@ interface RestaurantTasksListProps {
   onEditTask?: (taskId: string) => void;
   onDuplicateTask?: (taskId: string) => void;
   onFollowUpTask?: (taskId: string) => void;
+  onStartSequence?: (restaurant: { id: string; name: string }) => void;
   refreshKey?: number;
 }
 
@@ -57,7 +58,7 @@ interface RestaurantTasksListProps {
  * - Task detail modal
  * - Quick complete with follow-up option
  */
-export function RestaurantTasksList({ restaurantId, onCreateTask, onEditTask, onDuplicateTask, onFollowUpTask, refreshKey = 0 }: RestaurantTasksListProps) {
+export function RestaurantTasksList({ restaurantId, onCreateTask, onEditTask, onDuplicateTask, onFollowUpTask, onStartSequence, refreshKey = 0 }: RestaurantTasksListProps) {
   const { toast } = useToast();
   const [tasks, setTasks] = useState<any[]>([]);
   const [filteredTasks, setFilteredTasks] = useState<any[]>([]);
@@ -488,6 +489,11 @@ export function RestaurantTasksList({ restaurantId, onCreateTask, onEditTask, on
                       onFollowUpRequested={(taskId) => {
                         if (onFollowUpTask) {
                           onFollowUpTask(taskId);
+                        }
+                      }}
+                      onStartSequenceRequested={(restaurant) => {
+                        if (onStartSequence) {
+                          onStartSequence(restaurant);
                         }
                       }}
                     >

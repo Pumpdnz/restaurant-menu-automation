@@ -83,6 +83,7 @@ interface SequenceProgressCardProps {
   onCancel?: (instanceId: string) => void;
   onFinish?: (instanceId: string, option: 'finish-only' | 'finish-followup' | 'finish-start-new') => void;
   onRefresh?: () => void;
+  onStartSequence?: (restaurant: { id: string; name: string }) => void;
   compact?: boolean;
   hideRestaurantLink?: boolean;
 }
@@ -101,6 +102,7 @@ export function SequenceProgressCard({
   onCancel,
   onFinish,
   onRefresh,
+  onStartSequence,
   compact = false,
   hideRestaurantLink = false
 }: SequenceProgressCardProps) {
@@ -195,6 +197,8 @@ export function SequenceProgressCard({
             onTaskComplete={handleTaskCompleted}
             onEditTask={handleEditTask}
             onViewDetails={handleTaskClick}
+            onRefresh={onRefresh}
+            onStartSequence={onStartSequence}
           />
         )}
       </CardContent>

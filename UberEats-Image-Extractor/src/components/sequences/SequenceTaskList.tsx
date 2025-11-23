@@ -72,6 +72,8 @@ interface SequenceTaskListProps {
   onTaskComplete?: () => void;
   onEditTask?: (taskId: string) => void;
   onViewDetails?: (taskId: string) => void;
+  onRefresh?: () => void;
+  onStartSequence?: (restaurant: { id: string; name: string }) => void;
 }
 
 export function SequenceTaskList({
@@ -82,6 +84,8 @@ export function SequenceTaskList({
   onTaskComplete,
   onEditTask,
   onViewDetails,
+  onRefresh,
+  onStartSequence,
 }: SequenceTaskListProps) {
   const { toast } = useToast();
 
@@ -379,8 +383,9 @@ export function SequenceTaskList({
                   <TableCell>
                     <TaskTypeQuickView
                       task={task}
-                      onTaskCompleted={onTaskComplete}
+                      onTaskCompleted={onRefresh}
                       onFollowUpRequested={(taskId) => onTaskClick?.(taskId)}
+                      onStartSequenceRequested={(restaurant) => onStartSequence?.(restaurant)}
                     >
                       <div className="flex items-center gap-1 cursor-pointer hover:bg-muted/50 rounded px-2 py-1 -mx-2 -my-1">
                         {getTypeIcon(task.type)}
