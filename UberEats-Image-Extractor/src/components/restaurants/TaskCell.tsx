@@ -1,7 +1,18 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../ui/button';
-import { ExternalLink, Plus, ClipboardList, Workflow, ChevronDown } from 'lucide-react';
+import {
+  ExternalLink,
+  Plus,
+  ClipboardList,
+  Workflow,
+  ChevronDown,
+  Mail,
+  Phone,
+  MessageSquare,
+  Calendar,
+  Instagram
+} from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { TaskTypeQuickView } from '../tasks/TaskTypeQuickView';
 import {
@@ -87,14 +98,14 @@ export function TaskCell({ task, restaurantName, restaurantId, onCreateTask, onS
   }
 
   const getTaskColor = () => {
-    if (!task.due_date) return 'text-gray-500';
+    if (!task.due_date) return 'text-gray-500 font-normal';
 
     const dueDate = new Date(task.due_date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     // Overdue
-    if (dueDate < today) return 'text-red-600 font-semibold';
+    if (dueDate < today) return 'text-red-600 font-bold';
 
     // Due today
     if (dueDate.toDateString() === today.toDateString()) {
@@ -102,7 +113,27 @@ export function TaskCell({ task, restaurantName, restaurantId, onCreateTask, onS
     }
 
     // Future
-    return 'text-gray-600';
+    return 'text-gray-600 font-normal';
+  };
+
+  const getTaskTypeIcon = () => {
+    const iconClass = "h-3.5 w-3.5 mr-1.5 shrink-0";
+
+    switch (task.type) {
+      case 'email':
+        return <Mail className={iconClass} />;
+      case 'text':
+        return <MessageSquare className={iconClass} />;
+      case 'call':
+        return <Phone className={iconClass} />;
+      case 'social_message':
+        return <Instagram className={iconClass} />;
+      case 'demo_meeting':
+        return <Calendar className={iconClass} />;
+      case 'internal_activity':
+      default:
+        return <ClipboardList className={iconClass} />;
+    }
   };
 
   return (
@@ -116,12 +147,13 @@ export function TaskCell({ task, restaurantName, restaurantId, onCreateTask, onS
         <Button
           variant="ghost"
           size="sm"
-          className={cn(
-            "p-0 h-auto font-normal justify-start text-left overflow-hidden text-ellipsis whitespace-nowrap min-w-0 flex-1",
-            getTaskColor()
-          )}
+          className="p-0 h-auto justify-start text-left overflow-hidden text-ellipsis whitespace-nowrap min-w-0 flex-1"
         >
-          <span className="overflow-hidden text-ellipsis whitespace-nowrap block text-left">
+          <span className={cn(
+            "overflow-hidden text-ellipsis whitespace-nowrap flex items-center text-left",
+            getTaskColor()
+          )}>
+            {getTaskTypeIcon()}
             {task.name}
           </span>
         </Button>

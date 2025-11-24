@@ -1,4 +1,5 @@
-import { ChevronUp, ChevronDown, Trash2 } from 'lucide-react';
+import { ChevronUp, ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card } from '../ui/card';
 import { Input } from '../ui/input';
@@ -53,6 +54,9 @@ export function SequenceStepBuilder({
   canMoveDown,
   totalSteps,
 }: SequenceStepBuilderProps) {
+  // Collapse/expand state
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
   // Fetch task templates
   const { data: taskTemplates, error: taskTemplatesError, isLoading: taskTemplatesLoading } = useQuery({
     queryKey: ['task-templates'],
@@ -131,6 +135,11 @@ export function SequenceStepBuilder({
       if (linkedMessageTemplate && linkedMessageTemplate.message_content) {
         onChange(index, 'custom_message', linkedMessageTemplate.message_content);
       }
+
+      // Populate subject line for email templates
+      if (step.type === 'email' && linkedMessageTemplate && linkedMessageTemplate.subject_line) {
+        onChange(index, 'subject_line', linkedMessageTemplate.subject_line);
+      }
     }
   };
 
@@ -149,6 +158,11 @@ export function SequenceStepBuilder({
       // Always populate custom message so user can see and edit it
       if (selectedTemplate.message_content) {
         onChange(index, 'custom_message', selectedTemplate.message_content);
+      }
+
+      // Populate subject line for email templates
+      if (step.type === 'email' && selectedTemplate.subject_line) {
+        onChange(index, 'subject_line', selectedTemplate.subject_line);
       }
     }
   };
@@ -175,7 +189,7 @@ export function SequenceStepBuilder({
   };
 
   return (
-    <Card className="p-4">
+    <Card className="p-4 bg-brand-yellow-light-4">
       <div className="flex items-start gap-4">
         {/* Move Up/Down Buttons */}
         <div className="flex flex-col gap-1 mt-1">
@@ -208,8 +222,37 @@ export function SequenceStepBuilder({
           {index + 1}
         </div>
 
-        {/* Form Fields */}
-        <div className="flex-1 space-y-3">
+        {/* Collapsed/Expanded Content */}
+        {isCollapsed ? (
+          // Collapsed View - Just show step name
+          <div className="flex-1 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsCollapsed(false)}
+              className="flex items-center gap-2 text-left hover:text-primary transition-colors flex-1"
+            >
+              <ChevronRight className="h-4 w-4 flex-shrink-0" />
+              <span className="font-medium">{step.name || 'Untitled Step'}</span>
+              <span className="text-xs text-muted-foreground ml-2">
+                ({step.type} • {step.priority} priority • {step.delay_value} {step.delay_unit})
+              </span>
+            </button>
+          </div>
+        ) : (
+          // Expanded View - Show all form fields
+          <>
+            {/* Collapse Button */}
+            <button
+              type="button"
+              onClick={() => setIsCollapsed(true)}
+              className="mt-1 hover:text-primary transition-colors flex-shrink-0"
+              title="Collapse step"
+            >
+              <ChevronDown className="h-4 w-4" />
+            </button>
+
+            {/* Form Fields */}
+            <div className="flex-1 space-y-3">
           {/* Step Name */}
           <div>
             <Label htmlFor={`step-name-${index}`} className="text-xs">
@@ -453,12 +496,14 @@ export function SequenceStepBuilder({
             />
           </div>
         </div>
+          </>
+        )}
 
         {/* Delete Button */}
         {canRemove && (
           <Button
             type="button"
-            variant="ghost"
+            variant="destructive"
             size="sm"
             onClick={() => onRemove(index)}
             className="mt-1 flex-shrink-0"

@@ -97,6 +97,32 @@ export interface StartSequenceRequest {
   assigned_to?: string;
 }
 
+export interface BulkStartSequenceRequest {
+  sequence_template_id: string;
+  restaurant_ids: string[];
+  assigned_to?: string;
+}
+
+export interface BulkStartSequenceResult {
+  succeeded: {
+    restaurant_id: string;
+    restaurant_name: string;
+    instance_id: string;
+    tasks_created: number;
+  }[];
+  failed: {
+    restaurant_id: string;
+    restaurant_name: string;
+    error: string;
+    reason: 'not_found' | 'validation_error' | 'server_error';
+  }[];
+  summary: {
+    total: number;
+    success: number;
+    failure: number;
+  };
+}
+
 export function useSequences() {
   const [templates, setTemplates] = useState<SequenceTemplate[]>([]);
   const [instances, setInstances] = useState<SequenceInstance[]>([]);
@@ -571,6 +597,38 @@ export function useStartSequence() {
     },
     onError: (error: any) => {
       toast.error('Failed to start sequence', {
+        description: error.response?.data?.error || error.message,
+      });
+    },
+  });
+}
+
+export function useBulkStartSequence() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: BulkStartSequenceRequest) => {
+      const response = await api.post('/sequence-instances/bulk', data);
+      return response.data.data as BulkStartSequenceResult;
+    },
+    onSuccess: (data, variables) => {
+      // Invalidate all relevant queries
+      queryClient.invalidateQueries({ queryKey: ['sequence-instances'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+
+      // Invalidate each restaurant's sequences individually
+      variables.restaurant_ids.forEach(restaurantId => {
+        queryClient.invalidateQueries({
+          queryKey: ['restaurant-sequences', restaurantId]
+        });
+      });
+
+      // Note: Success toast handled in component (shows detailed results)
+    },
+    onError: (error: any) => {
+      // Error toast for pre-flight failures only
+      // (Partial failures handled in component)
+      toast.error('Failed to start bulk operation', {
         description: error.response?.data?.error || error.message,
       });
     },

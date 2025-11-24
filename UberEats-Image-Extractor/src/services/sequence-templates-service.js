@@ -182,6 +182,90 @@ async function updateSequenceTemplate(id, updates) {
 }
 
 /**
+ * Update sequence template with steps
+ * @param {string} id - Template ID
+ * @param {object} updates - Fields to update (name, description, tags, steps)
+ * @returns {Promise<object>} Updated template with steps
+ */
+async function updateSequenceTemplateWithSteps(id, updates) {
+  const client = getSupabaseClient();
+  const orgId = getCurrentOrganizationId();
+
+  try {
+    // Update template metadata
+    const templateUpdates = {};
+    if (updates.name !== undefined) templateUpdates.name = updates.name;
+    if (updates.description !== undefined) templateUpdates.description = updates.description;
+    if (updates.tags !== undefined) templateUpdates.tags = updates.tags;
+    if (updates.is_active !== undefined) templateUpdates.is_active = updates.is_active;
+
+    const { data: template, error: templateError } = await client
+      .from('sequence_templates')
+      .update(templateUpdates)
+      .eq('id', id)
+      .eq('organisation_id', orgId)
+      .select()
+      .single();
+
+    if (templateError) {
+      console.error('Error updating template:', templateError);
+      throw templateError;
+    }
+
+    // If steps are provided, replace all steps
+    if (updates.steps && Array.isArray(updates.steps)) {
+      // Delete existing steps
+      const { error: deleteError } = await client
+        .from('sequence_steps')
+        .delete()
+        .eq('sequence_template_id', id);
+
+      if (deleteError) {
+        console.error('Error deleting old steps:', deleteError);
+        throw deleteError;
+      }
+
+      // Insert new steps
+      const stepsToInsert = updates.steps.map((step) => ({
+        sequence_template_id: id,
+        step_order: step.step_order,
+        name: step.name,
+        description: step.description,
+        task_template_id: step.task_template_id,
+        type: step.type,
+        priority: step.priority || 'medium',
+        message_template_id: step.message_template_id,
+        custom_message: step.custom_message,
+        subject_line: step.subject_line,
+        delay_value: step.delay_value,
+        delay_unit: step.delay_unit,
+      }));
+
+      const { data: createdSteps, error: stepsError } = await client
+        .from('sequence_steps')
+        .insert(stepsToInsert)
+        .select();
+
+      if (stepsError) {
+        console.error('Error creating new steps:', stepsError);
+        throw stepsError;
+      }
+
+      return {
+        ...template,
+        sequence_steps: createdSteps.sort((a, b) => a.step_order - b.step_order)
+      };
+    }
+
+    // If no steps provided, just return template
+    return template;
+  } catch (error) {
+    console.error('Error in updateSequenceTemplateWithSteps:', error);
+    throw error;
+  }
+}
+
+/**
  * Delete sequence template (with safety checks)
  * @param {string} id - Template ID
  * @returns {Promise<void>}
@@ -364,6 +448,7 @@ async function duplicateSequenceTemplate(id, newName) {
     priority: step.priority,
     message_template_id: step.message_template_id,
     custom_message: step.custom_message,
+    subject_line: step.subject_line,
     delay_value: step.delay_value,
     delay_unit: step.delay_unit
   }));
@@ -430,6 +515,7 @@ module.exports = {
   getSequenceTemplateById,
   createSequenceTemplate,
   updateSequenceTemplate,
+  updateSequenceTemplateWithSteps,
   deleteSequenceTemplate,
   updateStep,
   deleteStep,

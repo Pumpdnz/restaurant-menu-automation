@@ -58,6 +58,117 @@ router.get('/:id', authMiddleware, async (req, res) => {
 });
 
 /**
+ * POST /api/sequence-instances/bulk
+ * Start sequences for multiple restaurants
+ *
+ * Request Body:
+ * {
+ *   sequence_template_id: UUID (required),
+ *   restaurant_ids: UUID[] (required, 1-100 items),
+ *   assigned_to: UUID (optional)
+ * }
+ *
+ * Response:
+ * {
+ *   success: true,
+ *   data: {
+ *     succeeded: [...],
+ *     failed: [...],
+ *     summary: { total, success, failure }
+ *   }
+ * }
+ */
+router.post('/bulk', authMiddleware, async (req, res) => {
+  try {
+    // ===============================================
+    // Validate Required Fields
+    // ===============================================
+    if (!req.body.sequence_template_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required field: sequence_template_id'
+      });
+    }
+
+    if (!req.body.restaurant_ids || !Array.isArray(req.body.restaurant_ids)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing or invalid field: restaurant_ids (must be an array)'
+      });
+    }
+
+    if (req.body.restaurant_ids.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'At least one restaurant_id is required'
+      });
+    }
+
+    if (req.body.restaurant_ids.length > 100) {
+      return res.status(400).json({
+        success: false,
+        error: 'Maximum 100 restaurants per bulk operation'
+      });
+    }
+
+    // ===============================================
+    // Prepare Options
+    // ===============================================
+    const options = {
+      assigned_to: req.body.assigned_to || req.user.id,
+      created_by: req.user.id
+    };
+
+    // ===============================================
+    // Execute Bulk Operation
+    // ===============================================
+    const results = await sequenceInstancesService.startSequenceBulk(
+      req.body.sequence_template_id,
+      req.body.restaurant_ids,
+      options
+    );
+
+    // ===============================================
+    // Determine Status Code
+    // ===============================================
+    let statusCode = 201; // Created (all succeeded)
+
+    if (results.summary.success > 0 && results.summary.failure > 0) {
+      statusCode = 207; // Multi-Status (partial success)
+    } else if (results.summary.failure > 0 && results.summary.success === 0) {
+      statusCode = 207; // Multi-Status (all failed, but operation completed)
+    }
+
+    // ===============================================
+    // Send Response
+    // ===============================================
+    res.status(statusCode).json({
+      success: true,
+      data: results
+    });
+
+  } catch (error) {
+    console.error('Error in bulk sequence creation:', error);
+
+    // Handle pre-flight errors (template validation, etc.)
+    if (error.message.includes('inactive') ||
+        error.message.includes('no steps') ||
+        error.message.includes('not found')) {
+      return res.status(400).json({
+        success: false,
+        error: error.message
+      });
+    }
+
+    // Server errors
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Internal server error'
+    });
+  }
+});
+
+/**
  * POST /api/sequence-instances
  * Start a new sequence for a restaurant
  * Body:

@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Plus, Search, Filter, Loader2, Workflow, Tag, ChevronDown } from 'lucide-react';
 import {
@@ -7,18 +7,28 @@ import {
   useResumeSequence,
   useCancelSequence,
   useFinishSequence,
-  useSequences,
+  useSequenceTemplates,
+  useUpdateSequenceTemplate,
+  useDeleteSequenceTemplate,
+  useDuplicateSequenceTemplate,
   SequenceTemplate,
 } from '../hooks/useSequences';
 import { useRestaurants } from '../hooks/useRestaurants';
 import { SequenceProgressCard } from '../components/sequences/SequenceProgressCard';
 import { SelectRestaurantForSequenceModal } from '../components/sequences/SelectRestaurantForSequenceModal';
 import { StartSequenceModal } from '../components/sequences/StartSequenceModal';
+import { BulkStartSequenceModal } from '../components/sequences/BulkStartSequenceModal';
 import { CreateTaskModal } from '../components/tasks/CreateTaskModal';
 import { CreateSequenceTemplateModal } from '../components/sequences/CreateSequenceTemplateModal';
 import { EditSequenceTemplateModal } from '../components/sequences/EditSequenceTemplateModal';
 import { SequenceTemplateCard } from '../components/sequences/SequenceTemplateCard';
 import { Button } from '../components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu';
 import { Input } from '../components/ui/input';
 import { MultiSelect } from '../components/ui/multi-select';
 import {
@@ -34,7 +44,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../components/ui/select';
-import { cn } from '../lib/utils';
 
 export default function Sequences() {
   // Tab state
@@ -60,6 +69,11 @@ export default function Sequences() {
   const [startSequenceOpen, setStartSequenceOpen] = useState(false);
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
 
+  // Bulk flow state
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkStartOpen, setBulkStartOpen] = useState(false);
+  const [selectedRestaurants, setSelectedRestaurants] = useState<any[]>([]);
+
   // Modal state for task creation (Finish & Set Follow-up)
   const [createTaskModalOpen, setCreateTaskModalOpen] = useState(false);
   const [followUpTaskId, setFollowUpTaskId] = useState<string | null>(null);
@@ -73,20 +87,20 @@ export default function Sequences() {
   const finishMutation = useFinishSequence();
 
   // Data fetching - Templates
-  const { templates, loading: templatesLoading, fetchTemplates, deleteTemplate, duplicateTemplate, updateTemplate } = useSequences();
+  const templateFilters = useMemo(() => ({
+    is_active: filterActive === 'all' ? undefined : filterActive === 'true',
+    search: templateSearchTerm || undefined,
+  }), [filterActive, templateSearchTerm]);
+
+  const { data: templatesData, isLoading: templatesLoading } = useSequenceTemplates(templateFilters);
+  const templates = templatesData?.data || [];
+
+  const updateTemplateMutation = useUpdateSequenceTemplate();
+  const deleteTemplateMutation = useDeleteSequenceTemplate();
+  const duplicateTemplateMutation = useDuplicateSequenceTemplate();
 
   // Data fetching - Restaurants
   const { data: restaurants } = useRestaurants();
-
-  // Fetch templates when on templates tab
-  useEffect(() => {
-    if (activeTab === 'templates') {
-      fetchTemplates({
-        is_active: filterActive === 'all' ? undefined : filterActive === 'true',
-        search: templateSearchTerm || undefined,
-      });
-    }
-  }, [activeTab, fetchTemplates, filterActive, templateSearchTerm]);
 
   // Filter instances logic
   const filteredInstances = useMemo(() => {
@@ -107,7 +121,7 @@ export default function Sequences() {
       if (instanceFilters.search) {
         const searchLower = instanceFilters.search.toLowerCase();
         const restaurantName = instance.restaurants?.name?.toLowerCase() || '';
-        const templateName = instance.sequence_template?.name?.toLowerCase() || '';
+        const templateName = instance.sequence_templates?.name?.toLowerCase() || '';
         return restaurantName.includes(searchLower) || templateName.includes(searchLower);
       }
 
@@ -131,9 +145,26 @@ export default function Sequences() {
     setStartSequenceOpen(true);
   };
 
+  const handleRestaurantsSelected = (restaurants: any[]) => {
+    setSelectedRestaurants(restaurants);
+    setSelectRestaurantOpen(false);
+    setBulkStartOpen(true);
+  };
+
   const handleStartSequenceClose = () => {
     setStartSequenceOpen(false);
     setSelectedRestaurant(null);
+  };
+
+  const handleBulkStartClose = () => {
+    setBulkStartOpen(false);
+    setSelectedRestaurants([]);
+    setBulkMode(false);
+  };
+
+  const handleNewSequenceClick = (mode: 'single' | 'bulk') => {
+    setBulkMode(mode === 'bulk');
+    setSelectRestaurantOpen(true);
   };
 
   // Sequence action handlers
@@ -209,7 +240,30 @@ export default function Sequences() {
 
   // Template handlers
   const handleToggleActive = async (id: string, isActive: boolean) => {
-    await updateTemplate(id, { is_active: !isActive });
+    try {
+      await updateTemplateMutation.mutateAsync({ id, updates: { is_active: !isActive } });
+      return true;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  const handleDeleteTemplate = async (id: string): Promise<boolean> => {
+    try {
+      await deleteTemplateMutation.mutateAsync(id);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  const handleDuplicateTemplate = async (id: string, newName?: string) => {
+    try {
+      const result = await duplicateTemplateMutation.mutateAsync({ id, newName });
+      return result;
+    } catch (error) {
+      return null;
+    }
   };
 
   const handleEditTemplate = (template: SequenceTemplate) => {
@@ -227,20 +281,48 @@ export default function Sequences() {
             Manage sequence instances and templates
           </p>
         </div>
-        <Button
-          onClick={handleCreateSequence}
-          className="bg-gradient-to-r from-brand-blue to-brand-green"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          New Sequence
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button className="bg-gradient-to-r from-brand-blue to-brand-green">
+              <Plus className="h-4 w-4 mr-2" />
+              New Sequence
+              <ChevronDown className="h-4 w-4 ml-2" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleNewSequenceClick('single')}>
+              <div className="flex flex-col">
+                <span className="font-medium">Single Restaurant</span>
+                <span className="text-xs text-muted-foreground">
+                  Start a sequence for one restaurant
+                </span>
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleNewSequenceClick('bulk')}>
+              <div className="flex flex-col">
+                <span className="font-medium">Multiple Restaurants (Bulk)</span>
+                <span className="text-xs text-muted-foreground">
+                  Start the same sequence for multiple restaurants
+                </span>
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setCreateTemplateModalOpen(true)}>
+              <div className="flex flex-col">
+                <span className="font-medium">New Sequence Template</span>
+                <span className="text-xs text-muted-foreground">
+                  Create a reusable sequence workflow
+                </span>
+              </div>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <TabsList>
-          <TabsTrigger value="instances">Instances</TabsTrigger>
-          <TabsTrigger value="templates">Templates</TabsTrigger>
+        <TabsList size="full">
+          <TabsTrigger size="full" variant="blue" value="instances">Instances</TabsTrigger>
+          <TabsTrigger size="full" variant="blue" value="templates">Templates</TabsTrigger>
         </TabsList>
 
         {/* INSTANCES TAB */}
@@ -349,6 +431,15 @@ export default function Sequences() {
                   onResume={handleResume}
                   onCancel={handleCancel}
                   onFinish={handleFinish}
+                  onStartSequence={(restaurant) => {
+                    setSelectedRestaurant(restaurant);
+                    setStartSequenceOpen(true);
+                  }}
+                  onFollowUpTask={(taskId) => {
+                    setFollowUpTaskId(taskId);
+                    setSelectedRestaurantId(instance.restaurant_id);
+                    setCreateTaskModalOpen(true);
+                  }}
                 />
               ))}
             </div>
@@ -426,8 +517,8 @@ export default function Sequences() {
                 <SequenceTemplateCard
                   key={template.id}
                   template={template}
-                  onDelete={deleteTemplate}
-                  onDuplicate={duplicateTemplate}
+                  onDelete={handleDeleteTemplate}
+                  onDuplicate={handleDuplicateTemplate}
                   onToggleActive={handleToggleActive}
                   onEdit={handleEditTemplate}
                 />
@@ -440,8 +531,13 @@ export default function Sequences() {
       {/* Modals */}
       <SelectRestaurantForSequenceModal
         open={selectRestaurantOpen}
-        onClose={() => setSelectRestaurantOpen(false)}
+        onClose={() => {
+          setSelectRestaurantOpen(false);
+          setBulkMode(false);
+        }}
         onSelectRestaurant={handleRestaurantSelected}
+        onSelectRestaurants={handleRestaurantsSelected}
+        allowMultiple={bulkMode}
       />
 
       {selectedRestaurant && (
@@ -449,6 +545,14 @@ export default function Sequences() {
           open={startSequenceOpen}
           onClose={handleStartSequenceClose}
           restaurant={selectedRestaurant}
+        />
+      )}
+
+      {selectedRestaurants.length > 0 && (
+        <BulkStartSequenceModal
+          open={bulkStartOpen}
+          onClose={handleBulkStartClose}
+          restaurants={selectedRestaurants}
         />
       )}
 

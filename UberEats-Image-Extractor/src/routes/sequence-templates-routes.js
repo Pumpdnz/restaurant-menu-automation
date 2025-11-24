@@ -103,12 +103,13 @@ router.post('/', authMiddleware, async (req, res) => {
 
 /**
  * PATCH /api/sequence-templates/:id
- * Update sequence template metadata
+ * Update sequence template metadata and optionally steps
  * Body:
  *   - name: string
  *   - description: string
  *   - tags: array
  *   - is_active: boolean
+ *   - steps: array (optional - if provided, replaces all steps)
  */
 router.patch('/:id', authMiddleware, async (req, res) => {
   try {
@@ -117,8 +118,13 @@ router.patch('/:id', authMiddleware, async (req, res) => {
     if (req.body.description !== undefined) updates.description = req.body.description;
     if (req.body.tags !== undefined) updates.tags = req.body.tags;
     if (req.body.is_active !== undefined) updates.is_active = req.body.is_active;
+    if (req.body.steps !== undefined) updates.steps = req.body.steps;
 
-    const template = await sequenceTemplatesService.updateSequenceTemplate(req.params.id, updates);
+    // Use appropriate service method based on whether steps are being updated
+    const template = updates.steps
+      ? await sequenceTemplatesService.updateSequenceTemplateWithSteps(req.params.id, updates)
+      : await sequenceTemplatesService.updateSequenceTemplate(req.params.id, updates);
+
     res.json({ success: true, data: template });
   } catch (error) {
     console.error('Error updating sequence template:', error);

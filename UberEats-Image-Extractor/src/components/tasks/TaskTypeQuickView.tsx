@@ -41,6 +41,19 @@ export function TaskTypeQuickView({ task, children, onTaskCompleted, onFollowUpR
   const [isCompleting, setIsCompleting] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
+  const formatScheduledTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
   const copyToClipboard = async (text: string, field: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -196,9 +209,21 @@ export function TaskTypeQuickView({ task, children, onTaskCompleted, onFollowUpR
     );
   };
 
+  const ScheduledTimeDisplay = () => {
+    if (!task.due_date) return null;
+    return (
+      <div className="bg-green-50 border border-green-200 p-3 rounded-md">
+        <div className="text-xs font-medium text-green-900 mb-1">Scheduled For</div>
+        <div className="text-sm font-semibold text-green-900">{formatScheduledTime(task.due_date)}</div>
+      </div>
+    );
+  };
+
   const renderEmailView = () => (
     <div className="space-y-3">
       <div className="text-sm font-semibold">Email Task</div>
+
+      <ScheduledTimeDisplay />
 
       {/* Email Subject Line */}
       {(task.subject_line_rendered || task.subject_line) && (
@@ -263,6 +288,8 @@ export function TaskTypeQuickView({ task, children, onTaskCompleted, onFollowUpR
     <div className="space-y-3">
       <div className="text-sm font-semibold">Text Message Task</div>
 
+      <ScheduledTimeDisplay />
+
       {/* Rendered Message Preview */}
       {task.message_rendered && (
         <div
@@ -308,6 +335,8 @@ export function TaskTypeQuickView({ task, children, onTaskCompleted, onFollowUpR
     <div className="space-y-3">
       <div className="text-sm font-semibold">Call Task</div>
 
+      <ScheduledTimeDisplay />
+
       {/* Phone Numbers */}
       <div className="space-y-1">
         <div className="text-xs font-medium text-muted-foreground mb-2">Phone Numbers</div>
@@ -344,6 +373,8 @@ export function TaskTypeQuickView({ task, children, onTaskCompleted, onFollowUpR
   const renderSocialMessageView = () => (
     <div className="space-y-3">
       <div className="text-sm font-semibold">Social Media Message Task</div>
+
+      <ScheduledTimeDisplay />
 
       {/* Rendered Message Preview */}
       {task.message_rendered && (
@@ -389,6 +420,8 @@ export function TaskTypeQuickView({ task, children, onTaskCompleted, onFollowUpR
   const renderInternalActivityView = () => (
     <div className="space-y-3">
       <div className="text-sm font-semibold">Internal Activity</div>
+
+      <ScheduledTimeDisplay />
 
       {/* All Contact Fields */}
       <div className="space-y-1">
@@ -457,22 +490,24 @@ export function TaskTypeQuickView({ task, children, onTaskCompleted, onFollowUpR
     <div className="space-y-3">
       <div className="text-sm font-semibold">Demo Meeting</div>
 
+      <ScheduledTimeDisplay />
+
       {/* Meeting Link - Prominent Display */}
       {task.restaurants?.meeting_link && (
-        <div className="bg-brand-blue/10 border border-brand-blue/30 p-3 rounded-md">
-          <div className="text-xs font-medium text-brand-blue mb-2">Meeting Link</div>
-          <a
-            href={task.restaurants.meeting_link.startsWith('http') ? task.restaurants.meeting_link : `https://${task.restaurants.meeting_link}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="text-sm font-medium text-brand-blue hover:underline flex items-center gap-1 break-all"
-          >
-            {task.restaurants.meeting_link}
-            <ExternalLink className="h-3 w-3 shrink-0" />
-          </a>
-        </div>
-      )}
+          <div className="bg-brand-blue/10 border border-brand-blue/30 p-3 rounded-md">
+            <div className="text-xs font-medium text-brand-blue mb-2">Meeting Link</div>
+            <a
+              href={task.restaurants.meeting_link.startsWith('http') ? task.restaurants.meeting_link : `https://${task.restaurants.meeting_link}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="text-sm font-medium text-brand-blue hover:underline flex items-center gap-1 break-all"
+            >
+              {task.restaurants.meeting_link}
+              <ExternalLink className="h-3 w-3 shrink-0" />
+            </a>
+          </div>
+        )}
 
       {/* Contact Information */}
       <div className="space-y-1">

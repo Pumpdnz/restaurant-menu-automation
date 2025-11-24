@@ -299,7 +299,7 @@ export function CreateSequenceTemplateModal({
               </div>
               <Button
                 type="button"
-                variant="outline"
+                variant="tertiary"
                 size="sm"
                 onClick={handleAddStep}
                 disabled={steps.length >= 50}
@@ -325,6 +325,20 @@ export function CreateSequenceTemplateModal({
                   totalSteps={steps.length}
                 />
               ))}
+
+              {/* Add Step button at bottom of steps */}
+              {steps.length > 0 && (
+                <Button
+                  type="button"
+                  variant="tertiary"
+                  className="w-full"
+                  onClick={handleAddStep}
+                  disabled={steps.length >= 50}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Step
+                </Button>
+              )}
             </div>
 
             {steps.length === 0 && (
@@ -365,7 +379,7 @@ export function CreateSequenceTemplateModal({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={createMutation.isPending}>
+          <Button variant="destructive" onClick={handleClose} disabled={createMutation.isPending}>
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={createMutation.isPending}>

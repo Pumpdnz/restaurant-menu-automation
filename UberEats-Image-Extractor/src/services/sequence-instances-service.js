@@ -99,10 +99,20 @@ async function startSequence(templateId, restaurantId, options = {}) {
         messageRendered = await variableReplacementService.replaceVariables(message, restaurant);
       }
 
+      // Get subject line from template hierarchy (for email types)
+      let subjectLine = step.subject_line;
+      if (step.type === 'email') {
+        if (step.message_template_id && step.message_templates && step.message_templates.subject_line) {
+          subjectLine = step.message_templates.subject_line;
+        } else if (step.task_template_id && step.task_templates && step.task_templates.subject_line && !subjectLine) {
+          subjectLine = step.task_templates.subject_line;
+        }
+      }
+
       // Render subject line with variables (for email types)
       let subjectLineRendered = null;
-      if (step.type === 'email' && step.subject_line) {
-        subjectLineRendered = await variableReplacementService.replaceVariables(step.subject_line, restaurant);
+      if (step.type === 'email' && subjectLine) {
+        subjectLineRendered = await variableReplacementService.replaceVariables(subjectLine, restaurant);
       }
 
       // Calculate due_date for first step
@@ -131,7 +141,7 @@ async function startSequence(templateId, restaurantId, options = {}) {
         priority: step.priority,
         message: message,
         message_rendered: messageRendered,
-        subject_line: step.subject_line || null,
+        subject_line: subjectLine || null,
         subject_line_rendered: subjectLineRendered,
         due_date: dueDate
       };
@@ -560,8 +570,282 @@ async function getSequenceProgress(instanceId) {
   };
 }
 
+/**
+ * Start sequences for multiple restaurants (bulk operation)
+ * NOTE: No duplicate checking - restaurants can have multiple sequences
+ *
+ * @param {string} templateId - Sequence template ID
+ * @param {string[]} restaurantIds - Array of restaurant IDs (max 100)
+ * @param {object} options - Additional options (assigned_to, created_by)
+ * @returns {Promise<object>} Bulk operation results
+ */
+async function startSequenceBulk(templateId, restaurantIds, options = {}) {
+  const client = getSupabaseClient();
+  const orgId = getCurrentOrganizationId();
+
+  // Validation
+  if (!restaurantIds || !Array.isArray(restaurantIds) || restaurantIds.length === 0) {
+    throw new Error('At least one restaurant_id is required');
+  }
+
+  if (restaurantIds.length > 100) {
+    throw new Error('Maximum 100 restaurants per bulk operation');
+  }
+
+  // Initialize result tracking
+  const results = {
+    succeeded: [],
+    failed: [],
+    summary: {
+      total: restaurantIds.length,
+      success: 0,
+      failure: 0
+    }
+  };
+
+  try {
+    // ===============================================
+    // STEP 1: Pre-flight Template Validation
+    // (Fail fast for all if template is invalid)
+    // ===============================================
+    const template = await getSequenceTemplateById(templateId);
+
+    if (!template.is_active) {
+      throw new Error('Cannot start sequences from inactive template');
+    }
+
+    if (!template.sequence_steps || template.sequence_steps.length === 0) {
+      throw new Error('Template has no steps');
+    }
+
+    // ===============================================
+    // STEP 2: Bulk Fetch Restaurants (Optimization)
+    // Single query to get all restaurants at once
+    // ===============================================
+    const { data: restaurants, error: restaurantsError } = await client
+      .from('restaurants')
+      .select('*')
+      .in('id', restaurantIds)
+      .eq('organisation_id', orgId);
+
+    if (restaurantsError) {
+      console.error('Error fetching restaurants:', restaurantsError);
+      throw new Error('Failed to fetch restaurants');
+    }
+
+    // Create map for quick lookups
+    const restaurantMap = new Map(restaurants.map(r => [r.id, r]));
+
+    // ===============================================
+    // STEP 3: Process Each Restaurant Independently
+    // ===============================================
+    for (const restaurantId of restaurantIds) {
+      try {
+        // Check if restaurant exists
+        const restaurant = restaurantMap.get(restaurantId);
+        if (!restaurant) {
+          results.failed.push({
+            restaurant_id: restaurantId,
+            restaurant_name: 'Unknown',
+            error: 'Restaurant not found or not accessible',
+            reason: 'not_found'
+          });
+          continue;
+        }
+
+        // Create sequence instance
+        const instanceName = `${template.name} - ${restaurant.name} - ${new Date().toISOString().split('T')[0]}`;
+
+        const { data: instance, error: instanceError } = await client
+          .from('sequence_instances')
+          .insert({
+            sequence_template_id: templateId,
+            restaurant_id: restaurantId,
+            organisation_id: orgId,
+            name: instanceName,
+            status: 'active',
+            current_step_order: 1,
+            total_steps: template.sequence_steps.length,
+            assigned_to: options.assigned_to || options.created_by,
+            created_by: options.created_by
+          })
+          .select()
+          .single();
+
+        if (instanceError) {
+          console.error(`Error creating instance for ${restaurant.name}:`, instanceError);
+          results.failed.push({
+            restaurant_id: restaurantId,
+            restaurant_name: restaurant.name,
+            error: instanceError.message || 'Failed to create sequence instance',
+            reason: 'server_error'
+          });
+          continue;
+        }
+
+        // Create tasks for this sequence
+        const tasksToCreate = [];
+        const now = new Date();
+
+        for (const step of template.sequence_steps) {
+          let message = step.custom_message;
+
+          // Get message from template if referenced
+          if (step.message_template_id && step.message_templates) {
+            message = step.message_templates.message_content;
+          } else if (step.task_template_id && step.task_templates && !message) {
+            message = step.task_templates.default_message;
+          }
+
+          // Render message with variables
+          let messageRendered = null;
+          if (message) {
+            try {
+              messageRendered = await variableReplacementService.replaceVariables(message, restaurant);
+            } catch (varError) {
+              console.warn(`Variable replacement failed for ${restaurant.name}:`, varError);
+              // Continue with unrendered message
+              messageRendered = message;
+            }
+          }
+
+          // Get subject line from template hierarchy (for email types)
+          let subjectLine = step.subject_line;
+          if (step.type === 'email') {
+            if (step.message_template_id && step.message_templates && step.message_templates.subject_line) {
+              subjectLine = step.message_templates.subject_line;
+            } else if (step.task_template_id && step.task_templates && step.task_templates.subject_line && !subjectLine) {
+              subjectLine = step.task_templates.subject_line;
+            }
+          }
+
+          // Render subject line with variables (for email types)
+          let subjectLineRendered = null;
+          if (step.type === 'email' && subjectLine) {
+            try {
+              subjectLineRendered = await variableReplacementService.replaceVariables(subjectLine, restaurant);
+            } catch (varError) {
+              console.warn(`Subject line variable replacement failed for ${restaurant.name}:`, varError);
+              // Continue with unrendered subject
+              subjectLineRendered = subjectLine;
+            }
+          }
+
+          // Calculate due_date for first step
+          let dueDate = null;
+          let status = 'pending';
+
+          if (step.step_order === 1) {
+            status = 'active';
+            dueDate = calculateDueDate(now, step.delay_value, step.delay_unit);
+          }
+
+          tasksToCreate.push({
+            organisation_id: orgId,
+            restaurant_id: restaurantId,
+            sequence_instance_id: instance.id,
+            sequence_step_order: step.step_order,
+            task_template_id: step.task_template_id,
+            message_template_id: step.message_template_id,
+            assigned_to: options.assigned_to || options.created_by,
+            created_by: options.created_by,
+            name: step.name,
+            description: step.description,
+            status: status,
+            type: step.type,
+            priority: step.priority,
+            message: message,
+            message_rendered: messageRendered,
+            subject_line: subjectLine || null,
+            subject_line_rendered: subjectLineRendered,
+            due_date: dueDate
+          });
+        }
+
+        // Batch insert tasks
+        const { data: createdTasks, error: tasksError } = await client
+          .from('tasks')
+          .insert(tasksToCreate)
+          .select();
+
+        if (tasksError) {
+          // ROLLBACK: Delete sequence instance
+          await client.from('sequence_instances').delete().eq('id', instance.id);
+          console.error(`Error creating tasks for ${restaurant.name}:`, tasksError);
+          results.failed.push({
+            restaurant_id: restaurantId,
+            restaurant_name: restaurant.name,
+            error: tasksError.message || 'Failed to create tasks',
+            reason: 'server_error'
+          });
+          continue;
+        }
+
+        // Verify all tasks were created
+        if (createdTasks.length !== template.sequence_steps.length) {
+          // ROLLBACK: Delete sequence instance
+          await client.from('sequence_instances').delete().eq('id', instance.id);
+          console.error(`Incomplete task creation for ${restaurant.name}`);
+          results.failed.push({
+            restaurant_id: restaurantId,
+            restaurant_name: restaurant.name,
+            error: `Only ${createdTasks.length} of ${template.sequence_steps.length} tasks were created`,
+            reason: 'server_error'
+          });
+          continue;
+        }
+
+        // SUCCESS!
+        results.succeeded.push({
+          restaurant_id: restaurantId,
+          restaurant_name: restaurant.name,
+          instance_id: instance.id,
+          tasks_created: createdTasks.length
+        });
+
+      } catch (error) {
+        // Catch any unexpected errors for this restaurant
+        console.error(`Unexpected error processing restaurant ${restaurantId}:`, error);
+        const restaurant = restaurantMap.get(restaurantId);
+        results.failed.push({
+          restaurant_id: restaurantId,
+          restaurant_name: restaurant?.name || 'Unknown',
+          error: error.message || 'Unexpected server error',
+          reason: 'server_error'
+        });
+      }
+    }
+
+    // ===============================================
+    // STEP 4: Update Template Usage Count
+    // ===============================================
+    if (results.succeeded.length > 0) {
+      await client
+        .from('sequence_templates')
+        .update({ usage_count: (template.usage_count || 0) + results.succeeded.length })
+        .eq('id', templateId);
+    }
+
+    // ===============================================
+    // STEP 5: Calculate Final Summary
+    // ===============================================
+    results.summary.success = results.succeeded.length;
+    results.summary.failure = results.failed.length;
+
+    console.log(`[Bulk Sequence] Completed: ${results.summary.success} succeeded, ${results.summary.failure} failed`);
+
+    return results;
+
+  } catch (error) {
+    // Pre-flight errors (template validation, etc.)
+    console.error('Error in startSequenceBulk (pre-flight):', error);
+    throw error;
+  }
+}
+
 module.exports = {
   startSequence,
+  startSequenceBulk,
   getSequenceInstance,
   listSequenceInstances,
   pauseSequence,

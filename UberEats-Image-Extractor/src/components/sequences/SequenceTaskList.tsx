@@ -75,6 +75,7 @@ interface SequenceTaskListProps {
   onViewDetails?: (taskId: string) => void;
   onRefresh?: () => void;
   onStartSequence?: (restaurant: { id: string; name: string }) => void;
+  onFollowUpTask?: (taskId: string) => void;
 }
 
 export function SequenceTaskList({
@@ -87,6 +88,7 @@ export function SequenceTaskList({
   onViewDetails,
   onRefresh,
   onStartSequence,
+  onFollowUpTask,
 }: SequenceTaskListProps) {
   const { toast } = useToast();
 
@@ -146,8 +148,8 @@ export function SequenceTaskList({
       if (onTaskComplete) {
         onTaskComplete();
       }
-      if (onTaskClick) {
-        onTaskClick(taskId);
+      if (onFollowUpTask) {
+        onFollowUpTask(taskId);
       }
     } catch (error) {
       console.error('Failed to complete task:', error);

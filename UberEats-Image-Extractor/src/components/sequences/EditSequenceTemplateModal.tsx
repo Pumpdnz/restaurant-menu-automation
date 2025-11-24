@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,7 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Alert, AlertDescription } from '../ui/alert';
 import { SequenceStepBuilder, StepFormData } from './SequenceStepBuilder';
-import { useUpdateSequenceTemplate, SequenceTemplate } from '../../hooks/useSequences';
+import { useUpdateSequenceTemplate, useSequenceTemplate, SequenceTemplate } from '../../hooks/useSequences';
 
 interface EditSequenceTemplateModalProps {
   open: boolean;
@@ -29,6 +29,12 @@ export function EditSequenceTemplateModal({
 }: EditSequenceTemplateModalProps) {
   const updateMutation = useUpdateSequenceTemplate();
 
+  // Fetch full template data with all step details
+  const { data: fullTemplate, isLoading: loadingTemplate } = useSequenceTemplate(
+    template?.id || '',
+    { enabled: open && !!template?.id }
+  );
+
   // Form state
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -37,14 +43,14 @@ export function EditSequenceTemplateModal({
 
   const [errors, setErrors] = useState<string[]>([]);
 
-  // Load template data when modal opens
+  // Load template data when full template is fetched
   useEffect(() => {
-    if (template && open) {
-      setName(template.name);
-      setDescription(template.description || '');
-      setTags(template.tags?.join(', ') || '');
+    if (fullTemplate && open) {
+      setName(fullTemplate.name);
+      setDescription(fullTemplate.description || '');
+      setTags(fullTemplate.tags?.join(', ') || '');
       setSteps(
-        template.sequence_steps.map((step) => ({
+        fullTemplate.sequence_steps.map((step) => ({
           step_order: step.step_order,
           name: step.name,
           description: step.description || '',
@@ -59,7 +65,7 @@ export function EditSequenceTemplateModal({
         }))
       );
     }
-  }, [template, open]);
+  }, [fullTemplate, open]);
 
   const handleStepChange = (
     index: number,
@@ -165,7 +171,7 @@ export function EditSequenceTemplateModal({
   };
 
   const handleSubmit = async () => {
-    if (!template || !validateForm()) {
+    if (!fullTemplate || !validateForm()) {
       return;
     }
 
@@ -196,7 +202,7 @@ export function EditSequenceTemplateModal({
     };
 
     try {
-      await updateMutation.mutateAsync({ id: template.id, updates });
+      await updateMutation.mutateAsync({ id: fullTemplate.id, updates });
       handleClose();
     } catch (error) {
       console.error('Failed to update template:', error);
@@ -223,6 +229,14 @@ export function EditSequenceTemplateModal({
           </DialogDescription>
         </DialogHeader>
 
+        {loadingTemplate ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+              <p className="mt-2 text-sm text-muted-foreground">Loading template...</p>
+            </div>
+          </div>
+        ) : (
         <div className="space-y-6">
           {/* Errors */}
           {errors.length > 0 && (
@@ -238,10 +252,10 @@ export function EditSequenceTemplateModal({
           )}
 
           {/* Warning about active instances */}
-          {template.usage_count > 0 && (
+          {fullTemplate && fullTemplate.usage_count > 0 && (
             <Alert>
               <AlertDescription>
-                This template has been used {template.usage_count} time(s).
+                This template has been used {fullTemplate.usage_count} time(s).
                 Changes will only affect new sequences created from this
                 template.
               </AlertDescription>
@@ -335,6 +349,20 @@ export function EditSequenceTemplateModal({
                   totalSteps={steps.length}
                 />
               ))}
+
+              {/* Add Step button at bottom of steps */}
+              {steps.length > 0 && (
+                <Button
+                  type="button"
+                  variant="tertiary"
+                  className="w-full"
+                  onClick={handleAddStep}
+                  disabled={steps.length >= 50}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Step
+                </Button>
+              )}
             </div>
 
             {steps.length === 0 && (
@@ -354,15 +382,18 @@ export function EditSequenceTemplateModal({
             )}
           </div>
         </div>
+        )}
 
+        {!loadingTemplate && (
         <DialogFooter>
           <Button variant="outline" onClick={handleClose} disabled={updateMutation.isPending}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={updateMutation.isPending}>
+          <Button onClick={handleSubmit} disabled={updateMutation.isPending || loadingTemplate}>
             {updateMutation.isPending ? 'Updating...' : 'Update Template'}
           </Button>
         </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

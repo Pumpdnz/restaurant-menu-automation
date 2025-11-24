@@ -35,15 +35,15 @@ interface SequenceInstance {
   completed_at?: string;
   cancelled_at?: string;
   paused_at?: string;
-  sequence_templates: {
+  sequence_templates?: {
     id: string;
     name: string;
   };
-  restaurants: {
+  restaurants?: {
     id: string;
     name: string;
   };
-  tasks: Array<{
+  tasks?: Array<{
     id: string;
     name: string;
     description?: string;
@@ -69,7 +69,7 @@ interface SequenceInstance {
       facebook_url?: string;
     };
   }>;
-  progress: {
+  progress?: {
     completed: number;
     total: number;
     percentage: number;
@@ -84,6 +84,7 @@ interface SequenceProgressCardProps {
   onFinish?: (instanceId: string, option: 'finish-only' | 'finish-followup' | 'finish-start-new') => void;
   onRefresh?: () => void;
   onStartSequence?: (restaurant: { id: string; name: string }) => void;
+  onFollowUpTask?: (taskId: string) => void;
   compact?: boolean;
   hideRestaurantLink?: boolean;
 }
@@ -103,6 +104,7 @@ export function SequenceProgressCard({
   onFinish,
   onRefresh,
   onStartSequence,
+  onFollowUpTask,
   compact = false,
   hideRestaurantLink = false
 }: SequenceProgressCardProps) {
@@ -110,7 +112,7 @@ export function SequenceProgressCard({
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [editTaskId, setEditTaskId] = useState<string | null>(null);
   const [sequenceDetailOpen, setSequenceDetailOpen] = useState(false);
-  const { progress } = instance;
+  const progress = instance.progress || { completed: 0, total: instance.total_steps || 0, percentage: 0 };
 
   const handleTaskClick = (taskId: string) => {
     setSelectedTaskId(taskId);
@@ -199,6 +201,7 @@ export function SequenceProgressCard({
             onViewDetails={handleTaskClick}
             onRefresh={onRefresh}
             onStartSequence={onStartSequence}
+            onFollowUpTask={onFollowUpTask}
           />
         )}
       </CardContent>

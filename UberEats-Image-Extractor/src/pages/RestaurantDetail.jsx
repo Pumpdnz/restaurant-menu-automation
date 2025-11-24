@@ -3944,6 +3944,12 @@ export default function RestaurantDetail() {
                   onFinish={handleFinishSequence}
                   onRefresh={refetchSequences}
                   hideRestaurantLink={true}
+                  onStartSequence={() => {
+                    setStartSequenceModalOpen(true);
+                  }}
+                  onFollowUpTask={(taskId) => {
+                    setFollowUpTaskId(taskId);
+                  }}
                 />
               ))}
             </div>
