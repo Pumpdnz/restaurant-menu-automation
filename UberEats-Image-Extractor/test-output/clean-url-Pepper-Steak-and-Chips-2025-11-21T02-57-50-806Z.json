@@ -1,0 +1,122 @@
+{
+  "success": true,
+  "data": {
+    "screenshot": "https://storage.googleapis.com/firecrawl-scrape-media/screenshot-64f65d3d-d913-4b4d-b564-de8e850bd6b4.png?GoogleAccessId=scrape-bucket-accessor%40firecrawl.iam.gserviceaccount.com&Expires=1764298681&Signature=hp9NxfkFJzptXeGtKJvFe5uENXIfxTzSZVVleFjaPqpKpEkRzBMmVgu4KpcKrQ7JPRqyZ7l8WwQqdHrOhOhzoJIpPwHoYpNIC9oBzhvqzd%2F1STM7WVpkA%2FdrzKLR3SUBe%2F17PmwEWSTCbAJ5Qj8SSUfWhsgSkh6IS2bhhN1mUzzlYY33boi1o%2BRu5Pk0qgFDw7a%2F6Mxm0y9dRF01NFrLec9IgI48x86UQIvj4yni4nPBjBitX6iy1sx0MjQbsLPj1Qee%2FzVOs2RUdWAE2mx6mfVW0bfp%2B2X%2F2Ay8uItLgJ2ezBq6xUL7u12ASPmn6eIpknosDC2J4XbeknOaXvX2MA%3D%3D",
+    "metadata": {
+      "og:title": "Pepper Steak and Chips | Uber Eats",
+      "twitter:url": "https://www.ubereats.com/nz/store/romans-kitchen/BO3GLFqvTL-F8257il8P9g/a99bcc3b-6024-4358-a844-a5e8bf910890/556a657a-a6d1-5286-9029-a1061fcf5e1c/94cc2817-97e2-4b63-956d-7e13f9ed65dd",
+      "twitter:title": "Pepper Steak and Chips | Uber Eats",
+      "twitter:card": "summary_large_image",
+      "google-site-verification": [
+        "VsuZf2_aDTFloKH9DDZwZkApKQdJ4vwWaIONAHsPNP4",
+        "e7Pbh7MPVYI_oxrqRArrQsy3Se3YyXMaTo318lmbXEY",
+        "udkBIuofpkvfW7oCltGi2L2zUdwv62MvDZsPGe7cTns",
+        "LZ1PBBewAIw1QSKSNu_29oArwY7FU8A5GvhVKt9DooE"
+      ],
+      "og:image": "https://tb-static.uber.com/prod/web-eats-v2/open-graph/uber-eats.jpg",
+      "ogTitle": "Pepper Steak and Chips | Uber Eats",
+      "theme-color": "#000000",
+      "language": "en-NZ",
+      "ogUrl": "https://www.ubereats.com/nz/store/romans-kitchen/BO3GLFqvTL-F8257il8P9g/a99bcc3b-6024-4358-a844-a5e8bf910890/556a657a-a6d1-5286-9029-a1061fcf5e1c/94cc2817-97e2-4b63-956d-7e13f9ed65dd",
+      "robots": "noindex, nofollow",
+      "viewport": "width=device-width, initial-scale=1.0, maximum-scale=2.0",
+      "twitter:image": "https://tb-static.uber.com/prod/web-eats-v2/open-graph/uber-eats.jpg",
+      "title": "Pepper Steak and Chips | Uber Eats",
+      "ogImage": "https://tb-static.uber.com/prod/web-eats-v2/open-graph/uber-eats.jpg",
+      "botdefense-enabled": "false",
+      "og:url": "https://www.ubereats.com/nz/store/romans-kitchen/BO3GLFqvTL-F8257il8P9g/a99bcc3b-6024-4358-a844-a5e8bf910890/556a657a-a6d1-5286-9029-a1061fcf5e1c/94cc2817-97e2-4b63-956d-7e13f9ed65dd",
+      "og:type": "website",
+      "ciid": "c54f4140-01e7-418e-88f5-af03dcbb1498",
+      "favicon": "https://www.ubereats.com/_static/d526ae562360062f.ico",
+      "scrapeId": "052f1154-ec95-427c-aee2-0ecc7c6a875f",
+      "sourceURL": "https://www.ubereats.com/nz/store/romans-kitchen/BO3GLFqvTL-F8257il8P9g/a99bcc3b-6024-4358-a844-a5e8bf910890/556a657a-a6d1-5286-9029-a1061fcf5e1c/94cc2817-97e2-4b63-956d-7e13f9ed65dd",
+      "url": "https://www.ubereats.com/nz/store/romans-kitchen/BO3GLFqvTL-F8257il8P9g/a99bcc3b-6024-4358-a844-a5e8bf910890/556a657a-a6d1-5286-9029-a1061fcf5e1c/94cc2817-97e2-4b63-956d-7e13f9ed65dd",
+      "statusCode": 200,
+      "contentType": "text/html; charset=utf-8",
+      "proxyUsed": "basic",
+      "cacheState": "miss",
+      "indexId": "0daefb4f-e346-44a0-817b-85fa907349c2",
+      "creditsUsed": 5
+    },
+    "json": {
+      "itemName": "Pepper Steak and Chips",
+      "price": "$32.90",
+      "priceValue": 32.9,
+      "description": "Grilled sirloin steak fillet with cracked pepper, roasted garlic, herbs and cream sauce.",
+      "imageUrl": "https://tb-static.uber.com/prod/image-proc/processed_images/ff66539775920b467e183e732b151523/a19bb09692310dfd41e49a96c424b3a6.jpeg",
+      "hasImage": true,
+      "optionSets": [
+        {
+          "name": "Choice of Doneness",
+          "description": "",
+          "required": true,
+          "minSelections": 1,
+          "maxSelections": 1,
+          "options": [
+            {
+              "name": "Rare",
+              "price": "No extra cost",
+              "priceValue": 0,
+              "description": ""
+            },
+            {
+              "name": "Medium Rare",
+              "price": "No extra cost",
+              "priceValue": 0,
+              "description": ""
+            },
+            {
+              "name": "Medium",
+              "price": "No extra cost",
+              "priceValue": 0,
+              "description": ""
+            },
+            {
+              "name": "Medium Well",
+              "price": "No extra cost",
+              "priceValue": 0,
+              "description": ""
+            },
+            {
+              "name": "Well Done",
+              "price": "No extra cost",
+              "priceValue": 0,
+              "description": ""
+            }
+          ]
+        },
+        {
+          "name": "Choice of Steak Upgrade",
+          "description": "",
+          "required": false,
+          "minSelections": 0,
+          "maxSelections": 1,
+          "options": [
+            {
+              "name": "Scotch",
+              "price": "+ $3.00",
+              "priceValue": 3,
+              "description": ""
+            }
+          ]
+        },
+        {
+          "name": "Add Drinks",
+          "description": "",
+          "required": false,
+          "minSelections": 0,
+          "maxSelections": 1,
+          "options": [
+            {
+              "name": "Canned Drink",
+              "price": "+ $3.00",
+              "priceValue": 3,
+              "description": ""
+            }
+          ]
+        }
+      ],
+      "pageType": "item detail"
+    }
+  }
+}

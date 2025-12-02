@@ -9,6 +9,7 @@ import {
   Eye,
   CheckCircle2,
   ChevronDown,
+  Trash2,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -82,6 +83,7 @@ interface SequenceProgressCardProps {
   onResume?: (instanceId: string) => void;
   onCancel?: (instanceId: string) => void;
   onFinish?: (instanceId: string, option: 'finish-only' | 'finish-followup' | 'finish-start-new') => void;
+  onDelete?: (instanceId: string) => void;
   onRefresh?: () => void;
   onStartSequence?: (restaurant: { id: string; name: string }) => void;
   onFollowUpTask?: (taskId: string) => void;
@@ -102,6 +104,7 @@ export function SequenceProgressCard({
   onResume,
   onCancel,
   onFinish,
+  onDelete,
   onRefresh,
   onStartSequence,
   onFollowUpTask,
@@ -275,6 +278,18 @@ export function SequenceProgressCard({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+        )}
+
+        {/* Delete Button - for completed and cancelled sequences */}
+        {['completed', 'cancelled'].includes(instance.status) && onDelete && (
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => onDelete(instance.id)}
+          >
+            <Trash2 className="h-4 w-4 mr-1" />
+            Delete
+          </Button>
         )}
       </CardFooter>
 

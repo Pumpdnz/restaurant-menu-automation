@@ -44,7 +44,9 @@ import {
   Database,
   Download,
   Plus,
-  Workflow
+  Workflow,
+  Tag,
+  Settings2
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -75,7 +77,8 @@ import {
   usePauseSequence,
   useResumeSequence,
   useCancelSequence,
-  useFinishSequence
+  useFinishSequence,
+  useDeleteSequenceInstance
 } from '../hooks/useSequences';
 import { QualificationForm } from '../components/demo-meeting/QualificationForm';
 import { QualificationDataDisplay } from '../components/demo-meeting/QualificationDataDisplay';
@@ -151,6 +154,7 @@ export default function RestaurantDetail() {
   const resumeSequenceMutation = useResumeSequence();
   const cancelSequenceMutation = useCancelSequence();
   const finishSequenceMutation = useFinishSequence();
+  const deleteSequenceMutation = useDeleteSequenceInstance();
 
   // New states for URL search and details extraction
   const [searchingForUrl, setSearchingForUrl] = useState({});
@@ -176,7 +180,16 @@ export default function RestaurantDetail() {
   const [uploadStatus, setUploadStatus] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
-  
+
+  // Item Tags states
+  const [isAddingTags, setIsAddingTags] = useState(false);
+  const [tagsStatus, setTagsStatus] = useState(null);
+
+  // Option Sets states
+  const [selectedMenuForOptionSets, setSelectedMenuForOptionSets] = useState('');
+  const [isAddingOptionSets, setIsAddingOptionSets] = useState(false);
+  const [optionSetsStatus, setOptionSetsStatus] = useState(null);
+
   // Website Customization states
   const [isGenerating, setIsGenerating] = useState(false);
   const [isConfiguring, setIsConfiguring] = useState(false);
@@ -459,6 +472,13 @@ export default function RestaurantDetail() {
     // For 'finish-only', do nothing extra
   };
 
+  const handleDeleteSequence = async (instanceId) => {
+    if (window.confirm('Are you sure you want to delete this sequence? This action cannot be undone.')) {
+      await deleteSequenceMutation.mutateAsync(instanceId);
+      refetchSequences();
+    }
+  };
+
   const handleRegistration = async () => {
     if (!registrationType) {
       toast({
@@ -639,6 +659,132 @@ export default function RestaurantDetail() {
       });
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  // Item Tags handler
+  const handleAddItemTags = async () => {
+    if (!registrationStatus?.account || registrationStatus.account.registration_status !== 'completed') {
+      toast({
+        title: "Error",
+        description: "Account registration must be completed before adding tags",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!registrationStatus?.restaurant || registrationStatus.restaurant.registration_status !== 'completed') {
+      toast({
+        title: "Error",
+        description: "Restaurant registration must be completed before adding tags",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsAddingTags(true);
+    setTagsStatus(null);
+
+    try {
+      const response = await api.post('/registration/add-item-tags', {
+        restaurantId: id
+      });
+
+      setTagsStatus(response.data);
+
+      if (response.data.success) {
+        toast({
+          title: "Success",
+          description: "Item tags configured successfully",
+        });
+      } else {
+        toast({
+          title: "Warning",
+          description: response.data.message || "Tag configuration completed with warnings",
+          variant: "warning"
+        });
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || error.message;
+      setTagsStatus({
+        success: false,
+        error: errorMessage
+      });
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setIsAddingTags(false);
+    }
+  };
+
+  // Option Sets handler
+  const handleAddOptionSets = async () => {
+    if (!selectedMenuForOptionSets) {
+      toast({
+        title: "Error",
+        description: "Please select a menu first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!registrationStatus?.account || registrationStatus.account.registration_status !== 'completed') {
+      toast({
+        title: "Error",
+        description: "Account registration must be completed before adding option sets",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!registrationStatus?.restaurant || registrationStatus.restaurant.registration_status !== 'completed') {
+      toast({
+        title: "Error",
+        description: "Restaurant registration must be completed before adding option sets",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsAddingOptionSets(true);
+    setOptionSetsStatus(null);
+
+    try {
+      const response = await api.post('/registration/add-option-sets', {
+        restaurantId: id,
+        menuId: selectedMenuForOptionSets
+      });
+
+      setOptionSetsStatus(response.data);
+
+      if (response.data.success) {
+        toast({
+          title: "Success",
+          description: `Option sets configured successfully (${response.data.summary?.created || 0} created)`,
+        });
+      } else {
+        toast({
+          title: "Warning",
+          description: response.data.message || "Option sets configuration completed with warnings",
+          variant: "warning"
+        });
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || error.message;
+      setOptionSetsStatus({
+        success: false,
+        error: errorMessage
+      });
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setIsAddingOptionSets(false);
     }
   };
 
@@ -2343,6 +2489,7 @@ export default function RestaurantDetail() {
       in_talks: 'bg-purple-100 text-purple-800',
       demo_booked: 'bg-green-100 text-green-800',
       rebook_demo: 'bg-yellow-100 text-yellow-800',
+      demo_completed: 'bg-orange-200 text-orange-900',
       contract_sent: 'bg-indigo-100 text-indigo-800',
       closed_won: 'bg-green-100 text-green-800',
       closed_lost: 'bg-red-100 text-red-800',
@@ -2987,6 +3134,7 @@ export default function RestaurantDetail() {
                       <SelectItem value="in_talks">In Talks</SelectItem>
                       <SelectItem value="demo_booked">Demo Booked</SelectItem>
                       <SelectItem value="rebook_demo">Rebook Demo</SelectItem>
+                      <SelectItem value="demo_completed">Demo Completed</SelectItem>
                       <SelectItem value="contract_sent">Contract Sent</SelectItem>
                       <SelectItem value="closed_won">Closed Won</SelectItem>
                       <SelectItem value="closed_lost">Closed Lost</SelectItem>
@@ -3942,6 +4090,7 @@ export default function RestaurantDetail() {
                   onResume={handleResumeSequence}
                   onCancel={handleCancelSequence}
                   onFinish={handleFinishSequence}
+                  onDelete={handleDeleteSequence}
                   onRefresh={refetchSequences}
                   hideRestaurantLink={true}
                   onStartSequence={() => {
@@ -4375,6 +4524,26 @@ export default function RestaurantDetail() {
                     )}
                   </Button>
 
+                  {/* Add Tags Button */}
+                  <Button
+                    onClick={handleAddItemTags}
+                    disabled={isAddingTags}
+                    className="w-full"
+                    variant="outline"
+                  >
+                    {isAddingTags ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Adding Tags...
+                      </>
+                    ) : (
+                      <>
+                        <Tag className="h-4 w-4 mr-2" />
+                        Add Item Tags
+                      </>
+                    )}
+                  </Button>
+
                   {/* Status Messages */}
                   {uploadStatus === 'success' && (
                     <Alert className="border-green-200 bg-green-50">
@@ -4393,6 +4562,93 @@ export default function RestaurantDetail() {
                       </AlertDescription>
                     </Alert>
                   )}
+
+                  {/* Tags Status Messages */}
+                  {tagsStatus && (
+                    <Alert className={tagsStatus.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}>
+                      {tagsStatus.success ? (
+                        <FileCheck className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4 text-red-600" />
+                      )}
+                      <AlertDescription className={tagsStatus.success ? 'text-green-800' : 'text-red-800'}>
+                        {tagsStatus.success
+                          ? 'Item tags configured successfully!'
+                          : (tagsStatus.error || 'Failed to configure item tags')}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {/* Option Sets Section */}
+                  <div className="border-t pt-4 mt-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <Settings2 className="h-4 w-4" />
+                        Add Option Sets from Menu
+                      </div>
+
+                      {/* Menu Dropdown */}
+                      <Select
+                        value={selectedMenuForOptionSets}
+                        onValueChange={setSelectedMenuForOptionSets}
+                        disabled={isAddingOptionSets}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select a menu..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {restaurant?.menus && restaurant.menus.length > 0 ? (
+                            restaurant.menus.map((menu) => (
+                              <SelectItem key={menu.id} value={menu.id}>
+                                Version {menu.version} - {menu.platforms?.name || 'Unknown'}
+                                {menu.is_active && ' (Active)'}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="none" disabled>
+                              No menus available
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+
+                      {/* Add Option Sets Button */}
+                      <Button
+                        onClick={handleAddOptionSets}
+                        disabled={isAddingOptionSets || !selectedMenuForOptionSets}
+                        className="w-full"
+                        variant="outline"
+                      >
+                        {isAddingOptionSets ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Adding Option Sets...
+                          </>
+                        ) : (
+                          <>
+                            <Settings2 className="h-4 w-4 mr-2" />
+                            Add Option Sets
+                          </>
+                        )}
+                      </Button>
+
+                      {/* Option Sets Status Messages */}
+                      {optionSetsStatus && (
+                        <Alert className={optionSetsStatus.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}>
+                          {optionSetsStatus.success ? (
+                            <FileCheck className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <AlertCircle className="h-4 w-4 text-red-600" />
+                          )}
+                          <AlertDescription className={optionSetsStatus.success ? 'text-green-800' : 'text-red-800'}>
+                            {optionSetsStatus.success
+                              ? `Option sets configured successfully! (${optionSetsStatus.summary?.created || 0} created, ${optionSetsStatus.summary?.failed || 0} failed)`
+                              : (optionSetsStatus.error || 'Failed to configure option sets')}
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <Alert>

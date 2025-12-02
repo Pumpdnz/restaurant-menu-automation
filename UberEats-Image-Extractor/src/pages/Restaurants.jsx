@@ -75,11 +75,11 @@ export default function Restaurants() {
     const urlParam = searchParams.get('lead_stage');
     if (!urlParam) {
       // No URL param, use defaults
-      return ['uncontacted', 'reached_out', 'in_talks', 'demo_booked', 'rebook_demo', 'contract_sent', 'reengaging'];
+      return ['uncontacted', 'reached_out', 'in_talks', 'demo_booked', 'rebook_demo', 'demo_completed', 'contract_sent', 'reengaging'];
     }
     const stages = urlParam.split(',').filter(Boolean);
     // If URL param exists but is empty, use defaults
-    return stages.length > 0 ? stages : ['uncontacted', 'reached_out', 'in_talks', 'demo_booked', 'rebook_demo', 'contract_sent', 'reengaging'];
+    return stages.length > 0 ? stages : ['uncontacted', 'reached_out', 'in_talks', 'demo_booked', 'rebook_demo', 'demo_completed', 'contract_sent', 'reengaging'];
   };
 
   const [filters, setFilters] = useState({
@@ -235,7 +235,7 @@ export default function Restaurants() {
       lead_type: [],
       lead_category: [],
       lead_warmth: [],
-      lead_stage: ['uncontacted', 'reached_out', 'in_talks', 'demo_booked', 'rebook_demo', 'contract_sent', 'reengaging'],
+      lead_stage: ['uncontacted', 'reached_out', 'in_talks', 'demo_booked', 'rebook_demo', 'demo_completed', 'contract_sent', 'reengaging'],
       lead_status: [],
       demo_store_built: 'all',
       icp_rating_min: ''
@@ -355,6 +355,7 @@ export default function Restaurants() {
             <SelectItem value="in_talks">In Talks</SelectItem>
             <SelectItem value="demo_booked">Demo Booked</SelectItem>
             <SelectItem value="rebook_demo">Rebook Demo</SelectItem>
+            <SelectItem value="demo_completed">Demo Completed</SelectItem>
             <SelectItem value="contract_sent">Contract Sent</SelectItem>
             <SelectItem value="closed_won">Closed Won</SelectItem>
             <SelectItem value="closed_lost">Closed Lost</SelectItem>
@@ -370,6 +371,7 @@ export default function Restaurants() {
       in_talks: 'bg-purple-100 text-purple-800 border-purple-200',
       demo_booked: 'bg-green-100 text-green-800 border-green-200',
       rebook_demo: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      demo_completed: 'bg-orange-100 text-orange-900',
       contract_sent: 'bg-indigo-100 text-indigo-800 border-indigo-200',
       closed_won: 'bg-green-600 text-white border-green-700',
       closed_lost: 'bg-red-100 text-red-800 border-red-200',
@@ -389,6 +391,7 @@ export default function Restaurants() {
           <SelectItem value="in_talks">In Talks</SelectItem>
           <SelectItem value="demo_booked">Demo Booked</SelectItem>
           <SelectItem value="rebook_demo">Rebook Demo</SelectItem>
+          <SelectItem value="demo_completed">Demo Completed</SelectItem>
           <SelectItem value="contract_sent">Contract Sent</SelectItem>
           <SelectItem value="closed_won">Closed Won</SelectItem>
           <SelectItem value="closed_lost">Closed Lost</SelectItem>
@@ -798,6 +801,7 @@ export default function Restaurants() {
                   { label: 'In Talks', value: 'in_talks' },
                   { label: 'Demo Booked', value: 'demo_booked' },
                   { label: 'Rebook Demo', value: 'rebook_demo' },
+                  { label: 'Demo Completed', value: 'demo_completed' },
                   { label: 'Contract Sent', value: 'contract_sent' },
                   { label: 'Closed Won', value: 'closed_won' },
                   { label: 'Closed Lost', value: 'closed_lost' },

@@ -380,17 +380,36 @@ export function RestaurantTasksList({ restaurantId, onCreateTask, onEditTask, on
     );
   };
 
-  const getDueDateInput = (dueDate: string | null, taskId: string, taskStatus: string) => {
-    const isOverdue =
-      dueDate &&
-      new Date(dueDate) < new Date() &&
-      taskStatus !== 'completed' &&
-      taskStatus !== 'cancelled';
+  const getDueDateInput = (task: any) => {
+    // Show completed date for completed tasks
+    if (task.status === 'completed') {
+      return (
+        <div className="text-xs text-green-600 flex items-center gap-1">
+          <CheckCircle2 className="h-3 w-3" />
+          {task.completed_at
+            ? new Date(task.completed_at).toLocaleDateString('en-NZ', {
+                day: 'numeric',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit'
+              })
+            : 'Completed'}
+        </div>
+      );
+    }
+
+    // Show cancelled indicator
+    if (task.status === 'cancelled') {
+      return <span className="text-xs text-gray-500">Cancelled</span>;
+    }
+
+    // Original due date picker for active/pending tasks
+    const isOverdue = task.due_date && new Date(task.due_date) < new Date();
 
     return (
       <DateTimePicker
-        value={dueDate ? new Date(dueDate) : null}
-        onChange={(date) => handleUpdateDueDate(taskId, date ? date.toISOString() : null)}
+        value={task.due_date ? new Date(task.due_date) : null}
+        onChange={(date) => handleUpdateDueDate(task.id, date ? date.toISOString() : null)}
         placeholder="Set due date"
         className={cn('h-8 text-xs', isOverdue && 'text-red-600')}
       />
@@ -541,7 +560,7 @@ export function RestaurantTasksList({ restaurantId, onCreateTask, onEditTask, on
                     </TaskTypeQuickView>
                   </TableCell>
                   <TableCell>{getPriorityDropdown(task)}</TableCell>
-                  <TableCell>{getDueDateInput(task.due_date, task.id, task.status)}</TableCell>
+                  <TableCell>{getDueDateInput(task)}</TableCell>
                   <TableCell>
                     {task.assigned_to ? (
                       <div className="text-sm">

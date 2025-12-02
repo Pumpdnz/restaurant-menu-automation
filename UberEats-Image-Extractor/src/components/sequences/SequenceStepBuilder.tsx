@@ -1,5 +1,5 @@
 import { ChevronUp, ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card } from '../ui/card';
 import { Input } from '../ui/input';
@@ -13,6 +13,7 @@ import {
 } from '../ui/select';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
+import { VariableSelector } from '../ui/variable-selector';
 import api from '../../services/api';
 
 export interface StepFormData {
@@ -93,6 +94,29 @@ export function SequenceStepBuilder({
 
   const showMessageTemplates = ['email', 'text', 'social_message'].includes(step.type);
   const showQualificationInfo = step.type === 'demo_meeting';
+  const messageTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Handler to insert variable at cursor position
+  const handleInsertVariable = (variable: string) => {
+    const textarea = messageTextareaRef.current;
+    const currentMessage = step.custom_message || '';
+
+    if (!textarea) {
+      onChange(index, 'custom_message', currentMessage + variable);
+      return;
+    }
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const newText = currentMessage.substring(0, start) + variable + currentMessage.substring(end);
+
+    onChange(index, 'custom_message', newText);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = start + variable.length;
+    }, 0);
+  };
 
   // Handle task template selection
   const handleTaskTemplateChange = (templateId: string) => {
@@ -189,7 +213,7 @@ export function SequenceStepBuilder({
   };
 
   return (
-    <Card className="p-4 bg-brand-yellow-light-4">
+    <Card className="p-4">
       <div className="flex items-start gap-4">
         {/* Move Up/Down Buttons */}
         <div className="flex flex-col gap-1 mt-1">
@@ -487,13 +511,19 @@ export function SequenceStepBuilder({
               Custom Message (optional)
             </Label>
             <Textarea
+              ref={messageTextareaRef}
               id={`step-message-${index}`}
-              placeholder="Custom message for this step (supports variables like {{restaurant_name}})"
+              placeholder="Custom message for this step (supports variables like {restaurant_name})"
               value={step.custom_message || ''}
               onChange={(e) => onChange(index, 'custom_message', e.target.value)}
               rows={2}
               className="mt-1"
             />
+          </div>
+
+          {/* Available Variables Reference */}
+          <div className="border-t pt-3 mt-3">
+            <VariableSelector onVariableSelect={handleInsertVariable} />
           </div>
         </div>
           </>

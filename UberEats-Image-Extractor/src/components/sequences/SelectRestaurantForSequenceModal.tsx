@@ -186,6 +186,7 @@ export function SelectRestaurantForSequenceModal({
                 { label: 'In Talks', value: 'in_talks' },
                 { label: 'Demo Booked', value: 'demo_booked' },
                 { label: 'Rebook Demo', value: 'rebook_demo' },
+                { label: 'Demo Completed', value: 'demo_completed'},
                 { label: 'Contract Sent', value: 'contract_sent' },
                 { label: 'Closed Won', value: 'closed_won' },
                 { label: 'Closed Lost', value: 'closed_lost' },

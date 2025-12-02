@@ -843,6 +843,65 @@ async function startSequenceBulk(templateId, restaurantIds, options = {}) {
   }
 }
 
+/**
+ * Delete a sequence instance and its associated tasks
+ * Only allows deleting completed or cancelled sequences
+ * @param {string} instanceId - Instance ID
+ * @returns {Promise<object>} Deleted instance data
+ */
+async function deleteSequenceInstance(instanceId) {
+  const client = getSupabaseClient();
+
+  try {
+    // First, get the sequence to verify it exists and check status
+    const { data: instance, error: fetchError } = await client
+      .from('sequence_instances')
+      .select('id, status, restaurant_id')
+      .eq('id', instanceId)
+      .eq('organisation_id', getCurrentOrganizationId())
+      .single();
+
+    if (fetchError || !instance) {
+      throw new Error('Sequence instance not found');
+    }
+
+    // Only allow deleting completed or cancelled sequences
+    if (!['completed', 'cancelled'].includes(instance.status)) {
+      throw new Error('Can only delete completed or cancelled sequences');
+    }
+
+    // Delete all tasks associated with this sequence
+    const { error: deleteTasksError } = await client
+      .from('tasks')
+      .delete()
+      .eq('sequence_instance_id', instanceId);
+
+    if (deleteTasksError) {
+      console.error('Error deleting tasks:', deleteTasksError);
+      throw new Error('Failed to delete associated tasks');
+    }
+
+    // Delete the sequence instance
+    const { data: deletedInstance, error: deleteError } = await client
+      .from('sequence_instances')
+      .delete()
+      .eq('id', instanceId)
+      .eq('organisation_id', getCurrentOrganizationId())
+      .select()
+      .single();
+
+    if (deleteError) {
+      console.error('Error deleting sequence instance:', deleteError);
+      throw deleteError;
+    }
+
+    return deletedInstance;
+  } catch (error) {
+    console.error('Error in deleteSequenceInstance:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   startSequence,
   startSequenceBulk,
@@ -852,6 +911,7 @@ module.exports = {
   resumeSequence,
   cancelSequence,
   finishSequence,
+  deleteSequenceInstance,
   getRestaurantSequences,
   getSequenceProgress
 };

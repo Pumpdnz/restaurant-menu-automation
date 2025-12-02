@@ -152,6 +152,65 @@ function formatWebsiteType(value) {
 }
 
 /**
+ * Example restaurants by city for social proof in messages
+ * Each city has up to 2 example restaurants with their Pumpd URLs
+ */
+const CITY_EXAMPLE_RESTAURANTS = {
+  'Auckland': [
+    { name: 'Eat Mi', url: 'https://order.eatmi.co.nz/' }
+  ],
+  'Wellington': [
+    { name: 'Chaat Street', url: 'https://order.chaatstreet.co.nz/' },
+    { name: 'Pho Mo', url: 'https://order.pho-mo.co.nz/' }
+  ],
+  'Christchurch': [
+    { name: 'Smokey T\'s', url: 'https://cashelst.smokeytsbbq.com/' },
+    { name: 'Base Pizza', url: 'https://montreal.basepizza.co.nz/' }
+  ],
+  'Hamilton': [
+    { name: 'Goneburger', url: 'https://hamilton.goneburger.nz/' },
+    { name: 'Victor\'s Place', url: 'https://order.victorsplace.co.nz/' }
+  ],
+  'Dunedin': [
+    { name: 'Poppa\'s Pizza', url: 'https://order.poppaspizza.nz/' },
+    { name: 'Thai Opal', url: 'https://dunedin.thaiopal.co.nz/' }
+  ],
+  'Queenstown': [
+    { name: 'Pedro\'s House of Lamb', url: 'https://queenstown.pedros.co.nz/' },
+    { name: 'Saigon Kingdom', url: 'https://steamerwharf.saigonkingdom.co.nz/' }
+  ],
+  'Invercargill': [
+    { name: 'Thai Opal', url: 'https://invercargill.thaiopal.co.nz/' }
+  ]
+};
+
+/**
+ * Get example restaurants for a city
+ * Falls back to Auckland if city not found
+ * @param {string} city - City name
+ * @returns {Array} Array of example restaurants
+ */
+function getExampleRestaurantsForCity(city) {
+  if (!city) return CITY_EXAMPLE_RESTAURANTS['Auckland'] || [];
+
+  // Try exact match first
+  if (CITY_EXAMPLE_RESTAURANTS[city]) {
+    return CITY_EXAMPLE_RESTAURANTS[city];
+  }
+
+  // Try case-insensitive match
+  const normalizedCity = city.toLowerCase();
+  for (const [key, value] of Object.entries(CITY_EXAMPLE_RESTAURANTS)) {
+    if (key.toLowerCase() === normalizedCity) {
+      return value;
+    }
+  }
+
+  // Fall back to Auckland
+  return CITY_EXAMPLE_RESTAURANTS['Auckland'] || [];
+}
+
+/**
  * Available variable mappings from restaurant data
  */
 const VARIABLE_MAPPINGS = {
@@ -279,6 +338,24 @@ const VARIABLE_MAPPINGS = {
   meeting_link: 'meeting_link',
   website_type: (restaurant) => {
     return formatWebsiteType(restaurant.website_type);
+  },
+
+  // Example Restaurants (for social proof)
+  example_restaurant_1: (restaurant) => {
+    const examples = getExampleRestaurantsForCity(restaurant.city);
+    return examples[0]?.name || '';
+  },
+  example_restaurant_1_url: (restaurant) => {
+    const examples = getExampleRestaurantsForCity(restaurant.city);
+    return examples[0]?.url || '';
+  },
+  example_restaurant_2: (restaurant) => {
+    const examples = getExampleRestaurantsForCity(restaurant.city);
+    return examples[1]?.name || '';
+  },
+  example_restaurant_2_url: (restaurant) => {
+    const examples = getExampleRestaurantsForCity(restaurant.city);
+    return examples[1]?.url || '';
   }
 };
 
@@ -406,6 +483,16 @@ function getAvailableVariables() {
         { name: 'current_date', description: 'Current date (long format)', example: 'Thursday, 16 January 2025' },
         { name: 'current_year', description: 'Current year', example: '2025' },
         { name: 'last_contacted_day', description: 'Last contact date (natural)', example: 'yesterday' },
+      ]
+    },
+    // Example Restaurants (Social Proof)
+    {
+      category: 'Example Restaurants',
+      variables: [
+        { name: 'example_restaurant_1', description: 'Example restaurant (same city)', example: 'Sidart' },
+        { name: 'example_restaurant_1_url', description: 'Example restaurant URL', example: 'https://sidart.pumpd.co.nz' },
+        { name: 'example_restaurant_2', description: 'Second example restaurant', example: 'Depot Eatery' },
+        { name: 'example_restaurant_2_url', description: 'Second example URL', example: 'https://depot-eatery.pumpd.co.nz' },
       ]
     },
     // Qualification Data

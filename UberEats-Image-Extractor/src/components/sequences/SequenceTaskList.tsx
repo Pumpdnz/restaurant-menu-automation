@@ -331,7 +331,19 @@ export function SequenceTaskList({
 
   const getDueDateOrDelayInput = (task: Task) => {
     if (task.status === 'completed') {
-      return <span className="text-xs text-green-600">Done</span>;
+      return (
+        <div className="text-xs text-green-600 flex items-center gap-1">
+          <CheckCircle2 className="h-3 w-3" />
+          {task.completed_at
+            ? new Date(task.completed_at).toLocaleDateString('en-NZ', {
+                day: 'numeric',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit'
+              })
+            : 'Completed'}
+        </div>
+      );
     }
 
     // Pending tasks show delay from template (read-only)

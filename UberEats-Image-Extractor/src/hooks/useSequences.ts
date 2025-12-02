@@ -728,6 +728,29 @@ export function useFinishSequence() {
   });
 }
 
+export function useDeleteSequenceInstance() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await api.delete(`/sequence-instances/${id}`);
+      return response.data;
+    },
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['sequence-instance', id] });
+      queryClient.invalidateQueries({ queryKey: ['sequence-instances'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['restaurant-sequences'] });
+      toast.success('Sequence deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error('Failed to delete sequence', {
+        description: error.response?.data?.error || error.message,
+      });
+    },
+  });
+}
+
 export function useRestaurantSequences(restaurantId: string) {
   return useQuery<{ success: boolean; data: SequenceInstance[] }>({
     queryKey: ['restaurant-sequences', restaurantId],

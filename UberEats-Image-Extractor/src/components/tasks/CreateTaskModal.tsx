@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../../services/api';
 import {
   Dialog,
@@ -22,6 +22,7 @@ import {
 import { DateTimePicker } from '../ui/date-time-picker';
 import { useToast } from '../../hooks/use-toast';
 import { QualificationForm } from '../demo-meeting/QualificationForm';
+import { VariableSelector } from '../ui/variable-selector';
 import { QualificationData } from '../../lib/qualification-constants';
 
 interface CreateTaskModalProps {
@@ -325,6 +326,29 @@ export function CreateTaskModal({ open, onClose, onSuccess, restaurantId, duplic
     setQualificationData({});
   };
 
+  const messageTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Handler to insert variable at cursor position
+  const handleInsertVariable = (variable: string) => {
+    const textarea = messageTextareaRef.current;
+    if (!textarea) {
+      setFormData({ ...formData, message: formData.message + variable });
+      return;
+    }
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = formData.message;
+    const newText = text.substring(0, start) + variable + text.substring(end);
+
+    setFormData({ ...formData, message: newText });
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = start + variable.length;
+    }, 0);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
@@ -525,15 +549,18 @@ export function CreateTaskModal({ open, onClose, onSuccess, restaurantId, duplic
               <div className="space-y-2">
                 <Label htmlFor="message">Message</Label>
                 <Textarea
+                  ref={messageTextareaRef}
                   id="message"
                   value={formData.message}
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                   placeholder="Use variables like {restaurant_name}, {contact_name}, etc."
                   rows={5}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Available variables: {'{restaurant_name}'}, {'{contact_name}'}, {'{first_name}'}, {'{city}'}, {'{cuisine}'}, {'{demo_store_url}'}
-                </p>
+              </div>
+
+              {/* Available Variables Reference */}
+              <div className="border-t pt-4">
+                <VariableSelector onVariableSelect={handleInsertVariable} />
               </div>
             </div>
           )}

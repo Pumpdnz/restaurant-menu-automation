@@ -1,0 +1,87 @@
+{
+  "total": 13,
+  "successful": 13,
+  "totalOriginalSize": 116107342,
+  "totalCompressedSize": 9460231,
+  "averageRatio": "91.9",
+  "results": [
+    {
+      "filename": "VADA PAV-1.jpg",
+      "originalSize": 6706401,
+      "compressedSize": 877036,
+      "ratio": "86.9"
+    },
+    {
+      "filename": "Tamatar Bhel Ke Salad-2.jpg",
+      "originalSize": 8734394,
+      "compressedSize": 599116,
+      "ratio": "93.1"
+    },
+    {
+      "filename": "SPINACH AND CHEESE SPRINGROLL-1.jpg",
+      "originalSize": 10276581,
+      "compressedSize": 657888,
+      "ratio": "93.6"
+    },
+    {
+      "filename": "SERRA DURRA-2.jpg",
+      "originalSize": 8304046,
+      "compressedSize": 791157,
+      "ratio": "90.5"
+    },
+    {
+      "filename": "PRAWN PEPPERFRY-2.jpg",
+      "originalSize": 7324614,
+      "compressedSize": 781762,
+      "ratio": "89.3"
+    },
+    {
+      "filename": "JHOL MOMO-1.jpg",
+      "originalSize": 8184519,
+      "compressedSize": 722528,
+      "ratio": "91.2"
+    },
+    {
+      "filename": "Honey Chilli Gobi.jpg",
+      "originalSize": 8117825,
+      "compressedSize": 655244,
+      "ratio": "91.9"
+    },
+    {
+      "filename": "Gol Gappe-3.jpg",
+      "originalSize": 8336602,
+      "compressedSize": 549760,
+      "ratio": "93.4"
+    },
+    {
+      "filename": "Dahi Puri-2.jpg",
+      "originalSize": 11341113,
+      "compressedSize": 632446,
+      "ratio": "94.4"
+    },
+    {
+      "filename": "Chikkad Chole-1.jpg",
+      "originalSize": 11295223,
+      "compressedSize": 655224,
+      "ratio": "94.2"
+    },
+    {
+      "filename": "Charred Cabbage Poriyal-2.jpg",
+      "originalSize": 10695619,
+      "compressedSize": 720363,
+      "ratio": "93.3"
+    },
+    {
+      "filename": "BOMBE KULFI-1.jpg",
+      "originalSize": 6594669,
+      "compressedSize": 1022065,
+      "ratio": "84.5"
+    },
+    {
+      "filename": "BEDAI KE ALOO-2.jpg",
+      "originalSize": 10195736,
+      "compressedSize": 795642,
+      "ratio": "92.2"
+    }
+  ]
+}

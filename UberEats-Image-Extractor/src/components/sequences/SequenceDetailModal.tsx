@@ -129,8 +129,17 @@ export function SequenceDetailModal({
     );
   };
 
-  const formatDueDate = (dueDate: string | null, status: string) => {
-    if (status === 'completed') return 'Done';
+  const formatDueDate = (dueDate: string | null, status: string, completedAt: string | null) => {
+    if (status === 'completed') {
+      return completedAt
+        ? new Date(completedAt).toLocaleDateString('en-NZ', {
+            day: 'numeric',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+        : 'Completed';
+    }
     if (!dueDate) return 'Not set';
 
     const due = new Date(dueDate);
@@ -296,7 +305,7 @@ export function SequenceDetailModal({
                       </div>
                       <div className={cn('text-xs mt-2 flex items-center gap-1', getDueDateColor(task.due_date, task.status))}>
                         <Calendar className="h-3 w-3" />
-                        {formatDueDate(task.due_date, task.status)}
+                        {formatDueDate(task.due_date, task.status, task.completed_at)}
                       </div>
                     </div>
                   </div>

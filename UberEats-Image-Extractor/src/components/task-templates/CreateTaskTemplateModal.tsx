@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../../services/api';
 import {
   Dialog,
@@ -22,6 +22,7 @@ import {
 import { Checkbox } from '../ui/checkbox';
 import { useToast } from '../../hooks/use-toast';
 import { Badge } from '../ui/badge';
+import { VariableSelector } from '../ui/variable-selector';
 
 interface CreateTaskTemplateModalProps {
   open: boolean;
@@ -197,6 +198,28 @@ export function CreateTaskTemplateModal({
 
   const isMessageType = ['email', 'social_message', 'text'].includes(formData.type);
   const filteredTemplates = getFilteredMessageTemplates();
+  const messageTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Handler to insert variable at cursor position
+  const handleInsertVariable = (variable: string) => {
+    const textarea = messageTextareaRef.current;
+    if (!textarea) {
+      setFormData({ ...formData, default_message: formData.default_message + variable });
+      return;
+    }
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = formData.default_message;
+    const newText = text.substring(0, start) + variable + text.substring(end);
+
+    setFormData({ ...formData, default_message: newText });
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = start + variable.length;
+    }, 0);
+  };
 
   if (fetching) {
     return (
@@ -361,6 +384,7 @@ export function CreateTaskTemplateModal({
                   <div className="space-y-2">
                     <Label htmlFor="default_message">Default Message</Label>
                     <Textarea
+                      ref={messageTextareaRef}
                       id="default_message"
                       value={formData.default_message}
                       onChange={(e) => setFormData({ ...formData, default_message: e.target.value })}
@@ -368,9 +392,11 @@ export function CreateTaskTemplateModal({
                       rows={5}
                       className="font-mono text-sm"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Available variables: {'{restaurant_name}'}, {'{contact_name}'}, {'{first_name}'}, {'{city}'}, {'{cuisine}'}, {'{demo_store_url}'}
-                    </p>
+                  </div>
+
+                  {/* Available Variables Reference */}
+                  <div className="border-t pt-4">
+                    <VariableSelector onVariableSelect={handleInsertVariable} />
                   </div>
                 </div>
               )}

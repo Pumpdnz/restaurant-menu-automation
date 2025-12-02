@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../../services/api';
 import {
   Dialog,
@@ -23,6 +23,7 @@ import { Badge } from '../ui/badge';
 import { Checkbox } from '../ui/checkbox';
 import { useToast } from '../../hooks/use-toast';
 import { Eye, EyeOff } from 'lucide-react';
+import { VariableSelector } from '../ui/variable-selector';
 
 interface CreateMessageTemplateModalProps {
   open: boolean;
@@ -60,6 +61,30 @@ export function CreateMessageTemplateModal({
   });
 
   const [extractedVariables, setExtractedVariables] = useState<string[]>([]);
+  const messageTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Handler to insert variable at cursor position in message content
+  const handleInsertVariable = (variable: string) => {
+    const textarea = messageTextareaRef.current;
+    if (!textarea) {
+      // Fallback: append to end
+      setFormData({ ...formData, message_content: formData.message_content + variable });
+      return;
+    }
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = formData.message_content;
+    const newText = text.substring(0, start) + variable + text.substring(end);
+
+    setFormData({ ...formData, message_content: newText });
+
+    // Restore cursor position after the inserted variable
+    setTimeout(() => {
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = start + variable.length;
+    }, 0);
+  };
 
   useEffect(() => {
     if (open) {
@@ -252,21 +277,6 @@ export function CreateMessageTemplateModal({
     setPreviewRestaurant(null);
   };
 
-  const availableVariables = [
-    { name: 'restaurant_name', description: 'Restaurant name' },
-    { name: 'contact_name', description: 'Contact person name' },
-    { name: 'first_name', description: 'Contact first name' },
-    { name: 'contact_email', description: 'Contact email' },
-    { name: 'contact_phone', description: 'Contact phone' },
-    { name: 'city', description: 'Restaurant city' },
-    { name: 'cuisine', description: 'Cuisine type(s)' },
-    { name: 'organisation_name', description: 'Organisation name' },
-    { name: 'demo_store_url', description: 'Demo store URL' },
-    { name: 'subdomain', description: 'Pumpd subdomain' },
-    { name: 'phone', description: 'Restaurant phone' },
-    { name: 'email', description: 'Restaurant email' },
-    { name: 'address', description: 'Restaurant address' }
-  ];
 
   if (fetching) {
     return (
@@ -379,6 +389,7 @@ export function CreateMessageTemplateModal({
           <div className="space-y-2">
             <Label htmlFor="message_content">Message Content *</Label>
             <Textarea
+              ref={messageTextareaRef}
               id="message_content"
               value={formData.message_content}
               onChange={(e) => setFormData({ ...formData, message_content: e.target.value })}
@@ -403,18 +414,8 @@ export function CreateMessageTemplateModal({
           )}
 
           {/* Available Variables Reference */}
-          <div className="space-y-2 border-t pt-4">
-            <Label>Available Variables</Label>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              {availableVariables.map((variable) => (
-                <div key={variable.name} className="flex items-start gap-2">
-                  <Badge variant="outline" className="text-xs shrink-0">
-                    {'{' + variable.name + '}'}
-                  </Badge>
-                  <span className="text-muted-foreground">{variable.description}</span>
-                </div>
-              ))}
-            </div>
+          <div className="border-t pt-4">
+            <VariableSelector onVariableSelect={handleInsertVariable} />
           </div>
 
           {/* Preview Section */}

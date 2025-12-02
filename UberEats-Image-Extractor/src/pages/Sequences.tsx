@@ -1,12 +1,16 @@
 import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, Search, Filter, Loader2, Workflow, Tag, ChevronDown } from 'lucide-react';
+import { Plus, Search, Filter, Loader2, Workflow, Tag, ChevronDown, Mail, MessageSquare, Edit, Copy, Trash2, FileText } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useToast } from '../hooks/use-toast';
+import api from '../services/api';
 import {
   useSequenceInstances,
   usePauseSequence,
   useResumeSequence,
   useCancelSequence,
   useFinishSequence,
+  useDeleteSequenceInstance,
   useSequenceTemplates,
   useUpdateSequenceTemplate,
   useDeleteSequenceTemplate,
@@ -22,7 +26,17 @@ import { CreateTaskModal } from '../components/tasks/CreateTaskModal';
 import { CreateSequenceTemplateModal } from '../components/sequences/CreateSequenceTemplateModal';
 import { EditSequenceTemplateModal } from '../components/sequences/EditSequenceTemplateModal';
 import { SequenceTemplateCard } from '../components/sequences/SequenceTemplateCard';
+import { CreateMessageTemplateModal } from '../components/message-templates/CreateMessageTemplateModal';
 import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../components/ui/table';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,6 +78,14 @@ export default function Sequences() {
   const [editTemplateModalOpen, setEditTemplateModalOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<SequenceTemplate | null>(null);
 
+  // Message Templates tab state
+  const [messageTemplateFilterType, setMessageTemplateFilterType] = useState<string>('all');
+  const [messageTemplateFilterActive, setMessageTemplateFilterActive] = useState<string>('all');
+  const [createMessageTemplateModalOpen, setCreateMessageTemplateModalOpen] = useState(false);
+  const [editMessageTemplateModalOpen, setEditMessageTemplateModalOpen] = useState(false);
+  const [duplicateMessageTemplateModalOpen, setDuplicateMessageTemplateModalOpen] = useState(false);
+  const [selectedMessageTemplate, setSelectedMessageTemplate] = useState<any | null>(null);
+
   // Modal state for creating sequences
   const [selectRestaurantOpen, setSelectRestaurantOpen] = useState(false);
   const [startSequenceOpen, setStartSequenceOpen] = useState(false);
@@ -80,11 +102,12 @@ export default function Sequences() {
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null);
 
   // Data fetching - Instances
-  const { data: instances, isLoading: instancesLoading } = useSequenceInstances();
+  const { data: instances, isLoading: instancesLoading, refetch: refetchInstances } = useSequenceInstances();
   const pauseMutation = usePauseSequence();
   const resumeMutation = useResumeSequence();
   const cancelMutation = useCancelSequence();
   const finishMutation = useFinishSequence();
+  const deleteMutation = useDeleteSequenceInstance();
 
   // Data fetching - Templates
   const templateFilters = useMemo(() => ({
@@ -101,6 +124,30 @@ export default function Sequences() {
 
   // Data fetching - Restaurants
   const { data: restaurants } = useRestaurants();
+
+  // Hooks for message templates
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Data fetching - Message Templates
+  const messageTemplateFilters = useMemo(() => ({
+    type: messageTemplateFilterType === 'all' ? undefined : messageTemplateFilterType,
+    is_active: messageTemplateFilterActive === 'all' ? undefined : messageTemplateFilterActive === 'true',
+  }), [messageTemplateFilterType, messageTemplateFilterActive]);
+
+  const { data: messageTemplatesData, isLoading: messageTemplatesLoading } = useQuery({
+    queryKey: ['message-templates', messageTemplateFilters],
+    queryFn: async () => {
+      const params: any = {};
+      if (messageTemplateFilters.type) params.type = messageTemplateFilters.type;
+      if (messageTemplateFilters.is_active !== undefined) params.is_active = messageTemplateFilters.is_active;
+
+      const response = await api.get('/message-templates', { params });
+      return response.data;
+    }
+  });
+
+  const messageTemplates = messageTemplatesData?.templates || [];
 
   // Filter instances logic
   const filteredInstances = useMemo(() => {
@@ -209,6 +256,13 @@ export default function Sequences() {
     }
   };
 
+  // Delete sequence handler
+  const handleDelete = async (instanceId: string) => {
+    if (window.confirm('Are you sure you want to delete this sequence? This action cannot be undone.')) {
+      await deleteMutation.mutateAsync(instanceId);
+    }
+  };
+
   // Reset filters
   const handleResetFilters = () => {
     setInstanceFilters({
@@ -271,6 +325,29 @@ export default function Sequences() {
     setEditTemplateModalOpen(true);
   };
 
+  // Message Template handlers
+  const handleDeleteMessageTemplate = async (templateId: string) => {
+    if (!confirm('Are you sure you want to delete this message template?')) {
+      return;
+    }
+
+    try {
+      await api.delete(`/message-templates/${templateId}`);
+      toast({
+        title: "Success",
+        description: "Message template deleted successfully"
+      });
+      // Refetch message templates
+      queryClient.invalidateQueries({ queryKey: ['message-templates'] });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.error || 'Failed to delete template',
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -322,7 +399,8 @@ export default function Sequences() {
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList size="full">
           <TabsTrigger size="full" variant="blue" value="instances">Instances</TabsTrigger>
-          <TabsTrigger size="full" variant="blue" value="templates">Templates</TabsTrigger>
+          <TabsTrigger size="full" variant="blue" value="templates">Sequence Templates</TabsTrigger>
+          <TabsTrigger size="full" variant="blue" value="message-templates">Message Templates</TabsTrigger>
         </TabsList>
 
         {/* INSTANCES TAB */}
@@ -431,6 +509,8 @@ export default function Sequences() {
                   onResume={handleResume}
                   onCancel={handleCancel}
                   onFinish={handleFinish}
+                  onDelete={handleDelete}
+                  onRefresh={refetchInstances}
                   onStartSequence={(restaurant) => {
                     setSelectedRestaurant(restaurant);
                     setStartSequenceOpen(true);
@@ -526,6 +606,217 @@ export default function Sequences() {
             </div>
           )}
         </TabsContent>
+
+        {/* MESSAGE TEMPLATES TAB */}
+        <TabsContent value="message-templates" className="space-y-6">
+          {/* Header with Create Button */}
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="text-sm text-muted-foreground">
+                Create and manage reusable message templates for tasks and sequences
+              </p>
+            </div>
+            <Button onClick={() => setCreateMessageTemplateModalOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Message Template
+            </Button>
+          </div>
+
+          {/* Filters */}
+          <div className="bg-card border rounded-lg p-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <h3 className="font-medium">Filters</h3>
+              </div>
+              {(messageTemplateFilterType !== 'all' || messageTemplateFilterActive !== 'all') && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setMessageTemplateFilterType('all');
+                    setMessageTemplateFilterActive('all');
+                  }}
+                >
+                  <FileText className="h-4 w-4 mr-1" />
+                  Clear All
+                </Button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Type Filter */}
+              <div>
+                <label className="text-sm font-medium mb-1 block">Type</label>
+                <Select
+                  value={messageTemplateFilterType}
+                  onValueChange={setMessageTemplateFilterType}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="email">Email</SelectItem>
+                    <SelectItem value="social_message">Social Message</SelectItem>
+                    <SelectItem value="text">Text</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Active Status Filter */}
+              <div>
+                <label className="text-sm font-medium mb-1 block">Status</label>
+                <Select
+                  value={messageTemplateFilterActive}
+                  onValueChange={setMessageTemplateFilterActive}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="true">Active</SelectItem>
+                    <SelectItem value="false">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          {/* Templates Table */}
+          <div className="rounded-lg border bg-card overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Variables</TableHead>
+                  <TableHead>Usage Count</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {messageTemplatesLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+                      <p className="mt-2 text-sm text-muted-foreground">Loading templates...</p>
+                    </TableCell>
+                  </TableRow>
+                ) : messageTemplates.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      No message templates found. Create your first template to get started.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  messageTemplates.map((template: any) => (
+                    <TableRow key={template.id}>
+                      <TableCell>
+                        <div
+                          className="font-medium cursor-pointer hover:text-brand-blue"
+                          onClick={() => {
+                            setSelectedMessageTemplate(template);
+                            setEditMessageTemplateModalOpen(true);
+                          }}
+                        >
+                          {template.name}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {template.type === 'email' && <Mail className="h-4 w-4" />}
+                          {template.type === 'social_message' && <MessageSquare className="h-4 w-4" />}
+                          {template.type === 'text' && <MessageSquare className="h-4 w-4" />}
+                          <Badge variant="outline" className={
+                            template.type === 'email' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                            template.type === 'social_message' ? 'bg-purple-100 text-purple-800 border-purple-200' :
+                            template.type === 'text' ? 'bg-green-100 text-green-800 border-green-200' : ''
+                          }>
+                            {template.type.replace(/_/g, ' ')}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm text-muted-foreground max-w-xs truncate">
+                          {template.description || '-'}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {template.available_variables && template.available_variables.length > 0 ? (
+                            <>
+                              {template.available_variables.slice(0, 3).map((variable: string, idx: number) => (
+                                <Badge key={idx} variant="secondary" className="text-xs">
+                                  {'{' + variable + '}'}
+                                </Badge>
+                              ))}
+                              {template.available_variables.length > 3 && (
+                                <Badge variant="secondary" className="text-xs">
+                                  +{template.available_variables.length - 3} more
+                                </Badge>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">-</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {template.usage_count || 0}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={template.is_active ? "default" : "secondary"}>
+                          {template.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setSelectedMessageTemplate(template);
+                              setEditMessageTemplateModalOpen(true);
+                            }}
+                            title="Edit template"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setSelectedMessageTemplate(template);
+                              setDuplicateMessageTemplateModalOpen(true);
+                            }}
+                            title="Duplicate template"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDeleteMessageTemplate(template.id)}
+                            className="text-red-600 hover:text-red-700"
+                            title="Delete template"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
       </Tabs>
 
       {/* Modals */}
@@ -589,6 +880,48 @@ export default function Sequences() {
         }}
         template={selectedTemplate}
       />
+
+      {/* Message Template Modals */}
+      <CreateMessageTemplateModal
+        open={createMessageTemplateModalOpen}
+        onClose={() => setCreateMessageTemplateModalOpen(false)}
+        onSuccess={() => {
+          setCreateMessageTemplateModalOpen(false);
+          queryClient.invalidateQueries({ queryKey: ['message-templates'] });
+        }}
+      />
+
+      {selectedMessageTemplate && (
+        <CreateMessageTemplateModal
+          open={editMessageTemplateModalOpen}
+          templateId={selectedMessageTemplate.id}
+          onClose={() => {
+            setEditMessageTemplateModalOpen(false);
+            setSelectedMessageTemplate(null);
+          }}
+          onSuccess={() => {
+            setEditMessageTemplateModalOpen(false);
+            setSelectedMessageTemplate(null);
+            queryClient.invalidateQueries({ queryKey: ['message-templates'] });
+          }}
+        />
+      )}
+
+      {selectedMessageTemplate && (
+        <CreateMessageTemplateModal
+          open={duplicateMessageTemplateModalOpen}
+          duplicateFromId={selectedMessageTemplate.id}
+          onClose={() => {
+            setDuplicateMessageTemplateModalOpen(false);
+            setSelectedMessageTemplate(null);
+          }}
+          onSuccess={() => {
+            setDuplicateMessageTemplateModalOpen(false);
+            setSelectedMessageTemplate(null);
+            queryClient.invalidateQueries({ queryKey: ['message-templates'] });
+          }}
+        />
+      )}
     </div>
   );
 }

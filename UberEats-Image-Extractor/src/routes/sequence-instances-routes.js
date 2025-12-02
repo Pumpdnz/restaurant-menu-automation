@@ -294,6 +294,27 @@ router.post('/:id/finish', authMiddleware, async (req, res) => {
 });
 
 /**
+ * DELETE /api/sequence-instances/:id
+ * Delete a sequence instance and its associated tasks
+ * Only allows deleting completed or cancelled sequences
+ */
+router.delete('/:id', authMiddleware, async (req, res) => {
+  try {
+    const deletedInstance = await sequenceInstancesService.deleteSequenceInstance(req.params.id);
+    res.json({ success: true, data: deletedInstance });
+  } catch (error) {
+    console.error('Error deleting sequence instance:', error);
+    if (error.message.includes('not found')) {
+      return res.status(404).json({ success: false, error: error.message });
+    }
+    if (error.message.includes('Can only delete')) {
+      return res.status(400).json({ success: false, error: error.message });
+    }
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * GET /api/sequence-instances/:id/progress
  * Get detailed progress information for a sequence
  */

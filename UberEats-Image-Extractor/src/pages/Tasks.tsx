@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import { format } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
+import { useToast } from '../hooks/use-toast';
 import {
   CheckCircle2,
   Circle,
@@ -22,7 +24,9 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  Workflow
+  Workflow,
+  CheckCircle,
+  Trash2
 } from 'lucide-react';
 import {
   Table,
@@ -62,6 +66,13 @@ import { EditTaskModal } from '../components/tasks/EditTaskModal';
 import { TaskDetailModal } from '../components/tasks/TaskDetailModal';
 import { TaskTypeQuickView } from '../components/tasks/TaskTypeQuickView';
 import { StartSequenceModal } from '../components/sequences/StartSequenceModal';
+import { CreateTaskTemplateModal } from '../components/task-templates/CreateTaskTemplateModal';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '../components/ui/tabs';
 import { DateRange } from 'react-day-picker';
 
 export default function Tasks() {
@@ -88,7 +99,7 @@ export default function Tasks() {
     lead_type: [] as string[],
     lead_category: [] as string[],
     lead_warmth: [] as string[],
-    lead_stage: ['uncontacted', 'reached_out', 'in_talks', 'demo_booked', 'rebook_demo', 'contract_sent', 'reengaging'] as string[],
+    lead_stage: ['uncontacted', 'reached_out', 'in_talks', 'demo_booked', 'rebook_demo', 'demo_completed', 'contract_sent', 'reengaging'] as string[],
     lead_status: [] as string[],
     demo_store_built: 'all',
     icp_rating_min: ''
@@ -123,6 +134,26 @@ export default function Tasks() {
     followUp: null,
     startSequence: false
   });
+
+  // Tab state
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'tasks';
+
+  const handleTabChange = (value: string) => {
+    setSearchParams({ tab: value });
+  };
+
+  // Task Templates tab state
+  const [taskTemplateFilterType, setTaskTemplateFilterType] = useState<string>('all');
+  const [taskTemplateFilterActive, setTaskTemplateFilterActive] = useState<string>('all');
+  const [taskTemplateModals, setTaskTemplateModals] = useState({
+    create: false,
+    edit: null as string | null,
+    duplicate: null as string | null
+  });
+
+  // Hooks for task templates
+  const { toast } = useToast();
 
   // NZ Timezone utility functions
   const getStartOfDayNZ = (date: Date): Date => {
@@ -229,6 +260,26 @@ export default function Tasks() {
       setLoading(false);
     }
   };
+
+  // Data fetching - Task Templates
+  const taskTemplateFilters = useMemo(() => ({
+    type: taskTemplateFilterType === 'all' ? undefined : taskTemplateFilterType,
+    is_active: taskTemplateFilterActive === 'all' ? undefined : taskTemplateFilterActive === 'true',
+  }), [taskTemplateFilterType, taskTemplateFilterActive]);
+
+  const { data: taskTemplatesData, isLoading: taskTemplatesLoading, refetch: refetchTaskTemplates } = useQuery({
+    queryKey: ['task-templates', taskTemplateFilters],
+    queryFn: async () => {
+      const params: any = {};
+      if (taskTemplateFilters.type) params.type = taskTemplateFilters.type;
+      if (taskTemplateFilters.is_active !== undefined) params.is_active = taskTemplateFilters.is_active;
+
+      const response = await api.get('/task-templates', { params });
+      return response.data;
+    }
+  });
+
+  const taskTemplates = taskTemplatesData?.templates || [];
 
   const applyFiltersAndSort = () => {
     let filtered = [...tasks];
@@ -566,7 +617,7 @@ export default function Tasks() {
       lead_type: [],
       lead_category: [],
       lead_warmth: [],
-      lead_stage: ['uncontacted', 'reached_out', 'in_talks', 'demo_booked', 'rebook_demo', 'contract_sent', 'reengaging'],
+      lead_stage: ['uncontacted', 'reached_out', 'in_talks', 'demo_booked', 'rebook_demo', 'demo_completed', 'contract_sent', 'reengaging'],
       lead_status: [],
       demo_store_built: 'all',
       icp_rating_min: ''
@@ -588,6 +639,28 @@ export default function Tasks() {
   const clearFilters = () => {
     clearTaskFilters();
     clearRestaurantFilters();
+  };
+
+  // Task Template handlers
+  const handleDeleteTaskTemplate = async (templateId: string) => {
+    if (!confirm('Are you sure you want to delete this task template?')) {
+      return;
+    }
+
+    try {
+      await api.delete(`/task-templates/${templateId}`);
+      toast({
+        title: "Success",
+        description: "Task template deleted successfully"
+      });
+      refetchTaskTemplates();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.error || 'Failed to delete template',
+        variant: "destructive"
+      });
+    }
   };
 
   const hasTaskFilters = () => {
@@ -719,16 +792,37 @@ export default function Tasks() {
     );
   };
 
-  const getDueDateInput = (dueDate: string | null, taskId: string, taskStatus: string) => {
-    const isOverdue = dueDate &&
-      new Date(dueDate) < new Date() &&
-      taskStatus !== 'completed' &&
-      taskStatus !== 'cancelled';
+  const getDueDateInput = (task: any) => {
+    // Show completed date for completed tasks
+    if (task.status === 'completed') {
+      return (
+        <div className="text-xs text-green-600 flex items-center gap-1">
+          <CheckCircle2 className="h-3 w-3" />
+          {task.completed_at
+            ? new Date(task.completed_at).toLocaleDateString('en-NZ', {
+                day: 'numeric',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit'
+              })
+            : 'Completed'}
+        </div>
+      );
+    }
+
+    // Show cancelled indicator
+    if (task.status === 'cancelled') {
+      return <span className="text-xs text-gray-500">Cancelled</span>;
+    }
+
+    // Original due date picker for active/pending tasks
+    const isOverdue = task.due_date &&
+      new Date(task.due_date) < new Date();
 
     return (
       <DateTimePicker
-        value={dueDate ? new Date(dueDate) : null}
-        onChange={(date) => handleUpdateDueDate(taskId, date ? date.toISOString() : null)}
+        value={task.due_date ? new Date(task.due_date) : null}
+        onChange={(date) => handleUpdateDueDate(task.id, date ? date.toISOString() : null)}
         placeholder="Set due date"
         className={cn("h-8 text-xs", isOverdue && "text-red-600")}
       />
@@ -823,6 +917,15 @@ export default function Tasks() {
         </Button>
       </div>
 
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
+        <TabsList size="full">
+          <TabsTrigger size="full" variant="blue" value="tasks">Tasks</TabsTrigger>
+          <TabsTrigger size="full" variant="blue" value="templates">Task Templates</TabsTrigger>
+        </TabsList>
+
+        {/* TASKS TAB */}
+        <TabsContent value="tasks" className="space-y-6">
       {/* Task Filters */}
       <div className="bg-card border rounded-lg p-4">
         <div className="flex items-center justify-between mb-4">
@@ -1104,6 +1207,7 @@ export default function Tasks() {
                   { label: 'In Talks', value: 'in_talks' },
                   { label: 'Demo Booked', value: 'demo_booked' },
                   { label: 'Rebook Demo', value: 'rebook_demo' },
+                  { label: 'Demo Completed', value: 'demo_completed' },
                   { label: 'Contract Sent', value: 'contract_sent' },
                   { label: 'Closed Won', value: 'closed_won' },
                   { label: 'Closed Lost', value: 'closed_lost' },
@@ -1275,7 +1379,7 @@ export default function Tasks() {
                     {getPriorityDropdown(task)}
                   </TableCell>
                   <TableCell>
-                    {getDueDateInput(task.due_date, task.id, task.status)}
+                    {getDueDateInput(task)}
                   </TableCell>
                   <TableCell>
                     {task.assigned_to ? (
@@ -1339,6 +1443,217 @@ export default function Tasks() {
           </TableBody>
         </Table>
       </div>
+        </TabsContent>
+
+        {/* TASK TEMPLATES TAB */}
+        <TabsContent value="templates" className="space-y-6">
+          {/* Header with Create Button */}
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="text-sm text-muted-foreground">
+                Create and manage reusable task templates with default messages and priorities
+              </p>
+            </div>
+            <Button onClick={() => setTaskTemplateModals({ ...taskTemplateModals, create: true })}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Task Template
+            </Button>
+          </div>
+
+          {/* Filters */}
+          <div className="bg-card border rounded-lg p-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <h3 className="font-medium">Filters</h3>
+              </div>
+              {(taskTemplateFilterType !== 'all' || taskTemplateFilterActive !== 'all') && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setTaskTemplateFilterType('all');
+                    setTaskTemplateFilterActive('all');
+                  }}
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Clear All
+                </Button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Type Filter */}
+              <div>
+                <label className="text-sm font-medium mb-1 block">Type</label>
+                <Select
+                  value={taskTemplateFilterType}
+                  onValueChange={setTaskTemplateFilterType}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="internal_activity">Internal Activity</SelectItem>
+                    <SelectItem value="email">Email</SelectItem>
+                    <SelectItem value="call">Call</SelectItem>
+                    <SelectItem value="social_message">Social Message</SelectItem>
+                    <SelectItem value="text">Text</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Active Status Filter */}
+              <div>
+                <label className="text-sm font-medium mb-1 block">Status</label>
+                <Select
+                  value={taskTemplateFilterActive}
+                  onValueChange={setTaskTemplateFilterActive}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="true">Active</SelectItem>
+                    <SelectItem value="false">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          {/* Templates Table */}
+          <div className="rounded-lg border bg-card overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Priority</TableHead>
+                  <TableHead>Message Template</TableHead>
+                  <TableHead>Usage Count</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {taskTemplatesLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-blue mx-auto"></div>
+                      <p className="mt-4 text-muted-foreground">Loading templates...</p>
+                    </TableCell>
+                  </TableRow>
+                ) : taskTemplates.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      No task templates found. Create your first template to get started.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  taskTemplates.map((template: any) => (
+                    <TableRow key={template.id}>
+                      <TableCell>
+                        <div
+                          className="font-medium cursor-pointer hover:text-brand-blue"
+                          onClick={() => setTaskTemplateModals({ ...taskTemplateModals, edit: template.id })}
+                        >
+                          {template.name}
+                        </div>
+                        {template.description && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {template.description}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {template.type === 'email' && <Mail className="h-4 w-4" />}
+                          {template.type === 'call' && <Phone className="h-4 w-4" />}
+                          {template.type === 'social_message' && <MessageSquare className="h-4 w-4" />}
+                          {template.type === 'text' && <MessageSquare className="h-4 w-4" />}
+                          {template.type === 'internal_activity' && <ClipboardList className="h-4 w-4" />}
+                          <Badge variant="outline" className={cn('capitalize',
+                            template.type === 'email' && 'bg-blue-100 text-blue-800 border-blue-200',
+                            template.type === 'call' && 'bg-green-100 text-green-800 border-green-200',
+                            template.type === 'social_message' && 'bg-purple-100 text-purple-800 border-purple-200',
+                            template.type === 'text' && 'bg-yellow-100 text-yellow-800 border-yellow-200',
+                            template.type === 'internal_activity' && 'bg-gray-100 text-gray-800 border-gray-200'
+                          )}>
+                            {template.type.replace(/_/g, ' ')}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={cn('capitalize',
+                          template.priority === 'low' && 'bg-gray-100 text-gray-800 border-gray-200',
+                          template.priority === 'medium' && 'bg-yellow-100 text-yellow-800 border-yellow-200',
+                          template.priority === 'high' && 'bg-red-100 text-red-800 border-red-200'
+                        )}>
+                          {template.priority}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {template.message_templates ? (
+                          <div className="flex items-center gap-1">
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <span className="text-sm">{template.message_templates.name}</span>
+                          </div>
+                        ) : template.default_message ? (
+                          <span className="text-sm text-muted-foreground">Custom message</span>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {template.usage_count || 0}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={template.is_active ? "default" : "secondary"}>
+                          {template.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setTaskTemplateModals({ ...taskTemplateModals, edit: template.id })}
+                            title="Edit template"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setTaskTemplateModals({ ...taskTemplateModals, duplicate: template.id })}
+                            title="Duplicate template"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDeleteTaskTemplate(template.id)}
+                            className="text-red-600 hover:text-red-700"
+                            title="Delete template"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Modals */}
       {modals.create && (
@@ -1396,6 +1711,42 @@ export default function Tasks() {
             fetchTasks();
           }}
           restaurant={sequenceRestaurant}
+        />
+      )}
+
+      {/* Task Template Modals */}
+      {taskTemplateModals.create && (
+        <CreateTaskTemplateModal
+          open={taskTemplateModals.create}
+          onClose={() => setTaskTemplateModals({ ...taskTemplateModals, create: false })}
+          onSuccess={() => {
+            setTaskTemplateModals({ ...taskTemplateModals, create: false });
+            refetchTaskTemplates();
+          }}
+        />
+      )}
+
+      {taskTemplateModals.edit && (
+        <CreateTaskTemplateModal
+          open={!!taskTemplateModals.edit}
+          templateId={taskTemplateModals.edit}
+          onClose={() => setTaskTemplateModals({ ...taskTemplateModals, edit: null })}
+          onSuccess={() => {
+            setTaskTemplateModals({ ...taskTemplateModals, edit: null });
+            refetchTaskTemplates();
+          }}
+        />
+      )}
+
+      {taskTemplateModals.duplicate && (
+        <CreateTaskTemplateModal
+          open={!!taskTemplateModals.duplicate}
+          duplicateFromId={taskTemplateModals.duplicate}
+          onClose={() => setTaskTemplateModals({ ...taskTemplateModals, duplicate: null })}
+          onSuccess={() => {
+            setTaskTemplateModals({ ...taskTemplateModals, duplicate: null });
+            refetchTaskTemplates();
+          }}
         />
       )}
     </div>

@@ -1,0 +1,122 @@
+{
+  "success": true,
+  "data": {
+    "screenshot": "https://storage.googleapis.com/firecrawl-scrape-media/screenshot-ab996771-0d2b-4e71-8978-09a78e024b95.png?GoogleAccessId=scrape-bucket-accessor%40firecrawl.iam.gserviceaccount.com&Expires=1764298699&Signature=JjRhZxy%2FFgd2KVRNdvlh3sqY8qLZRdShwbMDVE8o9OnJZOE%2BedC%2FwccTs3LewchcdB94g5%2BGSOOjyX5LjKuqT%2BiIyZHSi6m63R9wK3jtKp8m9061TP73cWAjyrq9N5FF9K0fPswPWlYaU9C3UpOQa0L12X1acT4up2w%2BLBKzu8ivU8o1hVrsBUU8GLzYU8kWj17ExeCr57ek1q8Md5gfzDDcrcf5ZSN8dGwb0I7sXTix3xpOc4Yt0CNtatqcHDJoB%2BkvOqzUTvtafrPws4BOxt5k0tIqvBaAbMeX2%2BvmAtRCO%2FXdTgL8wSDOvDg%2B2KwvXYDNTIqxV9SjebjbSlN7Hg%3D%3D",
+    "metadata": {
+      "theme-color": "#000000",
+      "robots": "noindex, nofollow",
+      "ogUrl": "https://www.ubereats.com/nz/store/romans-kitchen/BO3GLFqvTL-F8257il8P9g/a99bcc3b-6024-4358-a844-a5e8bf910890/8744b49c-7221-4e3f-b022-d7abef48fec1/cd29bc39-e84f-4c27-b2cd-80e77729de5d",
+      "twitter:card": "summary_large_image",
+      "title": "Steak and Chips with Mushroom Sauce | Uber Eats",
+      "ogImage": "https://tb-static.uber.com/prod/web-eats-v2/open-graph/uber-eats.jpg",
+      "google-site-verification": [
+        "VsuZf2_aDTFloKH9DDZwZkApKQdJ4vwWaIONAHsPNP4",
+        "e7Pbh7MPVYI_oxrqRArrQsy3Se3YyXMaTo318lmbXEY",
+        "udkBIuofpkvfW7oCltGi2L2zUdwv62MvDZsPGe7cTns",
+        "LZ1PBBewAIw1QSKSNu_29oArwY7FU8A5GvhVKt9DooE"
+      ],
+      "botdefense-enabled": "false",
+      "twitter:image": "https://tb-static.uber.com/prod/web-eats-v2/open-graph/uber-eats.jpg",
+      "twitter:title": "Steak and Chips with Mushroom Sauce | Uber Eats",
+      "og:url": "https://www.ubereats.com/nz/store/romans-kitchen/BO3GLFqvTL-F8257il8P9g/a99bcc3b-6024-4358-a844-a5e8bf910890/8744b49c-7221-4e3f-b022-d7abef48fec1/cd29bc39-e84f-4c27-b2cd-80e77729de5d",
+      "ogTitle": "Steak and Chips with Mushroom Sauce | Uber Eats",
+      "og:title": "Steak and Chips with Mushroom Sauce | Uber Eats",
+      "viewport": "width=device-width, initial-scale=1.0, maximum-scale=2.0",
+      "twitter:url": "https://www.ubereats.com/nz/store/romans-kitchen/BO3GLFqvTL-F8257il8P9g/a99bcc3b-6024-4358-a844-a5e8bf910890/8744b49c-7221-4e3f-b022-d7abef48fec1/cd29bc39-e84f-4c27-b2cd-80e77729de5d",
+      "og:image": "https://tb-static.uber.com/prod/web-eats-v2/open-graph/uber-eats.jpg",
+      "language": "en-NZ",
+      "og:type": "website",
+      "ciid": "4630e917-ddf3-4b20-804e-908554576966",
+      "favicon": "https://www.ubereats.com/_static/d526ae562360062f.ico",
+      "scrapeId": "1b7256e1-0258-4537-8dad-b080a8a89b65",
+      "sourceURL": "https://www.ubereats.com/nz/store/romans-kitchen/BO3GLFqvTL-F8257il8P9g/a99bcc3b-6024-4358-a844-a5e8bf910890/8744b49c-7221-4e3f-b022-d7abef48fec1/cd29bc39-e84f-4c27-b2cd-80e77729de5d",
+      "url": "https://www.ubereats.com/nz/store/romans-kitchen/BO3GLFqvTL-F8257il8P9g/a99bcc3b-6024-4358-a844-a5e8bf910890/8744b49c-7221-4e3f-b022-d7abef48fec1/cd29bc39-e84f-4c27-b2cd-80e77729de5d",
+      "statusCode": 200,
+      "contentType": "text/html; charset=utf-8",
+      "proxyUsed": "basic",
+      "cacheState": "miss",
+      "indexId": "191b5b97-478b-4335-98cf-7543c71318d9",
+      "creditsUsed": 5
+    },
+    "json": {
+      "itemName": "Steak and Chips with Mushroom Sauce",
+      "price": "$32.90",
+      "priceValue": 32.9,
+      "description": "Grilled sirloin steak fillet with olive oil, roasted garlic, mushroom and cream sauce.",
+      "imageUrl": "https://www.ubereats.com/_static/8ab3af80072120d4.png",
+      "hasImage": true,
+      "optionSets": [
+        {
+          "name": "Choice of Doneness",
+          "description": "",
+          "required": true,
+          "minSelections": 1,
+          "maxSelections": 1,
+          "options": [
+            {
+              "name": "Rare",
+              "price": "No extra cost",
+              "priceValue": 0,
+              "description": ""
+            },
+            {
+              "name": "Medium Rare",
+              "price": "No extra cost",
+              "priceValue": 0,
+              "description": ""
+            },
+            {
+              "name": "Medium",
+              "price": "No extra cost",
+              "priceValue": 0,
+              "description": ""
+            },
+            {
+              "name": "Medium Well",
+              "price": "No extra cost",
+              "priceValue": 0,
+              "description": ""
+            },
+            {
+              "name": "Well Done",
+              "price": "No extra cost",
+              "priceValue": 0,
+              "description": ""
+            }
+          ]
+        },
+        {
+          "name": "Choice of Steak Upgrade",
+          "description": "",
+          "required": false,
+          "minSelections": 0,
+          "maxSelections": 1,
+          "options": [
+            {
+              "name": "Scotch",
+              "price": "+ $3.00",
+              "priceValue": 3,
+              "description": ""
+            }
+          ]
+        },
+        {
+          "name": "Add Drinks",
+          "description": "",
+          "required": false,
+          "minSelections": 0,
+          "maxSelections": 1,
+          "options": [
+            {
+              "name": "Canned Drink",
+              "price": "+ $3.00",
+              "priceValue": 3,
+              "description": ""
+            }
+          ]
+        }
+      ],
+      "pageType": "item detail"
+    }
+  }
+}

@@ -158,11 +158,13 @@ function AppContent() {
           <Route path="menus/merge" element={<MenuMerge />} />
           <Route path="menus/:id" element={<MenuDetail />} />
           <Route path="tasks" element={<Tasks />} />
-          <Route path="task-templates" element={<TaskTemplates />} />
+          {/* Redirect task-templates to tasks page templates tab */}
+          <Route path="task-templates" element={<Navigate to="/tasks?tab=templates" replace />} />
           <Route path="sequences" element={<Sequences />} />
           {/* Redirect old sequence-templates route to new tab-based page */}
           <Route path="sequence-templates" element={<Navigate to="/sequences?tab=templates" replace />} />
-          <Route path="message-templates" element={<MessageTemplates />} />
+          {/* Redirect message-templates to sequences page message templates tab */}
+          <Route path="message-templates" element={<Navigate to="/sequences?tab=message-templates" replace />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="history" element={<History />} />
           <Route path="settings" element={<Settings />} />

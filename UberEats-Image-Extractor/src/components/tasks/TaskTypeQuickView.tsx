@@ -225,6 +225,27 @@ export function TaskTypeQuickView({ task, children, onTaskCompleted, onFollowUpR
 
       <ScheduledTimeDisplay />
 
+      {/* Email Addresses */}
+      <div className="space-y-1">
+        <div className="text-xs font-medium text-muted-foreground mb-2">Email Addresses</div>
+        {task.restaurants?.contact_email && (
+          <ContactField
+            icon={Mail}
+            label="Contact Email"
+            value={task.restaurants.contact_email}
+            field="Contact Email"
+          />
+        )}
+        {task.restaurants?.email && (
+          <ContactField
+            icon={Mail}
+            label="Restaurant Email"
+            value={task.restaurants.email}
+            field="Restaurant Email"
+          />
+        )}
+      </div>
+
       {/* Email Subject Line */}
       {(task.subject_line_rendered || task.subject_line) && (
         <div
@@ -260,27 +281,6 @@ export function TaskTypeQuickView({ task, children, onTaskCompleted, onFollowUpR
           <p className="text-sm whitespace-pre-wrap text-blue-900">{task.message_rendered}</p>
         </div>
       )}
-
-      {/* Email Addresses */}
-      <div className="space-y-1">
-        <div className="text-xs font-medium text-muted-foreground mb-2">Email Addresses</div>
-        {task.restaurants?.contact_email && (
-          <ContactField
-            icon={Mail}
-            label="Contact Email"
-            value={task.restaurants.contact_email}
-            field="Contact Email"
-          />
-        )}
-        {task.restaurants?.email && (
-          <ContactField
-            icon={Mail}
-            label="Restaurant Email"
-            value={task.restaurants.email}
-            field="Restaurant Email"
-          />
-        )}
-      </div>
     </div>
   );
 
@@ -289,24 +289,6 @@ export function TaskTypeQuickView({ task, children, onTaskCompleted, onFollowUpR
       <div className="text-sm font-semibold">Text Message Task</div>
 
       <ScheduledTimeDisplay />
-
-      {/* Rendered Message Preview */}
-      {task.message_rendered && (
-        <div
-          className="bg-green-50 border border-green-200 p-3 rounded-md cursor-pointer hover:bg-green-100 transition-colors"
-          onClick={() => copyToClipboard(task.message_rendered, 'Message')}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-xs font-medium text-green-900">Message Preview (Click to copy)</div>
-            {copiedField === 'Message' ? (
-              <Check className="h-3 w-3 text-green-600" />
-            ) : (
-              <Copy className="h-3 w-3 text-green-600" />
-            )}
-          </div>
-          <p className="text-sm whitespace-pre-wrap text-green-900">{task.message_rendered}</p>
-        </div>
-      )}
 
       {/* Phone Numbers */}
       <div className="space-y-1">
@@ -328,6 +310,24 @@ export function TaskTypeQuickView({ task, children, onTaskCompleted, onFollowUpR
           />
         )}
       </div>
+
+      {/* Rendered Message Preview */}
+      {task.message_rendered && (
+        <div
+          className="bg-green-50 border border-green-200 p-3 rounded-md cursor-pointer hover:bg-green-100 transition-colors"
+          onClick={() => copyToClipboard(task.message_rendered, 'Message')}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-xs font-medium text-green-900">Message Preview (Click to copy)</div>
+            {copiedField === 'Message' ? (
+              <Check className="h-3 w-3 text-green-600" />
+            ) : (
+              <Copy className="h-3 w-3 text-green-600" />
+            )}
+          </div>
+          <p className="text-sm whitespace-pre-wrap text-green-900">{task.message_rendered}</p>
+        </div>
+      )}
     </div>
   );
 
@@ -367,6 +367,24 @@ export function TaskTypeQuickView({ task, children, onTaskCompleted, onFollowUpR
           field="Contact Name"
         />
       )}
+
+      {/* Call Script / Message Preview */}
+      {task.message_rendered && (
+        <div
+          className="bg-orange-50 border border-orange-200 p-3 rounded-md cursor-pointer hover:bg-orange-100 transition-colors"
+          onClick={() => copyToClipboard(task.message_rendered, 'Call Script')}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-xs font-medium text-orange-900">Call Script (Click to copy)</div>
+            {copiedField === 'Call Script' ? (
+              <Check className="h-3 w-3 text-green-600" />
+            ) : (
+              <Copy className="h-3 w-3 text-orange-600" />
+            )}
+          </div>
+          <p className="text-sm whitespace-pre-wrap text-orange-900">{task.message_rendered}</p>
+        </div>
+      )}
     </div>
   );
 
@@ -375,24 +393,6 @@ export function TaskTypeQuickView({ task, children, onTaskCompleted, onFollowUpR
       <div className="text-sm font-semibold">Social Media Message Task</div>
 
       <ScheduledTimeDisplay />
-
-      {/* Rendered Message Preview */}
-      {task.message_rendered && (
-        <div
-          className="bg-purple-50 border border-purple-200 p-3 rounded-md cursor-pointer hover:bg-purple-100 transition-colors"
-          onClick={() => copyToClipboard(task.message_rendered, 'Message')}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-xs font-medium text-purple-900">Message Preview (Click to copy)</div>
-            {copiedField === 'Message' ? (
-              <Check className="h-3 w-3 text-green-600" />
-            ) : (
-              <Copy className="h-3 w-3 text-purple-600" />
-            )}
-          </div>
-          <p className="text-sm whitespace-pre-wrap text-purple-900">{task.message_rendered}</p>
-        </div>
-      )}
 
       {/* Social Links */}
       <div className="space-y-1">
@@ -414,6 +414,24 @@ export function TaskTypeQuickView({ task, children, onTaskCompleted, onFollowUpR
           />
         )}
       </div>
+
+      {/* Rendered Message Preview */}
+      {task.message_rendered && (
+        <div
+          className="bg-purple-50 border border-purple-200 p-3 rounded-md cursor-pointer hover:bg-purple-100 transition-colors"
+          onClick={() => copyToClipboard(task.message_rendered, 'Message')}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-xs font-medium text-purple-900">Message Preview (Click to copy)</div>
+            {copiedField === 'Message' ? (
+              <Check className="h-3 w-3 text-green-600" />
+            ) : (
+              <Copy className="h-3 w-3 text-purple-600" />
+            )}
+          </div>
+          <p className="text-sm whitespace-pre-wrap text-purple-900">{task.message_rendered}</p>
+        </div>
+      )}
     </div>
   );
 

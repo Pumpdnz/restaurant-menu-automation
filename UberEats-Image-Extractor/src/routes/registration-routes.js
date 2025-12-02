@@ -1777,15 +1777,399 @@ router.post('/configure-services', async (req, res) => {
 });
 
 /**
+ * Add Item Tags to menu items
+ * Uses add-item-tags.js script to automate tag configuration on Pumpd admin portal
+ */
+router.post('/add-item-tags', async (req, res) => {
+  const { restaurantId } = req.body;
+  const organisationId = req.user?.organisationId;
+
+  console.log('[Item Tags] Request received:', { restaurantId, organisationId });
+
+  if (!organisationId) {
+    return res.status(401).json({
+      success: false,
+      error: 'Organisation context required'
+    });
+  }
+
+  try {
+    const { supabase } = require('../services/database-service');
+
+    // Get restaurant details
+    const { data: restaurant, error: restaurantError } = await supabase
+      .from('restaurants')
+      .select('name')
+      .eq('id', restaurantId)
+      .eq('organisation_id', organisationId)
+      .single();
+
+    if (restaurantError || !restaurant) {
+      throw new Error('Restaurant not found');
+    }
+
+    console.log('[Item Tags] Restaurant found:', restaurant.name);
+
+    // Get account credentials through pumpd_restaurants relationship
+    const { data: pumpdRestaurant, error: pumpdRestError } = await supabase
+      .from('pumpd_restaurants')
+      .select('*, pumpd_accounts(email, user_password_hint)')
+      .eq('restaurant_id', restaurantId)
+      .eq('organisation_id', organisationId)
+      .single();
+
+    const account = pumpdRestaurant?.pumpd_accounts || null;
+
+    // Fallback to direct account lookup for backward compatibility
+    let finalAccount = account;
+    if (!finalAccount && !pumpdRestError) {
+      const { data: directAccount } = await supabase
+        .from('pumpd_accounts')
+        .select('email, user_password_hint')
+        .eq('restaurant_id', restaurantId)
+        .eq('organisation_id', organisationId)
+        .single();
+      finalAccount = directAccount;
+    }
+
+    if (!finalAccount) {
+      throw new Error('Restaurant account not found. Please ensure the restaurant is registered on Pumpd first.');
+    }
+
+    if (!finalAccount.email || !finalAccount.user_password_hint) {
+      throw new Error('Restaurant account credentials are incomplete. Please re-register the account.');
+    }
+
+    console.log('[Item Tags] Account found:', finalAccount.email);
+
+    // Execute add-item-tags.js script
+    const scriptPath = path.join(__dirname, '../../../scripts/restaurant-registration/add-item-tags.js');
+
+    // Build command with proper escaping
+    const command = [
+      'node',
+      scriptPath,
+      `--email="${finalAccount.email}"`,
+      `--password="${finalAccount.user_password_hint}"`,
+      `--name="${restaurant.name.replace(/"/g, '\\"')}"`
+    ].join(' ');
+
+    console.log('[Item Tags] Executing item tags configuration script...');
+
+    const { stdout, stderr } = await execAsync(command, {
+      env: { ...process.env, DEBUG_MODE: 'false' },
+      timeout: 180000 // 3 minute timeout
+    });
+
+    console.log('[Item Tags] Script output:', stdout);
+    if (stderr) {
+      console.error('[Item Tags] Script stderr:', stderr);
+    }
+
+    // Check for success indicators
+    const success = stdout.includes('Successfully') ||
+                   stdout.includes('completed') ||
+                   stdout.includes('Item tags configured') ||
+                   stdout.includes('Tags added');
+
+    console.log('[Item Tags] Configuration result:', success ? 'Success' : 'Partial/Failed');
+
+    res.json({
+      success,
+      message: success ? 'Item tags configured successfully' : 'Configuration completed with warnings',
+      output: stdout,
+      error: stderr || null
+    });
+
+  } catch (error) {
+    console.error('[Item Tags] Error:', error);
+
+    const isTimeout = error.code === 'ETIMEDOUT' || error.message.includes('timeout');
+
+    res.status(500).json({
+      success: false,
+      error: isTimeout ?
+        'Item tags configuration timed out. The process may be taking longer than expected. Please try again.' :
+        error.message,
+      details: error.stderr || null
+    });
+  }
+});
+
+/**
+ * Add Option Sets to restaurant's Pumpd menu
+ * Fetches option sets from database and uses add-option-sets.js script
+ */
+router.post('/add-option-sets', async (req, res) => {
+  const { restaurantId, menuId } = req.body;
+  const organisationId = req.user?.organisationId;
+
+  console.log('[Option Sets] Request received:', { restaurantId, menuId, organisationId });
+
+  if (!organisationId) {
+    return res.status(401).json({
+      success: false,
+      error: 'Organisation context required'
+    });
+  }
+
+  if (!menuId) {
+    return res.status(400).json({
+      success: false,
+      error: 'Menu ID is required'
+    });
+  }
+
+  try {
+    const { supabase } = require('../services/database-service');
+
+    // Get restaurant details
+    const { data: restaurant, error: restaurantError } = await supabase
+      .from('restaurants')
+      .select('name')
+      .eq('id', restaurantId)
+      .eq('organisation_id', organisationId)
+      .single();
+
+    if (restaurantError || !restaurant) {
+      throw new Error('Restaurant not found');
+    }
+
+    console.log('[Option Sets] Restaurant found:', restaurant.name);
+
+    // Get account credentials through pumpd_restaurants relationship
+    const { data: pumpdRestaurant, error: pumpdRestError } = await supabase
+      .from('pumpd_restaurants')
+      .select('*, pumpd_accounts(email, user_password_hint)')
+      .eq('restaurant_id', restaurantId)
+      .eq('organisation_id', organisationId)
+      .single();
+
+    const account = pumpdRestaurant?.pumpd_accounts || null;
+
+    // Fallback to direct account lookup for backward compatibility
+    let finalAccount = account;
+    if (!finalAccount && !pumpdRestError) {
+      const { data: directAccount } = await supabase
+        .from('pumpd_accounts')
+        .select('email, user_password_hint')
+        .eq('restaurant_id', restaurantId)
+        .eq('organisation_id', organisationId)
+        .single();
+      finalAccount = directAccount;
+    }
+
+    if (!finalAccount) {
+      throw new Error('Restaurant account not found. Please ensure the restaurant is registered on Pumpd first.');
+    }
+
+    if (!finalAccount.email || !finalAccount.user_password_hint) {
+      throw new Error('Restaurant account credentials are incomplete. Please re-register the account.');
+    }
+
+    console.log('[Option Sets] Account found:', finalAccount.email);
+
+    // Fetch menu items for the selected menu (including names for mapping)
+    const { data: menuItems, error: menuItemsError } = await supabase
+      .from('menu_items')
+      .select('id, name')
+      .eq('menu_id', menuId);
+
+    if (menuItemsError) {
+      throw new Error('Failed to fetch menu items: ' + menuItemsError.message);
+    }
+
+    const menuItemIds = menuItems.map(item => item.id);
+
+    // Create a map of menu item IDs to names for later lookup
+    const menuItemIdToName = new Map();
+    menuItems.forEach(item => {
+      menuItemIdToName.set(item.id, item.name);
+    });
+
+    if (menuItemIds.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No menu items found for this menu',
+        summary: { total: 0, created: 0, failed: 0 }
+      });
+    }
+
+    // Fetch option sets for the menu items
+    const { data: menuItemOptionSets, error: optionSetsError } = await supabase
+      .from('menu_item_option_sets')
+      .select(`
+        option_set:option_sets (
+          id,
+          name,
+          description,
+          is_required,
+          multiple_selections_allowed,
+          min_selections,
+          max_selections,
+          option_set_items (
+            id,
+            name,
+            price,
+            display_order
+          )
+        ),
+        menu_item_id
+      `)
+      .in('menu_item_id', menuItemIds)
+      .eq('organisation_id', organisationId);
+
+    if (optionSetsError) {
+      throw new Error('Failed to fetch option sets: ' + optionSetsError.message);
+    }
+
+    // Deduplicate option sets and structure for script
+    const uniqueOptionSets = new Map();
+    const menuItemMappings = {}; // Maps option set ID to array of menu item IDs
+
+    menuItemOptionSets.forEach(item => {
+      if (item.option_set) {
+        const optionSetId = item.option_set.id;
+
+        if (!uniqueOptionSets.has(optionSetId)) {
+          // Sort option items by display_order
+          const sortedItems = (item.option_set.option_set_items || [])
+            .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+
+          uniqueOptionSets.set(optionSetId, {
+            id: optionSetId, // Keep ID for mapping later
+            name: item.option_set.name,
+            display_name: item.option_set.name,
+            description: item.option_set.description || '',
+            is_required: item.option_set.is_required || false,
+            multiple_selections_allowed: item.option_set.multiple_selections_allowed || false,
+            min_selections: item.option_set.min_selections || 0,
+            max_selections: item.option_set.max_selections || 1,
+            items: sortedItems.map(osi => ({
+              name: osi.name,
+              price: parseFloat(osi.price) || 0
+            }))
+          });
+          menuItemMappings[optionSetId] = [];
+        }
+
+        menuItemMappings[optionSetId].push(item.menu_item_id);
+      }
+    });
+
+    // Convert to array and add menuItemNames to each option set
+    const optionSetsArray = Array.from(uniqueOptionSets.values()).map(optionSet => {
+      // Get menu item IDs for this option set and convert to names
+      const itemIds = menuItemMappings[optionSet.id] || [];
+      const menuItemNames = itemIds
+        .map(id => menuItemIdToName.get(id))
+        .filter(name => name); // Filter out any undefined names
+
+      // Remove the temporary ID and add menuItemNames
+      const { id, ...optionSetWithoutId } = optionSet;
+      return {
+        ...optionSetWithoutId,
+        menuItemNames
+      };
+    });
+
+    if (optionSetsArray.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No option sets found for this menu',
+        summary: { total: 0, created: 0, failed: 0 }
+      });
+    }
+
+    console.log(`[Option Sets] Found ${optionSetsArray.length} unique option sets`);
+
+    // Create JSON payload for script
+    const scriptPayload = {
+      email: finalAccount.email,
+      password: finalAccount.user_password_hint,
+      restaurantName: restaurant.name,
+      optionSets: optionSetsArray,
+      menuItemMappings: menuItemMappings
+    };
+
+    // Execute add-option-sets.js script
+    const scriptPath = path.join(__dirname, '../../../scripts/restaurant-registration/add-option-sets.js');
+
+    // Pass JSON payload via file to avoid command line length limits
+    const payloadPath = path.join(__dirname, `../../../scripts/restaurant-registration/temp-option-sets-payload-${Date.now()}.json`);
+    await require('fs').promises.writeFile(payloadPath, JSON.stringify(scriptPayload));
+
+    const command = `node "${scriptPath}" --payload="${payloadPath}"`;
+
+    console.log('[Option Sets] Executing option sets configuration script...');
+
+    const { stdout, stderr } = await execAsync(command, {
+      env: { ...process.env, DEBUG_MODE: 'false' },
+      timeout: 300000 // 5 minute timeout
+    });
+
+    // Clean up temp file
+    try {
+      await require('fs').promises.unlink(payloadPath);
+    } catch (e) {
+      console.log('[Option Sets] Could not delete temp file:', e.message);
+    }
+
+    console.log('[Option Sets] Script output:', stdout);
+    if (stderr) {
+      console.error('[Option Sets] Script stderr:', stderr);
+    }
+
+    // Parse summary from output if available
+    let summary = { total: optionSetsArray.length, created: 0, failed: 0 };
+    const summaryMatch = stdout.match(/Successfully created: (\d+)\/(\d+)/);
+    if (summaryMatch) {
+      summary.created = parseInt(summaryMatch[1]);
+      summary.total = parseInt(summaryMatch[2]);
+      summary.failed = summary.total - summary.created;
+    }
+
+    // Check for success indicators
+    const success = stdout.includes('Successfully') ||
+                   stdout.includes('completed') ||
+                   stdout.includes('Option sets configured') ||
+                   summary.created > 0;
+
+    console.log('[Option Sets] Configuration result:', success ? 'Success' : 'Partial/Failed');
+
+    res.json({
+      success,
+      message: success ? 'Option sets configured successfully' : 'Configuration completed with warnings',
+      summary,
+      output: stdout,
+      error: stderr || null
+    });
+
+  } catch (error) {
+    console.error('[Option Sets] Error:', error);
+
+    const isTimeout = error.code === 'ETIMEDOUT' || error.message.includes('timeout');
+
+    res.status(500).json({
+      success: false,
+      error: isTimeout ?
+        'Option sets configuration timed out. The process may be taking longer than expected. Please try again.' :
+        error.message,
+      details: error.stderr || null
+    });
+  }
+});
+
+/**
  * Create onboarding user in Super Admin system
  * Creates a new user account in manage.pumpd.co.nz for restaurant onboarding
  */
 router.post('/create-onboarding-user', async (req, res) => {
-  const { 
-    userName, 
-    userEmail, 
+  const {
+    userName,
+    userEmail,
     userPassword,
-    restaurantId 
+    restaurantId
   } = req.body;
   
   const organisationId = req.user?.organisationId;

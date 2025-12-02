@@ -60,8 +60,8 @@ async function getSequenceTemplateById(id) {
       *,
       sequence_steps (
         *,
-        task_templates (id, name, type),
-        message_templates (id, name, type)
+        task_templates (id, name, type, default_message, subject_line),
+        message_templates (id, name, type, message_content, subject_line)
       )
     `)
     .eq('id', id)

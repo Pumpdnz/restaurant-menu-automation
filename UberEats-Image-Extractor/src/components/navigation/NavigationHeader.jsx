@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 const NavigationHeader = memo(({ collapsed, toggleSidebar }) => {
-  const displayName = "Menu Manager";
+  const displayName = "Lead Management";
   
   return (
     <div className="flex flex-col gap-2 px-3 py-4 relative">
