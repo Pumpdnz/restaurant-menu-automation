@@ -31,9 +31,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../components/ui/dialog';
+import { useAuth } from '../context/AuthContext';
 
 export default function Extractions() {
   const navigate = useNavigate();
+  const { isFeatureEnabled } = useAuth();
   const [extractions, setExtractions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -386,6 +388,7 @@ export default function Extractions() {
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
+                            {isFeatureEnabled('csvDownload') && (
                             <Button
                               size="sm"
                               variant="ghost"
@@ -395,6 +398,8 @@ export default function Extractions() {
                             >
                               <FileDown className="h-4 w-4" />
                             </Button>
+                            )}
+                            {isFeatureEnabled('imageZipDownload') && (
                             <Button
                               size="sm"
                               variant="ghost"
@@ -404,6 +409,7 @@ export default function Extractions() {
                             >
                               <ImageDown className="h-4 w-4" />
                             </Button>
+                            )}
                           </>
                         )}
                         {extraction.status === 'failed' && (

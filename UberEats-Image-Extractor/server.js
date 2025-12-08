@@ -49,6 +49,31 @@ const { authMiddleware } = require('./middleware/auth');
 // Import super admin middleware
 const { superAdminMiddleware, checkSuperAdmin } = require('./middleware/superAdmin');
 
+// Import feature flag middleware
+const {
+  requireTasksAndSequences,
+  requireSocialMedia,
+  requireLeadScraping,
+  requireRegistration,
+  requireFirecrawlBranding,
+  getFeatureFlags,
+  // Extraction feature flags
+  requireStandardExtraction,
+  requirePremiumExtraction,
+  // CSV feature flags
+  requireCsvExport,
+  requireCsvWithImagesExport,
+  // Search feature flags
+  requireGoogleSearch,
+  requirePlatformDetails,
+  // Logo feature flags
+  requireLogoExtraction,
+  requireLogoProcessing
+} = require('./middleware/feature-flags');
+
+// Import usage tracking service
+const { UsageTrackingService, UsageEventType } = require('./src/services/usage-tracking-service');
+
 // Import platform detector
 const { detectPlatform, extractRestaurantName, getExtractionConfig } = require('./src/utils/platform-detector');
 
@@ -220,7 +245,9 @@ async function startBackgroundExtraction(jobId, url, categories, restaurantName 
 
         // Determine if we should include images based on platform
         // Only include images for UberEats and DoorDash
+        // Add images to extractions based on platforms by adding them here
         const includeImages = platformName.toLowerCase() === 'ubereats' ||
+                            platformName.toLowerCase() === 'sipo' ||
                             platformName.toLowerCase() === 'doordash';
 
         // Generate category-specific schema using the helper function
@@ -1282,8 +1309,9 @@ app.post('/api/extract-images-for-category', async (req, res) => {
 /**
  * API endpoint for batch extracting menu items by category
  * This is the second phase of the two-phase extraction process
+ * Protected by standardExtraction feature flag
  */
-app.post('/api/batch-extract-categories', async (req, res) => {
+app.post('/api/batch-extract-categories', authMiddleware, requireStandardExtraction, async (req, res) => {
   const { url, categories, async = false, restaurantName } = req.body;
   
   // Validate URL
@@ -1767,364 +1795,11 @@ app.get('/api/batch-extract-results/:jobId', async (req, res) => {
 });
 
 /**
- * API endpoint for scanning restaurant menu item URLs
- * This is the first phase of the option sets extraction process
- */
-// REMOVED: Dead code endpoint /api/scan-menu-items
-// Replaced by new premium extraction endpoint
-/*
-app.post('/api/scan-menu-items', async (req, res) => {
-  const { url } = req.body;
-  
-  // Validate URL
-  if (!validateRestaurantUrl(url, res)) {
-    return;
-  }
-  
-  // Check API key
-  if (!FIRECRAWL_API_KEY) {
-    return res.status(500).json({
-      success: false,
-      error: 'Firecrawl API key is not configured'
-    });
-  }
-  
-  console.log(`Starting menu items URL scan for URL: ${url}`);
-  
-  try {
-    // Detect platform (option sets extraction is primarily for UberEats)
-    const platformInfo = detectPlatform(url);
-    
-    if (platformInfo.name !== 'UberEats') {
-      return res.status(400).json({
-        success: false,
-        error: 'Option sets extraction is currently only supported for UberEats URLs'
-      });
-    }
-    
-    // Prepare v2 request payload for menu items URL detection
-    const payload = {
-      url: url,
-      formats: [{
-        type: 'json',
-        schema: MENU_ITEMS_URL_SCHEMA,
-        prompt: UBEREATS_MENU_ITEMS_URL_PROMPT
-      }],
-      onlyMainContent: true,
-      waitFor: 3000, // Wait 3 seconds for page to load properly
-      blockAds: true, // Block ads and cookie popups
-      timeout: 180000, // Firecrawl timeout (increased by 50%)
-      // maxAge removed to force fresh scraping
-      skipTlsVerification: true,
-      removeBase64Images: true
-    };
-
-    const apiEndpoint = `${FIRECRAWL_API_URL}/v2/scrape`;
-
-    console.log('Menu items URL scan payload:', JSON.stringify(payload, null, 2));
-
-    // Create axios instance
-    const axiosInstance = axios.create({
-      timeout: 270000, // Axios timeout (increased by 50%)
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${FIRECRAWL_API_KEY}`
-      }
-    });
-    
-    // Make request to Firecrawl API
-    console.log('Making menu items URL scan request to:', apiEndpoint);
-    
-    const response = await axiosInstance.post(apiEndpoint, payload);
-    
-    // Log response summary
-    console.log('Menu items URL scan response status:', response.status);
-    console.log('Response data structure:', Object.keys(response.data));
-    
-    // Parse v2 response
-    const parsedResponse = response.data;
-    
-    // Check if response is successful
-    if (!parsedResponse.success) {
-      throw new Error(`API returned error: ${parsedResponse.error || 'Unknown error'}`);
-    }
-    
-    // Extract menu item URLs from response
-    let menuItemUrls = [];
-    
-    // Check for URLs in standard json location
-    if (parsedResponse.data && parsedResponse.data.json && parsedResponse.data.json.menuItemUrls) {
-      console.log('Found menu item URLs in data.json.menuItemUrls');
-      menuItemUrls = parsedResponse.data.json.menuItemUrls;
-    }
-    // Look in other potential locations
-    else if (parsedResponse.data && parsedResponse.data.menuItemUrls) {
-      console.log('Found menu item URLs in data.menuItemUrls');
-      menuItemUrls = parsedResponse.data.menuItemUrls;
-    }
-    else {
-      // Try to search deeper in the response for menu item URLs
-      console.log('Searching for menu item URLs in response structure...');
-      
-      const findMenuItemUrls = (obj, path = '') => {
-        if (!obj || typeof obj !== 'object') return null;
-        
-        if (obj.menuItemUrls && Array.isArray(obj.menuItemUrls)) {
-          console.log(`Found menu item URLs at path: ${path}`);
-          return obj.menuItemUrls;
-        }
-        
-        for (const key in obj) {
-          const newPath = path ? `${path}.${key}` : key;
-          const result = findMenuItemUrls(obj[key], newPath);
-          if (result) return result;
-        }
-        
-        return null;
-      };
-      
-      const foundUrls = findMenuItemUrls(parsedResponse.data);
-      if (foundUrls) {
-        menuItemUrls = foundUrls;
-      }
-    }
-    
-    // Validate menu item URLs
-    if (!menuItemUrls || !Array.isArray(menuItemUrls) || menuItemUrls.length === 0) {
-      console.warn('No menu item URLs found in the response');
-      menuItemUrls = []; // Return empty array instead of failing
-    }
-    
-    console.log(`Successfully identified ${menuItemUrls.length} menu item URLs`);
-    
-    // Return the extracted menu item URLs
-    return res.json({
-      success: true,
-      data: { 
-        menuItemUrls: menuItemUrls
-      }
-    });
-  } catch (error) {
-    console.error('Menu items URL scan error:', error.message);
-    
-    // Log detailed error information if available
-    if (error.response) {
-      console.error('Error response status:', error.response.status);
-      console.error('Error response data:', error.response.data);
-    }
-    
-    // Return error details
-    return res.status(error.response?.status || 500).json({
-      success: false,
-      error: `Menu items URL scan failed: ${error.message}`
-    });
-  }
-});
-*/
-
-// REMOVED: Dead code endpoint /api/batch-extract-option-sets
-// Replaced by new premium extraction endpoint
-/*
-app.post('/api/batch-extract-option-sets', async (req, res) => {
-  const { menuItemUrls } = req.body;
-  
-  // Validate menu item URLs
-  if (!menuItemUrls || !Array.isArray(menuItemUrls) || menuItemUrls.length === 0) {
-    return res.status(400).json({
-      success: false,
-      error: 'At least one menu item URL is required'
-    });
-  }
-  
-  // Check API key
-  if (!FIRECRAWL_API_KEY) {
-    return res.status(500).json({
-      success: false,
-      error: 'Firecrawl API key is not configured'
-    });
-  }
-  
-  console.log(`Starting batch option sets extraction for ${menuItemUrls.length} menu items`);
-  
-  try {
-    // Process each menu item URL (for now we'll process them sequentially)
-    // In future this could be parallelized for better performance
-    const optionSetsResults = [];
-    const failedUrls = [];
-    
-    for (const menuItemData of menuItemUrls) {
-      try {
-        const itemUrl = menuItemData.itemUrl || menuItemData.url;
-        const itemName = menuItemData.itemName || menuItemData.name || 'Unknown Item';
-        
-        if (!itemUrl) {
-          console.warn(`Skipping menu item with missing URL: ${itemName}`);
-          continue;
-        }
-        
-        console.log(`Extracting option sets for: ${itemName} (${itemUrl})`);
-        
-        // Prepare v2 option sets extraction payload
-        const optionSetsPayload = {
-          url: itemUrl,
-          formats: [{
-            type: 'json',
-            schema: OPTION_SETS_SCHEMA,
-            prompt: UBEREATS_OPTION_SETS_PROMPT
-          }],
-          onlyMainContent: true,
-          waitFor: 3000,  // Increased from 2000 to 3000ms
-          blockAds: true,
-          timeout: 135000, // Firecrawl timeout (increased by 50%)
-          // maxAge removed to force fresh scraping
-          skipTlsVerification: true,
-          removeBase64Images: true
-        };
-
-        const apiEndpoint = `${FIRECRAWL_API_URL}/v2/scrape`;
-
-        console.log(`Option sets extraction payload for "${itemName}":`, JSON.stringify(optionSetsPayload, null, 2));
-
-        // Create axios instance
-        const axiosInstance = axios.create({
-          timeout: 180000, // Axios timeout (increased by 50%)
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${FIRECRAWL_API_KEY}`
-          }
-        });
-        
-        // Make request to Firecrawl API
-        const itemResponse = await axiosInstance.post(apiEndpoint, optionSetsPayload);
-        
-        // Log response summary
-        console.log(`Option sets extraction for "${itemName}" response status:`, itemResponse.status);
-        
-        // Parse v2 response
-        const parsedItemResponse = itemResponse.data;
-        
-        if (!parsedItemResponse.success) {
-          throw new Error(`API returned error: ${parsedItemResponse.error || 'Unknown error'}`);
-        }
-        
-        // Extract option sets from response
-        let itemOptionSets = null;
-        
-        // Check standard json location
-        if (parsedItemResponse.data && parsedItemResponse.data.json) {
-          console.log(`Found option sets data for "${itemName}" in data.json`);
-          itemOptionSets = parsedItemResponse.data.json;
-        }
-        // Look in other potential locations
-        else {
-          console.log(`Searching for option sets data for "${itemName}" in response...`);
-          
-          // Try to search deeper in the response
-          const findOptionSetsResult = (obj, path = '') => {
-            if (!obj || typeof obj !== 'object') return null;
-            
-            // Check if this object has optionSets
-            if (obj.optionSets && Array.isArray(obj.optionSets)) {
-              console.log(`Found option sets for "${itemName}" at path: ${path}`);
-              return obj;
-            }
-            
-            // Recursively check all properties
-            for (const key in obj) {
-              const newPath = path ? `${path}.${key}` : key;
-              const result = findOptionSetsResult(obj[key], newPath);
-              if (result) return result;
-            }
-            
-            return null;
-          };
-          
-          itemOptionSets = findOptionSetsResult(parsedItemResponse.data);
-        }
-        
-        // Check if we found valid results
-        if (!itemOptionSets || !itemOptionSets.optionSets || !Array.isArray(itemOptionSets.optionSets)) {
-          console.warn(`No option sets found for item "${itemName}"`);
-          
-          // Add empty option sets result so we still track this item
-          optionSetsResults.push({
-            menuItemName: itemName,
-            itemUrl: itemUrl,
-            optionSets: []
-          });
-          
-          // Skip this item and continue with others
-          continue;
-        }
-        
-        // Ensure the menu item name is correctly set
-        if (!itemOptionSets.menuItemName) {
-          itemOptionSets.menuItemName = itemName;
-        }
-        
-        // Add item URL for reference
-        itemOptionSets.itemUrl = itemUrl;
-        
-        console.log(`Successfully extracted ${itemOptionSets.optionSets.length} option sets for "${itemName}"`);
-        
-        // Add to successful results
-        optionSetsResults.push(itemOptionSets);
-      } catch (itemError) {
-        console.error(`Error extracting option sets for item:`, itemError.message);
-        
-        // Add to failed URLs
-        failedUrls.push({
-          url: menuItemData.itemUrl || menuItemData.url,
-          name: menuItemData.itemName || menuItemData.name,
-          error: itemError.message
-        });
-        
-        // Continue with other items
-        continue;
-      }
-    }
-    
-    console.log(`Successfully extracted option sets from ${optionSetsResults.length} menu items`);
-    if (failedUrls.length > 0) {
-      console.log(`Failed to extract option sets from ${failedUrls.length} menu items`);
-    }
-    
-    // Return the aggregated results
-    return res.json({
-      success: true,
-      data: {
-        optionSets: optionSetsResults
-      },
-      stats: {
-        successful: optionSetsResults.length,
-        failed: failedUrls.length,
-        total: menuItemUrls.length
-      },
-      failedUrls: failedUrls
-    });
-  } catch (error) {
-    console.error('Batch option sets extraction error:', error.message);
-    
-    // Log detailed error information if available
-    if (error.response) {
-      console.error('Error response status:', error.response.status);
-      console.error('Error response data:', error.response.data);
-    }
-    
-    // Return error details
-    return res.status(error.response?.status || 500).json({
-      success: false,
-      error: `Batch option sets extraction failed: ${error.message}`
-    });
-  }
-});
-*/
-
-/**
  * Premium Menu Extraction Endpoint
  * Enhanced extraction with option sets and validated images
+ * Protected by premiumExtraction feature flag
  */
-app.post('/api/extract-menu-premium', authMiddleware, async (req, res) => {
+app.post('/api/extract-menu-premium', authMiddleware, requirePremiumExtraction, async (req, res) => {
   const {
     storeUrl,
     restaurantId,  // NEW: Accept restaurant ID from frontend
@@ -2881,7 +2556,19 @@ app.post('/api/menus/:id/upload-images', async (req, res) => {
       // Small batch - process synchronously
       try {
         const uploadResults = await processSyncUpload(batch.id, id, imagesToUpload, restaurantName);
-        
+
+        // Track CDN upload
+        const organisationId = req.organizationId || menu.restaurants?.organisation_id;
+        if (organisationId && uploadResults.successful.length > 0) {
+          UsageTrackingService.trackImageOperation(organisationId, 'upload', uploadResults.successful.length, {
+            menu_id: id,
+            batch_id: batch.id,
+            total_images: imagesToUpload.length,
+            successful: uploadResults.successful.length,
+            failed: uploadResults.failed.length
+          }).catch(err => console.error('[UsageTracking] Failed to track CDN upload:', err));
+        }
+
         return res.json({
           success: true,
           mode: 'synchronous',
@@ -3368,12 +3055,23 @@ app.get('/api/menus/:id/download-images-zip', async (req, res) => {
       },
       items: imageMappingItems
     };
-    
+
     archive.append(JSON.stringify(imageMapping, null, 2), { name: 'image-mapping.json' });
-    
+
+    // Track image ZIP download
+    const organisationId = req.organizationId || menu.restaurants?.organisation_id;
+    if (organisationId) {
+      UsageTrackingService.trackImageOperation(organisationId, 'zip', downloadedCount, {
+        menu_id: id,
+        total_images: itemsWithImages.length,
+        downloaded: downloadedCount,
+        failed: failedCount
+      }).catch(err => console.error('[UsageTracking] Failed to track image ZIP download:', err));
+    }
+
     // Finalize the archive
     await archive.finalize();
-    
+
   } catch (error) {
     console.error('[API] Error creating image ZIP:', error);
     
@@ -3935,8 +3633,9 @@ app.post('/api/menus/:id/export', async (req, res) => {
 /**
  * GET /api/menus/:id/csv
  * Direct CSV download endpoint for a menu
+ * Protected by csvDownload feature flag
  */
-app.get('/api/menus/:id/csv', async (req, res) => {
+app.get('/api/menus/:id/csv', authMiddleware, requireCsvExport, async (req, res) => {
   try {
     const { id } = req.params;
     const { format = 'full' } = req.query;
@@ -4041,11 +3740,21 @@ app.get('/api/menus/:id/csv', async (req, res) => {
     const restaurantName = menu.restaurants?.name || 'restaurant';
     const date = new Date().toISOString().split('T')[0];
     const filename = `${formatFilename(restaurantName)}_menu_${format}_${date}.csv`;
-    
+
+    // Track CSV download (no images in this endpoint)
+    const organisationId = req.organizationId || menu.restaurants?.organisation_id;
+    if (organisationId) {
+      UsageTrackingService.trackCSVDownload(organisationId, false, {
+        menu_id: id,
+        format: format,
+        item_count: menuItems.length
+      }).catch(err => console.error('[UsageTracking] Failed to track CSV download:', err));
+    }
+
     // Set headers for file download
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    
+
     // Send CSV content
     return res.send(csvContent);
   } catch (error) {
@@ -4061,8 +3770,9 @@ app.get('/api/menus/:id/csv', async (req, res) => {
  * GET /api/menus/:id/csv-with-cdn
  * Generate CSV with CDN information for Pumpd platform integration
  * Includes columns: isCDNImage, imageCDNID, imageCDNFilename, imageExternalURL
+ * Protected by csvWithImagesDownload feature flag
  */
-app.get('/api/menus/:id/csv-with-cdn', async (req, res) => {
+app.get('/api/menus/:id/csv-with-cdn', authMiddleware, requireCsvWithImagesExport, async (req, res) => {
   try {
     const { id } = req.params;
     const { download = 'false' } = req.query; // Option to download as file or return JSON
@@ -4246,12 +3956,22 @@ app.get('/api/menus/:id/csv-with-cdn', async (req, res) => {
       cdnPercentage: totalItems > 0 ? Math.round((itemsWithCDN / totalItems) * 100) : 0
     };
     
+    // Track CSV with images download
+    const organisationId = req.organizationId || menu.restaurants?.organisation_id;
+    if (organisationId) {
+      UsageTrackingService.trackCSVDownload(organisationId, true, {
+        menu_id: id,
+        item_count: totalItems,
+        items_with_cdn: itemsWithCDN
+      }).catch(err => console.error('[UsageTracking] Failed to track CSV with images download:', err));
+    }
+
     // Return based on download parameter
     if (download === 'true') {
       // Set headers for file download
       res.setHeader('Content-Type', 'text/csv');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      
+
       // Send CSV content
       return res.send(csvContent);
     } else {
@@ -5163,14 +4883,23 @@ app.post('/api/restaurants', authMiddleware, async (req, res) => {
     }
     
     const restaurant = await db.createRestaurant(restaurantData);
-    
+
     if (!restaurant) {
       return res.status(500).json({
         success: false,
         error: 'Failed to create restaurant'
       });
     }
-    
+
+    // Track restaurant creation
+    const organisationId = req.user?.organisationId || req.organizationId;
+    if (organisationId) {
+      UsageTrackingService.trackEvent(organisationId, UsageEventType.RESTAURANT_CREATED, 1, {
+        restaurant_id: restaurant.id,
+        restaurant_name: restaurant.name
+      }).catch(err => console.error('[UsageTracking] Failed to track restaurant creation:', err));
+    }
+
     return res.status(201).json({
       success: true,
       restaurant: restaurant
@@ -5375,8 +5104,9 @@ app.patch('/api/restaurants/:id/workflow', authMiddleware, async (req, res) => {
 /**
  * POST /api/google-business-search
  * Search for business information using Firecrawl with platform URL discovery and JSON schema extraction
+ * Protected by googleSearchExtraction feature flag
  */
-app.post('/api/google-business-search', async (req, res) => {
+app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, async (req, res) => {
   try {
     const { restaurantName, city, restaurantId } = req.body;
     
@@ -5640,8 +5370,8 @@ app.post('/api/google-business-search', async (req, res) => {
           prompt: `Extract restaurant business information from this UberEats page. Look for:
             1. Physical address (street address, not just area)
             2. Phone number if available
-            3. Opening hours for each day - look for both lunch and dinner times if they exist separately
-            Important: Some restaurants have split hours (lunch and dinner). Extract both time periods for each day if present.`,
+            3. Opening hours for each day exactly as shown on the page
+            Important: Extract hours exactly as displayed. Some restaurants have split hours (lunch and dinner). If the page shows continuous hours (e.g., "11am - 9pm"), return a single entry per day. Only create separate entries if there is an explicit gap/break shown on the page (e.g., "11am-2pm" then "5pm-9pm").`,
           schema: {
             type: 'object',
             properties: {
@@ -5655,7 +5385,7 @@ app.post('/api/google-business-search', async (req, res) => {
                     day: { type: 'string', description: 'Day of the week (Monday, Tuesday, etc.)' },
                     open: { type: 'string', description: 'Opening time' },
                     close: { type: 'string', description: 'Closing time' },
-                    period: { type: 'string', description: 'Optional: Lunch or Dinner if split hours' }
+                    period: { type: 'string', description: 'Optional: Lunch or Dinner. Only use if there are multiple hours entires for this day' }
                   }
                 }
               }
@@ -5875,7 +5605,8 @@ app.post('/api/google-business-search', async (req, res) => {
           }
           
           // Process address (check it's not 'null' string) - only if this source should provide address
-          if (urlConfig.extractAddress && jsonData.address && jsonData.address !== 'null' && jsonData.address !== '' && jsonData.address !== 'N/A') {
+          // AND we don't already have an address (UberEats address is more specific than website)
+          if (urlConfig.extractAddress && extractionGoals.address && jsonData.address && jsonData.address !== 'null' && jsonData.address !== '' && jsonData.address !== 'N/A') {
             // Don't accept numbers-only addresses (like "35341547" from DoorDash)
             if (!/^\d+$/.test(jsonData.address)) {
               extractedData.address = jsonData.address;
@@ -6066,6 +5797,17 @@ app.post('/api/google-business-search', async (req, res) => {
       notes: extractedData.extractionNotes
     });
 
+    // Track Google search usage
+    const organisationId = req.organizationId;
+    if (organisationId) {
+      UsageTrackingService.trackEvent(organisationId, UsageEventType.GOOGLE_SEARCH, 1, {
+        restaurant_name: restaurantName,
+        city: city,
+        restaurant_id: restaurantId,
+        platforms_found: Object.entries(foundUrls).filter(([k, v]) => v).map(([k]) => k).length
+      }).catch(err => console.error('[UsageTracking] Failed to track Google search:', err));
+    }
+
     return res.json({
       success: true,
       data: {
@@ -6073,7 +5815,7 @@ app.post('/api/google-business-search', async (req, res) => {
         openingHours: formattedHours
       }
     });
-    
+
   } catch (error) {
     console.error('[Google Business Search] Error:', error);
     return res.status(500).json({
@@ -6260,8 +6002,9 @@ app.post('/api/platform-url-search', async (req, res) => {
 /**
  * POST /api/platform-details-extraction
  * Extract specific business details from a platform URL
+ * Protected by platformDetailsExtraction feature flag
  */
-app.post('/api/platform-details-extraction', async (req, res) => {
+app.post('/api/platform-details-extraction', authMiddleware, requirePlatformDetails, async (req, res) => {
   try {
     const { url, platform, extractFields, restaurantId, restaurantName } = req.body;
     
@@ -6316,7 +6059,7 @@ app.post('/api/platform-details-extraction', async (req, res) => {
             day: { type: 'string', description: 'Day of the week (Monday, Tuesday, etc.)' },
             open: { type: 'string', description: 'Opening time' },
             close: { type: 'string', description: 'Closing time' },
-            period: { type: 'string', description: 'Optional: Lunch or Dinner if split hours' }
+            period: { type: 'string', description: 'Optional: Lunch or Dinner. Only use if there are multiple hours entires for this day' }
           }
         }
       };
@@ -6333,14 +6076,14 @@ app.post('/api/platform-details-extraction', async (req, res) => {
       requestedInfo.push('phone number if available');
     }
     if (extractFields.includes('hours')) {
-      requestedInfo.push('opening hours for each day - look for both lunch and dinner times if they exist separately');
+      requestedInfo.push('opening hours for each day - check if lunch and dinner times exist separately');
     }
     
     prompt += requestedInfo.join(', ') + '.';
     
     // Add platform-specific instructions
     if (extractFields.includes('hours')) {
-      prompt += ' Important: Some restaurants have split hours (lunch and dinner). Extract both time periods for each day if present. For day ranges like "Monday-Saturday", list each day separately.';
+      prompt += ' Important: Extract hours exactly as displayed. Some restaurants have split hours (lunch and dinner). Only extract multiple time periods for each day if there is a break between the times. For day ranges like "Monday-Saturday", list each day separately.';
     }
     
     // Configure platform-specific wait times
@@ -6565,21 +6308,32 @@ app.post('/api/platform-details-extraction', async (req, res) => {
       // Update restaurant if ID provided
       if (restaurantId && db.isDatabaseAvailable()) {
         const updateData = {};
-        
+
         if (result.extracted.address) updateData.address = result.extracted.address;
         if (result.extracted.phone) updateData.phone = result.extracted.phone;
         if (result.extracted.hours && result.extracted.hours.length > 0) {
           updateData.opening_hours = result.extracted.hours;
         }
-        
+
         if (Object.keys(updateData).length > 0) {
           await db.updateRestaurantWorkflow(restaurantId, updateData);
           console.log(`[Platform Details Extraction] Updated restaurant ${restaurantId} with extracted data`);
         }
       }
-      
+
+      // Track platform details extraction
+      const organisationId = req.organizationId;
+      if (organisationId) {
+        UsageTrackingService.trackEvent(organisationId, UsageEventType.PLATFORM_DETAILS, 1, {
+          platform: platform,
+          url: url,
+          restaurant_id: restaurantId,
+          fields_extracted: Object.keys(result.extracted).length
+        }).catch(err => console.error('[UsageTracking] Failed to track platform details extraction:', err));
+      }
+
       return res.json(result);
-      
+
     } catch (err) {
       console.error('[Platform Details Extraction] Extraction error:', err);
       return res.status(500).json({
@@ -6666,8 +6420,9 @@ function getNextDay(day) {
 /**
  * POST /api/website-extraction/logo
  * Extract logo and brand colors from restaurant website
+ * Protected by logoExtraction feature flag
  */
-app.post('/api/website-extraction/logo', async (req, res) => {
+app.post('/api/website-extraction/logo', authMiddleware, requireLogoExtraction, async (req, res) => {
   try {
     const { restaurantId, websiteUrl, additionalImages = [] } = req.body;
     
@@ -6756,7 +6511,18 @@ app.post('/api/website-extraction/logo', async (req, res) => {
       await db.updateRestaurantWorkflow(restaurantId, updateData);
       console.log('[API] Updated restaurant with logo, colors, and', savedImages.length, 'additional images');
     }
-    
+
+    // Track logo extraction (with processing since this endpoint does both)
+    const organisationId = req.organizationId;
+    if (organisationId) {
+      UsageTrackingService.trackLogoExtraction(organisationId, true, {
+        restaurant_id: restaurantId,
+        url: websiteUrl,
+        has_logo: !!result.logoVersions?.original,
+        additional_images: savedImages.length
+      }).catch(err => console.error('[UsageTracking] Failed to track logo extraction:', err));
+    }
+
     return res.json({
       success: true,
       data: {
@@ -6766,7 +6532,7 @@ app.post('/api/website-extraction/logo', async (req, res) => {
         extractedAt: result.extractedAt
       }
     });
-    
+
   } catch (error) {
     console.error('[API] Logo extraction error:', error);
     return res.status(500).json({
@@ -6870,8 +6636,9 @@ app.post('/api/website-extraction/logo-candidates', async (req, res) => {
 /**
  * POST /api/website-extraction/process-selected-logo
  * Process a selected logo candidate into all required formats
+ * Protected by logoProcessing feature flag
  */
-app.post('/api/website-extraction/process-selected-logo', async (req, res) => {
+app.post('/api/website-extraction/process-selected-logo', authMiddleware, requireLogoProcessing, async (req, res) => {
   try {
     const { logoUrl, websiteUrl, restaurantId, additionalImages = [], versionsToUpdate = [], colorsToUpdate = [] } = req.body;
 
@@ -7004,7 +6771,18 @@ app.post('/api/website-extraction/process-selected-logo', async (req, res) => {
       const updatedVersionsCount = Object.keys(updateData).filter(key => key.startsWith('logo_')).length;
       console.log('[API] Updated restaurant:', updatedVersionsCount, 'logo versions, colors, and', savedImages.length, 'additional images');
     }
-    
+
+    // Track logo processing
+    const organisationId = req.organizationId;
+    if (organisationId) {
+      UsageTrackingService.trackEvent(organisationId, UsageEventType.LOGO_PROCESSING, 1, {
+        restaurant_id: restaurantId,
+        logo_url: logoUrl,
+        versions_updated: versionsToUpdate.length || 8,
+        colors_updated: colorsToUpdate.length || 6
+      }).catch(err => console.error('[UsageTracking] Failed to track logo processing:', err));
+    }
+
     return res.json({
       success: true,
       data: {
@@ -7014,7 +6792,7 @@ app.post('/api/website-extraction/process-selected-logo', async (req, res) => {
         processedAt: new Date().toISOString()
       }
     });
-    
+
   } catch (error) {
     console.error('[API] Logo processing error:', error);
     return res.status(500).json({
@@ -7022,6 +6800,153 @@ app.post('/api/website-extraction/process-selected-logo', async (req, res) => {
       error: error.message || 'Failed to process selected logo'
     });
   }
+});
+
+/**
+ * POST /api/website-extraction/branding
+ * Extract full branding using Firecrawl's branding format
+ * Feature-flagged via requireFirecrawlBranding middleware
+ */
+app.post('/api/website-extraction/branding', authMiddleware, requireFirecrawlBranding, async (req, res) => {
+  try {
+    const { restaurantId, sourceUrl } = req.body;
+
+    if (!restaurantId || !sourceUrl) {
+      return res.status(400).json({
+        success: false,
+        error: 'Restaurant ID and source URL are required'
+      });
+    }
+
+    console.log('[API] Starting branding extraction for:', sourceUrl);
+
+    const logoService = require('./src/services/logo-extraction-service');
+
+    // Step 1: Extract branding from Firecrawl using new branding format
+    const brandingResult = await logoService.extractBrandingWithFirecrawl(sourceUrl);
+
+    if (!brandingResult?.success) {
+      return res.status(400).json({
+        success: false,
+        error: brandingResult?.error || 'Failed to extract branding'
+      });
+    }
+
+    // Step 2: Download and process logo if found
+    let logoVersions = {};
+    if (brandingResult.images?.logoUrl) {
+      try {
+        const logoBuffer = await logoService.downloadImageToBuffer(
+          brandingResult.images.logoUrl,
+          sourceUrl
+        );
+
+        // Process logo, skip favicon if Firecrawl provided one
+        const skipFavicon = !!brandingResult.images?.faviconUrl;
+        logoVersions = await logoService.processLogoVersions(logoBuffer, { skipFavicon });
+
+        console.log('[API] Logo processed into', Object.keys(logoVersions).length, 'versions');
+      } catch (logoError) {
+        console.error('[API] Failed to process logo:', logoError.message);
+        // Continue without logo - colors and metadata still valuable
+      }
+    }
+
+    // Step 3: Prepare database update
+    if (db.isDatabaseAvailable()) {
+      const updateData = {
+        // Colors from Firecrawl (use these instead of Vibrant.js extraction)
+        primary_color: brandingResult.colors?.primaryColor,
+        secondary_color: brandingResult.colors?.secondaryColor,
+        tertiary_color: brandingResult.colors?.tertiaryColor,
+        accent_color: brandingResult.colors?.accentColor,
+        background_color: brandingResult.colors?.backgroundColor,
+        theme: brandingResult.colors?.theme,
+
+        // Logo versions
+        logo_url: logoVersions?.original,
+        logo_nobg_url: logoVersions?.nobg,
+        logo_standard_url: logoVersions?.standard,
+        logo_thermal_url: logoVersions?.thermal,
+        logo_thermal_alt_url: logoVersions?.thermal_alt,
+        logo_thermal_contrast_url: logoVersions?.thermal_contrast,
+        logo_thermal_adaptive_url: logoVersions?.thermal_adaptive,
+
+        // Favicon: prefer Firecrawl's, fallback to processed
+        logo_favicon_url: brandingResult.images?.faviconUrl || logoVersions?.favicon,
+
+        // New OG fields
+        website_og_image: brandingResult.images?.ogImageUrl,
+        website_og_title: brandingResult.metadata?.ogTitle,
+        website_og_description: brandingResult.metadata?.ogDescription
+      };
+
+      // Remove null/undefined values
+      Object.keys(updateData).forEach(key => {
+        if (updateData[key] === null || updateData[key] === undefined) {
+          delete updateData[key];
+        }
+      });
+
+      await db.updateRestaurantWorkflow(restaurantId, updateData);
+      console.log('[API] Updated restaurant with branding data:', Object.keys(updateData).length, 'fields');
+
+      // Track branding extraction usage
+      try {
+        // Get organisation_id from restaurant
+        const { data: restaurant } = await db.supabase
+          .from('restaurants')
+          .select('organisation_id')
+          .eq('id', restaurantId)
+          .single();
+
+        if (restaurant?.organisation_id) {
+          UsageTrackingService.trackBrandingExtraction(restaurant.organisation_id, {
+            restaurant_id: restaurantId,
+            url: sourceUrl,
+            has_logo: !!brandingResult.images?.logoUrl,
+            confidence: brandingResult.confidence
+          }).catch(err => console.error('[UsageTracking] Failed to track branding extraction:', err));
+        }
+      } catch (trackingError) {
+        console.error('[UsageTracking] Error getting organisation for tracking:', trackingError);
+      }
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        logoVersions,
+        colors: brandingResult.colors,
+        metadata: brandingResult.metadata,
+        images: {
+          logo: brandingResult.images?.logoUrl,
+          favicon: brandingResult.images?.faviconUrl,
+          ogImage: brandingResult.images?.ogImageUrl
+        },
+        confidence: brandingResult.confidence,
+        logoReasoning: brandingResult.logoReasoning,
+        extractedAt: brandingResult.extractedAt
+      }
+    });
+
+  } catch (error) {
+    console.error('[API] Branding extraction error:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to extract branding'
+    });
+  }
+});
+
+/**
+ * GET /api/config/features
+ * Returns feature flags for frontend
+ */
+app.get('/api/config/features', (req, res) => {
+  res.json({
+    useFirecrawlBrandingFormat: process.env.USE_FIRECRAWL_BRANDING_FORMAT?.toLowerCase() === 'true'
+  });
 });
 
 /**
@@ -7523,37 +7448,56 @@ app.get('/api/exports/history', async (req, res) => {
 });
 
 /**
+ * === FEATURE FLAGS API ===
+ */
+// Endpoint to get feature flags for the current user's organization
+app.get('/api/feature-flags', authMiddleware, getFeatureFlags);
+
+/**
  * === PUMPD REGISTRATION ROUTES ===
  */
-// Import and use registration routes (with auth middleware)
+// Import and use registration routes (with auth + feature flag middleware)
 const registrationRoutes = require('./src/routes/registration-routes');
-app.use('/api/registration', authMiddleware, registrationRoutes);
+app.use('/api/registration', authMiddleware, requireRegistration, registrationRoutes);
 
 /**
  * === SOCIAL MEDIA VIDEO GENERATION ROUTES ===
  */
-// Import and use social media routes (with auth middleware)
+// Import and use social media routes (with auth + feature flag middleware)
 const socialMediaRoutes = require('./src/routes/social-media-routes');
-app.use('/api/social-media', authMiddleware, socialMediaRoutes);
+app.use('/api/social-media', authMiddleware, requireSocialMedia, socialMediaRoutes);
 
 /**
  * === SALES TASK MANAGEMENT ROUTES ===
  */
-// Import and use task management routes (with auth middleware)
+// Import and use task management routes (with auth + feature flag middleware)
 const tasksRoutes = require('./src/routes/tasks-routes');
-app.use('/api/tasks', authMiddleware, tasksRoutes);
+app.use('/api/tasks', authMiddleware, requireTasksAndSequences, tasksRoutes);
 
 const taskTemplatesRoutes = require('./src/routes/task-templates-routes');
-app.use('/api/task-templates', authMiddleware, taskTemplatesRoutes);
+app.use('/api/task-templates', authMiddleware, requireTasksAndSequences, taskTemplatesRoutes);
 
 const messageTemplatesRoutes = require('./src/routes/message-templates-routes');
-app.use('/api/message-templates', authMiddleware, messageTemplatesRoutes);
+app.use('/api/message-templates', authMiddleware, requireTasksAndSequences, messageTemplatesRoutes);
 
 const sequenceTemplatesRoutes = require('./src/routes/sequence-templates-routes');
-app.use('/api/sequence-templates', authMiddleware, sequenceTemplatesRoutes);
+app.use('/api/sequence-templates', authMiddleware, requireTasksAndSequences, sequenceTemplatesRoutes);
 
 const sequenceInstancesRoutes = require('./src/routes/sequence-instances-routes');
-app.use('/api/sequence-instances', authMiddleware, sequenceInstancesRoutes);
+app.use('/api/sequence-instances', authMiddleware, requireTasksAndSequences, sequenceInstancesRoutes);
+
+/**
+ * === LEAD SCRAPING ROUTES ===
+ */
+// Import and use lead scraping routes (with auth + feature flag middleware)
+const leadScrapeRoutes = require('./src/routes/lead-scrape-routes');
+app.use('/api/lead-scrape-jobs', authMiddleware, requireLeadScraping, leadScrapeRoutes);
+
+const leadsRoutes = require('./src/routes/leads-routes');
+app.use('/api/leads', authMiddleware, requireLeadScraping, leadsRoutes);
+
+const cityCodesRoutes = require('./src/routes/city-codes-routes');
+app.use('/api/city-codes', authMiddleware, requireLeadScraping, cityCodesRoutes);
 
 /**
  * Serve static files and handle SPA routes
@@ -8380,10 +8324,151 @@ app.get('/api/super-admin/users/:userId', superAdminMiddleware, async (req, res)
     });
   } catch (error) {
     console.error('Error fetching user:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: 'Failed to fetch user',
-      message: error.message 
+      message: error.message
+    });
+  }
+});
+
+// ============================================
+// SUPER ADMIN - USAGE STATISTICS ENDPOINTS
+// ============================================
+
+/**
+ * Get usage statistics
+ * Supports filtering by organization and date range
+ */
+app.get('/api/super-admin/usage/statistics', superAdminMiddleware, async (req, res) => {
+  try {
+    const { supabase } = req;
+    const { org_id, start_date, end_date } = req.query;
+
+    // Default to last 30 days if no dates provided
+    const startDate = start_date || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const endDate = end_date || new Date().toISOString();
+
+    // Call the database function
+    const { data, error } = await supabase.rpc('get_usage_statistics', {
+      p_org_id: org_id || null,
+      p_start_date: startDate,
+      p_end_date: endDate
+    });
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      data: data?.[0] || data,
+      filters: {
+        organisation_id: org_id || 'all',
+        start_date: startDate,
+        end_date: endDate
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching usage statistics:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch usage statistics',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * Get organization usage summary
+ * Returns usage summary for all active organizations
+ */
+app.get('/api/super-admin/usage/organization-summary', superAdminMiddleware, async (req, res) => {
+  try {
+    const { supabase } = req;
+    const { start_date, end_date } = req.query;
+
+    // Default to last 30 days if no dates provided
+    const startDate = start_date || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const endDate = end_date || new Date().toISOString();
+
+    // Call the database function
+    const { data, error } = await supabase.rpc('get_organization_usage_summary', {
+      p_start_date: startDate,
+      p_end_date: endDate
+    });
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      data: data || [],
+      filters: {
+        start_date: startDate,
+        end_date: endDate
+      },
+      total_organizations: data?.length || 0
+    });
+  } catch (error) {
+    console.error('Error fetching organization usage summary:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch organization usage summary',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * Manually track a usage event
+ * For testing and administrative purposes
+ */
+app.post('/api/super-admin/usage/track', superAdminMiddleware, async (req, res) => {
+  try {
+    const { organisation_id, event_type, quantity = 1, metadata = {} } = req.body;
+
+    // Validate required fields
+    if (!organisation_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required field: organisation_id'
+      });
+    }
+
+    if (!event_type) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required field: event_type'
+      });
+    }
+
+    // Validate event_type is a known type
+    const validEventTypes = Object.values(UsageEventType);
+    if (!validEventTypes.includes(event_type)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid event_type',
+        valid_types: validEventTypes
+      });
+    }
+
+    // Track the event
+    const result = await UsageTrackingService.trackEvent(
+      organisation_id,
+      event_type,
+      quantity,
+      { ...metadata, manually_tracked: true, tracked_by: req.user?.id }
+    );
+
+    res.json({
+      success: true,
+      message: 'Usage event tracked successfully',
+      data: result
+    });
+  } catch (error) {
+    console.error('Error tracking usage event:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to track usage event',
+      message: error.message
     });
   }
 });
@@ -8536,7 +8621,12 @@ const server = app.listen(PORT, () => {
   
   console.log('  Statistics:');
   console.log(`  GET    /api/super-admin/stats         - Get system statistics`);
-  
+
+  console.log('  Usage Statistics:');
+  console.log(`  GET    /api/super-admin/usage/statistics - Get usage statistics`);
+  console.log(`  GET    /api/super-admin/usage/organization-summary - Get org usage summary`);
+  console.log(`  POST   /api/super-admin/usage/track   - Manually track usage event`);
+
   console.log('\n  === System Endpoints ===');
   console.log(`  GET    /api/status                    - Server status`);
   

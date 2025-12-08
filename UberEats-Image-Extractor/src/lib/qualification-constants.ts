@@ -112,6 +112,7 @@ export const COMMON_ORDERING_PLATFORMS = [
   'Bite',
   'Book N Order',
   'Bopple',
+  'Bustle',
   'Foodhub',
   'Gloriafood',
   'Mobi2Go',
@@ -120,6 +121,8 @@ export const COMMON_ORDERING_PLATFORMS = [
   'Ordermeal',
   'Resdiary',
   'Sipo CloudPOS',
+  'Tabin',
+  'Tuckerfox',
   'Custom (website)',
   'None'
 ] as const;

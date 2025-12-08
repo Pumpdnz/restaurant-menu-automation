@@ -1,12 +1,17 @@
 // Three-tier authentication role system
 export type UserRole = 'super_admin' | 'admin' | 'user';
 
+export interface FeatureFlags {
+  [key: string]: boolean | { enabled: boolean; ratePerItem?: number; [key: string]: any } | FeatureFlags;
+}
+
 export interface Organisation {
   id: string;
   name: string;
   stripe_customer_id?: string;
   stripe_subscription_id?: string;
   settings?: Record<string, any>;
+  feature_flags?: FeatureFlags;
   created_at?: string;
   updated_at?: string;
 }
@@ -41,17 +46,22 @@ export interface AuthContextType {
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updatePassword: (newPassword: string) => Promise<void>;
-  
+
   // Role checks
   isAdmin: () => boolean;
   isSuperAdmin: () => boolean;
   hasRole: (role: UserRole) => boolean;
-  
+
+  // Feature flags
+  featureFlags: FeatureFlags | null;
+  isFeatureEnabled: (path: string) => boolean;
+  refetchFeatureFlags: () => Promise<void>;
+
   // Organization management (admin only)
   inviteUser?: (email: string, role: Exclude<UserRole, 'super_admin'>) => Promise<string>;
   removeUser?: (userId: string) => Promise<void>;
   updateUserRole?: (userId: string, role: Exclude<UserRole, 'super_admin'>) => Promise<void>;
-  
+
   // Super admin functions
   impersonateUser?: (userId: string) => Promise<void>;
   exitImpersonation?: () => Promise<void>;

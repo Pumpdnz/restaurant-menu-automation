@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import api from '../services/api';
 import {
   Eye,
@@ -49,6 +49,7 @@ import {
   DialogTitle,
 } from '../components/ui/dialog';
 import { TaskCell } from '../components/restaurants/TaskCell';
+import { LeadContactQuickView } from '../components/restaurants/LeadContactQuickView';
 import { CreateTaskModal } from '../components/tasks/CreateTaskModal';
 import { StartSequenceModal } from '../components/sequences/StartSequenceModal';
 
@@ -926,41 +927,43 @@ export default function Restaurants() {
                   <TableRow key={restaurant.id}>
                     <TableCell>
                       <div>
-                        <div
-                          className="font-medium cursor-pointer hover:text-brand-blue transition-colors"
-                          onClick={() => handleViewRestaurant(restaurant.id)}
+                        <Link
+                          to={`/restaurants/${restaurant.id}`}
+                          className="font-medium hover:text-brand-blue transition-colors"
                         >
                           {restaurant.name}
-                        </div>
+                        </Link>
                         {restaurant.city && (
                           <div className="text-xs text-muted-foreground">{restaurant.city}</div>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="space-y-1">
-                        {restaurant.contact_name && (
-                          <div className="flex items-center gap-1 text-xs">
-                            <User className="h-3 w-3 text-muted-foreground" />
-                            <span>{restaurant.contact_name}</span>
-                          </div>
-                        )}
-                        {restaurant.contact_email && (
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Mail className="h-3 w-3" />
-                            {restaurant.contact_email}
-                          </div>
-                        )}
-                        {restaurant.contact_phone && (
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Phone className="h-3 w-3" />
-                            {restaurant.contact_phone}
-                          </div>
-                        )}
-                        {!restaurant.contact_name && !restaurant.contact_phone && !restaurant.contact_email && (
-                          <span className="text-xs text-muted-foreground">No contact</span>
-                        )}
-                      </div>
+                      <LeadContactQuickView restaurant={restaurant}>
+                        <div className="space-y-1 cursor-pointer hover:bg-muted/30 p-1 -m-1 rounded transition-colors">
+                          {restaurant.contact_name && (
+                            <div className="flex items-center gap-1 text-xs">
+                              <User className="h-3 w-3 text-muted-foreground" />
+                              <span>{restaurant.contact_name}</span>
+                            </div>
+                          )}
+                          {restaurant.contact_email && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Mail className="h-3 w-3" />
+                              {restaurant.contact_email}
+                            </div>
+                          )}
+                          {restaurant.contact_phone && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Phone className="h-3 w-3" />
+                              {restaurant.contact_phone}
+                            </div>
+                          )}
+                          {!restaurant.contact_name && !restaurant.contact_phone && !restaurant.contact_email && (
+                            <span className="text-xs text-muted-foreground">No contact</span>
+                          )}
+                        </div>
+                      </LeadContactQuickView>
                     </TableCell>
                     <TableCell>
                       {getLeadTypeBadge(restaurant.lead_type, restaurant.id)}

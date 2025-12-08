@@ -68,6 +68,7 @@ import {
 } from '../components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Checkbox } from '../components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 import { cn } from '../lib/utils';
 import api from '../services/api';
 import { SequenceProgressCard } from '../components/sequences/SequenceProgressCard';
@@ -84,11 +85,13 @@ import { QualificationForm } from '../components/demo-meeting/QualificationForm'
 import { QualificationDataDisplay } from '../components/demo-meeting/QualificationDataDisplay';
 import { RestaurantTasksList } from '../components/tasks/RestaurantTasksList';
 import { CreateTaskModal } from '../components/tasks/CreateTaskModal';
-import { EditTaskModal } from '../components/tasks/EditTaskModal';
+import { TaskDetailModal } from '../components/tasks/TaskDetailModal';
+import { useAuth } from '../context/AuthContext';
 
 export default function RestaurantDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { isFeatureEnabled } = useAuth();
   const [restaurant, setRestaurant] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -128,6 +131,11 @@ export default function RestaurantDetail() {
     theme: true
   });
 
+  // Branding extraction states (Firecrawl branding format)
+  const [extractingBranding, setExtractingBranding] = useState(false);
+  const [brandingSourceUrl, setBrandingSourceUrl] = useState('');
+  const [useFirecrawlBranding, setUseFirecrawlBranding] = useState(false);
+
   // Platform extraction states
   const [extractionDialogOpen, setExtractionDialogOpen] = useState(false);
   const [extractionConfig, setExtractionConfig] = useState(null);
@@ -146,8 +154,10 @@ export default function RestaurantDetail() {
   const [followUpTaskId, setFollowUpTaskId] = useState(null);
   const [tasksRefreshKey, setTasksRefreshKey] = useState(0);
 
-  // Fetch restaurant sequences
-  const { data: restaurantSequences, isLoading: sequencesLoading, refetch: refetchSequences } = useRestaurantSequences(id);
+  // Fetch restaurant sequences (only when tasksAndSequences feature is enabled)
+  const { data: restaurantSequences, isLoading: sequencesLoading, refetch: refetchSequences } = useRestaurantSequences(id, {
+    enabled: isFeatureEnabled('tasksAndSequences')
+  });
 
   // Sequence action mutations
   const pauseSequenceMutation = usePauseSequence();
@@ -217,6 +227,12 @@ export default function RestaurantDetail() {
   const [onboardingUserEmail, setOnboardingUserEmail] = useState('');
   const [onboardingUserName, setOnboardingUserName] = useState('');
   const [onboardingUserPassword, setOnboardingUserPassword] = useState('');
+  const [onboardingStripeConnectUrl, setOnboardingStripeConnectUrl] = useState('');
+
+  // Workflow Notes Popover states
+  const [notesPopoverOpen, setNotesPopoverOpen] = useState(false);
+  const [localNotes, setLocalNotes] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
 
   // Finalise Setup states
   const [isSettingUpSystemSettings, setIsSettingUpSystemSettings] = useState(false);
@@ -317,8 +333,32 @@ export default function RestaurantDetail() {
       if (restaurant.contact_email) {
         setOnboardingUserEmail(restaurant.contact_email);
       }
+      // Auto-populate Stripe Connect URL if available
+      if (restaurant.stripe_connect_url) {
+        setOnboardingStripeConnectUrl(restaurant.stripe_connect_url);
+      }
     }
   }, [restaurant, isNewRestaurant]);
+
+  // Fetch feature flag for branding extraction on mount
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const response = await api.get('/config/features');
+        setUseFirecrawlBranding(response.data.useFirecrawlBrandingFormat || false);
+      } catch (err) {
+        console.log('Feature config not available, using defaults');
+      }
+    };
+    fetchConfig();
+  }, []);
+
+  // Set default branding source URL when restaurant loads
+  useEffect(() => {
+    if (restaurant?.website_url && !brandingSourceUrl) {
+      setBrandingSourceUrl(restaurant.website_url);
+    }
+  }, [restaurant?.website_url]);
 
   useEffect(() => {
     if (isNewRestaurant) {
@@ -1124,13 +1164,14 @@ export default function RestaurantDetail() {
   const handleUpdateOnboardingRecord = async () => {
     setIsUpdatingOnboarding(true);
     setOnboardingUpdateStatus(null);
-    
+
     try {
       const response = await api.post('/registration/update-onboarding-record', {
         restaurantId: id,
         userEmail: onboardingUserEmail,
         updates: {
-          contactPerson: onboardingUserName
+          contactPerson: onboardingUserName,
+          stripeConnectUrl: onboardingStripeConnectUrl || null
         }
       });
       
@@ -1483,6 +1524,59 @@ export default function RestaurantDetail() {
     }));
   };
 
+  // Direct status update without entering edit mode
+  const handleStatusChange = async (newStatus) => {
+    try {
+      const response = await api.patch(`/restaurants/${id}/workflow`, {
+        onboarding_status: newStatus
+      });
+
+      if (response.data.success) {
+        // Update local state
+        setRestaurant(prev => ({ ...prev, onboarding_status: newStatus }));
+        toast({
+          title: "Status Updated",
+          description: `Onboarding status changed to ${newStatus.replace('_', ' ')}`,
+        });
+      }
+    } catch (err) {
+      console.error('Failed to update status:', err);
+      toast({
+        title: "Error",
+        description: "Failed to update status",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Direct notes update without entering edit mode
+  const handleSaveNotes = async () => {
+    setSavingNotes(true);
+    try {
+      const response = await api.patch(`/restaurants/${id}/workflow`, {
+        workflow_notes: localNotes
+      });
+
+      if (response.data.success) {
+        setRestaurant(prev => ({ ...prev, workflow_notes: localNotes }));
+        toast({
+          title: "Notes Saved",
+          description: "Workflow notes updated successfully",
+        });
+        setNotesPopoverOpen(false);
+      }
+    } catch (err) {
+      console.error('Failed to save notes:', err);
+      toast({
+        title: "Error",
+        description: "Failed to save notes",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingNotes(false);
+    }
+  };
+
   const handleGoogleSearch = async () => {
     if (!restaurant?.name) {
       setError('Restaurant name is required for search');
@@ -1575,6 +1669,87 @@ export default function RestaurantDetail() {
           }
         }
       }));
+    }
+  };
+
+  // Get available URLs for branding extraction (exclude blocked platforms)
+  const getAvailableBrandingUrls = () => {
+    const urls = [];
+    if (restaurant?.website_url) urls.push({ label: 'Website', value: restaurant.website_url });
+    if (restaurant?.ubereats_url) urls.push({ label: 'UberEats', value: restaurant.ubereats_url });
+    if (restaurant?.doordash_url) urls.push({ label: 'DoorDash', value: restaurant.doordash_url });
+    if (restaurant?.ordermeal_url) urls.push({ label: 'OrderMeal', value: restaurant.ordermeal_url });
+    if (restaurant?.meandyou_url) urls.push({ label: 'Me&U', value: restaurant.meandyou_url });
+    if (restaurant?.mobi2go_url) urls.push({ label: 'Mobi2go', value: restaurant.mobi2go_url });
+    if (restaurant?.delivereasy_url) urls.push({ label: 'Delivereasy', value: restaurant.delivereasy_url });
+    if (restaurant?.nextorder_url) urls.push({ label: 'NextOrder', value: restaurant.nextorder_url });
+    if (restaurant?.foodhub_url) urls.push({ label: 'Foodhub', value: restaurant.foodhub_url });
+    // Note: Instagram and Facebook excluded - blocked by Firecrawl
+    return urls;
+  };
+
+  const handleExtractBranding = async () => {
+    if (!brandingSourceUrl) {
+      setError('Please select or enter a URL for branding extraction');
+      return;
+    }
+
+    setExtractingBranding(true);
+    setError(null);
+
+    try {
+      const response = await api.post('/website-extraction/branding', {
+        restaurantId: id,
+        sourceUrl: brandingSourceUrl
+      });
+
+      if (response.data.success) {
+        const data = response.data.data;
+
+        // Update local state
+        const updates = {};
+
+        // Logo versions
+        if (data.logoVersions?.original) updates.logo_url = data.logoVersions.original;
+        if (data.logoVersions?.nobg) updates.logo_nobg_url = data.logoVersions.nobg;
+        if (data.logoVersions?.standard) updates.logo_standard_url = data.logoVersions.standard;
+        if (data.logoVersions?.thermal) updates.logo_thermal_url = data.logoVersions.thermal;
+        if (data.logoVersions?.thermal_alt) updates.logo_thermal_alt_url = data.logoVersions.thermal_alt;
+        if (data.logoVersions?.thermal_contrast) updates.logo_thermal_contrast_url = data.logoVersions.thermal_contrast;
+        if (data.logoVersions?.thermal_adaptive) updates.logo_thermal_adaptive_url = data.logoVersions.thermal_adaptive;
+        if (data.images?.favicon || data.logoVersions?.favicon) {
+          updates.logo_favicon_url = data.images?.favicon || data.logoVersions?.favicon;
+        }
+
+        // Colors
+        if (data.colors?.primaryColor) updates.primary_color = data.colors.primaryColor;
+        if (data.colors?.secondaryColor) updates.secondary_color = data.colors.secondaryColor;
+        if (data.colors?.tertiaryColor) updates.tertiary_color = data.colors.tertiaryColor;
+        if (data.colors?.accentColor) updates.accent_color = data.colors.accentColor;
+        if (data.colors?.backgroundColor) updates.background_color = data.colors.backgroundColor;
+        if (data.colors?.theme) updates.theme = data.colors.theme;
+
+        // New OG fields
+        if (data.images?.ogImage) updates.website_og_image = data.images.ogImage;
+        if (data.metadata?.ogTitle) updates.website_og_title = data.metadata.ogTitle;
+        if (data.metadata?.ogDescription) updates.website_og_description = data.metadata.ogDescription;
+
+        setRestaurant(prev => ({ ...prev, ...updates }));
+        setEditedData(prev => ({ ...prev, ...updates }));
+
+        const confidencePercent = data.confidence ? Math.round(data.confidence * 100) : 0;
+        setSuccess(`Branding extracted successfully${confidencePercent > 0 ? ` (${confidencePercent}% confidence)` : ''}`);
+
+        // Refresh data
+        setTimeout(() => fetchRestaurantDetails(), 1000);
+      } else {
+        setError(response.data.error || 'Failed to extract branding');
+      }
+    } catch (err) {
+      console.error('Branding extraction error:', err);
+      setError(err.response?.data?.error || 'Failed to extract branding');
+    } finally {
+      setExtractingBranding(false);
     }
   };
 
@@ -2573,7 +2748,7 @@ export default function RestaurantDetail() {
           {!isEditing && (
             <div className="flex gap-2">
               {/* Find URL button - shows when no URL exists */}
-              {!urlValue && (
+              {!urlValue && isFeatureEnabled('googleSearchExtraction') && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -2588,9 +2763,9 @@ export default function RestaurantDetail() {
                   Find URL
                 </Button>
               )}
-              
+
               {/* Get Business Details button - shows when URL exists and platform supports it */}
-              {urlValue && capabilities?.canExtractDetails && (
+              {urlValue && capabilities?.canExtractDetails && isFeatureEnabled('platformDetailsExtraction') && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -2601,9 +2776,9 @@ export default function RestaurantDetail() {
                   Get Details
                 </Button>
               )}
-              
+
               {/* Extract Menu button - shows when URL exists and platform supports menu extraction */}
-              {urlValue && capabilities?.canExtractMenu && (
+              {urlValue && capabilities?.canExtractMenu && isFeatureEnabled('standardExtraction') && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -2663,27 +2838,144 @@ export default function RestaurantDetail() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate('/restaurants')}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">
-              {isNewRestaurant ? 'Add New Restaurant' : (restaurant?.name || 'Restaurant Details')}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {isNewRestaurant ? 'Fill in the details below' : (restaurant?.address || 'No address provided')}
-            </p>
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate('/restaurants')}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">
+                {isNewRestaurant ? 'Add New Restaurant' : (restaurant?.name || 'Restaurant Details')}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {isNewRestaurant ? 'Fill in the details below' : (restaurant?.address || 'No address provided')}
+              </p>
+            </div>
           </div>
-          {!isNewRestaurant && getStatusBadge(restaurant?.onboarding_status)}
-        </div>
-        <div className="flex gap-2">
+          {/* Status, Notes, and Actions */}
+          <div className="flex flex-1 flex-wrap items-center justify-end gap-2 lg:gap-4">
           {!isNewRestaurant && (
+            <div className="flex items-center gap-2">
+              <Select
+                value={restaurant?.onboarding_status || 'lead'}
+                onValueChange={handleStatusChange}
+              >
+                <SelectTrigger className="w-auto h-7 px-2 border-0 bg-transparent focus:ring-0 hover:bg-muted/50">
+                  {getStatusBadge(restaurant?.onboarding_status)}
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="lead">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-gray-500" />
+                      Lead
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="info_gathered">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-blue-500" />
+                      Info Gathered
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="registered">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-purple-500" />
+                      Registered
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="menu_imported">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-orange-500" />
+                      Menu Imported
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="configured">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-green-500" />
+                      Configured
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="completed">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      Completed
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <Popover open={notesPopoverOpen} onOpenChange={(open) => {
+                setNotesPopoverOpen(open);
+                if (open) {
+                  setLocalNotes(restaurant?.workflow_notes || '');
+                }
+              }}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "h-7 px-2 gap-1",
+                      restaurant?.workflow_notes ? "text-blue-600" : "text-muted-foreground"
+                    )}
+                  >
+                    <FileText className="h-4 w-4" />
+                    <span className="text-xs">Notes</span>
+                    {restaurant?.workflow_notes && (
+                      <span className="w-2 h-2 rounded-full bg-blue-500" />
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-96" align="start">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">Workflow Notes</Label>
+                      <span className="text-xs text-muted-foreground">
+                        {localNotes.length} characters
+                      </span>
+                    </div>
+                    <Textarea
+                      value={localNotes}
+                      onChange={(e) => setLocalNotes(e.target.value)}
+                      placeholder="Add notes about this restaurant's onboarding process..."
+                      className="min-h-[150px] resize-y"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setNotesPopoverOpen(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleSaveNotes}
+                        disabled={savingNotes}
+                      >
+                        {savingNotes ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="h-4 w-4 mr-1" />
+                            Save Notes
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
+          <div className="flex gap-2">
+          {!isNewRestaurant && isFeatureEnabled('googleSearchExtraction') && (
             <Button
               onClick={handleGoogleSearch}
               variant="outline"
@@ -2732,6 +3024,8 @@ export default function RestaurantDetail() {
               </Button>
             </>
           )}
+          </div>
+          </div>
         </div>
       </div>
 
@@ -2752,16 +3046,15 @@ export default function RestaurantDetail() {
 
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="contact">Contact & Lead</TabsTrigger>
-          <TabsTrigger value="sales">Sales Info</TabsTrigger>
-          <TabsTrigger value="tasks-sequences">Tasks and Sequences</TabsTrigger>
-          <TabsTrigger value="branding">Branding</TabsTrigger>
-          <TabsTrigger value="configuration">Configuration</TabsTrigger>
-          <TabsTrigger value="platforms">Platforms & Social</TabsTrigger>
-          <TabsTrigger value="workflow">Workflow</TabsTrigger>
-          <TabsTrigger value="registration">Pumpd Registration</TabsTrigger>
+        <TabsList size="full">
+          <TabsTrigger value="overview" size="full">Overview</TabsTrigger>
+          {isFeatureEnabled('tasksAndSequences') && (
+            <TabsTrigger value="tasks-sequences" size="full">Tasks and Sequences</TabsTrigger>
+          )}
+          <TabsTrigger value="platforms" size="full">Gathering Info</TabsTrigger>
+          {isFeatureEnabled('registration') && (
+            <TabsTrigger value="registration" size="full">Registration</TabsTrigger>
+          )}
         </TabsList>
 
         {/* Overview Tab */}
@@ -2769,7 +3062,7 @@ export default function RestaurantDetail() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
               <CardHeader>
-                <CardTitle>Basic Information</CardTitle>
+                <CardTitle>Restaurant Info</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
@@ -2823,7 +3116,7 @@ export default function RestaurantDetail() {
                 </div>
 
                 <div>
-                  <Label>Phone</Label>
+                  <Label>Restaurant Phone</Label>
                   {isEditing ? (
                     <Input
                       value={editedData.phone || ''}
@@ -2835,7 +3128,7 @@ export default function RestaurantDetail() {
                 </div>
 
                 <div>
-                  <Label>Email</Label>
+                  <Label>Restaurant Email</Label>
                   {isEditing ? (
                     <Input
                       type="email"
@@ -2846,176 +3139,95 @@ export default function RestaurantDetail() {
                     <p className="text-sm mt-1">{restaurant?.email || '-'}</p>
                   )}
                 </div>
-
-                <div>
-                  <Label>Cuisine</Label>
-                  {isEditing ? (
-                    <Input
-                      value={editedData.cuisine?.join(', ') || ''}
-                      onChange={(e) => handleFieldChange('cuisine', e.target.value.split(',').map(c => c.trim()))}
-                      placeholder="e.g., Italian, Pizza, Pasta"
-                    />
-                  ) : (
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {restaurant?.cuisine?.map((c, i) => (
-                        <Badge key={i} variant="secondary">{c}</Badge>
-                      )) || <span className="text-sm">-</span>}
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <Label>Subdomain</Label>
-                  {isEditing ? (
-                    <Input
-                      value={editedData.subdomain || ''}
-                      onChange={(e) => handleFieldChange('subdomain', e.target.value)}
-                      placeholder="restaurant-name"
-                    />
-                  ) : (
-                    <p className="text-sm mt-1">
-                      {restaurant?.subdomain ? (
-                        <a 
-                          href={`https://${restaurant.subdomain}.pumpd.co.nz`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-brand-blue hover:underline"
-                        >
-                          {restaurant.subdomain}.pumpd.co.nz
-                        </a>
-                      ) : '-'}
-                    </p>
-                  )}
-                </div>
               </CardContent>
             </Card>
 
+            {/* Contact & Lead Information */}
             <Card>
               <CardHeader>
-                <CardTitle>Opening Hours</CardTitle>
+                <CardTitle>Contact & Lead Info</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {renderOpeningHours()}
-                </div>
-                
-                {isEditing && (
-                  <div className="mt-4">
-                    <Label>Opening Hours Description</Label>
-                    <Textarea
-                      value={editedData.opening_hours_text || ''}
-                      onChange={(e) => handleFieldChange('opening_hours_text', e.target.value)}
-                      placeholder="e.g., Open daily 11am-10pm, closed Mondays"
-                      rows={2}
+              <CardContent className="space-y-4">
+                <div>
+                  <Label>Contact Name</Label>
+                  {isEditing ? (
+                    <Input
+                      value={editedData.contact_name || ''}
+                      onChange={(e) => handleFieldChange('contact_name', e.target.value)}
                     />
-                  </div>
-                )}
+                  ) : (
+                    <p className="text-sm mt-1">{restaurant?.contact_name || '-'}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>Contact Email</Label>
+                  {isEditing ? (
+                    <Input
+                      type="email"
+                      value={editedData.contact_email || ''}
+                      onChange={(e) => handleFieldChange('contact_email', e.target.value)}
+                    />
+                  ) : (
+                    <p className="text-sm mt-1">{restaurant?.contact_email || '-'}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>Contact Phone</Label>
+                  {isEditing ? (
+                    <Input
+                      value={editedData.contact_phone || ''}
+                      onChange={(e) => handleFieldChange('contact_phone', e.target.value)}
+                    />
+                  ) : (
+                    <p className="text-sm mt-1">{restaurant?.contact_phone || '-'}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>Weekly Sales Range</Label>
+                  {isEditing ? (
+                    <Select
+                      value={editedData.weekly_sales_range || ''}
+                      onValueChange={(value) => handleFieldChange('weekly_sales_range', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select range" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0-1000">$0 - $1,000</SelectItem>
+                        <SelectItem value="1000-5000">$1,000 - $5,000</SelectItem>
+                        <SelectItem value="5000-10000">$5,000 - $10,000</SelectItem>
+                        <SelectItem value="10000-25000">$10,000 - $25,000</SelectItem>
+                        <SelectItem value="25000+">$25,000+</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="text-sm mt-1">{restaurant?.weekly_sales_range || '-'}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>Lead Created</Label>
+                  <p className="text-sm mt-1">
+                    {restaurant?.lead_created_at
+                      ? new Date(restaurant.lead_created_at).toLocaleString()
+                      : '-'}
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
 
-        {/* Contact & Lead Tab */}
-        <TabsContent value="contact" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Contact & Lead Information</CardTitle>
-              <CardDescription>Contact details and lead tracking information</CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Contact Name</Label>
-                {isEditing ? (
-                  <Input
-                    value={editedData.contact_name || ''}
-                    onChange={(e) => handleFieldChange('contact_name', e.target.value)}
-                  />
-                ) : (
-                  <p className="text-sm mt-1">{restaurant?.contact_name || '-'}</p>
-                )}
-              </div>
-
-              <div>
-                <Label>Contact Email</Label>
-                {isEditing ? (
-                  <Input
-                    type="email"
-                    value={editedData.contact_email || ''}
-                    onChange={(e) => handleFieldChange('contact_email', e.target.value)}
-                  />
-                ) : (
-                  <p className="text-sm mt-1">{restaurant?.contact_email || '-'}</p>
-                )}
-              </div>
-
-              <div>
-                <Label>Contact Phone</Label>
-                {isEditing ? (
-                  <Input
-                    value={editedData.contact_phone || ''}
-                    onChange={(e) => handleFieldChange('contact_phone', e.target.value)}
-                  />
-                ) : (
-                  <p className="text-sm mt-1">{restaurant?.contact_phone || '-'}</p>
-                )}
-              </div>
-
-              <div>
-                <Label>Weekly Sales Range</Label>
-                {isEditing ? (
-                  <Select
-                    value={editedData.weekly_sales_range || ''}
-                    onValueChange={(value) => handleFieldChange('weekly_sales_range', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select range" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="0-1000">$0 - $1,000</SelectItem>
-                      <SelectItem value="1000-5000">$1,000 - $5,000</SelectItem>
-                      <SelectItem value="5000-10000">$5,000 - $10,000</SelectItem>
-                      <SelectItem value="10000-25000">$10,000 - $25,000</SelectItem>
-                      <SelectItem value="25000+">$25,000+</SelectItem>
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <p className="text-sm mt-1">{restaurant?.weekly_sales_range || '-'}</p>
-                )}
-              </div>
-
-              <div>
-                <Label>Lead Created</Label>
-                <p className="text-sm mt-1">
-                  {restaurant?.lead_created_at 
-                    ? new Date(restaurant.lead_created_at).toLocaleString()
-                    : '-'}
-                </p>
-              </div>
-
-              <div>
-                <Label>User Account Email</Label>
-                {isEditing ? (
-                  <Input
-                    type="email"
-                    value={editedData.user_email || ''}
-                    onChange={(e) => handleFieldChange('user_email', e.target.value)}
-                  />
-                ) : (
-                  <p className="text-sm mt-1">{restaurant?.user_email || '-'}</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Sales Info Tab */}
-        <TabsContent value="sales" className="space-y-4">
+          {/* Sales Information */}
+          {isFeatureEnabled('tasksAndSequences') && (
           <Card>
             <CardHeader>
               <CardTitle>Sales Information</CardTitle>
               <CardDescription>Lead tracking, categorization, and sales pipeline management</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 md:grid-cols-3 gap-4">
               {/* Lead Type */}
               <div>
                 <Label>Lead Type</Label>
@@ -3218,6 +3430,20 @@ export default function RestaurantDetail() {
                 )}
               </div>
 
+              {/* Assigned Sales Rep */}
+              <div>
+                <Label>Assigned Sales Rep</Label>
+                {isEditing ? (
+                  <Input
+                    value={editedData.assigned_sales_rep || ''}
+                    onChange={(e) => handleFieldChange('assigned_sales_rep', e.target.value)}
+                    placeholder="User ID (UUID)"
+                  />
+                ) : (
+                  <p className="text-sm mt-1">{restaurant?.assigned_sales_rep || '-'}</p>
+                )}
+              </div>
+              
               {/* Demo Store Built */}
               <div>
                 <Label>Demo Store Built</Label>
@@ -3267,17 +3493,28 @@ export default function RestaurantDetail() {
                 </div>
               )}
 
-              {/* Assigned Sales Rep */}
+              {/* Demo Store Subdomain */}
               <div>
-                <Label>Assigned Sales Rep</Label>
+                <Label>Demo Store Subdomain</Label>
                 {isEditing ? (
                   <Input
-                    value={editedData.assigned_sales_rep || ''}
-                    onChange={(e) => handleFieldChange('assigned_sales_rep', e.target.value)}
-                    placeholder="User ID (UUID)"
+                    value={editedData.subdomain || ''}
+                    onChange={(e) => handleFieldChange('subdomain', e.target.value)}
+                    placeholder="restaurant-name"
                   />
                 ) : (
-                  <p className="text-sm mt-1">{restaurant?.assigned_sales_rep || '-'}</p>
+                  <p className="text-sm mt-1">
+                    {restaurant?.subdomain ? (
+                      <a
+                        href={`https://${restaurant.subdomain}.pumpd.co.nz`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-brand-blue hover:underline"
+                      >
+                        {restaurant.subdomain}
+                      </a>
+                    ) : '-'}
+                  </p>
                 )}
               </div>
 
@@ -3296,14 +3533,265 @@ export default function RestaurantDetail() {
               </div>
             </CardContent>
           </Card>
+          )}
         </TabsContent>
 
-        {/* Branding Tab */}
-        <TabsContent value="branding" className="space-y-4">
+        {/* Platforms & Branding */}
+        <TabsContent value="platforms" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Platform URLs</CardTitle>
+                <CardDescription>
+                  <p>Online Ordering, Social Media & Website URLs</p>
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                
+                <PlatformUrlField
+                  platform="website"
+                  platformName="Website URL"
+                  urlValue={restaurant?.website_url}
+                  fieldName="website_url"
+                  placeholder="https://..."
+                />
+
+                <PlatformUrlField
+                  platform="ubereats"
+                  platformName="UberEats URL"
+                  urlValue={restaurant?.ubereats_url}
+                  fieldName="ubereats_url"
+                  placeholder="https://www.ubereats.com/..."
+                />
+
+                <PlatformUrlField
+                  platform="doordash"
+                  platformName="DoorDash URL"
+                  urlValue={restaurant?.doordash_url}
+                  fieldName="doordash_url"
+                  placeholder="https://www.doordash.com/..."
+                />
+
+                <PlatformUrlField
+                  platform="instagram"
+                  platformName="Instagram URL"
+                  urlValue={restaurant?.instagram_url}
+                  fieldName="instagram_url"
+                  placeholder="https://instagram.com/..."
+                />
+
+                <PlatformUrlField
+                  platform="facebook"
+                  platformName="Facebook URL"
+                  urlValue={restaurant?.facebook_url}
+                  fieldName="facebook_url"
+                  placeholder="https://facebook.com/..."
+                />
+
+                {/* NZ-specific ordering platforms */}
+                <PlatformUrlField
+                  platform="delivereasy"
+                  platformName="Delivereasy URL"
+                  urlValue={restaurant?.delivereasy_url}
+                  fieldName="delivereasy_url"
+                  placeholder="https://delivereasy.co.nz/..."
+                />
+                
+                <PlatformUrlField
+                  platform="ordermeal"
+                  platformName="OrderMeal URL"
+                  urlValue={restaurant?.ordermeal_url}
+                  fieldName="ordermeal_url"
+                  placeholder="https://ordermeal.co.nz/..."
+                />
+
+                <PlatformUrlField
+                  platform="meandyou"
+                  platformName="Me&U URL"
+                  urlValue={restaurant?.meandyou_url}
+                  fieldName="meandyou_url"
+                  placeholder="https://meandyou.co.nz/..."
+                />
+
+                <PlatformUrlField
+                  platform="mobi2go"
+                  platformName="Mobi2go URL"
+                  urlValue={restaurant?.mobi2go_url}
+                  fieldName="mobi2go_url"
+                  placeholder="https://mobi2go.com/..."
+                />
+
+                <PlatformUrlField
+                  platform="nextorder"
+                  platformName="NextOrder URL"
+                  urlValue={restaurant?.nextorder_url}
+                  fieldName="nextorder_url"
+                  placeholder="https://nextorder.co.nz/..."
+                />
+
+                <PlatformUrlField
+                  platform="foodhub"
+                  platformName="Foodhub URL"
+                  urlValue={restaurant?.foodhub_url}
+                  fieldName="foodhub_url"
+                  placeholder="https://foodhub.co.nz/..."
+                />
+              </CardContent>
+            </Card>
+
+            {/* Opening Hours */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Opening Hours</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {renderOpeningHours()}
+                </div>
+                
+                {isEditing && (
+                  <div className="mt-4">
+                    <Label>Opening Hours Description</Label>
+                    <Textarea
+                      value={editedData.opening_hours_text || ''}
+                      onChange={(e) => handleFieldChange('opening_hours_text', e.target.value)}
+                      placeholder="e.g., Open daily 11am-10pm, closed Mondays"
+                      rows={2}
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>  
+
+          {/* Recent Menus */}
           <Card>
             <CardHeader>
-              <CardTitle>Branding & Visual Identity</CardTitle>
-              <CardDescription>Logo, colors, and theme settings</CardDescription>
+              <CardTitle>Recent Menus</CardTitle>
+              <CardDescription>Latest menu versions for this restaurant</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {restaurant?.menus && restaurant.menus.length > 0 ? (
+                <div className="space-y-2">
+                  {restaurant.menus.slice(0, 5).map((menu) => (
+                    <div key={menu.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">Version {menu.version}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {menu.platforms?.name || 'Unknown'}
+                          </span>
+                          {menu.is_active && (
+                            <Badge className="bg-green-100 text-green-800">Active</Badge>
+                          )}
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          Created: {new Date(menu.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => navigate(`/menus/${menu.id}`)}
+                          className="text-brand-blue hover:text-brand-blue hover:bg-brand-blue/10"
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View Menu
+                        </Button>
+                        {isFeatureEnabled('csvWithImagesDownload') && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleUploadImagesToCDN(menu.id)}
+                          className="text-brand-green hover:text-brand-green hover:bg-brand-green/10"
+                        >
+                          <Upload className="h-4 w-4 mr-1" />
+                          Upload Images
+                        </Button>
+                        )}
+                        {isFeatureEnabled('csvWithImagesDownload') && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDownloadCSVWithCDN(menu.id)}
+                          className="text-brand-orange hover:text-brand-orange hover:bg-brand-orange/10"
+                        >
+                          <Download className="h-4 w-4 mr-1" />
+                          Download CSV
+                        </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => navigate(`/menus?restaurant=${id}`)}
+                  >
+                    View All Menus
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No menus found</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Branding card */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Branding & Visual Identity</CardTitle>
+                  <CardDescription>Logo, colors, and theme settings</CardDescription>
+                </div>
+                {/* Branding Extraction Controls - inline with header */}
+                {!isNewRestaurant && useFirecrawlBranding && isFeatureEnabled('brandingExtraction.firecrawlBranding') && (
+                  <div className="flex gap-2 items-center">
+                    <Select
+                      value={brandingSourceUrl}
+                      onValueChange={setBrandingSourceUrl}
+                    >
+                      <SelectTrigger className="w-[140px]">
+                        <SelectValue placeholder="Select source" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getAvailableBrandingUrls().map((url) => (
+                          <SelectItem key={url.value} value={url.value}>
+                            {url.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      value={brandingSourceUrl}
+                      onChange={(e) => setBrandingSourceUrl(e.target.value)}
+                      placeholder="Or enter URL..."
+                      className="w-[180px]"
+                    />
+                    <Button
+                      onClick={handleExtractBranding}
+                      variant="default"
+                      size="sm"
+                      disabled={extractingBranding || !brandingSourceUrl}
+                      title="Extract branding from selected URL"
+                    >
+                      {extractingBranding ? (
+                        <>
+                          <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                          Extracting...
+                        </>
+                      ) : (
+                        <>
+                          <Palette className="h-3 w-3 mr-1" />
+                          Extract Branding
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -3479,8 +3967,9 @@ export default function RestaurantDetail() {
               <div className="flex items-center justify-between mb-4">
                 <Label className="text-base font-semibold">Logo Management</Label>
                 {!isNewRestaurant && (
-                  <div className="flex gap-2">
-                    {restaurant?.website_url && (
+                  <div className="flex gap-2 items-center">
+                    {/* Legacy Extract Logo Button (when feature flag is off) */}
+                    {!useFirecrawlBranding && restaurant?.website_url && isFeatureEnabled('logoExtraction') && (
                       <Button
                         onClick={handleExtractLogo}
                         variant="outline"
@@ -3501,6 +3990,8 @@ export default function RestaurantDetail() {
                         )}
                       </Button>
                     )}
+
+                    {isFeatureEnabled('logoProcessing') && (
                     <Button
                       onClick={() => setProcessLogoDialogOpen(true)}
                       variant="outline"
@@ -3510,6 +4001,7 @@ export default function RestaurantDetail() {
                       <Settings className="h-3 w-3 mr-1" />
                       Process Logo
                     </Button>
+                    )}
                   </div>
                 )}
               </div>
@@ -3696,333 +4188,178 @@ export default function RestaurantDetail() {
                   )}
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
-        {/* Configuration Tab */}
-        <TabsContent value="configuration" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Payment & Service Configuration</CardTitle>
-              <CardDescription>Stripe and service settings</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label>Stripe Connect URL</Label>
-                {isEditing ? (
-                  <Textarea
-                    value={editedData.stripe_connect_url || ''}
-                    onChange={(e) => handleFieldChange('stripe_connect_url', e.target.value)}
-                    rows={2}
-                  />
-                ) : (
-                  <div className="mt-1">
-                    {restaurant?.stripe_connect_url ? (
-                      <a 
-                        href={restaurant.stripe_connect_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-brand-blue hover:underline break-all"
-                      >
-                        {restaurant.stripe_connect_url}
-                      </a>
-                    ) : (
-                      <span className="text-sm">-</span>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <Label>Payment Settings (JSON)</Label>
-                {isEditing ? (
-                  <Textarea
-                    value={JSON.stringify(editedData.payment_settings || {}, null, 2)}
-                    onChange={(e) => {
-                      try {
-                        handleFieldChange('payment_settings', JSON.parse(e.target.value));
-                      } catch {}
-                    }}
-                    rows={6}
-                    className="font-mono text-xs"
-                  />
-                ) : (
-                  <pre className="text-xs bg-gray-50 p-2 rounded mt-1">
-                    {JSON.stringify(restaurant?.payment_settings || {}, null, 2)}
-                  </pre>
-                )}
-              </div>
-
-              <div>
-                <Label>Service Settings (JSON)</Label>
-                {isEditing ? (
-                  <Textarea
-                    value={JSON.stringify(editedData.service_settings || {}, null, 2)}
-                    onChange={(e) => {
-                      try {
-                        handleFieldChange('service_settings', JSON.parse(e.target.value));
-                      } catch {}
-                    }}
-                    rows={6}
-                    className="font-mono text-xs"
-                  />
-                ) : (
-                  <pre className="text-xs bg-gray-50 p-2 rounded mt-1">
-                    {JSON.stringify(restaurant?.service_settings || {}, null, 2)}
-                  </pre>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Platforms & Social Tab */}
-        <TabsContent value="platforms" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Platform & Social Media Links</CardTitle>
-              <CardDescription>Delivery platforms and social media URLs</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <PlatformUrlField
-                platform="ubereats"
-                platformName="UberEats URL"
-                urlValue={restaurant?.ubereats_url}
-                fieldName="ubereats_url"
-                placeholder="https://www.ubereats.com/..."
-              />
-
-              <PlatformUrlField
-                platform="doordash"
-                platformName="DoorDash URL"
-                urlValue={restaurant?.doordash_url}
-                fieldName="doordash_url"
-                placeholder="https://www.doordash.com/..."
-              />
-
-              <PlatformUrlField
-                platform="website"
-                platformName="Website URL"
-                urlValue={restaurant?.website_url}
-                fieldName="website_url"
-                placeholder="https://..."
-              />
-
-              <PlatformUrlField
-                platform="instagram"
-                platformName="Instagram URL"
-                urlValue={restaurant?.instagram_url}
-                fieldName="instagram_url"
-                placeholder="https://instagram.com/..."
-              />
-
-              <PlatformUrlField
-                platform="facebook"
-                platformName="Facebook URL"
-                urlValue={restaurant?.facebook_url}
-                fieldName="facebook_url"
-                placeholder="https://facebook.com/..."
-              />
-
-              {/* NZ-specific ordering platforms */}
-              <PlatformUrlField
-                platform="ordermeal"
-                platformName="OrderMeal URL"
-                urlValue={restaurant?.ordermeal_url}
-                fieldName="ordermeal_url"
-                placeholder="https://ordermeal.co.nz/..."
-              />
-
-              <PlatformUrlField
-                platform="meandyou"
-                platformName="Me&U URL"
-                urlValue={restaurant?.meandyou_url}
-                fieldName="meandyou_url"
-                placeholder="https://meandyou.co.nz/..."
-              />
-
-              <PlatformUrlField
-                platform="mobi2go"
-                platformName="Mobi2go URL"
-                urlValue={restaurant?.mobi2go_url}
-                fieldName="mobi2go_url"
-                placeholder="https://mobi2go.com/..."
-              />
-
-              <PlatformUrlField
-                platform="delivereasy"
-                platformName="Delivereasy URL"
-                urlValue={restaurant?.delivereasy_url}
-                fieldName="delivereasy_url"
-                placeholder="https://delivereasy.co.nz/..."
-              />
-
-              <PlatformUrlField
-                platform="nextorder"
-                platformName="NextOrder URL"
-                urlValue={restaurant?.nextorder_url}
-                fieldName="nextorder_url"
-                placeholder="https://nextorder.co.nz/..."
-              />
-
-              <PlatformUrlField
-                platform="foodhub"
-                platformName="Foodhub URL"
-                urlValue={restaurant?.foodhub_url}
-                fieldName="foodhub_url"
-                placeholder="https://foodhub.co.nz/..."
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Workflow Tab */}
-        <TabsContent value="workflow" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Workflow Status</CardTitle>
-              <CardDescription>Track onboarding progress and notes</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label>Onboarding Status</Label>
-                {isEditing ? (
-                  <Select
-                    value={editedData.onboarding_status || 'lead'}
-                    onValueChange={(value) => handleFieldChange('onboarding_status', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="lead">Lead</SelectItem>
-                      <SelectItem value="info_gathered">Info Gathered</SelectItem>
-                      <SelectItem value="registered">Registered</SelectItem>
-                      <SelectItem value="menu_imported">Menu Imported</SelectItem>
-                      <SelectItem value="configured">Configured</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <div className="mt-1">
-                    {getStatusBadge(restaurant?.onboarding_status)}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <Label>Onboarding Completed</Label>
-                <p className="text-sm mt-1">
-                  {restaurant?.onboarding_completed_at 
-                    ? new Date(restaurant.onboarding_completed_at).toLocaleString()
-                    : 'Not completed'}
-                </p>
-              </div>
-
-              <div>
-                <Label>Password Hint</Label>
-                {isEditing ? (
-                  <Input
-                    value={editedData.user_password_hint || ''}
-                    onChange={(e) => handleFieldChange('user_password_hint', e.target.value)}
-                    placeholder="e.g., Restaurantname789!"
-                  />
-                ) : (
-                  <p className="text-sm mt-1">{restaurant?.user_password_hint || '-'}</p>
-                )}
-              </div>
-
-              <div>
-                <Label>Workflow Notes</Label>
-                {isEditing ? (
-                  <Textarea
-                    value={editedData.workflow_notes || ''}
-                    onChange={(e) => handleFieldChange('workflow_notes', e.target.value)}
-                    rows={4}
-                    placeholder="Any notes about the onboarding process..."
-                  />
-                ) : (
-                  <p className="text-sm mt-1 whitespace-pre-wrap">
-                    {restaurant?.workflow_notes || '-'}
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Recent Menus */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Menus</CardTitle>
-              <CardDescription>Latest menu versions for this restaurant</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {restaurant?.menus && restaurant.menus.length > 0 ? (
-                <div className="space-y-2">
-                  {restaurant.menus.slice(0, 5).map((menu) => (
-                    <div key={menu.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">Version {menu.version}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {menu.platforms?.name || 'Unknown'}
-                          </span>
-                          {menu.is_active && (
-                            <Badge className="bg-green-100 text-green-800">Active</Badge>
+              {/* Header Images Grid - OG Images */}
+              {(isEditing || restaurant?.website_og_image || restaurant?.ubereats_og_image ||
+                restaurant?.doordash_og_image || restaurant?.facebook_cover_image) && (
+                <div className="mt-6 pt-6 border-t">
+                  <Label className="text-base font-semibold mb-4 block">Header Images</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Website OG Image</Label>
+                      {isEditing ? (
+                        <>
+                          <Input
+                            value={editedData.website_og_image || ''}
+                            onChange={(e) => handleFieldChange('website_og_image', e.target.value)}
+                            placeholder="https://..."
+                            className="mt-2"
+                          />
+                          {editedData.website_og_image && (
+                            <img
+                              src={editedData.website_og_image}
+                              alt="Website OG Image Preview"
+                              className="w-full h-24 object-cover rounded border mt-2"
+                            />
                           )}
+                        </>
+                      ) : restaurant?.website_og_image ? (
+                        <div className="mt-2">
+                          <img
+                            src={restaurant.website_og_image}
+                            alt="Website OG Image"
+                            className="w-full h-32 object-cover rounded border"
+                          />
                         </div>
-                        <span className="text-xs text-muted-foreground">
-                          Created: {new Date(menu.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => navigate(`/menus/${menu.id}`)}
-                          className="text-brand-blue hover:text-brand-blue hover:bg-brand-blue/10"
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          View Menu
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleUploadImagesToCDN(menu.id)}
-                          className="text-brand-green hover:text-brand-green hover:bg-brand-green/10"
-                        >
-                          <Upload className="h-4 w-4 mr-1" />
-                          Upload Images
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDownloadCSVWithCDN(menu.id)}
-                          className="text-brand-orange hover:text-brand-orange hover:bg-brand-orange/10"
-                        >
-                          <Download className="h-4 w-4 mr-1" />
-                          Download CSV
-                        </Button>
-                      </div>
+                      ) : (
+                        <p className="text-sm mt-2 text-muted-foreground">-</p>
+                      )}
                     </div>
-                  ))}
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => navigate(`/menus?restaurant=${id}`)}
-                  >
-                    View All Menus
-                  </Button>
+                    <div>
+                      <Label className="text-sm text-muted-foreground">UberEats Image</Label>
+                      {isEditing ? (
+                        <>
+                          <Input
+                            value={editedData.ubereats_og_image || ''}
+                            onChange={(e) => handleFieldChange('ubereats_og_image', e.target.value)}
+                            placeholder="https://..."
+                            className="mt-2"
+                          />
+                          {editedData.ubereats_og_image && (
+                            <img
+                              src={editedData.ubereats_og_image}
+                              alt="UberEats Image Preview"
+                              className="w-full h-24 object-cover rounded border mt-2"
+                            />
+                          )}
+                        </>
+                      ) : restaurant?.ubereats_og_image ? (
+                        <div className="mt-2">
+                          <img
+                            src={restaurant.ubereats_og_image}
+                            alt="UberEats Image"
+                            className="w-full h-32 object-cover rounded border"
+                          />
+                        </div>
+                      ) : (
+                        <p className="text-sm mt-2 text-muted-foreground">-</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label className="text-sm text-muted-foreground">DoorDash Image</Label>
+                      {isEditing ? (
+                        <>
+                          <Input
+                            value={editedData.doordash_og_image || ''}
+                            onChange={(e) => handleFieldChange('doordash_og_image', e.target.value)}
+                            placeholder="https://..."
+                            className="mt-2"
+                          />
+                          {editedData.doordash_og_image && (
+                            <img
+                              src={editedData.doordash_og_image}
+                              alt="DoorDash Image Preview"
+                              className="w-full h-24 object-cover rounded border mt-2"
+                            />
+                          )}
+                        </>
+                      ) : restaurant?.doordash_og_image ? (
+                        <div className="mt-2">
+                          <img
+                            src={restaurant.doordash_og_image}
+                            alt="DoorDash Image"
+                            className="w-full h-32 object-cover rounded border"
+                          />
+                        </div>
+                      ) : (
+                        <p className="text-sm mt-2 text-muted-foreground">-</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Facebook Cover</Label>
+                      {isEditing ? (
+                        <>
+                          <Input
+                            value={editedData.facebook_cover_image || ''}
+                            onChange={(e) => handleFieldChange('facebook_cover_image', e.target.value)}
+                            placeholder="https://..."
+                            className="mt-2"
+                          />
+                          {editedData.facebook_cover_image && (
+                            <img
+                              src={editedData.facebook_cover_image}
+                              alt="Facebook Cover Preview"
+                              className="w-full h-24 object-cover rounded border mt-2"
+                            />
+                          )}
+                        </>
+                      ) : restaurant?.facebook_cover_image ? (
+                        <div className="mt-2">
+                          <img
+                            src={restaurant.facebook_cover_image}
+                            alt="Facebook Cover"
+                            className="w-full h-32 object-cover rounded border"
+                          />
+                        </div>
+                      ) : (
+                        <p className="text-sm mt-2 text-muted-foreground">-</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No menus found</p>
+              )}
+
+              {/* Header Tags - Title and Description */}
+              {(isEditing || restaurant?.website_og_title || restaurant?.website_og_description) && (
+                <div className="mt-6 pt-6 border-t">
+                  <Label className="text-base font-semibold mb-4 block">Header Tags</Label>
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-sm text-muted-foreground">OG Title</Label>
+                      {isEditing ? (
+                        <Input
+                          value={editedData.website_og_title || ''}
+                          onChange={(e) => handleFieldChange('website_og_title', e.target.value)}
+                          placeholder="Enter OG title..."
+                          className="mt-1"
+                        />
+                      ) : (
+                        <p className="mt-1 text-sm font-medium">{restaurant?.website_og_title || '-'}</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label className="text-sm text-muted-foreground">OG Description</Label>
+                      {isEditing ? (
+                        <Textarea
+                          value={editedData.website_og_description || ''}
+                          onChange={(e) => handleFieldChange('website_og_description', e.target.value)}
+                          placeholder="Enter OG description..."
+                          className="mt-1"
+                          rows={3}
+                        />
+                      ) : (
+                        <p className="mt-1 text-sm text-muted-foreground">{restaurant?.website_og_description || '-'}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
         {/* Tasks and Sequences Tab */}
+        {isFeatureEnabled('tasksAndSequences') && (
         <TabsContent value="tasks-sequences" className="space-y-6">
           {/* Standalone Tasks Section - Moved to top */}
           <div className="space-y-4">
@@ -4175,7 +4512,7 @@ export default function RestaurantDetail() {
           )}
 
           {editTaskId && (
-            <EditTaskModal
+            <TaskDetailModal
               open={!!editTaskId}
               taskId={editTaskId}
               onClose={() => setEditTaskId(null)}
@@ -4183,13 +4520,17 @@ export default function RestaurantDetail() {
                 setEditTaskId(null);
                 setTasksRefreshKey(prev => prev + 1);
               }}
+              initialMode="edit"
             />
           )}
         </TabsContent>
+        )}
 
         {/* Registration Tab */}
+        {isFeatureEnabled('registration') && (
         <TabsContent value="registration" className="space-y-4">
           {/* Registration Status Card */}
+          {(isFeatureEnabled('registration.userAccountRegistration') || isFeatureEnabled('registration.restaurantRegistration')) && (
           <Card>
             <CardHeader>
               <CardTitle>Pumpd Platform Registration</CardTitle>
@@ -4287,9 +4628,9 @@ export default function RestaurantDetail() {
 
                   {/* Action Buttons */}
                   <div className="flex gap-2">
-                    {!registrationStatus.account && (
-                      <Button 
-                        variant="outline" 
+                    {!registrationStatus.account && isFeatureEnabled('registration.userAccountRegistration') && (
+                      <Button
+                        variant="outline"
                         onClick={() => {
                           // Set type to account only
                           setRegistrationType('account_only');
@@ -4311,9 +4652,9 @@ export default function RestaurantDetail() {
                         Register Account
                       </Button>
                     )}
-                    
-                    {(!registrationStatus.restaurant || registrationStatus.restaurant.registration_status === 'failed') && (
-                      <Button 
+
+                    {(!registrationStatus.restaurant || registrationStatus.restaurant.registration_status === 'failed') && isFeatureEnabled('registration.restaurantRegistration') && (
+                      <Button
                         onClick={() => {
                           // Pre-populate email and password from account if exists
                           if (registrationStatus.account) {
@@ -4371,8 +4712,9 @@ export default function RestaurantDetail() {
                 <div className="text-center py-8 space-y-4">
                   <p className="text-muted-foreground">No registration found for this restaurant</p>
                   <div className="flex justify-center gap-2">
-                    <Button 
-                      variant="outline" 
+                    {isFeatureEnabled('registration.userAccountRegistration') && (
+                    <Button
+                      variant="outline"
                       onClick={() => {
                         // Set type to account only
                         setRegistrationType('account_only');
@@ -4393,7 +4735,9 @@ export default function RestaurantDetail() {
                       <UserPlus className="h-4 w-4 mr-2" />
                       Register Account
                     </Button>
-                    <Button 
+                    )}
+                    {isFeatureEnabled('registration.restaurantRegistration') && (
+                    <Button
                       onClick={() => {
                         // Pre-populate email and password from account if exists
                         if (registrationStatus.account) {
@@ -4424,13 +4768,90 @@ export default function RestaurantDetail() {
                       <LogIn className="h-4 w-4 mr-2" />
                       Register Restaurant
                     </Button>
+                    )}
                   </div>
                 </div>
               )}
             </CardContent>
           </Card>
+          )}
+
+          {/* Recent Menus */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Menus</CardTitle>
+              <CardDescription>Latest menu versions for this restaurant</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {restaurant?.menus && restaurant.menus.length > 0 ? (
+                <div className="space-y-2">
+                  {restaurant.menus.slice(0, 5).map((menu) => (
+                    <div key={menu.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">Version {menu.version}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {menu.platforms?.name || 'Unknown'}
+                          </span>
+                          {menu.is_active && (
+                            <Badge className="bg-green-100 text-green-800">Active</Badge>
+                          )}
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          Created: {new Date(menu.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => navigate(`/menus/${menu.id}`)}
+                          className="text-brand-blue hover:text-brand-blue hover:bg-brand-blue/10"
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View Menu
+                        </Button>
+                        {isFeatureEnabled('csvWithImagesDownload') && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleUploadImagesToCDN(menu.id)}
+                          className="text-brand-green hover:text-brand-green hover:bg-brand-green/10"
+                        >
+                          <Upload className="h-4 w-4 mr-1" />
+                          Upload Images
+                        </Button>
+                        )}
+                        {isFeatureEnabled('csvWithImagesDownload') && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDownloadCSVWithCDN(menu.id)}
+                          className="text-brand-orange hover:text-brand-orange hover:bg-brand-orange/10"
+                        >
+                          <Download className="h-4 w-4 mr-1" />
+                          Download CSV
+                        </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => navigate(`/menus?restaurant=${id}`)}
+                  >
+                    View All Menus
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No menus found</p>
+              )}
+            </CardContent>
+          </Card>
 
           {/* CSV Menu Upload Card */}
+          {isFeatureEnabled('registration.menuUploading') && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -4525,6 +4946,7 @@ export default function RestaurantDetail() {
                   </Button>
 
                   {/* Add Tags Button */}
+                  {isFeatureEnabled('registration.itemTagUploading') && (
                   <Button
                     onClick={handleAddItemTags}
                     disabled={isAddingTags}
@@ -4543,6 +4965,7 @@ export default function RestaurantDetail() {
                       </>
                     )}
                   </Button>
+                  )}
 
                   {/* Status Messages */}
                   {uploadStatus === 'success' && (
@@ -4580,6 +5003,7 @@ export default function RestaurantDetail() {
                   )}
 
                   {/* Option Sets Section */}
+                  {isFeatureEnabled('registration.optionSetUploading') && (
                   <div className="border-t pt-4 mt-4">
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 text-sm font-medium">
@@ -4649,6 +5073,7 @@ export default function RestaurantDetail() {
                       )}
                     </div>
                   </div>
+                  )}
                 </div>
               ) : (
                 <Alert>
@@ -4660,8 +5085,224 @@ export default function RestaurantDetail() {
               )}
             </CardContent>
           </Card>
+          )}
+
+          {/* Website Settings Card */}
+          {isFeatureEnabled('registration.websiteSettings') && (
+          <Card className="mt-4">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="h-5 w-5" />
+                    Website Settings
+                  </CardTitle>
+                  <CardDescription>
+                    Theme and branding settings required for website customization
+                  </CardDescription>
+                </div>
+                {!isEditing ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setEditedData(restaurant);
+                      setIsEditing(true);
+                    }}
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Settings
+                  </Button>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setIsEditing(false);
+                        setEditedData({});
+                      }}
+                      disabled={saving}
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleSave}
+                      disabled={saving}
+                      className="bg-gradient-to-r from-brand-blue to-brand-green"
+                    >
+                      <Save className="h-4 w-4 mr-2" />
+                      {saving ? 'Saving...' : 'Save'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* Theme */}
+                <div>
+                  <Label>Theme</Label>
+                  {isEditing ? (
+                    <Select
+                      value={editedData.theme || 'light'}
+                      onValueChange={(value) => handleFieldChange('theme', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="light">Light</SelectItem>
+                        <SelectItem value="dark">Dark</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="flex items-center gap-2 mt-1">
+                      {restaurant?.theme ? (
+                        <Badge variant="outline">{restaurant.theme}</Badge>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">-</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Cuisine */}
+                <div>
+                  <Label>Cuisine</Label>
+                  {isEditing ? (
+                    <Input
+                      value={editedData.cuisine?.join(', ') || ''}
+                      onChange={(e) => handleFieldChange('cuisine', e.target.value.split(',').map(c => c.trim()))}
+                      placeholder="e.g., Italian, Pizza, Pasta"
+                    />
+                  ) : (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {restaurant?.cuisine?.length > 0 ? (
+                        restaurant.cuisine.map((c, i) => (
+                          <Badge key={i} variant="secondary">{c}</Badge>
+                        ))
+                      ) : (
+                        <span className="text-sm text-muted-foreground">-</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Primary Color */}
+                <div>
+                  <Label>Primary Color</Label>
+                  {isEditing ? (
+                    <div className="flex gap-2">
+                      <Input
+                        type="color"
+                        value={editedData.primary_color || '#000000'}
+                        onChange={(e) => handleFieldChange('primary_color', e.target.value)}
+                        className="w-16 h-9"
+                      />
+                      <Input
+                        value={editedData.primary_color || ''}
+                        onChange={(e) => handleFieldChange('primary_color', e.target.value)}
+                        placeholder="#000000"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 mt-1">
+                      {restaurant?.primary_color ? (
+                        <>
+                          <div
+                            className="w-6 h-6 rounded border"
+                            style={{ backgroundColor: restaurant.primary_color }}
+                          />
+                          <span className="text-sm">{restaurant.primary_color}</span>
+                        </>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">-</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Secondary Color */}
+                <div>
+                  <Label>Secondary Color</Label>
+                  {isEditing ? (
+                    <div className="flex gap-2">
+                      <Input
+                        type="color"
+                        value={editedData.secondary_color || '#000000'}
+                        onChange={(e) => handleFieldChange('secondary_color', e.target.value)}
+                        className="w-16 h-9"
+                      />
+                      <Input
+                        value={editedData.secondary_color || ''}
+                        onChange={(e) => handleFieldChange('secondary_color', e.target.value)}
+                        placeholder="#000000"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 mt-1">
+                      {restaurant?.secondary_color ? (
+                        <>
+                          <div
+                            className="w-6 h-6 rounded border"
+                            style={{ backgroundColor: restaurant.secondary_color }}
+                          />
+                          <span className="text-sm">{restaurant.secondary_color}</span>
+                        </>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">-</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Status indicators */}
+              <div className="mt-4 pt-4 border-t">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                  <div className="flex items-center gap-1">
+                    {restaurant?.theme ? (
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-gray-400" />
+                    )}
+                    <span className={restaurant?.theme ? 'text-green-600' : 'text-gray-500'}>Theme</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {restaurant?.cuisine?.length > 0 ? (
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-gray-400" />
+                    )}
+                    <span className={restaurant?.cuisine?.length > 0 ? 'text-green-600' : 'text-gray-500'}>Cuisine</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {restaurant?.primary_color ? (
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-gray-400" />
+                    )}
+                    <span className={restaurant?.primary_color ? 'text-green-600' : 'text-gray-500'}>Primary</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {restaurant?.secondary_color ? (
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-gray-400" />
+                    )}
+                    <span className={restaurant?.secondary_color ? 'text-green-600' : 'text-gray-500'}>Secondary</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          )}
 
           {/* Website Customization Card */}
+          {(isFeatureEnabled('registration.codeInjection') || isFeatureEnabled('registration.websiteSettings')) && (
           <Card className="mt-4">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -4749,6 +5390,7 @@ export default function RestaurantDetail() {
                   {customizationMode === 'generate' ? (
                     <>
                       {/* Generate Code Injections Button */}
+                      {isFeatureEnabled('registration.codeInjection') && (
                       <div className="space-y-2">
                         <Button
                           onClick={handleGenerateCodeInjections}
@@ -4774,6 +5416,7 @@ export default function RestaurantDetail() {
                           </p>
                         )}
                       </div>
+                      )}
                     </>
                   ) : (
                     <>
@@ -4838,6 +5481,7 @@ export default function RestaurantDetail() {
                   )}
 
                   {/* Configure Website Settings Button (shown for both modes) */}
+                  {isFeatureEnabled('registration.websiteSettings') && (
                   <Button
                     onClick={handleConfigureWebsite}
                     disabled={
@@ -4860,6 +5504,7 @@ export default function RestaurantDetail() {
                       </>
                     )}
                   </Button>
+                  )}
 
                   {/* Status Messages */}
                   {customizationStatus && (
@@ -4902,8 +5547,10 @@ export default function RestaurantDetail() {
               )}
             </CardContent>
           </Card>
+          )}
 
           {/* Payment & Services Configuration Card */}
+          {(isFeatureEnabled('registration.stripePayments') || isFeatureEnabled('registration.servicesConfiguration')) && (
           <Card className="mt-4">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -4967,6 +5614,7 @@ export default function RestaurantDetail() {
                     </div>
                     
                     <div className="flex gap-4">
+                      {isFeatureEnabled('registration.stripePayments') && (
                       <Button
                         onClick={handleSetupStripePayments}
                         disabled={isConfiguringPayments}
@@ -4984,7 +5632,9 @@ export default function RestaurantDetail() {
                           </>
                         )}
                       </Button>
+                      )}
 
+                      {isFeatureEnabled('registration.servicesConfiguration') && (
                       <Button
                         onClick={handleConfigureServices}
                         disabled={isConfiguringServices}
@@ -5003,6 +5653,7 @@ export default function RestaurantDetail() {
                           </>
                         )}
                       </Button>
+                      )}
                     </div>
                   </div>
 
@@ -5087,8 +5738,10 @@ export default function RestaurantDetail() {
               )}
             </CardContent>
           </Card>
+          )}
 
           {/* Onboarding User Management Card */}
+          {isFeatureEnabled('registration.onboardingUserManagement') && (
           <Card className="mt-4">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -5140,8 +5793,24 @@ export default function RestaurantDetail() {
                     </p>
                   )}
                 </div>
+
+                <div>
+                  <label className="text-sm font-medium">Stripe Connect URL</label>
+                  <Input
+                    type="url"
+                    value={onboardingStripeConnectUrl}
+                    onChange={(e) => setOnboardingStripeConnectUrl(e.target.value)}
+                    placeholder="https://connect.stripe.com/..."
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    {onboardingStripeConnectUrl
+                      ? 'URL will be saved when updating record'
+                      : 'Paste the Stripe Connect onboarding link here'}
+                  </p>
+                </div>
               </div>
-              
+
               {/* Action buttons */}
               <div className="flex gap-4">
                 <Button
@@ -5162,6 +5831,7 @@ export default function RestaurantDetail() {
                   )}
                 </Button>
                 
+                {isFeatureEnabled('registration.onboardingSync') && (
                 <Button
                   onClick={handleUpdateOnboardingRecord}
                   disabled={isUpdatingOnboarding || !onboardingUserEmail}
@@ -5180,6 +5850,7 @@ export default function RestaurantDetail() {
                     </>
                   )}
                 </Button>
+                )}
               </div>
               
               {/* Status displays */}
@@ -5230,8 +5901,10 @@ export default function RestaurantDetail() {
               )}
             </CardContent>
           </Card>
+          )}
 
           {/* Finalise Setup Card */}
+          {isFeatureEnabled('registration.finalisingSetup') && (
           <Card className="mt-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -5325,6 +5998,7 @@ export default function RestaurantDetail() {
                           Configure GST, pickup times, and other system settings
                         </p>
                       </div>
+                      {isFeatureEnabled('registration.finalisingSetup') && (
                       <Button
                         onClick={handleSetupSystemSettings}
                         disabled={isSettingUpSystemSettings || !restaurant?.id}
@@ -5348,6 +6022,7 @@ export default function RestaurantDetail() {
                           </>
                         )}
                       </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -5500,7 +6175,9 @@ export default function RestaurantDetail() {
               )}
             </CardContent>
           </Card>
+          )}
         </TabsContent>
+        )}
       </Tabs>
 
       {/* Logo Candidate Selection Dialog */}
@@ -6226,6 +6903,7 @@ export default function RestaurantDetail() {
                           </Label>
                         </div>
                         
+                        {isFeatureEnabled('premiumExtraction') && (
                         <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-gray-50">
                           <RadioGroupItem value="premium" id="premium" />
                           <Label htmlFor="premium" className="flex-1 cursor-pointer">
@@ -6235,12 +6913,13 @@ export default function RestaurantDetail() {
                             </div>
                           </Label>
                         </div>
+                        )}
                       </div>
                     </RadioGroup>
                   </div>
-                  
+
                   {/* Show premium options when premium mode is selected */}
-                  {extractionMode === 'premium' && (
+                  {extractionMode === 'premium' && isFeatureEnabled('premiumExtraction') && (
                     <div className="space-y-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                       <Label className="text-sm font-medium">Premium Options</Label>
                       <div className="space-y-2">

@@ -195,11 +195,110 @@ async function extractLogoCandidatesWithFirecrawl(websiteUrl) {
       console.log('[Logo Extraction] Found', validCandidates.length, 'logo candidates');
       return validCandidates;
     }
-    
+
     return [];
   } catch (error) {
     console.error('[Logo Extraction] Firecrawl error:', error.message);
     return [];
+  }
+}
+
+/**
+ * Extract branding information using Firecrawl's branding format
+ * This uses the new 'branding' format which provides accurate colors, logo, and metadata
+ * @param {string} sourceUrl - The URL to extract branding from
+ * @returns {Object} Branding data including logo, colors, and metadata
+ */
+async function extractBrandingWithFirecrawl(sourceUrl) {
+  try {
+    console.log('[Branding Extraction] Starting extraction from:', sourceUrl);
+
+    const response = await axios.post(
+      `${FIRECRAWL_API_URL}/v2/scrape`,
+      {
+        url: sourceUrl,
+        formats: ['branding'],
+        waitFor: 3000
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${FIRECRAWL_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (!response.data?.data?.branding) {
+      console.log('[Branding Extraction] No branding data returned');
+      return {
+        success: false,
+        error: 'No branding data returned from Firecrawl'
+      };
+    }
+
+    const branding = response.data.data.branding;
+    const metadata = response.data.data.metadata || {};
+
+    // Map Firecrawl colors to our schema
+    // "primary" -> primary_color
+    // "accent" -> secondary_color
+    // "textPrimary" -> tertiary_color
+    // "buttonSecondary.background" -> accent_color (if present)
+    // "background" -> background_color
+    const colors = {
+      primaryColor: branding.colors?.primary || null,
+      secondaryColor: branding.colors?.accent || null,
+      tertiaryColor: branding.colors?.textPrimary || null,
+      accentColor: branding.components?.buttonSecondary?.background || null,
+      backgroundColor: branding.colors?.background || null,
+      // Theme from colorScheme (Firecrawl returns "light" or "dark")
+      theme: branding.colorScheme || 'light'
+    };
+
+    // Extract images
+    const images = {
+      logoUrl: branding.images?.logo || null,
+      faviconUrl: branding.images?.favicon || null,
+      ogImageUrl: branding.images?.ogImage || metadata['og:image'] || metadata.ogImage || null
+    };
+
+    // Extract metadata for OG fields
+    const extractedMetadata = {
+      ogTitle: metadata['og:title'] || metadata.ogTitle || metadata.title || null,
+      ogDescription: metadata['og:description'] || metadata.ogDescription || metadata.description || null,
+      ogSiteName: metadata['og:site_name'] || metadata.ogSiteName || null
+    };
+
+    // Get LLM reasoning for confidence
+    const confidence = branding.__llm_logo_reasoning?.confidence || 0;
+    const logoReasoning = branding.__llm_logo_reasoning?.reasoning || null;
+
+    console.log('[Branding Extraction] Extracted successfully:', {
+      hasLogo: !!images.logoUrl,
+      hasFavicon: !!images.faviconUrl,
+      hasOgImage: !!images.ogImageUrl,
+      theme: colors.theme,
+      primaryColor: colors.primaryColor,
+      confidence
+    });
+
+    return {
+      success: true,
+      colors,
+      images,
+      metadata: extractedMetadata,
+      confidence,
+      logoReasoning,
+      rawBranding: branding,
+      extractedAt: new Date().toISOString()
+    };
+
+  } catch (error) {
+    console.error('[Branding Extraction] Error:', error.message);
+    return {
+      success: false,
+      error: error.message
+    };
   }
 }
 
@@ -537,14 +636,18 @@ async function removeBackgroundFromBuffer(imageBuffer) {
 
 /**
  * Process logo into different versions
+ * @param {Buffer} logoBuffer - The logo image buffer
+ * @param {Object} options - Processing options
+ * @param {boolean} options.skipFavicon - Skip favicon generation if already have one from Firecrawl
  */
-async function processLogoVersions(logoBuffer) {
+async function processLogoVersions(logoBuffer, options = {}) {
   const versions = {};
-  
+  const { skipFavicon = false } = options;
+
   try {
     // Get metadata
     const metadata = await sharp(logoBuffer).metadata();
-    console.log('[Logo Extraction] Processing logo versions:', metadata);
+    console.log('[Logo Extraction] Processing logo versions:', metadata, { skipFavicon });
     
     // 1. Original (as base64)
     versions.original = `data:image/${metadata.format};base64,${logoBuffer.toString('base64')}`;
@@ -784,17 +887,21 @@ async function processLogoVersions(logoBuffer) {
     }).png().toBuffer();
     
     versions.thermal_adaptive = `data:image/png;base64,${finalThermalBufferV4.toString('base64')}`;
-    
-    // 5. Favicon (32x32)
-    const faviconBuffer = await sharp(logoBuffer)
-      .resize(32, 32, {
-        fit: 'contain',
-        background: { r: 255, g: 255, b: 255, alpha: 0 }
-      })
-      .png()
-      .toBuffer();
-    versions.favicon = `data:image/png;base64,${faviconBuffer.toString('base64')}`;
-    
+
+    // 5. Favicon (32x32) - skip if Firecrawl already provided one
+    if (!skipFavicon) {
+      const faviconBuffer = await sharp(logoBuffer)
+        .resize(32, 32, {
+          fit: 'contain',
+          background: { r: 255, g: 255, b: 255, alpha: 0 }
+        })
+        .png()
+        .toBuffer();
+      versions.favicon = `data:image/png;base64,${faviconBuffer.toString('base64')}`;
+    } else {
+      console.log('[Logo Extraction] Skipping favicon generation (provided by Firecrawl)');
+    }
+
     return versions;
   } catch (error) {
     console.error('[Logo Extraction] Processing error:', error.message);
@@ -938,6 +1045,7 @@ async function extractLogoAndColors(websiteUrl) {
 module.exports = {
   extractLogoAndColors,
   extractLogoCandidatesWithFirecrawl,
+  extractBrandingWithFirecrawl,
   extractLogoUrlWithFirecrawl,
   extractLogoUrlWithPuppeteer,
   downloadImageToBuffer,

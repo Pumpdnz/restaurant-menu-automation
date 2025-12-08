@@ -31,11 +31,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
+import { useAuth } from '../context/AuthContext';
 
 export default function MenuDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isFeatureEnabled } = useAuth();
   const [menu, setMenu] = useState(null);
   const [menuData, setMenuData] = useState(null);
   const [originalMenuData, setOriginalMenuData] = useState(null);
@@ -688,6 +690,7 @@ export default function MenuDetail() {
                   <PencilIcon className="h-4 w-4 mr-1.5" />
                   Edit Menu
                 </Button>
+{(isFeatureEnabled('csvDownload') || isFeatureEnabled('csvWithImagesDownload')) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm">
@@ -697,16 +700,22 @@ export default function MenuDetail() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    {isFeatureEnabled('csvWithImagesDownload') && (
                     <DropdownMenuItem onClick={() => handleDownloadCSV(true, true)}>
                       <CheckCircleIcon className="h-4 w-4 mr-2 text-green-600" />
                       CSV with CDN Images
                     </DropdownMenuItem>
+                    )}
+                    {isFeatureEnabled('csvDownload') && (
                     <DropdownMenuItem onClick={() => handleDownloadCSV(false)}>
                       <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
                       CSV without Images
                     </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
+                )}
+{(isFeatureEnabled('imageUploadToCDN') || isFeatureEnabled('imageZipDownload')) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm">
@@ -716,16 +725,21 @@ export default function MenuDetail() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    {isFeatureEnabled('imageUploadToCDN') && (
                     <DropdownMenuItem onClick={handleUploadImagesToCDN}>
                       <ArrowPathIcon className="h-4 w-4 mr-2 text-purple-600" />
                       Upload to CDN
                     </DropdownMenuItem>
+                    )}
+                    {isFeatureEnabled('imageZipDownload') && (
                     <DropdownMenuItem onClick={handleDownloadImages}>
                       <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
                       Download Images (ZIP)
                     </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
+                )}
               </>
             ) : (
               <>

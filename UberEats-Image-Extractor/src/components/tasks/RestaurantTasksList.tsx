@@ -639,6 +639,7 @@ export function RestaurantTasksList({ restaurantId, onCreateTask, onEditTask, on
           setDetailModalOpen(false);
           setSelectedTaskId(null);
         }}
+        onSuccess={fetchTasks}
       />
     </div>
   );

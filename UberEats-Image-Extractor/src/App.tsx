@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useNavigat
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { FeatureProtectedRoute } from './components/FeatureProtectedRoute';
 import { Toaster } from './components/ui/toaster';
 import { useOrganizationSync } from './hooks/useOrganizationSync';
 import api from './services/api';
@@ -27,6 +28,8 @@ import Tasks from './pages/Tasks';
 import MessageTemplates from './pages/MessageTemplates';
 import TaskTemplates from './pages/TaskTemplates';
 import Sequences from './pages/Sequences';
+import LeadScrapes from './pages/LeadScrapes';
+import LeadScrapeDetail from './pages/LeadScrapeDetail';
 
 // Super Admin Pages
 import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
@@ -157,23 +160,64 @@ function AppContent() {
           <Route path="menus" element={<Menus />} />
           <Route path="menus/merge" element={<MenuMerge />} />
           <Route path="menus/:id" element={<MenuDetail />} />
-          <Route path="tasks" element={<Tasks />} />
-          {/* Redirect task-templates to tasks page templates tab */}
-          <Route path="task-templates" element={<Navigate to="/tasks?tab=templates" replace />} />
-          <Route path="sequences" element={<Sequences />} />
-          {/* Redirect old sequence-templates route to new tab-based page */}
-          <Route path="sequence-templates" element={<Navigate to="/sequences?tab=templates" replace />} />
-          {/* Redirect message-templates to sequences page message templates tab */}
-          <Route path="message-templates" element={<Navigate to="/sequences?tab=message-templates" replace />} />
+          {/* Tasks & Sequences - Feature Protected */}
+          <Route path="tasks" element={
+            <FeatureProtectedRoute featurePath="tasksAndSequences" featureName="Tasks & Sequences">
+              <Tasks />
+            </FeatureProtectedRoute>
+          } />
+          <Route path="task-templates" element={
+            <FeatureProtectedRoute featurePath="tasksAndSequences" featureName="Tasks & Sequences">
+              <Navigate to="/tasks?tab=templates" replace />
+            </FeatureProtectedRoute>
+          } />
+          <Route path="sequences" element={
+            <FeatureProtectedRoute featurePath="tasksAndSequences" featureName="Tasks & Sequences">
+              <Sequences />
+            </FeatureProtectedRoute>
+          } />
+          <Route path="sequence-templates" element={
+            <FeatureProtectedRoute featurePath="tasksAndSequences" featureName="Tasks & Sequences">
+              <Navigate to="/sequences?tab=templates" replace />
+            </FeatureProtectedRoute>
+          } />
+          <Route path="message-templates" element={
+            <FeatureProtectedRoute featurePath="tasksAndSequences" featureName="Tasks & Sequences">
+              <Navigate to="/sequences?tab=message-templates" replace />
+            </FeatureProtectedRoute>
+          } />
+
+          {/* Lead Scraping - Feature Protected */}
+          <Route path="leads" element={
+            <FeatureProtectedRoute featurePath="leadScraping" featureName="Lead Scraping">
+              <LeadScrapes />
+            </FeatureProtectedRoute>
+          } />
+          <Route path="leads/:id" element={
+            <FeatureProtectedRoute featurePath="leadScraping" featureName="Lead Scraping">
+              <LeadScrapeDetail />
+            </FeatureProtectedRoute>
+          } />
           <Route path="analytics" element={<Analytics />} />
           <Route path="history" element={<History />} />
           <Route path="settings" element={<Settings />} />
 
-          {/* Social Media Routes */}
-          <Route path="social-media" element={<SocialMediaDashboard />} />
-          {/* Legacy redirects for backward compatibility */}
-          <Route path="social-media/videos" element={<Navigate to="/social-media?tab=videos" replace />} />
-          <Route path="social-media/generate" element={<Navigate to="/social-media?tab=videos" replace />} />
+          {/* Social Media Routes - Feature Protected */}
+          <Route path="social-media" element={
+            <FeatureProtectedRoute featurePath="socialMedia" featureName="Social Media">
+              <SocialMediaDashboard />
+            </FeatureProtectedRoute>
+          } />
+          <Route path="social-media/videos" element={
+            <FeatureProtectedRoute featurePath="socialMedia" featureName="Social Media">
+              <Navigate to="/social-media?tab=videos" replace />
+            </FeatureProtectedRoute>
+          } />
+          <Route path="social-media/generate" element={
+            <FeatureProtectedRoute featurePath="socialMedia" featureName="Social Media">
+              <Navigate to="/social-media?tab=videos" replace />
+            </FeatureProtectedRoute>
+          } />
 
           {/* Admin Only Routes */}
           <Route 

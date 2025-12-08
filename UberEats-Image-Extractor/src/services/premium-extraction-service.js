@@ -16,6 +16,7 @@ const optionSetsDeduplicationService = require('./option-sets-deduplication-serv
 const imageValidationService = require('./image-validation-service');
 const databaseService = require('./database-service');
 const rateLimiter = require('./rate-limiter-service');
+const { UsageTrackingService } = require('./usage-tracking-service');
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 
@@ -880,7 +881,15 @@ Focus ONLY on the "${categoryName}" category section.`;
       } catch (dbError) {
         console.error(`[${orgId}] Failed to update database job status:`, dbError.message);
       }
-      
+
+      // Track premium extraction usage
+      UsageTrackingService.trackExtraction(orgId, 'premium', allItems.length, {
+        restaurant_id: providedRestaurantId,
+        job_id: jobId,
+        url: storeUrl,
+        categories_count: categories.length
+      }).catch(err => console.error(`[${orgId}] Failed to track premium extraction:`, err));
+
       return results;
       
     } catch (error) {

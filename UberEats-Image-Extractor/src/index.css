@@ -64,6 +64,7 @@
     
     /* System colors mapped to brand colors */
     --background: 0 0% 100%;
+    --page-background: 0 0% 99%;  /* Light gray for page backgrounds */
     --foreground: var(--brand-dark-text);
     
     --card: 0 0% 100%;

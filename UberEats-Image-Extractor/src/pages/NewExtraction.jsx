@@ -13,9 +13,11 @@ import {
   TooltipTrigger,
 } from '../components/ui/tooltip';
 import { detectPlatform, extractRestaurantName } from '../utils/platform-detector';
+import { useAuth } from '../context/AuthContext';
 
 export default function NewExtraction() {
   const navigate = useNavigate();
+  const { isFeatureEnabled } = useAuth();
   const [url, setUrl] = useState('');
   const [platform, setPlatform] = useState('');
   const [detectedPlatform, setDetectedPlatform] = useState(null);
@@ -534,7 +536,7 @@ export default function NewExtraction() {
           )}
 
           {/* Premium Extraction Options - Only for UberEats */}
-          {platform === 'ubereats' && (
+          {platform === 'ubereats' && isFeatureEnabled('premiumExtraction') && (
             <div className="space-y-4 border rounded-lg p-4 bg-gray-50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">

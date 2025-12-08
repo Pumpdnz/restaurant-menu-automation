@@ -1260,6 +1260,7 @@ async function getAllRestaurantsList() {
         contact_phone,
         contact_email,
         created_at,
+        lead_created_at,
         email,
         phone,
         subdomain,
@@ -1274,6 +1275,10 @@ async function getAllRestaurantsList() {
         last_contacted,
         demo_store_built,
         demo_store_url,
+        weekly_sales_range,
+        online_ordering_platform,
+        ubereats_url,
+        website_url,
         assigned_sales_rep,
         restaurant_platforms (
           url,

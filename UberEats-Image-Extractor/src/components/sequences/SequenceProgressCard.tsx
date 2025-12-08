@@ -24,7 +24,6 @@ import {
 import { SequenceTaskList } from './SequenceTaskList';
 import { TaskDetailModal } from '../tasks/TaskDetailModal';
 import { SequenceDetailModal } from './SequenceDetailModal';
-import { EditTaskModal } from '../tasks/EditTaskModal';
 
 interface SequenceInstance {
   id: string;
@@ -299,12 +298,13 @@ export function SequenceProgressCard({
           taskId={selectedTaskId}
           open={!!selectedTaskId}
           onClose={() => setSelectedTaskId(null)}
+          onSuccess={onRefresh}
         />
       )}
 
       {/* Edit Task Modal */}
       {editTaskId && (
-        <EditTaskModal
+        <TaskDetailModal
           taskId={editTaskId}
           open={!!editTaskId}
           onClose={() => setEditTaskId(null)}
@@ -314,6 +314,7 @@ export function SequenceProgressCard({
               onRefresh();
             }
           }}
+          initialMode="edit"
         />
       )}
 

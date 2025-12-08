@@ -751,14 +751,15 @@ export function useDeleteSequenceInstance() {
   });
 }
 
-export function useRestaurantSequences(restaurantId: string) {
+export function useRestaurantSequences(restaurantId: string, options?: { enabled?: boolean }) {
+  const isEnabled = options?.enabled !== undefined ? options.enabled : true;
   return useQuery<{ success: boolean; data: SequenceInstance[] }>({
     queryKey: ['restaurant-sequences', restaurantId],
     queryFn: async () => {
       const response = await api.get(`/sequence-instances/restaurants/${restaurantId}/sequences`);
       return response.data;
     },
-    enabled: !!restaurantId,
-    refetchInterval: 30000, // Refetch every 30 seconds to update progress
+    enabled: !!restaurantId && isEnabled,
+    refetchInterval: isEnabled ? 30000 : false, // Only refetch when enabled
   });
 }

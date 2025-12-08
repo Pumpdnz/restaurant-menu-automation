@@ -6,6 +6,21 @@ const execAsync = promisify(exec);
 const multer = require('multer');
 const fs = require('fs').promises;
 const path = require('path');
+const { UsageTrackingService } = require('../services/usage-tracking-service');
+const {
+  requireRegistrationUserAccount,
+  requireRegistrationRestaurant,
+  requireRegistrationMenuUpload,
+  requireRegistrationItemTags,
+  requireRegistrationOptionSets,
+  requireRegistrationCodeInjection,
+  requireRegistrationWebsiteSettings,
+  requireRegistrationStripePayments,
+  requireRegistrationServicesConfig,
+  requireRegistrationOnboardingUser,
+  requireRegistrationFinalizeSetup,
+  requireRegistrationOnboardingSync,
+} = require('../../middleware/feature-flags');
 
 // Configure multer for CSV file uploads
 const upload = multer({ 
@@ -85,7 +100,7 @@ router.get('/status/:restaurantId', async (req, res) => {
 });
 
 // Register new account only (using Pumpd API when available)
-router.post('/register-account', async (req, res) => {
+router.post('/register-account', requireRegistrationUserAccount, async (req, res) => {
   const { restaurantId } = req.body;
   const organisationId = req.user?.organisationId;
   
@@ -231,6 +246,12 @@ router.post('/register-account', async (req, res) => {
             initiated_by: req.user?.email || 'system'
           });
         
+        // Track usage
+        UsageTrackingService.trackRegistrationStep(organisationId, 'user_account', {
+          restaurant_id: restaurantId,
+          email: email
+        }).catch(err => console.error('[UsageTracking] Failed to track user account registration:', err));
+
         res.json({
           success: true,
           message: 'Account registered successfully',
@@ -305,7 +326,7 @@ router.post('/register-account', async (req, res) => {
 });
 
 // Register restaurant (with options for different registration flows)
-router.post('/register-restaurant', async (req, res) => {
+router.post('/register-restaurant', requireRegistrationRestaurant, async (req, res) => {
   const { 
     restaurantId, 
     registrationType,
@@ -634,7 +655,14 @@ router.post('/register-restaurant', async (req, res) => {
           })
           .eq('id', account.id);
       }
-      
+
+      // Update restaurant onboarding_status to 'registered'
+      await supabase
+        .from('restaurants')
+        .update({ onboarding_status: 'registered' })
+        .eq('id', restaurantId)
+        .eq('organisation_id', organisationId);
+
       // Log success
       await supabase
         .from('registration_logs')
@@ -649,7 +677,13 @@ router.post('/register-restaurant', async (req, res) => {
           script_name: 'login-and-register-restaurant.js',
           initiated_by: req.user?.email || 'system'
         });
-      
+
+      // Track usage
+      UsageTrackingService.trackRegistrationStep(organisationId, 'restaurant', {
+        restaurant_id: restaurantId,
+        subdomain: subdomain
+      }).catch(err => console.error('[UsageTracking] Failed to track restaurant registration:', err));
+
       res.json({
         success: true,
         message: 'Restaurant registered successfully',
@@ -738,7 +772,7 @@ router.get('/logs/:restaurantId', async (req, res) => {
 });
 
 // Upload CSV menu to Pumpd restaurant
-router.post('/upload-csv-menu', upload.single('csvFile'), async (req, res) => {
+router.post('/upload-csv-menu', requireRegistrationMenuUpload, upload.single('csvFile'), async (req, res) => {
   const { restaurantId } = req.body;
   const organisationId = req.user?.organisationId;
   const csvFile = req.file;
@@ -860,7 +894,22 @@ router.post('/upload-csv-menu', upload.single('csvFile'), async (req, res) => {
     } catch (unlinkError) {
       console.error('[CSV Upload] Failed to clean up file:', unlinkError);
     }
-    
+
+    // Update restaurant onboarding_status to 'menu_imported' if successful
+    if (success) {
+      const { supabase } = require('../services/database-service');
+      await supabase
+        .from('restaurants')
+        .update({ onboarding_status: 'menu_imported' })
+        .eq('id', restaurantId)
+        .eq('organisation_id', organisationId);
+
+      // Track usage
+      UsageTrackingService.trackRegistrationStep(organisationId, 'menu_upload', {
+        restaurant_id: restaurantId
+      }).catch(err => console.error('[UsageTracking] Failed to track menu upload:', err));
+    }
+
     res.json({
       success,
       message: success ? 'Menu uploaded successfully' : 'Upload completed with warnings',
@@ -1004,7 +1053,7 @@ router.post('/validate-files', async (req, res) => {
  * Generate code injections for website customization
  * Uses ordering-page-customization.js script to generate head/body HTML files
  */
-router.post('/generate-code-injections', async (req, res) => {
+router.post('/generate-code-injections', requireRegistrationCodeInjection, async (req, res) => {
   const { restaurantId } = req.body;
   const organisationId = req.user?.organisationId;
   
@@ -1133,6 +1182,11 @@ router.post('/generate-code-injections', async (req, res) => {
     console.log('[Code Generation] Success! Files generated at:', outputDir);
     console.log('[Code Generation] Browser remains open for manual adjustments');
 
+    // Track usage
+    UsageTrackingService.trackRegistrationStep(organisationId, 'code_injection', {
+      restaurant_id: restaurantId
+    }).catch(err => console.error('[UsageTracking] Failed to track code injection:', err));
+
     res.json({
       success: true,
       message: 'Code injections generated successfully. Browser remains open for manual configuration.',
@@ -1158,7 +1212,7 @@ router.post('/generate-code-injections', async (req, res) => {
  * Configure website settings with generated code
  * Uses edit-website-settings-dark.js or edit-website-settings-light.js based on theme
  */
-router.post('/configure-website', async (req, res) => {
+router.post('/configure-website', requireRegistrationWebsiteSettings, async (req, res) => {
   const { restaurantId, filePaths } = req.body;
   const organisationId = req.user?.organisationId;
   
@@ -1213,7 +1267,7 @@ router.post('/configure-website', async (req, res) => {
     // Get account credentials through pumpd_restaurants relationship
     const { data: pumpdRestaurant, error: pumpdRestError } = await supabase
       .from('pumpd_restaurants')
-      .select('*, pumpd_accounts(email, user_password_hint)')
+      .select('*, pumpd_subdomain, pumpd_full_url, pumpd_accounts(email, user_password_hint)')
       .eq('restaurant_id', restaurantId)
       .eq('organisation_id', organisationId)
       .single();
@@ -1375,23 +1429,64 @@ router.post('/configure-website', async (req, res) => {
       }
     }
     
+    // Compute demo store URL
+    const demoStoreUrl = pumpdRestaurant?.pumpd_full_url ||
+                        (pumpdRestaurant?.pumpd_subdomain ? `https://${pumpdRestaurant.pumpd_subdomain}.pumpd.co.nz` : null);
+
     if (success) {
       console.log('[Website Config] ✓ Configuration completed successfully');
+
+      // Update restaurant with demo_store_built, demo_store_url, subdomain, and onboarding_status
+      try {
+        const updateData = {
+          demo_store_built: true,
+          onboarding_status: 'configured'
+        };
+        if (demoStoreUrl) {
+          updateData.demo_store_url = demoStoreUrl;
+        }
+        if (pumpdRestaurant?.pumpd_subdomain) {
+          updateData.subdomain = pumpdRestaurant.pumpd_subdomain;
+        }
+
+        const { error: demoUpdateError } = await supabase
+          .from('restaurants')
+          .update(updateData)
+          .eq('id', restaurantId)
+          .eq('organisation_id', organisationId);
+
+        if (demoUpdateError) {
+          console.error('[Website Config] Failed to update demo_store_built:', demoUpdateError);
+        } else {
+          console.log('[Website Config] ✓ Updated demo_store_built=true, onboarding_status=configured, demo_store_url:', demoStoreUrl, ', subdomain:', pumpdRestaurant?.pumpd_subdomain || 'N/A');
+        }
+      } catch (demoDbError) {
+        console.error('[Website Config] Database error updating demo store status:', demoDbError);
+      }
     } else {
       console.log('[Website Config] ⚠ Configuration may have issues');
     }
-    
+
     // Clean up temporary files
     await cleanupTempFiles(tempFiles);
-    
+
+    // Track usage
+    if (success) {
+      UsageTrackingService.trackRegistrationStep(organisationId, 'website_settings', {
+        restaurant_id: restaurantId,
+        theme: restaurant.theme || 'dark'
+      }).catch(err => console.error('[UsageTracking] Failed to track website settings:', err));
+    }
+
     res.json({
       success,
       message: success ? 'Website configured successfully' : 'Configuration completed with warnings',
       output: stdout,
       error: stderr || null,
-      uploadedLogoUrl
+      uploadedLogoUrl,
+      demoStoreUrl: success ? demoStoreUrl : null
     });
-    
+
   } catch (error) {
     console.error('[Website Config] Error:', error);
     
@@ -1511,7 +1606,7 @@ async function downloadLogoIfNeeded(logoUrl) {
  * Configure Stripe payment settings
  * Uses setup-stripe-payments.js or setup-stripe-payments-no-link.js script to automate Stripe configuration
  */
-router.post('/configure-payment', async (req, res) => {
+router.post('/configure-payment', requireRegistrationStripePayments, async (req, res) => {
   const { restaurantId, includeConnectLink = false } = req.body; // Default to no-link version
   const organisationId = req.user?.organisationId;
   
@@ -1626,12 +1721,19 @@ router.post('/configure-payment', async (req, res) => {
     }
     
     // Check for success indicators
-    const success = stdout.includes('successfully configured') || 
+    const success = stdout.includes('successfully configured') ||
                    stdout.includes('✅') ||
                    stdout.includes('Stripe payment method successfully');
-    
+
     console.log('[Payment Config] Configuration result:', success ? 'Success' : 'Partial/Failed');
-    
+
+    // Track usage if successful
+    if (success) {
+      UsageTrackingService.trackRegistrationStep(organisationId, 'stripe_payments', {
+        restaurant_id: restaurantId
+      }).catch(err => console.error('[UsageTracking] Failed to track stripe payments:', err));
+    }
+
     res.json({
       success,
       message: success ? 'Payment settings configured successfully' : 'Configuration completed with warnings',
@@ -1660,7 +1762,7 @@ router.post('/configure-payment', async (req, res) => {
  * Configure Services settings
  * Uses setup-services-settings.js script to automate Services configuration
  */
-router.post('/configure-services', async (req, res) => {
+router.post('/configure-services', requireRegistrationServicesConfig, async (req, res) => {
   const { restaurantId } = req.body;
   const organisationId = req.user?.organisationId;
   
@@ -1753,14 +1855,21 @@ router.post('/configure-services', async (req, res) => {
                    stdout.includes('Configuration saved');
     
     console.log('[Services Config] Configuration result:', success ? 'Success' : 'Partial/Failed');
-    
+
+    // Track usage
+    if (success) {
+      UsageTrackingService.trackRegistrationStep(organisationId, 'services_config', {
+        restaurant_id: restaurantId
+      }).catch(err => console.error('[UsageTracking] Failed to track services config:', err));
+    }
+
     res.json({
       success,
       message: success ? 'Services settings configured successfully' : 'Configuration completed with warnings',
       output: stdout,
       error: stderr || null
     });
-    
+
   } catch (error) {
     console.error('[Services Config] Error:', error);
     
@@ -1780,7 +1889,7 @@ router.post('/configure-services', async (req, res) => {
  * Add Item Tags to menu items
  * Uses add-item-tags.js script to automate tag configuration on Pumpd admin portal
  */
-router.post('/add-item-tags', async (req, res) => {
+router.post('/add-item-tags', requireRegistrationItemTags, async (req, res) => {
   const { restaurantId } = req.body;
   const organisationId = req.user?.organisationId;
 
@@ -1874,6 +1983,13 @@ router.post('/add-item-tags', async (req, res) => {
 
     console.log('[Item Tags] Configuration result:', success ? 'Success' : 'Partial/Failed');
 
+    // Track usage
+    if (success) {
+      UsageTrackingService.trackRegistrationStep(organisationId, 'item_tags', {
+        restaurant_id: restaurantId
+      }).catch(err => console.error('[UsageTracking] Failed to track item tags:', err));
+    }
+
     res.json({
       success,
       message: success ? 'Item tags configured successfully' : 'Configuration completed with warnings',
@@ -1900,7 +2016,7 @@ router.post('/add-item-tags', async (req, res) => {
  * Add Option Sets to restaurant's Pumpd menu
  * Fetches option sets from database and uses add-option-sets.js script
  */
-router.post('/add-option-sets', async (req, res) => {
+router.post('/add-option-sets', requireRegistrationOptionSets, async (req, res) => {
   const { restaurantId, menuId } = req.body;
   const organisationId = req.user?.organisationId;
 
@@ -2137,6 +2253,15 @@ router.post('/add-option-sets', async (req, res) => {
 
     console.log('[Option Sets] Configuration result:', success ? 'Success' : 'Partial/Failed');
 
+    // Track usage
+    if (success) {
+      UsageTrackingService.trackRegistrationStep(organisationId, 'option_sets', {
+        restaurant_id: restaurantId,
+        menu_id: menuId,
+        option_sets_count: summary.created
+      }).catch(err => console.error('[UsageTracking] Failed to track option sets:', err));
+    }
+
     res.json({
       success,
       message: success ? 'Option sets configured successfully' : 'Configuration completed with warnings',
@@ -2164,7 +2289,7 @@ router.post('/add-option-sets', async (req, res) => {
  * Create onboarding user in Super Admin system
  * Creates a new user account in manage.pumpd.co.nz for restaurant onboarding
  */
-router.post('/create-onboarding-user', async (req, res) => {
+router.post('/create-onboarding-user', requireRegistrationOnboardingUser, async (req, res) => {
   const {
     userName,
     userEmail,
@@ -2254,7 +2379,7 @@ router.post('/create-onboarding-user', async (req, res) => {
     
     if (success) {
       console.log('[Onboarding] User created successfully');
-      
+
       // Log the creation if restaurant ID provided
       if (restaurantId) {
         await supabase
@@ -2272,7 +2397,13 @@ router.post('/create-onboarding-user', async (req, res) => {
             initiated_by: req.user?.email || 'system'
           });
       }
-      
+
+      // Track usage
+      UsageTrackingService.trackRegistrationStep(organisationId, 'onboarding_user', {
+        restaurant_id: restaurantId,
+        user_email: userEmail
+      }).catch(err => console.error('[UsageTracking] Failed to track onboarding user:', err));
+
       res.json({
         success: true,
         userName,
@@ -2312,35 +2443,52 @@ router.post('/create-onboarding-user', async (req, res) => {
 /**
  * Update onboarding record with restaurant data
  * Syncs restaurant information to the onboarding database
+ * Feature-flagged: Only available to organizations with onboardingSync enabled
  */
-router.post('/update-onboarding-record', async (req, res) => {
-  const { 
+router.post('/update-onboarding-record', requireRegistrationOnboardingSync, async (req, res) => {
+  const {
     userEmail,
     restaurantId,
     contactPerson,
+    updates = {},
     additionalData = {}
   } = req.body;
-  
+
   const organisationId = req.user?.organisationId;
-  
+
   if (!organisationId) {
-    return res.status(401).json({ 
-      success: false, 
-      error: 'Organisation context required' 
+    return res.status(401).json({
+      success: false,
+      error: 'Organisation context required'
     });
   }
-  
+
   if (!userEmail || !restaurantId) {
     return res.status(400).json({
       success: false,
       error: 'User email and restaurant ID are required'
     });
   }
-  
+
   try {
     const { supabase } = require('../services/database-service');
     const onboardingService = require('../services/onboarding-service');
-    
+
+    // If stripeConnectUrl is provided, save it to the restaurant record first
+    if (updates.stripeConnectUrl !== undefined) {
+      const { error: stripeUpdateError } = await supabase
+        .from('restaurants')
+        .update({ stripe_connect_url: updates.stripeConnectUrl })
+        .eq('id', restaurantId)
+        .eq('organisation_id', organisationId);
+
+      if (stripeUpdateError) {
+        console.error('[Onboarding] Failed to save Stripe Connect URL:', stripeUpdateError);
+      } else {
+        console.log('[Onboarding] ✓ Saved Stripe Connect URL to restaurant record');
+      }
+    }
+
     // Get restaurant details including stripe_connect_url AND contact fields
     const { data: restaurant, error: restaurantError } = await supabase
       .from('restaurants')
@@ -2412,7 +2560,7 @@ router.post('/update-onboarding-record', async (req, res) => {
       address: restaurant.address || additionalData.address || '',
       email: restaurant.email || userEmail,
       phone: restaurant.phone || additionalData.phone || '',
-      contact_person: restaurant.contact_name || contactPerson || additionalData.contactPerson || '', // Map from restaurants.contact_name
+      contact_person: updates.contactPerson || restaurant.contact_name || contactPerson || additionalData.contactPerson || '', // Map from updates or restaurants.contact_name
       director_mobile_number: restaurant.contact_phone || '', // Map from restaurants.contact_phone
       venue_operating_hours: formattedHours || additionalData.operatingHours || 'Hours not set',
       primary_color: restaurant.primary_color || '#3f92ff',
@@ -2448,14 +2596,21 @@ router.post('/update-onboarding-record', async (req, res) => {
         },
         initiated_by: req.user?.email || 'system'
       });
-    
+
+    // Track usage for onboarding sync
+    UsageTrackingService.trackRegistrationStep(organisationId, 'onboarding_sync', {
+      restaurant_id: restaurantId,
+      user_email: userEmail,
+      fields_updated: Object.keys(updateData).length
+    }).catch(err => console.error('[UsageTracking] Failed to track onboarding sync:', err));
+
     res.json({
       success: true,
       onboardingId: onboarding.onboarding_id,
       message: 'Onboarding record updated successfully',
       updatedFields: Object.keys(updateData).length
     });
-    
+
   } catch (error) {
     console.error('[Onboarding] Update record error:', error);
     
@@ -2483,7 +2638,7 @@ router.post('/update-onboarding-record', async (req, res) => {
  * Setup System Settings endpoint
  * Configures GST, pickup times, and other system settings using user credentials
  */
-router.post('/setup-system-settings', async (req, res) => {
+router.post('/setup-system-settings', requireRegistrationFinalizeSetup, async (req, res) => {
   const { restaurantId, receiptLogoVersion } = req.body;
   const organisationId = req.user?.organisationId;
 
@@ -2738,6 +2893,21 @@ router.post('/setup-system-settings', async (req, res) => {
       console.error('[System Settings] Could not update main database:', updateError.message);
     }
 
+    // Update restaurant onboarding_status to 'completed'
+    try {
+      await supabase
+        .from('restaurants')
+        .update({
+          onboarding_status: 'completed',
+          onboarding_completed_at: new Date().toISOString()
+        })
+        .eq('id', restaurantId)
+        .eq('organisation_id', organisationId);
+      console.log('[System Settings] ✓ Updated onboarding_status to completed');
+    } catch (statusError) {
+      console.error('[System Settings] Could not update onboarding_status:', statusError.message);
+    }
+
     // Log success
     await supabase
       .from('registration_logs')
@@ -2754,6 +2924,12 @@ router.post('/setup-system-settings', async (req, res) => {
         },
         initiated_by: req.user?.email || 'system'
       });
+
+    // Track usage
+    UsageTrackingService.trackRegistrationStep(organisationId, 'finalize_setup', {
+      restaurant_id: restaurantId,
+      step: 'system_settings'
+    }).catch(err => console.error('[UsageTracking] Failed to track system settings:', err));
 
     res.json({
       success: true,
@@ -2965,6 +3141,12 @@ router.post('/create-api-key', async (req, res) => {
         initiated_by: req.user?.email || 'system'
       });
 
+    // Track usage
+    UsageTrackingService.trackRegistrationStep(organisationId, 'finalize_setup', {
+      restaurant_id: restaurantId,
+      step: 'api_key'
+    }).catch(err => console.error('[UsageTracking] Failed to track API key creation:', err));
+
     res.json({
       success: true,
       message: 'API key created successfully',
@@ -3157,6 +3339,12 @@ router.post('/configure-uber-integration', async (req, res) => {
         },
         initiated_by: req.user?.email || 'system'
       });
+
+    // Track usage
+    UsageTrackingService.trackRegistrationStep(organisationId, 'finalize_setup', {
+      restaurant_id: restaurantId,
+      step: 'uber_integration'
+    }).catch(err => console.error('[UsageTracking] Failed to track Uber integration:', err));
 
     res.json({
       success: true,

@@ -5,32 +5,15 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Textarea } from '../ui/textarea';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../ui/select';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '../ui/dropdown-menu';
-import { DateTimePicker } from '../ui/date-time-picker';
-import { useToast } from '../../hooks/use-toast';
-import {
+  Calendar,
   User,
+  Flag,
   CheckCircle2,
   XCircle,
   Circle,
@@ -43,58 +26,28 @@ import {
   Instagram,
   Facebook,
   Copy,
-  Check,
-  ChevronDown,
-  Edit,
-  Trash2,
+  Check
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { InfoField, formatCurrency, formatPercentage, formatWebsiteType } from '../demo-meeting/InfoField';
 import { BooleanField } from '../demo-meeting/BooleanField';
 import { TagList } from '../demo-meeting/TagList';
-import { QualificationForm } from '../demo-meeting/QualificationForm';
-import { QualificationData } from '../../lib/qualification-constants';
 
 interface TaskDetailModalProps {
   open: boolean;
   taskId: string | null;
   onClose: () => void;
-  onSuccess?: () => void;
-  initialMode?: 'view' | 'edit';
 }
 
-export function TaskDetailModal({ open, taskId, onClose, onSuccess, initialMode = 'view' }: TaskDetailModalProps) {
+export function TaskDetailModal({ open, taskId, onClose }: TaskDetailModalProps) {
   const navigate = useNavigate();
-  const { toast } = useToast();
-
-  // Core state
-  const [mode, setMode] = useState<'view' | 'edit'>(initialMode);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [task, setTask] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  // Form state for edit mode
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    type: 'internal_activity',
-    priority: 'medium',
-    status: 'pending',
-    message: '',
-    subject_line: ''
-  });
-  const [dueDate, setDueDate] = useState<Date | null>(null);
-
-  // Qualification data state (for demo_meeting type)
-  const [originalQualData, setOriginalQualData] = useState<QualificationData>({});
-  const [qualificationData, setQualificationData] = useState<QualificationData>({});
-
-  // Reset mode when modal opens/closes or taskId changes
   useEffect(() => {
     if (open && taskId) {
-      setMode(initialMode);
       fetchTaskDetails();
     }
   }, [open, taskId]);
@@ -105,33 +58,7 @@ export function TaskDetailModal({ open, taskId, onClose, onSuccess, initialMode 
     setLoading(true);
     try {
       const response = await api.get(`/tasks/${taskId}`);
-      const taskData = response.data.task;
-      setTask(taskData);
-
-      // Initialize form data from task
-      setFormData({
-        name: taskData.name || '',
-        description: taskData.description || '',
-        type: taskData.type || 'internal_activity',
-        priority: taskData.priority || 'medium',
-        status: taskData.status || 'pending',
-        message: taskData.message || '',
-        subject_line: taskData.subject_line || ''
-      });
-
-      // Set due date
-      setDueDate(taskData.due_date ? new Date(taskData.due_date) : null);
-
-      // Load qualification data for demo_meeting tasks
-      if (taskData.type === 'demo_meeting' && taskData.metadata?.qualification_data) {
-        const qualData = taskData.metadata.qualification_data;
-        setOriginalQualData(qualData);
-        setQualificationData(qualData);
-      } else {
-        setOriginalQualData({});
-        setQualificationData({});
-      }
-
+      setTask(response.data.task);
       setError(null);
     } catch (err: any) {
       console.error('Failed to fetch task details:', err);
@@ -151,207 +78,6 @@ export function TaskDetailModal({ open, taskId, onClose, onSuccess, initialMode 
     }
   };
 
-  // Inline update handlers (for view mode quick edits)
-  const handleInlineStatusChange = async (newStatus: string) => {
-    try {
-      if (newStatus === 'completed') {
-        await api.patch(`/tasks/${taskId}/complete`);
-      } else if (newStatus === 'cancelled') {
-        await api.patch(`/tasks/${taskId}/cancel`);
-      } else {
-        await api.patch(`/tasks/${taskId}`, { status: newStatus });
-      }
-
-      // Update local state
-      setTask((prev: any) => ({ ...prev, status: newStatus }));
-      setFormData(prev => ({ ...prev, status: newStatus }));
-
-      toast({
-        title: "Status Updated",
-        description: `Task status changed to ${newStatus}`
-      });
-
-      onSuccess?.();
-    } catch (err: any) {
-      toast({
-        title: "Error",
-        description: err.response?.data?.error || 'Failed to update status',
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleInlinePriorityChange = async (newPriority: string) => {
-    try {
-      await api.patch(`/tasks/${taskId}`, { priority: newPriority });
-
-      // Update local state
-      setTask((prev: any) => ({ ...prev, priority: newPriority }));
-      setFormData(prev => ({ ...prev, priority: newPriority }));
-
-      toast({
-        title: "Priority Updated",
-        description: `Task priority changed to ${newPriority}`
-      });
-
-      onSuccess?.();
-    } catch (err: any) {
-      toast({
-        title: "Error",
-        description: err.response?.data?.error || 'Failed to update priority',
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleInlineDueDateChange = async (newDate: Date | null) => {
-    try {
-      await api.patch(`/tasks/${taskId}`, {
-        due_date: newDate ? newDate.toISOString() : null
-      });
-
-      // Update local state
-      setTask((prev: any) => ({ ...prev, due_date: newDate?.toISOString() || null }));
-      setDueDate(newDate);
-
-      toast({
-        title: "Due Date Updated",
-        description: newDate ? `Due date set to ${newDate.toLocaleDateString()}` : 'Due date cleared'
-      });
-
-      onSuccess?.();
-    } catch (err: any) {
-      toast({
-        title: "Error",
-        description: err.response?.data?.error || 'Failed to update due date',
-        variant: "destructive"
-      });
-    }
-  };
-
-  // Full update handler (for edit mode)
-  const handleSaveChanges = async () => {
-    if (!formData.name || !formData.type) {
-      setError('Please fill in required fields');
-      return;
-    }
-
-    setSaving(true);
-    setError(null);
-
-    try {
-      const updateData: any = { ...formData };
-
-      // Add due_date
-      if (dueDate) {
-        updateData.due_date = dueDate.toISOString();
-      } else {
-        updateData.due_date = null;
-      }
-
-      // For demo_meeting tasks, track changed qualification fields
-      if (formData.type === 'demo_meeting') {
-        const changedFields: Record<string, any> = {};
-
-        (Object.keys(qualificationData) as Array<keyof QualificationData>).forEach((key) => {
-          const currentValue = qualificationData[key];
-          const originalValue = originalQualData[key];
-
-          if (Array.isArray(currentValue) && Array.isArray(originalValue)) {
-            if (JSON.stringify(currentValue) !== JSON.stringify(originalValue)) {
-              changedFields[key] = currentValue;
-            }
-          } else if (currentValue !== originalValue) {
-            changedFields[key] = currentValue;
-          }
-        });
-
-        (Object.keys(originalQualData) as Array<keyof QualificationData>).forEach((key) => {
-          if (!(key in qualificationData) || qualificationData[key] === null || qualificationData[key] === undefined) {
-            if (originalQualData[key] !== null && originalQualData[key] !== undefined) {
-              changedFields[key] = null;
-            }
-          }
-        });
-
-        if (Object.keys(changedFields).length > 0) {
-          updateData.qualification_data_changes = changedFields;
-        }
-      }
-
-      const response = await api.patch(`/tasks/${taskId}`, updateData);
-      if (response.data.success) {
-        toast({
-          title: "Success",
-          description: "Task updated successfully"
-        });
-
-        // Refresh task data and switch back to view mode
-        await fetchTaskDetails();
-        setMode('view');
-        onSuccess?.();
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to update task');
-      toast({
-        title: "Error",
-        description: err.response?.data?.error || 'Failed to update task',
-        variant: "destructive"
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
-      return;
-    }
-
-    setSaving(true);
-    try {
-      await api.delete(`/tasks/${taskId}`);
-      toast({
-        title: "Success",
-        description: "Task deleted successfully"
-      });
-      onSuccess?.();
-      onClose();
-    } catch (err: any) {
-      toast({
-        title: "Error",
-        description: err.response?.data?.error || 'Failed to delete task',
-        variant: "destructive"
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleCancelEdit = () => {
-    // Reset form data to task values
-    if (task) {
-      setFormData({
-        name: task.name || '',
-        description: task.description || '',
-        type: task.type || 'internal_activity',
-        priority: task.priority || 'medium',
-        status: task.status || 'pending',
-        message: task.message || '',
-        subject_line: task.subject_line || ''
-      });
-      setDueDate(task.due_date ? new Date(task.due_date) : null);
-
-      if (task.type === 'demo_meeting' && task.metadata?.qualification_data) {
-        setQualificationData(task.metadata.qualification_data);
-      } else {
-        setQualificationData({});
-      }
-    }
-    setMode('view');
-  };
-
-  // Icon and badge helpers
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed':
@@ -372,6 +98,7 @@ export function TaskDetailModal({ open, taskId, onClose, onSuccess, initialMode 
       case 'call':
         return <Phone className="h-4 w-4" />;
       case 'social_message':
+        return <MessageSquare className="h-4 w-4" />;
       case 'text':
         return <MessageSquare className="h-4 w-4" />;
       default:
@@ -379,20 +106,33 @@ export function TaskDetailModal({ open, taskId, onClose, onSuccess, initialMode 
     }
   };
 
-  const statusConfig = {
-    pending: { label: 'Pending', color: 'bg-gray-100 text-gray-800', icon: <Circle className="h-4 w-4 text-gray-400" /> },
-    active: { label: 'Active', color: 'bg-blue-100 text-blue-800', icon: <Circle className="h-4 w-4 text-blue-600" /> },
-    completed: { label: 'Completed', color: 'bg-green-100 text-green-800', icon: <CheckCircle2 className="h-4 w-4 text-green-600" /> },
-    cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800', icon: <XCircle className="h-4 w-4 text-red-600" /> }
+  const getPriorityBadge = (priority: string) => {
+    const colors = {
+      low: 'bg-gray-100 text-gray-800 border-gray-200',
+      medium: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      high: 'bg-red-100 text-red-800 border-red-200'
+    };
+    return (
+      <Badge variant="outline" className={cn('capitalize', colors[priority as keyof typeof colors])}>
+        {priority}
+      </Badge>
+    );
   };
 
-  const priorityConfig = {
-    low: { label: 'Low', color: 'bg-gray-100 text-gray-800 border-gray-200' },
-    medium: { label: 'Medium', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-    high: { label: 'High', color: 'bg-red-100 text-red-800 border-red-200' }
+  const getStatusBadge = (status: string) => {
+    const colors = {
+      pending: 'bg-gray-100 text-gray-800',
+      active: 'bg-blue-100 text-blue-800',
+      completed: 'bg-green-100 text-green-800',
+      cancelled: 'bg-red-100 text-red-800'
+    };
+    return (
+      <Badge variant="outline" className={cn('capitalize', colors[status as keyof typeof colors])}>
+        {status}
+      </Badge>
+    );
   };
 
-  // Loading state
   if (loading) {
     return (
       <Dialog open={open} onOpenChange={onClose}>
@@ -405,8 +145,7 @@ export function TaskDetailModal({ open, taskId, onClose, onSuccess, initialMode 
     );
   }
 
-  // Error state
-  if (error && !task) {
+  if (error || !task) {
     return (
       <Dialog open={open} onOpenChange={onClose}>
         <DialogContent className="sm:max-w-[700px]">
@@ -418,188 +157,6 @@ export function TaskDetailModal({ open, taskId, onClose, onSuccess, initialMode 
     );
   }
 
-  if (!task) return null;
-
-  // ============================================================
-  // EDIT MODE
-  // ============================================================
-  if (mode === 'edit') {
-    return (
-      <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Task</DialogTitle>
-            <DialogDescription>
-              Update task details and information
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            {error && (
-              <div className="bg-red-50 text-red-800 p-3 rounded-md text-sm">
-                {error}
-              </div>
-            )}
-
-            {/* Task Name */}
-            <div className="space-y-2">
-              <Label htmlFor="name">Task Name *</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., Follow up on demo booking"
-              />
-            </div>
-
-            {/* Description */}
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Additional details..."
-                rows={3}
-              />
-            </div>
-
-            {/* Status, Type and Priority */}
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(v) => setFormData({ ...formData, status: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Type *</Label>
-                <Select
-                  value={formData.type}
-                  onValueChange={(v) => setFormData({ ...formData, type: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="internal_activity">Internal Activity</SelectItem>
-                    <SelectItem value="demo_meeting">Demo Meeting</SelectItem>
-                    <SelectItem value="email">Email</SelectItem>
-                    <SelectItem value="call">Call</SelectItem>
-                    <SelectItem value="social_message">Social Message</SelectItem>
-                    <SelectItem value="text">Text</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Priority</Label>
-                <Select
-                  value={formData.priority}
-                  onValueChange={(v) => setFormData({ ...formData, priority: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Due Date */}
-            <div className="space-y-2">
-              <Label>Due Date</Label>
-              <DateTimePicker
-                value={dueDate}
-                onChange={setDueDate}
-                placeholder="Set due date"
-              />
-            </div>
-
-            {/* Message (for communication tasks) */}
-            {['email', 'social_message', 'text'].includes(formData.type) && (
-              <div className="space-y-4">
-                {formData.type === 'email' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="subject_line">Email Subject Line</Label>
-                    <Input
-                      id="subject_line"
-                      value={formData.subject_line}
-                      onChange={(e) => setFormData({ ...formData, subject_line: e.target.value })}
-                      placeholder="Enter email subject... (supports variables like {restaurant_name})"
-                    />
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <Label htmlFor="message">Message</Label>
-                  <Textarea
-                    id="message"
-                    value={formData.message}
-                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                    placeholder="Use variables like {restaurant_name}, {contact_name}, etc."
-                    rows={5}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Available variables: {'{restaurant_name}'}, {'{contact_name}'}, {'{first_name}'}, {'{city}'}, {'{cuisine}'}, {'{demo_store_url}'}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Qualification Form (for demo_meeting tasks) */}
-            {formData.type === 'demo_meeting' && (
-              <QualificationForm
-                data={qualificationData}
-                onChange={(field, value) => {
-                  setQualificationData(prev => ({ ...prev, [field]: value }));
-                }}
-              />
-            )}
-          </div>
-
-          <DialogFooter className="flex justify-between">
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={saving}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete Task
-            </Button>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleCancelEdit} disabled={saving}>
-                Cancel
-              </Button>
-              <Button onClick={handleSaveChanges} disabled={saving}>
-                {saving ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  // ============================================================
-  // VIEW MODE (Default)
-  // ============================================================
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
@@ -614,39 +171,12 @@ export function TaskDetailModal({ open, taskId, onClose, onSuccess, initialMode 
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* Status and Metadata - With Inline Editing */}
+          {/* Status and Metadata */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {/* Status - Inline Dropdown */}
             <div>
               <div className="text-xs text-muted-foreground mb-1">Status</div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-auto p-0 hover:bg-transparent">
-                    <Badge
-                      variant="outline"
-                      className={cn('capitalize cursor-pointer hover:opacity-80', statusConfig[task.status as keyof typeof statusConfig]?.color)}
-                    >
-                      {task.status}
-                      <ChevronDown className="h-3 w-3 ml-1" />
-                    </Badge>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  {Object.entries(statusConfig).map(([value, config]) => (
-                    <DropdownMenuItem
-                      key={value}
-                      onClick={() => handleInlineStatusChange(value)}
-                      className="flex items-center gap-2"
-                    >
-                      {config.icon}
-                      {config.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {getStatusBadge(task.status)}
             </div>
-
-            {/* Type - Display Only */}
             <div>
               <div className="text-xs text-muted-foreground mb-1">Type</div>
               <div className="flex items-center gap-1">
@@ -656,46 +186,20 @@ export function TaskDetailModal({ open, taskId, onClose, onSuccess, initialMode 
                 </span>
               </div>
             </div>
-
-            {/* Priority - Inline Dropdown */}
             <div>
               <div className="text-xs text-muted-foreground mb-1">Priority</div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-auto p-0 hover:bg-transparent">
-                    <Badge
-                      variant="outline"
-                      className={cn('capitalize cursor-pointer hover:opacity-80', priorityConfig[task.priority as keyof typeof priorityConfig]?.color)}
-                    >
-                      {task.priority}
-                      <ChevronDown className="h-3 w-3 ml-1" />
-                    </Badge>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  {Object.entries(priorityConfig).map(([value, config]) => (
-                    <DropdownMenuItem
-                      key={value}
-                      onClick={() => handleInlinePriorityChange(value)}
-                    >
-                      <Badge variant="outline" className={cn('mr-2', config.color)}>
-                        {config.label}
-                      </Badge>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {getPriorityBadge(task.priority)}
             </div>
-
-            {/* Due Date - Inline DateTimePicker */}
             <div>
               <div className="text-xs text-muted-foreground mb-1">Due Date</div>
-              <DateTimePicker
-                value={task.due_date ? new Date(task.due_date) : null}
-                onChange={handleInlineDueDateChange}
-                placeholder="Set due date"
-                className="h-8 text-sm"
-              />
+              {task.due_date ? (
+                <div className="flex items-center gap-1 text-sm">
+                  <Calendar className="h-4 w-4" />
+                  {new Date(task.due_date).toLocaleDateString()}
+                </div>
+              ) : (
+                <span className="text-sm text-muted-foreground">-</span>
+              )}
             </div>
           </div>
 
@@ -1004,7 +508,7 @@ export function TaskDetailModal({ open, taskId, onClose, onSuccess, initialMode 
             </div>
           )}
 
-          {/* Rendered Message (with variables replaced) */}
+          {/* Rendered Message (with variables replaced) - Show FIRST for communication tasks */}
           {task.message_rendered && (
             <div>
               <div className="flex items-center justify-between mb-1">
@@ -1104,26 +608,9 @@ export function TaskDetailModal({ open, taskId, onClose, onSuccess, initialMode 
           </div>
         </div>
 
-        {/* Footer with Delete, Cancel, Edit buttons */}
-        <DialogFooter className="flex justify-between">
-          <Button
-            variant="destructive"
-            onClick={handleDelete}
-            disabled={saving}
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete
-          </Button>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button onClick={() => setMode('edit')}>
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
-            </Button>
-          </div>
-        </DialogFooter>
+        <div className="flex justify-end pt-4 border-t">
+          <Button onClick={onClose}>Close</Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

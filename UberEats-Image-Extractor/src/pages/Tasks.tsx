@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import api from '../services/api';
 import { format } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
@@ -62,7 +62,6 @@ import { Calendar as CalendarComponent } from '../components/ui/calendar';
 import { DateTimePicker } from '../components/ui/date-time-picker';
 import { cn } from '../lib/utils';
 import { CreateTaskModal } from '../components/tasks/CreateTaskModal';
-import { EditTaskModal } from '../components/tasks/EditTaskModal';
 import { TaskDetailModal } from '../components/tasks/TaskDetailModal';
 import { TaskTypeQuickView } from '../components/tasks/TaskTypeQuickView';
 import { StartSequenceModal } from '../components/sequences/StartSequenceModal';
@@ -1349,12 +1348,12 @@ export default function Tasks() {
                   </TableCell>
                   <TableCell>
                     {task.restaurants ? (
-                      <div
-                        className="text-sm cursor-pointer hover:text-brand-blue"
-                        onClick={() => navigate(`/restaurants/${task.restaurant_id}`)}
+                      <Link
+                        to={`/restaurants/${task.restaurant_id}`}
+                        className="text-sm hover:text-brand-blue"
                       >
                         {task.restaurants.name}
-                      </div>
+                      </Link>
                     ) : '-'}
                   </TableCell>
                   <TableCell>
@@ -1665,11 +1664,12 @@ export default function Tasks() {
       )}
 
       {modals.edit && (
-        <EditTaskModal
+        <TaskDetailModal
           open={!!modals.edit}
           taskId={modals.edit}
           onClose={() => setModals({ ...modals, edit: null })}
           onSuccess={fetchTasks}
+          initialMode="edit"
         />
       )}
 
@@ -1678,6 +1678,7 @@ export default function Tasks() {
           open={!!modals.detail}
           taskId={modals.detail}
           onClose={() => setModals({ ...modals, detail: null })}
+          onSuccess={fetchTasks}
         />
       )}
 

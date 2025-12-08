@@ -1,7 +1,7 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { AuthContextType, UserProfile, UserRole } from '../types/auth';
+import { AuthContextType, UserProfile, UserRole, FeatureFlags } from '../types/auth';
 import { useNavigate } from 'react-router-dom';
 import { InvitationService } from '../services/invitation-service';
 
@@ -22,6 +22,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isLoadingProfile, setIsLoadingProfile] = useState<boolean>(false);
+  const [featureFlags, setFeatureFlags] = useState<FeatureFlags | null>(null);
   const navigate = useNavigate();
   
   // Simple function to load user profile with retry logic
@@ -60,14 +61,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('Fetching organisation:', profile.organisation_id);
         const { data: orgData, error: orgError } = await supabase
           .from('organisations')
-          .select('*')
+          .select('*, feature_flags')
           .eq('id', profile.organisation_id)
           .single();
-        
+
         console.log('Organisation fetch result:', { orgData, orgError });
-        
+
         if (!orgError && orgData) {
           organisation = orgData;
+          // Set feature flags from organisation
+          setFeatureFlags(orgData.feature_flags || {});
         } else if (orgError) {
           console.error('Failed to fetch organisation:', orgError);
           console.error('Organisation ID:', profile.organisation_id);
@@ -78,6 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             name: `Organization (ID: ${profile.organisation_id})`,
             // This helps us see if the org ID is correct even if we can't fetch details
           };
+          setFeatureFlags({});
         }
       }
 
@@ -200,20 +204,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       console.log('Logout initiated');
-      
+
       // Clear user state immediately
       setUser(null);
       setIsLoadingProfile(false);
-      
+      setFeatureFlags(null);
+
       // Clear organization ID from localStorage
       localStorage.removeItem('currentOrgId');
-      
+
       // Sign out from Supabase
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error('Supabase signOut error:', error);
       }
-      
+
       // Navigate to login
       navigate('/login');
     } catch (error: any) {
@@ -234,16 +239,69 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const hasRole = (role: UserRole) => {
     if (!user) return false;
-    
+
     // Super admin has all permissions
     if (user.role === 'super_admin') return true;
-    
+
     // Admin has admin and user permissions
     if (user.role === 'admin' && (role === 'admin' || role === 'user')) return true;
-    
+
     // User only has user permissions
     return user.role === role;
   };
+
+  // Feature flag check function
+  const isFeatureEnabled = useCallback((path: string): boolean => {
+    if (!featureFlags) return false;
+
+    const parts = path.split('.');
+    let current: any = featureFlags;
+
+    for (const part of parts) {
+      if (current === undefined || current === null) {
+        return false;
+      }
+      current = current[part];
+    }
+
+    // Handle different value types
+    if (typeof current === 'boolean') {
+      return current;
+    }
+
+    if (typeof current === 'object' && current !== null) {
+      // Check for { enabled: boolean } pattern
+      if ('enabled' in current) {
+        return current.enabled === true;
+      }
+      // If it's an object without 'enabled', consider it enabled if it exists
+      return true;
+    }
+
+    return false;
+  }, [featureFlags]);
+
+  // Refetch feature flags (useful after super admin modifies them)
+  const refetchFeatureFlags = useCallback(async () => {
+    if (!user?.organisationId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('organisations')
+        .select('feature_flags')
+        .eq('id', user.organisationId)
+        .single();
+
+      if (error) {
+        console.error('Error refetching feature flags:', error);
+        return;
+      }
+
+      setFeatureFlags(data?.feature_flags || {});
+    } catch (err) {
+      console.error('Error refetching feature flags:', err);
+    }
+  }, [user?.organisationId]);
 
   // Initialize auth state on mount
   useEffect(() => {
@@ -293,8 +351,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (event === 'SIGNED_OUT' && mounted) {
         console.log('SIGNED_OUT event - clearing user state');
         setUser(null);
+        setFeatureFlags(null);
         localStorage.removeItem('currentOrgId');
-        
+
         // Navigate to login if we're not already there
         if (window.location.pathname !== '/login') {
           navigate('/login');
@@ -405,6 +464,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isAdmin,
     isSuperAdmin,
     hasRole,
+    // Feature flags
+    featureFlags,
+    isFeatureEnabled,
+    refetchFeatureFlags,
     // Invitation functions (only for admins)
     ...(user && isAdmin() ? {
       inviteUser,
