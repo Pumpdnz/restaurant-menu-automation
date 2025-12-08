@@ -12,7 +12,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '../components/ui/tooltip';
-import { detectPlatform, extractRestaurantName } from '../utils/platform-detector';
+import { detectPlatform, extractRestaurantName } from '../utils/platform-detector.esm';
 import { useAuth } from '../context/AuthContext';
 
 export default function NewExtraction() {
