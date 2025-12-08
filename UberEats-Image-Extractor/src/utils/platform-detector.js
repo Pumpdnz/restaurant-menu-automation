@@ -435,18 +435,8 @@ function getExtractionConfig(platform) {
   }
 }
 
-// CommonJS exports for Node.js
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    detectPlatform,
-    extractRestaurantName,
-    getExtractionConfig,
-    PLATFORM_CONFIG
-  };
-}
-
-// ES6 exports for browser/React
-export {
+// CommonJS exports
+module.exports = {
   detectPlatform,
   extractRestaurantName,
   getExtractionConfig,
