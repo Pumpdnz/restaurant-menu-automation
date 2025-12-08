@@ -1,5 +1,6 @@
 # Use Node.js with Playwright pre-installed
-FROM mcr.microsoft.com/playwright:v1.40.0-jammy
+# Version must match playwright package in scripts/restaurant-registration/package.json
+FROM mcr.microsoft.com/playwright:v1.54.0-jammy
 
 # Set working directory
 WORKDIR /app
@@ -33,13 +34,12 @@ RUN mkdir -p /app/extracted-menus /app/generated-code /tmp/csv-uploads
 # Set working directory for the app
 WORKDIR /app/UberEats-Image-Extractor
 
-# Expose ports
+# Expose the port Railway will use (dynamic via $PORT env var)
+# Railway ignores EXPOSE and uses PORT env var instead
 EXPOSE 3007
-EXPOSE 5007
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD curl -f http://localhost:3007/api/health || exit 1
+# Note: Railway handles health checks via railway.json, not Docker HEALTHCHECK
+# The health endpoint is at /api/health
 
 # Start the server
 CMD ["node", "server.js"]

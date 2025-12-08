@@ -435,15 +435,10 @@ function getExtractionConfig(platform) {
   }
 }
 
-// CommonJS exports (for Node.js/server-side)
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    detectPlatform,
-    extractRestaurantName,
-    getExtractionConfig,
-    PLATFORM_CONFIG
-  };
-}
-
-// ESM exports (for Vite/frontend)
-export { detectPlatform, extractRestaurantName, getExtractionConfig, PLATFORM_CONFIG };
+// CommonJS exports only - Vite can import CommonJS files
+module.exports = {
+  detectPlatform,
+  extractRestaurantName,
+  getExtractionConfig,
+  PLATFORM_CONFIG
+};
