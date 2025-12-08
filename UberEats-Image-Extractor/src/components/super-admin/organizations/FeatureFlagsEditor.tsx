@@ -42,6 +42,10 @@ const FEATURE_LABELS: Record<string, string> = {
   leadScraping: 'Lead Scraping',
   brandingExtraction: 'Branding Extraction',
   registration: 'Registration Features',
+  integrations: 'API Integrations',
+
+  // Integrations sub-features
+  cloudwaitressIntegration: 'CloudWaitress Integration',
 
   // Registration sub-features
   userAccountRegistration: 'User Account Registration',
@@ -85,6 +89,10 @@ const FEATURE_DESCRIPTIONS: Record<string, string> = {
   leadScraping: 'Lead discovery and enrichment from platforms',
   brandingExtraction: 'Brand colors and logo extraction using Firecrawl',
   registration: 'Restaurant registration automation on Pumpd',
+  integrations: 'Third-party API integrations and custom credentials',
+
+  // Integrations sub-features
+  cloudwaitressIntegration: 'Configure custom CloudWaitress API credentials for restaurant registration',
 
   // Registration sub-features
   userAccountRegistration: 'Create user accounts on Pumpd dashboard',

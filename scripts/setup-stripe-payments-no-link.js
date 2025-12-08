@@ -24,14 +24,21 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import dotenv from 'dotenv';
 
+// Import shared browser configuration (ESM version)
+import {
+  createBrowser,
+  createContext,
+  takeScreenshot as sharedTakeScreenshot
+} from './lib/browser-config.mjs';
+
 const require = createRequire(import.meta.url);
 const { chromium } = require('./restaurant-registration/node_modules/playwright');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load environment variables
-dotenv.config();
+// Load environment variables from centralized .env file
+dotenv.config({ path: path.join(__dirname, '../UberEats-Image-Extractor/.env') });
 
 // Configuration
 const LOGIN_URL = "https://admin.pumpd.co.nz/login";
@@ -56,12 +63,10 @@ if (!email || !password || !restaurantName) {
   process.exit(1);
 }
 
-// Utility function for screenshots
+// Screenshot utility - uses shared config (disabled by default)
+const SCREENSHOT_DIR = path.join(__dirname, 'screenshots');
 const takeScreenshot = async (page, name) => {
-  const screenshotPath = path.join(__dirname, 'screenshots', `payments-settings-${name}-${Date.now()}.png`);
-  await fs.mkdir(path.dirname(screenshotPath), { recursive: true });
-  await page.screenshot({ path: screenshotPath, fullPage: true });
-  console.log(`📸 Screenshot: ${screenshotPath}`);
+  return sharedTakeScreenshot(page, `payments-settings-${name}`, SCREENSHOT_DIR);
 };
 
 async function setupStripePayments() {
@@ -74,16 +79,8 @@ async function setupStripePayments() {
   console.log(`  Debug Mode: ${DEBUG_MODE}`);
   console.log('');
   
-  const browser = await chromium.launch({
-    headless: false,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    slowMo: 100
-  });
-  
-  const context = await browser.newContext({
-    viewport: { width: 1280, height: 800 },
-    ignoreHTTPSErrors: true
-  });
+  const browser = await createBrowser(chromium);
+  const context = await createContext(browser);
   
   const page = await context.newPage();
   

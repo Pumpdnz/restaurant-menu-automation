@@ -5267,7 +5267,7 @@ app.post('/api/google-business-search', async (req, res) => {
     console.log('[Google Business Search] Searching for platform URLs...');
     
     // Combine into a single search query to avoid rate limits
-    const combinedQuery = `"${restaurantName}" "${city}" New Zealand (website OR ubereats OR doordash OR delivereasy OR facebook OR instagram OR menu OR order online)`;
+    const combinedQuery = `${restaurantName} ${city} New Zealand website`;
     
     try {
       const searchResponse = await axios.post(

@@ -24,12 +24,22 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import dotenv from 'dotenv';
+
+// Import shared browser configuration (ESM version)
+import {
+  createBrowser,
+  createContext
+} from './lib/browser-config.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('./restaurant-registration/node_modules/playwright');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Load environment variables from centralized .env file
+dotenv.config({ path: path.join(__dirname, '../UberEats-Image-Extractor/.env') });
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -59,15 +69,8 @@ console.log(`🎨 Secondary Color: ${secondaryColor}`);
 console.log(`🎭 Theme: ${lightMode ? 'Light' : 'Dark'} mode\n`);
 
 async function customizeOrderingPage() {
-  const browser = await chromium.launch({ 
-    headless: false,
-    args: ['--disable-blink-features=AutomationControlled']
-  });
-  
-  const context = await browser.newContext({
-    viewport: { width: 1400, height: 900 },
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
-  });
+  const browser = await createBrowser(chromium);
+  const context = await createContext(browser);
   
   const page = await context.newPage();
 

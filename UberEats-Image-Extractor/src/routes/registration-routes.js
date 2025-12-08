@@ -7,6 +7,7 @@ const multer = require('multer');
 const fs = require('fs').promises;
 const path = require('path');
 const { UsageTrackingService } = require('../services/usage-tracking-service');
+const { OrganizationSettingsService } = require('../services/organization-settings-service');
 const {
   requireRegistrationUserAccount,
   requireRegistrationRestaurant,
@@ -194,12 +195,13 @@ router.post('/register-account', requireRegistrationUserAccount, async (req, res
         initiated_by: req.user?.email || 'system'
       });
     
-    // Call CloudWaitress API to register user
+    // Call CloudWaitress API to register user with organization-specific credentials
     const CloudWaitressAPIService = require('../services/cloudwaitress-api-service');
-    const cloudWaitressAPI = new CloudWaitressAPIService();
-    
+    const cwConfig = await OrganizationSettingsService.getCloudWaitressConfig(organisationId);
+    const cloudWaitressAPI = new CloudWaitressAPIService(cwConfig);
+
     try {
-      console.log('[Registration] Starting CloudWaitress API call');
+      console.log('[Registration] Starting CloudWaitress API call for org:', organisationId);
       console.log('[Registration] Email:', email);
       console.log('[Registration] Phone:', phone);
       console.log('[Registration] Password format check - starts with capital:', password[0] === password[0].toUpperCase());
@@ -421,16 +423,18 @@ router.post('/register-restaurant', requireRegistrationRestaurant, async (req, r
       }
     } else {
       // For new_account_with_restaurant, we need to first create account via CloudWaitress API
-      
-      // Step 1: Register user via CloudWaitress API
+
+      // Step 1: Register user via CloudWaitress API with organization-specific credentials
       const CloudWaitressAPIService = require('../services/cloudwaitress-api-service');
-      const cloudWaitressAPI = new CloudWaitressAPIService();
-      
+      const cwConfig = await OrganizationSettingsService.getCloudWaitressConfig(organisationId);
+      const cloudWaitressAPI = new CloudWaitressAPIService(cwConfig);
+
       try {
         // Use restaurant phone for registration
         const phone = restaurant.phone || '';
-        
+
         console.log('[Registration] Creating new account via CloudWaitress API for:', email);
+        console.log('[Registration] Using credentials for org:', organisationId);
         const apiResponse = await cloudWaitressAPI.registerUser(email, phone, password);
         
         if (apiResponse.success || apiResponse.alreadyExists) {

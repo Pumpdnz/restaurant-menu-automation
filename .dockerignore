@@ -1,0 +1,54 @@
+# Node modules (will be installed in container)
+**/node_modules
+
+# Git
+.git
+.gitignore
+
+# Development/test files
+**/*.log
+**/test-*.js
+**/*.test.js
+**/*.spec.js
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files (set in Railway/production)
+**/.env
+**/.env.*
+!**/.env.example
+
+# Screenshots (not needed in production)
+**/screenshots
+
+# Build artifacts (frontend will be on Netlify)
+UberEats-Image-Extractor/dist
+
+# Planning docs
+planning/
+
+# Claude sessions
+.claude/
+
+# Backup files
+**/*.backup
+**/*.backup.*
+**/server.js.backup
+**/server.backup.js
+
+# Large test/debug files
+**/*.html
+!UberEats-Image-Extractor/public/**/*.html
+!UberEats-Image-Extractor/index.html
+
+# Documentation (not needed in runtime)
+**/*.md
+!README.md

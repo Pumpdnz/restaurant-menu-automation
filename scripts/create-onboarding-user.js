@@ -28,12 +28,23 @@ import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import dotenv from 'dotenv';
+
+// Import shared browser configuration (ESM version)
+import {
+  createBrowser,
+  createContext,
+  takeScreenshot as sharedTakeScreenshot
+} from './lib/browser-config.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('./restaurant-registration/node_modules/playwright');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Load environment variables from centralized .env file
+dotenv.config({ path: path.join(__dirname, '../UberEats-Image-Extractor/.env') });
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -69,14 +80,10 @@ if (!userName || !userEmail || !userPassword) {
   process.exit(1);
 }
 
-// Utility function for screenshots
+// Screenshot utility - uses shared config (disabled by default)
+const SCREENSHOT_DIR = path.join(__dirname, 'screenshots');
 const takeScreenshot = async (page, name) => {
-  const screenshotDir = path.join(__dirname, 'screenshots');
-  await fs.mkdir(screenshotDir, { recursive: true });
-  const screenshotPath = path.join(screenshotDir, `onboarding-user-${name}-${Date.now()}.png`);
-  await page.screenshot({ path: screenshotPath, fullPage: true });
-  console.log(`📸 Screenshot: ${screenshotPath}`);
-  return screenshotPath;
+  return sharedTakeScreenshot(page, `onboarding-user-${name}`, SCREENSHOT_DIR);
 };
 
 async function createOnboardingUser() {
@@ -90,21 +97,8 @@ async function createOnboardingUser() {
   console.log(`  Debug Mode: ${DEBUG_MODE}`);
   console.log('');
   
-  const browser = await chromium.launch({
-    headless: false,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-blink-features=AutomationControlled'
-    ],
-    slowMo: 100
-  });
-  
-  const context = await browser.newContext({
-    viewport: { width: 1400, height: 900 },
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    ignoreHTTPSErrors: true
-  });
+  const browser = await createBrowser(chromium);
+  const context = await createContext(browser);
   
   const page = await context.newPage();
   

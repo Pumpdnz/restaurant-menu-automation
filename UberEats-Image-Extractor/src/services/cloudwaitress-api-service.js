@@ -4,13 +4,25 @@ const crypto = require('crypto');
  * CloudWaitress API Service
  * Handles user registration through CloudWaitress API
  * Uses HMAC-SHA256 signature to bypass email verification
+ *
+ * @param {object} options - Optional configuration
+ * @param {string} options.apiUrl - CloudWaitress API URL
+ * @param {string} options.integratorId - CloudWaitress Integrator ID (CWI_xxx)
+ * @param {string} options.secret - CloudWaitress Secret (CWS_xxx)
  */
 class CloudWaitressAPIService {
-  constructor() {
-    // Use environment variables or fallback to hardcoded values
-    this.baseUrl = process.env.CLOUDWAITRESS_API_URL || 'https://api.cloudwaitress.com';
-    this.integratorId = process.env.CLOUDWAITRESS_INTEGRATOR_ID || 'CWI_e2dae966-8523-4fd6-a853-58586a296bff';
-    this.secret = process.env.CLOUDWAITRESS_SECRET || 'CWS_09908059-7b25-492f-86c9-34c672d689a4';
+  constructor(options = {}) {
+    // Accept credentials from options, fall back to environment variables
+    this.baseUrl = options.apiUrl || process.env.CLOUDWAITRESS_API_URL || 'https://api.cloudwaitress.com';
+    this.integratorId = options.integratorId || process.env.CLOUDWAITRESS_INTEGRATOR_ID || 'CWI_e2dae966-8523-4fd6-a853-58586a296bff';
+    this.secret = options.secret || process.env.CLOUDWAITRESS_SECRET || 'CWS_09908059-7b25-492f-86c9-34c672d689a4';
+
+    // Log which credentials source is being used (for debugging)
+    if (options.integratorId) {
+      console.log('[CloudWaitress] Using organization-specific credentials');
+    } else {
+      console.log('[CloudWaitress] Using default environment credentials');
+    }
   }
 
   /**

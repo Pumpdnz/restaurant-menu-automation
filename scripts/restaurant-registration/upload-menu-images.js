@@ -25,8 +25,15 @@ const { chromium } = require('playwright');
 const fs = require('fs').promises;
 const path = require('path');
 
-// Load environment variables
-require('dotenv').config();
+// Load environment variables from centralized .env file
+require('dotenv').config({ path: path.join(__dirname, '../../UberEats-Image-Extractor/.env') });
+
+// Import shared browser configuration
+const {
+  createBrowser,
+  createContext,
+  takeScreenshot: sharedTakeScreenshot
+} = require('../lib/browser-config.cjs');
 
 // Configuration
 const LOGIN_URL = "https://admin.pumpd.co.nz/login";
@@ -41,17 +48,17 @@ const getArg = (name) => {
 
 // Parse arguments
 const email = getArg('email');
-const imageMappingPath = getArg('imageMapping') || '/Users/giannimunro/Desktop/cursor-projects/automation/UberEats-Image-Extractor/downloads/extracted-images/currygarden-wellington/image-mapping.json';
-const imagesDir = getArg('imagesDir') || '/Users/giannimunro/Desktop/cursor-projects/automation/UberEats-Image-Extractor/downloads/extracted-images/currygarden-wellington';
+const imageMappingPath = getArg('imageMapping'); // Required - no default
+const imagesDir = getArg('imagesDir'); // Required - no default
 const maxUploads = parseInt(getArg('maxUploads')) || 0; // 0 means all
 
 // Use admin password from environment
 const password = process.env.ADMIN_PASSWORD || '7uo@%K2^Hz%yiXDeP39Ckp6BvF!2';
 
 // Validate required arguments
-if (!email) {
-  console.error('❌ Error: Email is required');
-  console.error('Usage: node upload-menu-images.js --email="email@example.com"');
+if (!email || !imageMappingPath || !imagesDir) {
+  console.error('❌ Error: Missing required arguments');
+  console.error('Usage: node upload-menu-images.js --email="email@example.com" --imageMapping="/path/to/image-mapping.json" --imagesDir="/path/to/images"');
   process.exit(1);
 }
 
@@ -68,12 +75,10 @@ function groupByCategory(items) {
   return grouped;
 }
 
-// Utility function for screenshots
+// Screenshot utility - uses shared config (disabled by default)
+const SCREENSHOT_DIR = path.join(__dirname, 'screenshots');
 const takeScreenshot = async (page, name) => {
-  const screenshotPath = path.join(__dirname, 'screenshots', `image-upload-${name}-${Date.now()}.png`);
-  await fs.mkdir(path.dirname(screenshotPath), { recursive: true });
-  await page.screenshot({ path: screenshotPath, fullPage: true });
-  console.log(`📸 Screenshot: ${screenshotPath}`);
+  return sharedTakeScreenshot(page, `image-upload-${name}`, SCREENSHOT_DIR);
 };
 
 // Main upload function
@@ -106,16 +111,8 @@ async function uploadMenuImages() {
   });
   console.log('');
   
-  const browser = await chromium.launch({
-    headless: false,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    slowMo: 100
-  });
-  
-  const context = await browser.newContext({
-    viewport: { width: 1280, height: 800 },
-    ignoreHTTPSErrors: true
-  });
+  const browser = await createBrowser(chromium);
+  const context = await createContext(browser);
   
   const page = await context.newPage();
   

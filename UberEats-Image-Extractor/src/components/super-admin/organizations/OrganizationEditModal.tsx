@@ -5,7 +5,7 @@ import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
 import { Alert, AlertDescription } from '../../ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
-import { Loader2, AlertCircle, Users, Settings, Activity } from 'lucide-react';
+import { Loader2, AlertCircle, Users, Settings, Activity, Key, Eye, EyeOff } from 'lucide-react';
 import { FeatureFlagsEditor } from './FeatureFlagsEditor';
 import { supabase } from '../../../lib/supabase';
 import { useToast } from '../../ui/use-toast';
@@ -26,6 +26,7 @@ export function OrganizationEditModal({ open, onClose, onSuccess, organizationId
   const [organization, setOrganization] = useState<any>(null);
   const [members, setMembers] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
+  const [showSecret, setShowSecret] = useState(false);
 
   useEffect(() => {
     if (open && organizationId) {
@@ -90,9 +91,10 @@ export function OrganizationEditModal({ open, onClose, onSuccess, organizationId
         .update({
           name: organization.name,
           feature_flags: organization.feature_flags,
-          billing_rates: Object.entries(organization.feature_flags).reduce((acc, [key, value]: [string, any]) => ({
+          settings: organization.settings,
+          billing_rates: Object.entries(organization.feature_flags || {}).reduce((acc, [key, value]: [string, any]) => ({
             ...acc,
-            [key]: value.ratePerItem
+            [key]: value?.ratePerItem
           }), {}),
           updated_at: new Date().toISOString()
         })
@@ -129,10 +131,14 @@ export function OrganizationEditModal({ open, onClose, onSuccess, organizationId
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="details" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               Details
+            </TabsTrigger>
+            <TabsTrigger value="integrations" className="flex items-center gap-2">
+              <Key className="h-4 w-4" />
+              Integrations
             </TabsTrigger>
             <TabsTrigger value="members" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
@@ -183,6 +189,100 @@ export function OrganizationEditModal({ open, onClose, onSuccess, organizationId
                 onChange={(flags) => setOrganization({ ...organization, feature_flags: flags })}
                 disabled={loading || organization.status === 'archived'}
               />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="integrations" className="space-y-6 mt-6">
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-medium">CloudWaitress API</h3>
+                <p className="text-sm text-gray-500">
+                  Configure CloudWaitress integrator credentials for this organization's restaurant registrations
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="cw-integrator-id">Integrator ID</Label>
+                  <Input
+                    id="cw-integrator-id"
+                    placeholder="CWI_xxxx-xxxx-xxxx-xxxx"
+                    value={organization.settings?.cloudwaitress?.integrator_id || ''}
+                    onChange={(e) => setOrganization({
+                      ...organization,
+                      settings: {
+                        ...organization.settings,
+                        cloudwaitress: {
+                          ...organization.settings?.cloudwaitress,
+                          integrator_id: e.target.value || null
+                        }
+                      }
+                    })}
+                    disabled={loading || organization.status === 'archived'}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cw-secret">Secret</Label>
+                  <div className="flex space-x-2">
+                    <Input
+                      id="cw-secret"
+                      type={showSecret ? 'text' : 'password'}
+                      placeholder="CWS_xxxx-xxxx-xxxx-xxxx"
+                      value={organization.settings?.cloudwaitress?.secret || ''}
+                      onChange={(e) => setOrganization({
+                        ...organization,
+                        settings: {
+                          ...organization.settings,
+                          cloudwaitress: {
+                            ...organization.settings?.cloudwaitress,
+                            secret: e.target.value || null
+                          }
+                        }
+                      })}
+                      disabled={loading || organization.status === 'archived'}
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setShowSecret(!showSecret)}
+                      type="button"
+                    >
+                      {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cw-api-url">API URL (optional)</Label>
+                  <Input
+                    id="cw-api-url"
+                    placeholder="https://api.cloudwaitress.com"
+                    value={organization.settings?.cloudwaitress?.api_url || ''}
+                    onChange={(e) => setOrganization({
+                      ...organization,
+                      settings: {
+                        ...organization.settings,
+                        cloudwaitress: {
+                          ...organization.settings?.cloudwaitress,
+                          api_url: e.target.value || null
+                        }
+                      }
+                    })}
+                    disabled={loading || organization.status === 'archived'}
+                  />
+                  <p className="text-xs text-gray-500">
+                    Leave empty to use default: https://api.cloudwaitress.com
+                  </p>
+                </div>
+              </div>
+
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Leave fields empty to use system default credentials. Custom credentials allow independent billing and tracking for this organization.
+                </AlertDescription>
+              </Alert>
             </div>
           </TabsContent>
 

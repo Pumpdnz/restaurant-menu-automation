@@ -12,11 +12,12 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { useToast } from '../components/ui/use-toast';
-import { Loader2, UserPlus, Mail, Shield, User, Trash2, RefreshCw, Copy, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, UserPlus, Mail, Shield, User, Trash2, RefreshCw, Copy, Clock, CheckCircle, XCircle, Key, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { supabase } from '../lib/supabase';
 
 export default function Settings() {
-  const { user, isAdmin, inviteUser, removeUser, updateUserRole } = useAuth();
+  const { user, isAdmin, inviteUser, removeUser, updateUserRole, isFeatureEnabled } = useAuth();
   const { toast } = useToast();
   
   const [activeTab, setActiveTab] = useState('members');
@@ -31,22 +32,39 @@ export default function Settings() {
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteUrl, setInviteUrl] = useState('');
 
+  // CloudWaitress config state
+  const [cloudwaitressConfig, setCloudwaitressConfig] = useState({
+    integratorId: '',
+    secretMasked: '',
+    apiUrl: 'https://api.cloudwaitress.com',
+    isConfigured: false,
+    updatedAt: null as string | null
+  });
+  const [showSecret, setShowSecret] = useState(false);
+  const [configLoading, setConfigLoading] = useState(false);
+  const [configSaving, setConfigSaving] = useState(false);
+  const [newIntegratorId, setNewIntegratorId] = useState('');
+  const [newSecret, setNewSecret] = useState('');
+
   // Load organization data
   useEffect(() => {
     if (user?.organisationId) {
       loadOrganizationData();
+      if (isAdmin() && isFeatureEnabled('integrations.cloudwaitressIntegration')) {
+        loadCloudWaitressConfig();
+      }
     }
-  }, [user]);
+  }, [user, isFeatureEnabled]);
 
   const loadOrganizationData = async () => {
     if (!user?.organisationId) return;
-    
+
     setLoading(true);
     try {
       // Load members
       const membersData = await InvitationService.getOrganizationMembers(user.organisationId);
       setMembers(membersData);
-      
+
       // Load pending invitations (only for admins)
       if (isAdmin()) {
         const invitesData = await InvitationService.getPendingInvitations(user.organisationId);
@@ -60,6 +78,117 @@ export default function Settings() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadCloudWaitressConfig = async () => {
+    if (!user?.organisationId || !isAdmin()) return;
+
+    setConfigLoading(true);
+    try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+
+      const response = await fetch('/api/organization/settings/cloudwaitress', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setCloudwaitressConfig(data.config);
+        // Pre-fill edit fields if configured
+        if (data.config.isConfigured) {
+          setNewIntegratorId(data.config.integratorId);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load CloudWaitress config:', error);
+    } finally {
+      setConfigLoading(false);
+    }
+  };
+
+  const saveCloudWaitressConfig = async () => {
+    if (!user?.organisationId) return;
+
+    setConfigSaving(true);
+    try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+
+      const response = await fetch('/api/organization/settings/cloudwaitress', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          integratorId: newIntegratorId || undefined,
+          secret: newSecret || undefined
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast({
+          title: 'Configuration saved',
+          description: 'CloudWaitress API credentials have been updated.'
+        });
+        setNewSecret('');
+        await loadCloudWaitressConfig();
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Failed to save configuration',
+        description: error.message,
+        variant: 'destructive'
+      });
+    } finally {
+      setConfigSaving(false);
+    }
+  };
+
+  const clearCloudWaitressConfig = async () => {
+    if (!user?.organisationId) return;
+
+    setConfigSaving(true);
+    try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+
+      const response = await fetch('/api/organization/settings/cloudwaitress', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast({
+          title: 'Configuration cleared',
+          description: 'Using system default credentials.'
+        });
+        setNewIntegratorId('');
+        setNewSecret('');
+        await loadCloudWaitressConfig();
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Failed to clear configuration',
+        description: error.message,
+        variant: 'destructive'
+      });
+    } finally {
+      setConfigSaving(false);
     }
   };
 
@@ -493,7 +622,7 @@ export default function Settings() {
                 View and manage your organization information
               </CardDescription>
             </CardHeader>
-            
+
             <CardContent className="space-y-4">
               <div>
                 <Label>Organization Name</Label>
@@ -501,14 +630,7 @@ export default function Settings() {
                   {user?.organisation?.name || 'Default Organization'}
                 </p>
               </div>
-              
-              <div>
-                <Label>Organization ID</Label>
-                <p className="text-sm text-gray-600 mt-1 font-mono">
-                  {user?.organisationId}
-                </p>
-              </div>
-              
+
               <div>
                 <Label>Your Role</Label>
                 <div className="mt-1">
@@ -518,7 +640,7 @@ export default function Settings() {
                   </Badge>
                 </div>
               </div>
-              
+
               {user?.organisation?.created_at && (
                 <div>
                   <Label>Created</Label>
@@ -529,6 +651,121 @@ export default function Settings() {
               )}
             </CardContent>
           </Card>
+
+          {/* CloudWaitress API Configuration - Admin Only + Feature Flag */}
+          {isAdmin() && isFeatureEnabled('integrations.cloudwaitressIntegration') && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center space-x-2">
+                  <Key className="h-5 w-5 text-purple-600" />
+                  <div>
+                    <CardTitle>CloudWaitress API Configuration</CardTitle>
+                    <CardDescription>
+                      Configure your integrator credentials for restaurant registration
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+
+              <CardContent className="space-y-4">
+                {configLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                  </div>
+                ) : (
+                  <>
+                    {cloudwaitressConfig.isConfigured ? (
+                      <Alert>
+                        <CheckCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          Custom credentials configured.
+                          {cloudwaitressConfig.updatedAt && (
+                            <span className="ml-1">
+                              Last updated: {new Date(cloudwaitressConfig.updatedAt).toLocaleDateString()}
+                            </span>
+                          )}
+                        </AlertDescription>
+                      </Alert>
+                    ) : (
+                      <Alert>
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription>
+                          Using system default credentials. Configure your own for registering new accounts to your own reseller account.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    <div className="space-y-2">
+                      <Label htmlFor="integrator-id">Integrator ID</Label>
+                      <Input
+                        id="integrator-id"
+                        placeholder="CWI_xxxx-xxxx-xxxx-xxxx"
+                        value={newIntegratorId}
+                        onChange={(e) => setNewIntegratorId(e.target.value)}
+                      />
+                      <p className="text-xs text-gray-500">
+                        Your CloudWaitress integrator identifier
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="secret">Secret</Label>
+                      <div className="flex space-x-2">
+                        <div className="relative flex-1">
+                          <Input
+                            id="secret"
+                            type={showSecret ? 'text' : 'password'}
+                            placeholder={cloudwaitressConfig.secretMasked || 'CWS_xxxx-xxxx-xxxx-xxxx'}
+                            value={newSecret}
+                            onChange={(e) => setNewSecret(e.target.value)}
+                          />
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setShowSecret(!showSecret)}
+                          type="button"
+                        >
+                          {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        {cloudwaitressConfig.isConfigured
+                          ? 'Leave empty to keep existing secret, or enter a new one to update'
+                          : 'Your CloudWaitress API secret'}
+                      </p>
+                    </div>
+
+                    <div className="flex justify-end space-x-2 pt-4">
+                      {cloudwaitressConfig.isConfigured && (
+                        <Button
+                          variant="outline"
+                          onClick={clearCloudWaitressConfig}
+                          disabled={configSaving}
+                        >
+                          Reset to Defaults
+                        </Button>
+                      )}
+                      <Button
+                        onClick={saveCloudWaitressConfig}
+                        disabled={configSaving || (!newIntegratorId && !newSecret)}
+                        className="bg-purple-600 hover:bg-purple-700"
+                      >
+                        {configSaving ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          'Save Configuration'
+                        )}
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>

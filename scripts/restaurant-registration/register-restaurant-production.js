@@ -43,11 +43,17 @@
  */
 
 const { chromium } = require('playwright');
-const fs = require('fs').promises;
 const path = require('path');
 
-// Load environment variables
-require('dotenv').config();
+// Load environment variables from centralized .env file
+require('dotenv').config({ path: path.join(__dirname, '../../UberEats-Image-Extractor/.env') });
+
+// Import shared browser configuration
+const {
+  createBrowser,
+  createContext,
+  takeScreenshot: sharedTakeScreenshot
+} = require('../lib/browser-config.cjs');
 
 // Configuration
 const LOGIN_URL = "https://admin.pumpd.co.nz/login";
@@ -118,12 +124,10 @@ if (dayHoursArg) {
   }
 }
 
-// Utility function for screenshots
+// Screenshot utility - uses shared config (disabled by default)
+const SCREENSHOT_DIR = path.join(__dirname, 'screenshots');
 const takeScreenshot = async (page, name) => {
-  const screenshotPath = path.join(__dirname, 'screenshots', `restaurant-${name}-${Date.now()}.png`);
-  await fs.mkdir(path.dirname(screenshotPath), { recursive: true });
-  await page.screenshot({ path: screenshotPath, fullPage: true });
-  console.log(`📸 Screenshot: ${screenshotPath}`);
+  return sharedTakeScreenshot(page, `restaurant-${name}`, SCREENSHOT_DIR);
 };
 
 async function registerRestaurantOnly() {
@@ -145,16 +149,8 @@ async function registerRestaurantOnly() {
   }
   console.log('');
   
-  const browser = await chromium.launch({
-    headless: false,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    slowMo: 100 // Slow down for debugging
-  });
-  
-  const context = await browser.newContext({
-    viewport: { width: 1280, height: 800 },
-    ignoreHTTPSErrors: true
-  });
+  const browser = await createBrowser(chromium);
+  const context = await createContext(browser);
   
   const page = await context.newPage();
   

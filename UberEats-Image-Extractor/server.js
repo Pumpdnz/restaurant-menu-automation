@@ -526,13 +526,22 @@ async function startBackgroundExtraction(jobId, url, categories, restaurantName 
   }
 }
 
-// Configure middleware
-app.use(cors({
-  origin: ['http://localhost:3007', 'http://localhost:5007', '*'],
-  methods: ['GET', 'POST'],
+// Configure CORS for development and production
+const corsOptions = {
+  origin: isDevelopment
+    ? ['http://localhost:3007', 'http://localhost:5007', 'http://localhost:5173', '*']
+    : [
+        // Production domains - update these after Railway/Netlify deployment
+        process.env.FRONTEND_URL,           // e.g., https://your-app.netlify.app
+        /\.netlify\.app$/,                   // Any Netlify preview deploys
+        /\.railway\.app$/,                   // Railway domains
+      ].filter(Boolean),
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization'],
   optionsSuccessStatus: 200
-}));
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'dist')));
 
@@ -1923,6 +1932,18 @@ app.get('/api/status', (req, res) => {
       apiUrl: FIRECRAWL_API_URL,
       cacheMaxAge: parseInt(process.env.FIRECRAWL_CACHE_MAX_AGE || '172800')
     }
+  });
+});
+
+/**
+ * Health check endpoint for Railway deployment
+ * Returns a simple healthy status for container orchestration
+ */
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
@@ -7498,6 +7519,13 @@ app.use('/api/leads', authMiddleware, requireLeadScraping, leadsRoutes);
 
 const cityCodesRoutes = require('./src/routes/city-codes-routes');
 app.use('/api/city-codes', authMiddleware, requireLeadScraping, cityCodesRoutes);
+
+/**
+ * === ORGANIZATION SETTINGS ROUTES ===
+ */
+// Import and use organization settings routes (admin only, no feature flag required)
+const organizationSettingsRoutes = require('./src/routes/organization-settings-routes');
+app.use('/api/organization/settings', authMiddleware, organizationSettingsRoutes);
 
 /**
  * Serve static files and handle SPA routes
