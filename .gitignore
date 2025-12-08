@@ -1,6 +1,6 @@
 # Dependencies
 node_modules/
-package-lock.json
+# Note: package-lock.json is NOT ignored - required for Railway deployment with npm ci
 
 # Environment variables
 .env
