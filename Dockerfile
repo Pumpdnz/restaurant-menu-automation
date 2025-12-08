@@ -14,12 +14,13 @@ COPY UberEats-Image-Extractor/package*.json ./UberEats-Image-Extractor/
 COPY scripts/restaurant-registration/package*.json ./scripts/restaurant-registration/
 
 # Install UberEats-Image-Extractor dependencies
+# Note: --legacy-peer-deps needed for react-day-picker (requires React 18) with React 19
 WORKDIR /app/UberEats-Image-Extractor
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --legacy-peer-deps
 
 # Install scripts dependencies
 WORKDIR /app/scripts/restaurant-registration
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --legacy-peer-deps
 
 # Copy application code
 WORKDIR /app
