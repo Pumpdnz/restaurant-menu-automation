@@ -11,7 +11,7 @@
  * @param {string} platform - 'ubereats' or 'doordash'
  * @returns {string} - Specialized prompt for image extraction
  */
-export function generateImageFocusedPrompt(menuItems, categoryName, platform = 'ubereats') {
+function generateImageFocusedPrompt(menuItems, categoryName, platform = 'ubereats') {
   const prompt = `Focus ONLY on extracting menu items from the category "${categoryName}" on this ${platform === 'ubereats' ? 'UberEats' : platform === 'doordash' ? 'DoorDash' : ''} page.
         
 1. Navigate to the section for category "${categoryName}"
@@ -29,7 +29,7 @@ export function generateImageFocusedPrompt(menuItems, categoryName, platform = '
  * Generate a simplified schema for image-only extraction
  * @returns {Object} - Schema focused on name and image pairs
  */
-export function generateImageOnlySchema() {
+function generateImageOnlySchema() {
   return {
     type: 'object',
     properties: {
@@ -61,7 +61,7 @@ export function generateImageOnlySchema() {
  * @param {Array} existingItems - Array of existing menu items
  * @returns {Object|null} - Matched existing item or null
  */
-export function matchImageToMenuItem(extractedItem, existingItems) {
+function matchImageToMenuItem(extractedItem, existingItems) {
   if (!extractedItem || !extractedItem.dishName) {
     console.warn('Invalid extracted item:', extractedItem);
     return null;
@@ -168,7 +168,7 @@ function levenshteinDistance(str1, str2) {
  * @param {Array} imageUpdates - Extracted items with new images
  * @returns {Array} - Menu items with updated images
  */
-export function mergeImageUpdates(existingItems, imageUpdates) {
+function mergeImageUpdates(existingItems, imageUpdates) {
   const updatedItems = [...existingItems];
   let updateCount = 0;
 
@@ -196,12 +196,10 @@ export function mergeImageUpdates(existingItems, imageUpdates) {
   return updatedItems;
 }
 
-// CommonJS exports for Node.js (backend)
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    generateImageFocusedPrompt,
-    generateImageOnlySchema,
-    matchImageToMenuItem,
-    mergeImageUpdates
-  };
-}
+// CommonJS exports
+module.exports = {
+  generateImageFocusedPrompt,
+  generateImageOnlySchema,
+  matchImageToMenuItem,
+  mergeImageUpdates
+};
