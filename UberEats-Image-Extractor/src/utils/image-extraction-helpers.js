@@ -195,3 +195,13 @@ export function mergeImageUpdates(existingItems, imageUpdates) {
   console.log(`Successfully updated ${updateCount} images out of ${imageUpdates.length} extracted`);
   return updatedItems;
 }
+
+// CommonJS exports for Node.js (backend)
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    generateImageFocusedPrompt,
+    generateImageOnlySchema,
+    matchImageToMenuItem,
+    mergeImageUpdates
+  };
+}

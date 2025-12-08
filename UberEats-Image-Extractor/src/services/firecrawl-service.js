@@ -9,16 +9,16 @@
  * Added category-based extraction for handling large menus
  */
 
-import { 
-  generateImageFocusedPrompt, 
-  generateImageOnlySchema, 
-  mergeImageUpdates 
-} from '../utils/image-extraction-helpers.js';
+const {
+  generateImageFocusedPrompt,
+  generateImageOnlySchema,
+  mergeImageUpdates
+} = require('../utils/image-extraction-helpers');
 
 // Platform-specific schemas and prompts
 
 // Default extraction prompt for restaurant menu data (general)
-export const DEFAULT_PROMPT = `I need you to extract the complete structured menu data from this restaurant's food delivery platform. Follow these steps:
+const DEFAULT_PROMPT = `I need you to extract the complete structured menu data from this restaurant's food delivery platform. Follow these steps:
 
 1. Scroll slowly from top to bottom to ensure all menu items and images load completely
 2. Look for menu category sections and ensure they're all expanded
@@ -33,7 +33,7 @@ Ensure proper formatting of prices (numerical values, not text).
 For items with multiple size options, extract the default or smallest size.`;
 
 // Default extraction schema (full menu data) - Enhanced with better property descriptions for FIRE-1
-export const DEFAULT_SCHEMA = {
+const DEFAULT_SCHEMA = {
   "type": "object",
   "properties": {
     "menuItems": {
@@ -84,7 +84,7 @@ export const DEFAULT_SCHEMA = {
 };
 
 // Category Detection Schema - Used for scanning menu categories before detailed extraction
-export const CATEGORY_DETECTION_SCHEMA = {
+const CATEGORY_DETECTION_SCHEMA = {
   "type": "object",
   "properties": {
     "categories": {
@@ -114,7 +114,7 @@ export const CATEGORY_DETECTION_SCHEMA = {
 };
 
 // UberEats-specific category detection prompt
-export const UBEREATS_CATEGORY_PROMPT = `I need you to identify all menu categories on this UberEats restaurant page. Follow these steps:
+const UBEREATS_CATEGORY_PROMPT = `I need you to identify all menu categories on this UberEats restaurant page. Follow these steps:
 
 1. Scroll through the entire page slowly to ensure all content loads
 2. Look for category headers or section titles (e.g., "Appetizers", "Main Dishes", "Desserts")
@@ -129,7 +129,7 @@ IMPORTANT: Focus ONLY on identifying the category names and their positions. DO 
 IMPORTANT: Do not skip "Featured Items" or "Popular Items" categories - these must be included.`;
 
 // DoorDash-specific category detection prompt
-export const DOORDASH_CATEGORY_PROMPT = `I need you to identify all menu categories on this DoorDash restaurant page. Follow these steps:
+const DOORDASH_CATEGORY_PROMPT = `I need you to identify all menu categories on this DoorDash restaurant page. Follow these steps:
 
 1. Look for the horizontal scrollable menu of categories at the top of the page, if present
 2. Click through each category tab in the horizontal menu to see its name
@@ -144,7 +144,7 @@ IMPORTANT: Focus ONLY on identifying the category names and their positions. DO 
 IMPORTANT: Do not skip "Most Liked", "Popular Items", or "Featured Items" categories - these must be included.`;
 
 // Generic category detection prompt for unknown/general platforms
-export const GENERIC_CATEGORY_PROMPT = `I need you to identify all menu categories on this restaurant ordering page. This is a general-purpose prompt for various platforms. Follow these steps:
+const GENERIC_CATEGORY_PROMPT = `I need you to identify all menu categories on this restaurant ordering page. This is a general-purpose prompt for various platforms. Follow these steps:
 
 1. Scroll through the entire page slowly to ensure all content loads completely
 2. Look for any menu sections, categories, or groupings of food items
@@ -163,7 +163,7 @@ IMPORTANT: Focus ONLY on identifying category names. DO NOT extract individual m
 IMPORTANT: Include ALL sections that group menu items, even if they have non-standard names.`;
 
 // OrderMeal-specific category detection prompt
-export const ORDERMEAL_CATEGORY_PROMPT = `I need you to identify all menu categories on this OrderMeal restaurant page. Follow these steps:
+const ORDERMEAL_CATEGORY_PROMPT = `I need you to identify all menu categories on this OrderMeal restaurant page. Follow these steps:
 
 1. Scroll through the entire page slowly to ensure all content loads
 2. Look for the left sidebar menu with class="left-sidebar" or id="scrollMenuContainer"
@@ -180,7 +180,7 @@ IMPORTANT: Focus ONLY on identifying the category names and their positions. DO 
 IMPORTANT: Include "Most Popular" if present as it's often the first category.`;
 
 // Mobi2Go-specific category detection prompt
-export const MOBI2GO_CATEGORY_PROMPT = `I need you to identify all menu categories on this Mobi2Go restaurant page. Follow these Mobi2Go-specific steps:
+const MOBI2GO_CATEGORY_PROMPT = `I need you to identify all menu categories on this Mobi2Go restaurant page. Follow these Mobi2Go-specific steps:
 
 1. Mobi2Go typically displays categories as cards or tiles on the main page
 2. Look for the category grid layout that's common on Mobi2Go sites
@@ -198,7 +198,7 @@ IMPORTANT: Focus on the main category divisions, not subcategories within.
 IMPORTANT: Mobi2Go may paginate categories - ensure you check all pages.`;
 
 // NextOrder-specific category detection prompt
-export const NEXTORDER_CATEGORY_PROMPT = `I need you to identify all menu categories on this NextOrder restaurant page. Follow these NextOrder-specific steps:
+const NEXTORDER_CATEGORY_PROMPT = `I need you to identify all menu categories on this NextOrder restaurant page. Follow these NextOrder-specific steps:
 
 1. NextOrder typically uses a clean, modern layout with clear category sections
 2. Look for the category menu which is often:
@@ -219,7 +219,7 @@ IMPORTANT: NextOrder may have subcategories - focus on main categories only.
 IMPORTANT: Don't miss featured or promotional sections at the top of the page.`;
 
 // DeliverEasy-specific category detection prompt
-export const DELIVEREASY_CATEGORY_PROMPT = `I need you to identify all menu categories on this DeliverEasy restaurant page. Follow these DeliverEasy-specific steps:
+const DELIVEREASY_CATEGORY_PROMPT = `I need you to identify all menu categories on this DeliverEasy restaurant page. Follow these DeliverEasy-specific steps:
 
 1. DeliverEasy uses a traditional layout with clear menu sections
 2. Look for the main menu area which typically shows:
@@ -243,7 +243,7 @@ IMPORTANT: DeliverEasy may repeat popular items - record each unique category on
 IMPORTANT: Include delivery-specific categories like "Family Packs" if present.`;
 
 // FoodHub-specific category detection prompt
-export const FOODHUB_CATEGORY_PROMPT = `I need you to identify all menu categories on this FoodHub restaurant page. Follow these steps:
+const FOODHUB_CATEGORY_PROMPT = `I need you to identify all menu categories on this FoodHub restaurant page. Follow these steps:
 
 1. Scroll through the entire page slowly to ensure all content loads
 2. Look for the category sidebar menu or similar section with id="category-section"
@@ -261,7 +261,7 @@ IMPORTANT: Focus ONLY on identifying the category names and their positions. DO 
  * @param {boolean} includeImages - Whether to include imageURL in the schema (false for NZ platforms)
  * @returns {Object} - The category-specific schema
  */
-export function generateCategorySchema(categoryName, includeImages = true) {
+function generateCategorySchema(categoryName, includeImages = true) {
   const itemProperties = {
     "dishName": {
       "type": "string",
@@ -311,7 +311,7 @@ export function generateCategorySchema(categoryName, includeImages = true) {
 }
 
 // Option Sets Schema - for extracting option sets from individual menu item pages
-export const OPTION_SETS_SCHEMA = {
+const OPTION_SETS_SCHEMA = {
   "type": "object",
   "properties": {
     "optionSets": {
@@ -371,7 +371,7 @@ export const OPTION_SETS_SCHEMA = {
 };
 
 // UberEats-specific prompt for extracting option sets from menu item pages
-export const UBEREATS_OPTION_SETS_PROMPT = `I need you to extract all option sets and customization options from this UberEats menu item page. Follow these steps:
+const UBEREATS_OPTION_SETS_PROMPT = `I need you to extract all option sets and customization options from this UberEats menu item page. Follow these steps:
 
 1. Look for option set sections that appear below the item description
 2. Each option set typically has a title like "Choice of Sauce", "Add Drink", "Size Selection", etc.
@@ -390,14 +390,14 @@ export const UBEREATS_OPTION_SETS_PROMPT = `I need you to extract all option set
 Extract the complete customization structure that customers would see when ordering this item.`;
 
 // Define schema options for UI dropdown
-export const SCHEMA_OPTIONS = [
+const SCHEMA_OPTIONS = [
   { id: 'default', name: 'Standard (Full Menu)', schema: DEFAULT_SCHEMA },
   { id: 'categories', name: 'Category Detection', schema: CATEGORY_DETECTION_SCHEMA },
   { id: 'option_sets', name: 'Option Sets', schema: OPTION_SETS_SCHEMA }
 ];
 
 // Define prompt options for UI dropdown
-export const PROMPT_OPTIONS = [
+const PROMPT_OPTIONS = [
   { id: 'default', name: 'Standard (General)', prompt: DEFAULT_PROMPT },
   { id: 'generic_categories', name: 'Generic Category Detection', prompt: GENERIC_CATEGORY_PROMPT },
   { id: 'ubereats_categories', name: 'UberEats Category Detection', prompt: UBEREATS_CATEGORY_PROMPT },
@@ -411,7 +411,7 @@ export const PROMPT_OPTIONS = [
 ];
 
 // Define extraction method options for UI dropdown
-export const EXTRACTION_METHOD_OPTIONS = [
+const EXTRACTION_METHOD_OPTIONS = [
   { id: 'standard', name: 'Standard (Single-Pass)', description: 'Extracts all menu items in a single pass' },
   { id: 'category-based', name: 'Category-Based (Recommended for Large Menus)', description: 'First scans for categories, then extracts each category separately' },
   { id: 'option-sets', name: 'Option Sets Extraction', description: 'Extract option sets from individual menu item pages' },
@@ -427,7 +427,7 @@ export const EXTRACTION_METHOD_OPTIONS = [
  * @param {string} method - Extraction method ('scrape' or 'extract', defaults to 'scrape')
  * @returns {Promise<Object>} - Complete extraction data
  */
-export async function extractMenuData(url, customPrompt, customSchema, method = 'scrape') {
+async function extractMenuData(url, customPrompt, customSchema, method = 'scrape') {
   if (!url) {
     throw new Error('URL is required');
   }
@@ -662,7 +662,7 @@ export async function extractMenuData(url, customPrompt, customSchema, method = 
  * @param {string} url - URL to validate
  * @returns {Object} - Validation result with platform info
  */
-export function validateRestaurantUrl(url) {
+function validateRestaurantUrl(url) {
   if (!url) {
     return {
       valid: false,
@@ -707,7 +707,7 @@ export function validateRestaurantUrl(url) {
  * @param {Object} targetedExtraction - Optional targeted extraction info {type: 'category', value: 'categoryName'}
  * @returns {Promise<Object>} - Complete extraction data
  */
-export async function extractMenuDataWithMethod(url, customPrompt, customSchema, method = 'standard', targetedExtraction = null) {
+async function extractMenuDataWithMethod(url, customPrompt, customSchema, method = 'standard', targetedExtraction = null) {
   if (!url) {
     throw new Error('URL is required');
   }
@@ -757,7 +757,7 @@ export async function extractMenuDataWithMethod(url, customPrompt, customSchema,
  * @param {string} options.targetedCategory - Optional specific category to extract (null extracts all)
  * @returns {Promise<Object>} - Complete extraction data with all menu items
  */
-export async function categoryBasedExtractMenuData(url, options = {}) {
+async function categoryBasedExtractMenuData(url, options = {}) {
   if (!url) {
     throw new Error('URL is required');
   }
@@ -956,7 +956,7 @@ export async function categoryBasedExtractMenuData(url, options = {}) {
  * @param {string} platform - Platform type ('ubereats' or 'doordash')
  * @returns {Promise<Object>} - Updated menu items with new images
  */
-export async function extractImageUpdatesForCategory(url, categoryName, existingMenuItems, platform = 'ubereats') {
+async function extractImageUpdatesForCategory(url, categoryName, existingMenuItems, platform = 'ubereats') {
   if (!url || !categoryName || !existingMenuItems || existingMenuItems.length === 0) {
     throw new Error('URL, category name, and existing menu items are required');
   }
@@ -1036,7 +1036,7 @@ export async function extractImageUpdatesForCategory(url, categoryName, existing
  * @param {Object} options - Options for extraction
  * @returns {Promise<Object>} - Complete option sets data
  */
-export async function extractOptionSetsData(url, options = {}) {
+async function extractOptionSetsData(url, options = {}) {
   if (!url) {
     throw new Error('URL is required');
   }
@@ -1182,7 +1182,7 @@ function consolidateDuplicateOptionSets(optionSets) {
  * @param {Object} options - Options for CSV generation
  * @returns {Promise<Object>} - CSV generation result
  */
-export async function generateCSV(data, options = {}) {
+async function generateCSV(data, options = {}) {
   try {
     console.log('Generating CSV file');
     
@@ -1221,3 +1221,36 @@ export async function generateCSV(data, options = {}) {
     };
   }
 }
+
+// CommonJS exports for Node.js (backend)
+module.exports = {
+  // Schemas
+  DEFAULT_SCHEMA,
+  CATEGORY_DETECTION_SCHEMA,
+  OPTION_SETS_SCHEMA,
+  SCHEMA_OPTIONS,
+
+  // Prompts
+  DEFAULT_PROMPT,
+  UBEREATS_CATEGORY_PROMPT,
+  DOORDASH_CATEGORY_PROMPT,
+  GENERIC_CATEGORY_PROMPT,
+  ORDERMEAL_CATEGORY_PROMPT,
+  MOBI2GO_CATEGORY_PROMPT,
+  NEXTORDER_CATEGORY_PROMPT,
+  DELIVEREASY_CATEGORY_PROMPT,
+  FOODHUB_CATEGORY_PROMPT,
+  UBEREATS_OPTION_SETS_PROMPT,
+  PROMPT_OPTIONS,
+  EXTRACTION_METHOD_OPTIONS,
+
+  // Functions
+  generateCategorySchema,
+  extractMenuData,
+  validateRestaurantUrl,
+  extractMenuDataWithMethod,
+  categoryBasedExtractMenuData,
+  extractImageUpdatesForCategory,
+  extractOptionSetsData,
+  generateCSV
+};
