@@ -2,14 +2,15 @@
 # The backend runs on Railway - update the URLs below after deploying to Railway
 
 [build]
-  # Build command
-  command = "npm run build"
+  # Build command - use legacy-peer-deps for React 19 compatibility
+  command = "npm install --legacy-peer-deps && npm run build"
 
   # Output directory (Vite default)
   publish = "dist"
 
 [build.environment]
   NODE_VERSION = "20"
+  NPM_FLAGS = "--legacy-peer-deps"
 
 # Redirect API calls to Railway backend
 [[redirects]]
