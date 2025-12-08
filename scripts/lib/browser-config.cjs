@@ -13,11 +13,24 @@
  *
  *   // Option 2: Use helper to create browser
  *   const browser = await createBrowser();
+ *
+ * IMPORTANT: Environment variables are read at RUNTIME (inside functions),
+ * not at module load time. This allows dotenv to load .env files before
+ * the values are checked.
  */
 
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
-const FORCE_HEADLESS = process.env.HEADLESS === 'true';
-const DEBUG_MODE = process.env.DEBUG_MODE === 'true';
+// Helper functions to read env vars at runtime (after dotenv has loaded)
+function isProduction() {
+  return process.env.NODE_ENV === 'production';
+}
+
+function isHeadless() {
+  return process.env.HEADLESS === 'true';
+}
+
+function isDebugMode() {
+  return process.env.DEBUG_MODE === 'true';
+}
 
 /**
  * Get browser launch configuration based on environment
@@ -25,6 +38,9 @@ const DEBUG_MODE = process.env.DEBUG_MODE === 'true';
  * @returns {Object} Playwright launch configuration
  */
 function getBrowserConfig(options = {}) {
+  // Read env vars at runtime, not module load time
+  const IS_PRODUCTION = isProduction();
+  const FORCE_HEADLESS = isHeadless();
   const headless = IS_PRODUCTION || FORCE_HEADLESS;
 
   const baseConfig = {
@@ -45,6 +61,11 @@ function getBrowserConfig(options = {}) {
   // Add single-process mode for containers to reduce memory
   if (IS_PRODUCTION) {
     baseConfig.args.push('--single-process');
+  }
+
+  // Log config for debugging
+  if (isDebugMode()) {
+    console.log(`[Browser Config] NODE_ENV=${process.env.NODE_ENV}, HEADLESS=${process.env.HEADLESS}, resolved headless=${headless}`);
   }
 
   return { ...baseConfig, ...options };
@@ -73,7 +94,7 @@ async function createBrowser(chromium, options = {}) {
   const config = getBrowserConfig(options);
 
   console.log(`[Browser] Launching in ${config.headless ? 'headless' : 'visible'} mode`);
-  if (IS_PRODUCTION) {
+  if (isProduction()) {
     console.log('[Browser] Production mode - optimized for containers');
   }
 
@@ -103,7 +124,7 @@ async function takeScreenshot(page, name, directory = './screenshots') {
 
   // Screenshots are disabled by default - must explicitly enable with ENABLE_SCREENSHOTS=true
   if (!ENABLE_SCREENSHOTS) {
-    if (DEBUG_MODE) {
+    if (isDebugMode()) {
       console.log(`[Screenshot] Skipped: ${name} (screenshots disabled)`);
     }
     return null;
@@ -131,9 +152,9 @@ async function takeScreenshot(page, name, directory = './screenshots') {
 function logEnvironmentInfo() {
   console.log('[Environment]');
   console.log(`  NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`  IS_PRODUCTION: ${IS_PRODUCTION}`);
-  console.log(`  HEADLESS: ${FORCE_HEADLESS}`);
-  console.log(`  DEBUG_MODE: ${DEBUG_MODE}`);
+  console.log(`  IS_PRODUCTION: ${isProduction()}`);
+  console.log(`  HEADLESS: ${isHeadless()}`);
+  console.log(`  DEBUG_MODE: ${isDebugMode()}`);
   console.log(`  ENABLE_SCREENSHOTS: ${process.env.ENABLE_SCREENSHOTS || 'false'}`);
 }
 
@@ -144,7 +165,8 @@ module.exports = {
   createContext,
   takeScreenshot,
   logEnvironmentInfo,
-  IS_PRODUCTION,
-  FORCE_HEADLESS,
-  DEBUG_MODE,
+  // Export functions instead of constants for runtime evaluation
+  isProduction,
+  isHeadless,
+  isDebugMode,
 };
