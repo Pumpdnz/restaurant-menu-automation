@@ -129,6 +129,8 @@ async function addItemTags() {
     console.log(`  📍 Current URL: ${page.url()}`);
     console.log(`  📄 Page Title: ${await page.title()}`);
 
+    // Check for Cloudflare challenge
+    const pageContent = await page.content();
     // Log first 800 chars of page content for debugging
     const cleanContent = pageContent.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     console.log(`  📝 Page Text (first 800 chars): ${cleanContent.substring(0, 800)}`);
