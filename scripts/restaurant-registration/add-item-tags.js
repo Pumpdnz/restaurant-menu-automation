@@ -119,6 +119,11 @@ async function addItemTags() {
     await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
     console.log(`  ⏱️ Navigation took: ${Date.now() - navigationStart}ms`);
 
+    // Wait for React app to hydrate and render the login form
+    // The page loads CSS first, then React renders the actual form elements
+    console.log('  ⏳ Waiting 10s for React app to render...');
+    await page.waitForTimeout(10000);
+
     // DEBUG: Log page information
     console.log('\n  🔍 DEBUG: Page Information');
     console.log(`  📍 Current URL: ${page.url()}`);
