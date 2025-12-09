@@ -179,7 +179,7 @@ async function addItemTags() {
     // Wait for email input to be visible before filling
     console.log('\n  ⏳ Waiting for email input to be visible...');
     try {
-      await page.waitForSelector('input[type="email"]', { state: 'visible', timeout: 30000 });
+      await page.waitForSelector('input[type="email"]', { state: 'visible', timeout: 60000 });
       console.log('  ✓ Email input is visible');
     } catch (waitError) {
       console.error(`  ❌ Email input not visible after 30s: ${waitError.message}`);
