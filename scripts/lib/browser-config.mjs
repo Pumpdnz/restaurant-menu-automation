@@ -54,7 +54,6 @@ export function getBrowserConfig(options = {}) {
       '--disable-dev-shm-usage',  // Important for Docker/containers
       '--disable-gpu',             // No GPU in cloud environments
       '--disable-blink-features=AutomationControlled',   // Avoid bot detection
-      '--single-process',
       '--no-zygote',
     ],
   };
@@ -81,6 +80,9 @@ export function getContextConfig(options = {}) {
   return {
     viewport: { width: 1280, height: 800 },
     ignoreHTTPSErrors: true,
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    locale: 'en-NZ',
+    timezoneId: 'Pacific/Auckland',
     ...options,
   };
 }
