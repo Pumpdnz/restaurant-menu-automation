@@ -1,7 +1,7 @@
 /**
  * Menu Scraper - Server
- * 
- * Express server that provides API endpoints for scraping UberEats and DoorDash 
+ *
+ * Express server that provides API endpoints for scraping UberEats and DoorDash
  * restaurant pages using the Firecrawl API.
  */
 
@@ -14,7 +14,7 @@ const axios = require('axios');
 const path = require('path');
 const archiver = require('archiver');
 const sharp = require('sharp');
-const { 
+const {
   DEFAULT_SCHEMA,
   UBEREATS_SCHEMA,
   DOORDASH_SCHEMA,
