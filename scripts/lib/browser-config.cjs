@@ -52,6 +52,7 @@ function getBrowserConfig(options = {}) {
       '--disable-gpu',             // No GPU in cloud environments
       '--disable-blink-features=AutomationControlled',  // Avoid bot detection
       '--single-process',
+      '--no-zygote',
     ],
   };
 
