@@ -176,18 +176,18 @@ async function addItemTags() {
 
     await takeScreenshot(page, '01-login-page');
 
-    // Wait for email input to be visible before filling
-    console.log('\n  ⏳ Waiting for email input to be visible...');
+    // Wait for email input to exist in DOM (use 'attached' instead of 'visible' for headless compatibility)
+    console.log('\n  ⏳ Waiting for email input to be attached to DOM...');
     try {
-      await page.waitForSelector('input[type="email"]', { state: 'visible', timeout: 60000 });
-      console.log('  ✓ Email input is visible');
+      await page.waitForSelector('input[type="email"]', { state: 'attached', timeout: 60000 });
+      console.log('  ✓ Email input is attached to DOM');
     } catch (waitError) {
-      console.error(`  ❌ Email input not visible after 30s: ${waitError.message}`);
+      console.error(`  ❌ Email input not found in DOM after 60s: ${waitError.message}`);
       throw waitError;
     }
 
-    // Fill login form
-    await page.fill('input[type="email"]', email);
+    // Fill login form using force option to bypass visibility checks
+    await page.fill('input[type="email"]', email, { force: true });
     await page.fill('input[type="password"]', password);
     console.log('  ✓ Credentials entered');
     
