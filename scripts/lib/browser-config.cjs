@@ -50,6 +50,7 @@ function getBrowserConfig(options = {}) {
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',  // Important for Docker/containers
       '--disable-gpu',             // No GPU in cloud environments
+      '--disable-blink-features=AutomationControlled',  // Avoid bot detection
     ],
   };
 
@@ -58,9 +59,11 @@ function getBrowserConfig(options = {}) {
     baseConfig.slowMo = options.slowMo || 100;
   }
 
-  // Add single-process mode for containers to reduce memory
+  // Production optimizations for containers
+  // NOTE: Removed --single-process as it can cause JS execution issues
   if (IS_PRODUCTION) {
-    baseConfig.args.push('--single-process');
+    // Use smaller shared memory instead of single process
+    baseConfig.args.push('--disable-features=VizDisplayCompositor');
   }
 
   // Log config for debugging
