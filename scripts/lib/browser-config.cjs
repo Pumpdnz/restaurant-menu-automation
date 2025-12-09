@@ -51,19 +51,13 @@ function getBrowserConfig(options = {}) {
       '--disable-dev-shm-usage',  // Important for Docker/containers
       '--disable-gpu',             // No GPU in cloud environments
       '--disable-blink-features=AutomationControlled',  // Avoid bot detection
+      '--single-process',
     ],
   };
 
   // Add debug/development options
   if (!headless && !IS_PRODUCTION) {
     baseConfig.slowMo = options.slowMo || 100;
-  }
-
-  // Production optimizations for containers
-  // NOTE: Removed --single-process as it can cause JS execution issues
-  if (IS_PRODUCTION) {
-    // Use smaller shared memory instead of single process
-    baseConfig.args.push('--disable-features=VizDisplayCompositor');
   }
 
   // Log config for debugging
