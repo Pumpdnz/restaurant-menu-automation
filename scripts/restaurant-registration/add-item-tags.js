@@ -113,61 +113,7 @@ async function addItemTags() {
   try {
     // STEP 1: Login
     console.log('🔐 STEP 1: Login to admin portal');
-    console.log(`  📍 Navigating to: ${LOGIN_URL}`);
-
-    const navigationStart = Date.now();
     await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
-    console.log(`  ⏱️ Navigation took: ${Date.now() - navigationStart}ms`);
-
-    // Wait for React app to hydrate and render the login form
-    // The page loads CSS first, then React renders the actual form elements
-    console.log('  ⏳ Waiting 10s for React app to render...');
-    await page.waitForTimeout(10000);
-
-    // DEBUG: Log page information
-    console.log('\n  🔍 DEBUG: Page Information');
-    console.log(`  📍 Current URL: ${page.url()}`);
-    console.log(`  📄 Page Title: ${await page.title()}`);
-
-    // Check for Cloudflare challenge
-    const pageContent = await page.content();
-    // Log first 800 chars of page content for debugging
-    const cleanContent = pageContent.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-    console.log(`  📝 Page Text (first 800 chars): ${cleanContent.substring(0, 800)}`);
-
-    // Check what form elements exist
-    const emailInputCount = await page.locator('input[type="email"]').count();
-    const passwordInputCount = await page.locator('input[type="password"]').count();
-    const anyInputCount = await page.locator('input').count();
-    const formCount = await page.locator('form').count();
-    console.log(`  📋 Form Elements Found:`);
-    console.log(`      - Email inputs: ${emailInputCount}`);
-    console.log(`      - Password inputs: ${passwordInputCount}`);
-    console.log(`      - Total inputs: ${anyInputCount}`);
-    console.log(`      - Forms: ${formCount}`);
-
-    // If no email input found, wait and check again
-    if (emailInputCount === 0) {
-      console.log('\n  ⚠️ No email input found! Waiting 5 seconds and checking again...');
-      await page.waitForTimeout(5000);
-
-      const emailInputCountRetry = await page.locator('input[type="email"]').count();
-      console.log(`  📋 After wait - Email inputs: ${emailInputCountRetry}`);
-
-      if (emailInputCountRetry === 0) {
-        // Log all input elements for debugging
-        const allInputs = await page.locator('input').all();
-        console.log(`  📋 All input elements found (${allInputs.length}):`);
-        for (let i = 0; i < Math.min(allInputs.length, 10); i++) {
-          const input = allInputs[i];
-          const type = await input.getAttribute('type');
-          const name = await input.getAttribute('name');
-          const id = await input.getAttribute('id');
-          const placeholder = await input.getAttribute('placeholder');
-          console.log(`      [${i}] type="${type}" name="${name}" id="${id}" placeholder="${placeholder}"`);
-        }
-      }
-    }
 
     await takeScreenshot(page, '01-login-page');
 
