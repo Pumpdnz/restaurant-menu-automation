@@ -129,13 +129,6 @@ async function addItemTags() {
     console.log(`  📍 Current URL: ${page.url()}`);
     console.log(`  📄 Page Title: ${await page.title()}`);
 
-    // Check for Cloudflare challenge
-    const pageContent = await page.content();
-    const isCloudflareChallenge = pageContent.includes('Just a moment') ||
-                                   pageContent.includes('cf-browser-verification') ||
-                                   pageContent.includes('checking your browser');
-    console.log(`  🛡️ Cloudflare Challenge Detected: ${isCloudflareChallenge}`);
-
     // Log first 800 chars of page content for debugging
     const cleanContent = pageContent.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     console.log(`  📝 Page Text (first 800 chars): ${cleanContent.substring(0, 800)}`);
@@ -175,16 +168,6 @@ async function addItemTags() {
     }
 
     await takeScreenshot(page, '01-login-page');
-
-    // Wait for email input to exist in DOM (use 'attached' instead of 'visible' for headless compatibility)
-    console.log('\n  ⏳ Waiting for email input to be attached to DOM...');
-    try {
-      await page.waitForSelector('input[type="email"]', { state: 'attached', timeout: 60000 });
-      console.log('  ✓ Email input is attached to DOM');
-    } catch (waitError) {
-      console.error(`  ❌ Email input not found in DOM after 60s: ${waitError.message}`);
-      throw waitError;
-    }
 
     // Fill login form using force option to bypass visibility checks
     await page.fill('input[type="email"]', email, { force: true });
