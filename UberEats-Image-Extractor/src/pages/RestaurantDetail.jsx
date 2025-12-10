@@ -565,14 +565,26 @@ export default function RestaurantDetail() {
       return;
     }
 
+    // Capture form values before clearing
+    const currentRegistrationType = registrationType;
+    const currentEmail = registrationEmail;
+    const currentPassword = registrationPassword;
+
     setRegistering(true);
+    // Close dialog immediately and clear form - registration continues in background
+    setRegistrationDialogOpen(false);
+    setRegistrationType('');
+    setRegistrationEmail('');
+    setRegistrationPassword('');
+    setShowPassword(false);
+
     try {
       // Handle account-only registration
-      if (registrationType === 'account_only') {
+      if (currentRegistrationType === 'account_only') {
         const accountData = {
           restaurantId: id,
-          email: registrationEmail || restaurant.email,
-          password: registrationPassword || (() => {
+          email: currentEmail || restaurant.email,
+          password: currentPassword || (() => {
             const cleaned = restaurant.name.replace(/[^a-zA-Z0-9]/g, '');
             return cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase() + '789!';
           })(),
@@ -590,10 +602,10 @@ export default function RestaurantDetail() {
         // Handle restaurant registration (with or without account creation)
         const registrationData = {
           restaurantId: id,
-          registrationType,
+          registrationType: currentRegistrationType,
           restaurantName: restaurant.name,
-          email: registrationEmail || restaurant.email,
-          password: registrationPassword || (() => {
+          email: currentEmail || restaurant.email,
+          password: currentPassword || (() => {
             const cleaned = restaurant.name.replace(/[^a-zA-Z0-9]/g, '');
             return cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase() + '789!';
           })(),
@@ -615,12 +627,6 @@ export default function RestaurantDetail() {
           description: response.data.message || "Registration initiated successfully"
         });
       }
-
-      setRegistrationDialogOpen(false);
-      setRegistrationType('');
-      setRegistrationEmail('');
-      setRegistrationPassword('');
-      setShowPassword(false);
 
       // Refresh registration status
       fetchRegistrationStatus();
@@ -4674,8 +4680,17 @@ export default function RestaurantDetail() {
                             }}
                             disabled={registering}
                           >
-                            <UserPlus className="h-4 w-4 mr-2" />
-                            Register Account
+                            {registering ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Registering...
+                              </>
+                            ) : (
+                              <>
+                                <UserPlus className="h-4 w-4 mr-2" />
+                                Register Account
+                              </>
+                            )}
                           </Button>
                         )}
 
@@ -4708,9 +4723,25 @@ export default function RestaurantDetail() {
                             }}
                             disabled={registering}
                           >
-                            <LogIn className="h-4 w-4 mr-2" />
-                            Register Restaurant
+                            {registering ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Registering...
+                              </>
+                            ) : (
+                              <>
+                                <LogIn className="h-4 w-4 mr-2" />
+                                Register Restaurant
+                              </>
+                            )}
                           </Button>
+                        )}
+
+                        {/* Registration in progress message */}
+                        {registering && (
+                          <p className="text-xs text-muted-foreground text-center">
+                            Registration in progress. This may take 2-3 minutes. Please don't close this window.
+                          </p>
                         )}
 
                         <Button
