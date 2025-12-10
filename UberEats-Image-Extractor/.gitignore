@@ -36,3 +36,6 @@ yarn-error.log*
 # Reference files
 /.referencefiles
 /Web Scraper Images
+
+# Claude Session Data
+.claude/data/sessions/
