@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from '../hooks/use-toast';
-import { 
-  Building2, 
-  Mail, 
-  Phone, 
-  Globe, 
-  Clock, 
+import {
+  Building2,
+  Mail,
+  Phone,
+  Globe,
+  Clock,
   MapPin,
   Instagram,
   Facebook,
@@ -172,7 +172,7 @@ export default function RestaurantDetail() {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [detailsExtractionConfig, setDetailsExtractionConfig] = useState(null);
   const [selectedDetailFields, setSelectedDetailFields] = useState([]);
-  
+
   // Registration states
   const [registrationStatus, setRegistrationStatus] = useState(null);
   const [loadingRegistrationStatus, setLoadingRegistrationStatus] = useState(false);
@@ -184,7 +184,7 @@ export default function RestaurantDetail() {
   const [registrationEmail, setRegistrationEmail] = useState('');
   const [registrationPassword, setRegistrationPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  
+
   // CSV Upload states
   const [csvFile, setCsvFile] = useState(null);
   const [uploadStatus, setUploadStatus] = useState(null);
@@ -211,14 +211,14 @@ export default function RestaurantDetail() {
   const [existingBodyPath, setExistingBodyPath] = useState('');
   const [filesValidated, setFilesValidated] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
-  
+
   // Payment and Services states
   const [isConfiguringPayments, setIsConfiguringPayments] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState(null);
   const [isConfiguringServices, setIsConfiguringServices] = useState(false);
   const [servicesStatus, setServicesStatus] = useState(null);
   const [includeConnectLink, setIncludeConnectLink] = useState(false); // Default to no-link version
-  
+
   // Onboarding User Management states
   const [isCreatingOnboardingUser, setIsCreatingOnboardingUser] = useState(false);
   const [onboardingUserStatus, setOnboardingUserStatus] = useState(null);
@@ -250,37 +250,37 @@ export default function RestaurantDetail() {
     uber_integration: false
   });
   const [loadingSetupStatus, setLoadingSetupStatus] = useState(false);
-  
+
   const isNewRestaurant = id === 'new';
-  
+
   // Platform capabilities configuration
   const PLATFORM_CAPABILITIES = {
-    ubereats: { 
-      canExtractMenu: true, 
+    ubereats: {
+      canExtractMenu: true,
       canExtractDetails: true,
       detailFields: ['address', 'hours'],
       fieldLabels: { address: 'Physical Address', hours: 'Opening Hours' }
     },
-    doordash: { 
-      canExtractMenu: true, 
+    doordash: {
+      canExtractMenu: true,
       canExtractDetails: true,
       detailFields: ['hours'],
       fieldLabels: { hours: 'Opening Hours' }
     },
-    website: { 
-      canExtractMenu: true, 
+    website: {
+      canExtractMenu: true,
       canExtractDetails: true,
       detailFields: ['address', 'hours', 'phone'],
       fieldLabels: { address: 'Physical Address', hours: 'Opening Hours', phone: 'Phone Number' }
     },
-    instagram: { 
-      canExtractMenu: false, 
+    instagram: {
+      canExtractMenu: false,
       canExtractDetails: false,
       detailFields: [],
       fieldLabels: {}
     },
-    facebook: { 
-      canExtractMenu: false, 
+    facebook: {
+      canExtractMenu: false,
       canExtractDetails: false,
       detailFields: [],
       fieldLabels: {}
@@ -360,6 +360,32 @@ export default function RestaurantDetail() {
     }
   }, [restaurant?.website_url]);
 
+  // Smart defaults: When opening process logo dialog, uncheck colors that already exist
+  useEffect(() => {
+    if (processLogoDialogOpen && restaurant) {
+      // Set color checkboxes to false if the color already exists (to preserve existing colors)
+      setColorsToUpdate({
+        primary_color: !restaurant.primary_color,
+        secondary_color: !restaurant.secondary_color,
+        tertiary_color: !restaurant.tertiary_color,
+        accent_color: !restaurant.accent_color,
+        background_color: !restaurant.background_color,
+        theme: !restaurant.theme
+      });
+      // Reset versions to defaults
+      setVersionsToUpdate({
+        logo_url: !restaurant.logo_url, // Check if no existing logo
+        logo_nobg_url: true,
+        logo_standard_url: false,
+        logo_thermal_url: true,
+        logo_thermal_alt_url: true,
+        logo_thermal_contrast_url: false,
+        logo_thermal_adaptive_url: false,
+        logo_favicon_url: true
+      });
+    }
+  }, [processLogoDialogOpen, restaurant?.primary_color, restaurant?.secondary_color, restaurant?.tertiary_color, restaurant?.accent_color, restaurant?.background_color, restaurant?.theme, restaurant?.logo_url]);
+
   useEffect(() => {
     if (isNewRestaurant) {
       // Initialize empty restaurant for creation
@@ -394,7 +420,7 @@ export default function RestaurantDetail() {
       // Data is already in 24-hour format from database
       setEditedData(restaurantData);
       setError(null);
-      
+
       // Fetch registration status if not a new restaurant
       if (!isNewRestaurant) {
         fetchRegistrationStatus();
@@ -555,7 +581,7 @@ export default function RestaurantDetail() {
         };
 
         const response = await api.post('/registration/register-account', accountData);
-        
+
         toast({
           title: "Success",
           description: response.data.message || "Account registered successfully"
@@ -578,8 +604,12 @@ export default function RestaurantDetail() {
           cuisine: restaurant.cuisine
         };
 
-        const response = await api.post('/registration/register-restaurant', registrationData);
-        
+        const response = await railwayApi.post('api/registration/register-restaurant', registrationData, {
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+
         toast({
           title: "Success",
           description: response.data.message || "Registration initiated successfully"
@@ -591,7 +621,7 @@ export default function RestaurantDetail() {
       setRegistrationEmail('');
       setRegistrationPassword('');
       setShowPassword(false);
-      
+
       // Refresh registration status
       fetchRegistrationStatus();
     } catch (err) {
@@ -662,11 +692,7 @@ export default function RestaurantDetail() {
     formData.append('restaurantId', id);
 
     try {
-      const response = await railwayApi.post('/api/registration/upload-csv-menu', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
+      const response = await railwayApi.post('/api/registration/upload-csv-menu', formData);
 
       if (response.data.success) {
         setUploadStatus('success');
@@ -674,7 +700,7 @@ export default function RestaurantDetail() {
         // Reset file input
         const fileInput = document.getElementById('csv-file-input');
         if (fileInput) fileInput.value = '';
-        
+
         toast({
           title: "Success",
           description: "Menu uploaded successfully",
@@ -832,12 +858,12 @@ export default function RestaurantDetail() {
   const handleGenerateCodeInjections = async () => {
     setIsGenerating(true);
     setCustomizationStatus(null);
-    
+
     try {
       const response = await railwayApi.post('/api/registration/generate-code-injections', {
         restaurantId: id
       });
-      
+
       if (response.data.success) {
         setCodeGenerated(true);
         setGeneratedFilePaths(response.data.filePaths);
@@ -890,17 +916,17 @@ export default function RestaurantDetail() {
       });
       return;
     }
-    
+
     setIsValidating(true);
     setCustomizationStatus(null);
     setFilesValidated(false);
-    
+
     try {
       const response = await railwayApi.post('/api/registration/validate-files', {
         headPath: existingHeadPath,
         bodyPath: existingBodyPath
       });
-      
+
       if (response.data.valid) {
         setFilesValidated(true);
         setGeneratedFilePaths({
@@ -957,7 +983,7 @@ export default function RestaurantDetail() {
       });
       return;
     }
-    
+
     if (customizationMode === 'existing' && !filesValidated) {
       setCustomizationStatus({
         success: false,
@@ -970,27 +996,27 @@ export default function RestaurantDetail() {
       });
       return;
     }
-    
+
     setIsConfiguring(true);
     setCustomizationStatus(null);
-    
+
     try {
       const response = await railwayApi.post('/api/registration/configure-website', {
         restaurantId: id,
         filePaths: generatedFilePaths
       });
-      
+
       setCustomizationStatus({
         success: response.data.success,
-        message: response.data.success 
-          ? 'Website configured successfully' 
+        message: response.data.success
+          ? 'Website configured successfully'
           : response.data.error || 'Configuration failed'
       });
-      
+
       toast({
         title: response.data.success ? "Success" : "Configuration Failed",
-        description: response.data.success 
-          ? "Website configured successfully" 
+        description: response.data.success
+          ? "Website configured successfully"
           : response.data.error || 'Configuration failed',
         variant: response.data.success ? "default" : "destructive"
       });
@@ -1009,7 +1035,7 @@ export default function RestaurantDetail() {
       setIsConfiguring(false);
     }
   };
-  
+
   // Reset states when switching modes
   const handleModeChange = (newMode) => {
     setCustomizationMode(newMode);
@@ -1028,15 +1054,15 @@ export default function RestaurantDetail() {
   const handleSetupStripePayments = async () => {
     setIsConfiguringPayments(true);
     setPaymentStatus(null);
-    
+
     try {
       const response = await railwayApi.post('/api/registration/configure-payment', {
         restaurantId: id,
         includeConnectLink
       });
-      
+
       setPaymentStatus(response.data);
-      
+
       // If successful and we have a Stripe URL, refresh restaurant data to show it
       if (response.data.success && response.data.stripeConnectUrl) {
         await fetchRestaurant();
@@ -1058,9 +1084,9 @@ export default function RestaurantDetail() {
       }
     } catch (error) {
       const errorMessage = error.response?.data?.error || error.message;
-      setPaymentStatus({ 
-        success: false, 
-        error: errorMessage 
+      setPaymentStatus({
+        success: false,
+        error: errorMessage
       });
       toast({
         title: "Error",
@@ -1075,14 +1101,14 @@ export default function RestaurantDetail() {
   const handleConfigureServices = async () => {
     setIsConfiguringServices(true);
     setServicesStatus(null);
-    
+
     try {
       const response = await railwayApi.post('/api/registration/configure-services', {
         restaurantId: id
       });
-      
+
       setServicesStatus(response.data);
-      
+
       if (response.data.success) {
         toast({
           title: "Success",
@@ -1097,9 +1123,9 @@ export default function RestaurantDetail() {
       }
     } catch (error) {
       const errorMessage = error.response?.data?.error || error.message;
-      setServicesStatus({ 
-        success: false, 
-        error: errorMessage 
+      setServicesStatus({
+        success: false,
+        error: errorMessage
       });
       toast({
         title: "Error",
@@ -1122,7 +1148,7 @@ export default function RestaurantDetail() {
   const handleCreateOnboardingUser = async () => {
     setIsCreatingOnboardingUser(true);
     setOnboardingUserStatus(null);
-    
+
     try {
       const response = await railwayApi.post('/api/registration/create-onboarding-user', {
         restaurantId: id,
@@ -1130,9 +1156,9 @@ export default function RestaurantDetail() {
         userEmail: onboardingUserEmail,
         userPassword: onboardingUserPassword || generateDefaultPassword(restaurant?.name || 'Restaurant')
       });
-      
+
       setOnboardingUserStatus(response.data);
-      
+
       if (response.data.success) {
         toast({
           title: "Success",
@@ -1147,9 +1173,9 @@ export default function RestaurantDetail() {
       }
     } catch (error) {
       const errorMessage = error.response?.data?.error || error.message;
-      setOnboardingUserStatus({ 
-        success: false, 
-        error: errorMessage 
+      setOnboardingUserStatus({
+        success: false,
+        error: errorMessage
       });
       toast({
         title: "Error",
@@ -1174,9 +1200,9 @@ export default function RestaurantDetail() {
           stripeConnectUrl: onboardingStripeConnectUrl || null
         }
       });
-      
+
       setOnboardingUpdateStatus(response.data);
-      
+
       if (response.data.success) {
         toast({
           title: "Success",
@@ -1191,9 +1217,9 @@ export default function RestaurantDetail() {
       }
     } catch (error) {
       const errorMessage = error.response?.data?.error || error.message;
-      setOnboardingUpdateStatus({ 
-        success: false, 
-        error: errorMessage 
+      setOnboardingUpdateStatus({
+        success: false,
+        error: errorMessage
       });
       toast({
         title: "Error",
@@ -1341,7 +1367,7 @@ export default function RestaurantDetail() {
 
     try {
       let dataToSave = {};
-      
+
       if (isNewRestaurant) {
         // For new restaurants, send all data
         dataToSave = { ...editedData };
@@ -1352,10 +1378,10 @@ export default function RestaurantDetail() {
           // Use JSON.stringify for deep comparison of objects/arrays
           const originalValue = restaurant[key];
           const editedValue = editedData[key];
-          
+
           // Check if value has changed
           let hasChanged = false;
-          
+
           if (originalValue === undefined && editedValue !== undefined) {
             // New field added
             hasChanged = true;
@@ -1366,17 +1392,17 @@ export default function RestaurantDetail() {
             // For primitive values
             hasChanged = originalValue !== editedValue;
           }
-          
+
           // Only include changed fields
           if (hasChanged) {
             // Special handling for base64 logo fields - skip if they're base64
             const logoFields = [
-              'logo_url', 'logo_nobg_url', 'logo_standard_url', 
+              'logo_url', 'logo_nobg_url', 'logo_standard_url',
               'logo_thermal_url', 'logo_thermal_alt_url',
               'logo_thermal_contrast_url', 'logo_thermal_adaptive_url',
               'logo_favicon_url'
             ];
-            
+
             // Skip base64 data unless it's actually a new/different value
             if (logoFields.includes(key) && editedValue?.startsWith('data:')) {
               // Only skip if it's the same base64 data
@@ -1389,17 +1415,17 @@ export default function RestaurantDetail() {
             }
           }
         });
-        
+
         console.log('Fields being updated:', Object.keys(dataToSave));
       }
-      
+
       // Only proceed if there are changes to save
       if (!isNewRestaurant && Object.keys(dataToSave).length === 0) {
         setError('No changes to save');
         setSaving(false);
         return;
       }
-      
+
       // Save data with 24-hour format opening hours
       let response;
       if (isNewRestaurant) {
@@ -1429,15 +1455,15 @@ export default function RestaurantDetail() {
 
   const convertTo24Hour = (time12h) => {
     if (!time12h) return '';
-    
+
     // Normalize the input by trimming and converting to uppercase for matching
     const normalizedTime = time12h.trim();
-    
+
     // Already in 24-hour format (HH:MM with no AM/PM)
     if (/^\d{1,2}:\d{2}$/.test(normalizedTime) && !normalizedTime.match(/am|pm/i)) {
       return normalizedTime;
     }
-    
+
     // Parse various 12-hour formats
     // Matches: "5:00 pm", "5:00pm", "5:00 PM", "5:00PM", "5 pm", "5PM", etc.
     const match = normalizedTime.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i);
@@ -1445,44 +1471,44 @@ export default function RestaurantDetail() {
       console.warn(`Could not parse time: ${time12h}`);
       return time12h; // Return original if we can't parse it
     }
-    
+
     let hours = parseInt(match[1]);
     const minutes = match[2] || '00';
     const period = match[3].toUpperCase();
-    
+
     if (period === 'PM' && hours !== 12) {
       hours += 12;
     } else if (period === 'AM' && hours === 12) {
       hours = 0;
     }
-    
+
     return `${hours.toString().padStart(2, '0')}:${minutes.padStart(2, '0')}`;
   };
 
   const convertTo12Hour = (time24h) => {
     if (!time24h) return '';
-    
+
     // Already in 12-hour format
     if (time24h.match(/AM|PM/i)) {
       return time24h;
     }
-    
+
     const [hours24, minutes = '00'] = time24h.split(':');
     let hours = parseInt(hours24);
     const period = hours >= 12 ? 'PM' : 'AM';
-    
+
     if (hours > 12) {
       hours -= 12;
     } else if (hours === 0) {
       hours = 12;
     }
-    
+
     return `${hours}:${minutes.padStart(2, '0')} ${period}`;
   };
 
   const normalizeOpeningHours = (hours) => {
     if (!hours) return hours;
-    
+
     if (Array.isArray(hours)) {
       return hours.map(slot => ({
         ...slot,
@@ -1503,7 +1529,7 @@ export default function RestaurantDetail() {
       });
       return normalized;
     }
-    
+
     return hours;
   };
 
@@ -1605,7 +1631,7 @@ export default function RestaurantDetail() {
 
       if (response.data.success) {
         const data = response.data.data;
-        
+
         // Update local state with extracted data
         const updates = {};
         if (data.address) updates.address = data.address;
@@ -1624,7 +1650,7 @@ export default function RestaurantDetail() {
         }));
 
         setSuccess(`Found business information: ${Object.keys(updates).length} fields updated`);
-        
+
         // Refresh data from server
         setTimeout(() => {
           fetchRestaurantDetails();
@@ -1640,13 +1666,13 @@ export default function RestaurantDetail() {
 
   const handleOpeningHoursChange = (day, field, value, index = null) => {
     const currentHours = editedData.opening_hours || {};
-    
+
     // Handle array format (multiple time slots per day)
     if (Array.isArray(currentHours)) {
       const updatedHours = [...currentHours];
       if (index !== null) {
         // Update specific slot
-        const slotIndex = updatedHours.findIndex((slot, i) => 
+        const slotIndex = updatedHours.findIndex((slot, i) =>
           slot.day === day && i === index
         );
         if (slotIndex !== -1) {
@@ -1775,7 +1801,7 @@ export default function RestaurantDetail() {
         setLogoCandidates(response.data.data.candidates);
         // Pre-select the highest confidence candidate
         if (response.data.data.candidates.length > 0) {
-          const topCandidate = response.data.data.candidates.reduce((prev, current) => 
+          const topCandidate = response.data.data.candidates.reduce((prev, current) =>
             (current.confidence > prev.confidence) ? current : prev
           );
           setSelectedLogoCandidate(topCandidate.url);
@@ -1823,10 +1849,10 @@ export default function RestaurantDetail() {
 
       if (response.data.success) {
         const data = response.data.data;
-        
+
         // Update local state with extracted logo and colors
         const updates = {};
-        
+
         if (data.logoVersions?.original) {
           updates.logo_url = data.logoVersions.original;
         }
@@ -1875,15 +1901,15 @@ export default function RestaurantDetail() {
           ...prev,
           ...updates
         }));
-        
+
         setEditedData(prev => ({
           ...prev,
           ...updates
         }));
-        
+
         setSuccess('Logo and colors extracted successfully');
         setLogoDialogOpen(false);
-        
+
         // Refresh restaurant data after a short delay
         setTimeout(() => {
           fetchRestaurantDetails();
@@ -1934,8 +1960,8 @@ export default function RestaurantDetail() {
           logoUrl: newLogoUrl,
           websiteUrl: restaurant.website_url || '',
           restaurantId: id,
-          versionsToUpdate: processMode === 'replace' ? versions : undefined,
-          colorsToUpdate: processMode === 'replace' ? colors : undefined
+          versionsToUpdate: (processMode === 'replace' || processMode === 'manual') ? versions : undefined,
+          colorsToUpdate: (processMode === 'replace' || processMode === 'manual') ? colors : undefined
         });
 
         if (response.data.success) {
@@ -1944,9 +1970,9 @@ export default function RestaurantDetail() {
           // Update local state with processed logo and colors
           const updates = {};
 
-          // Only update selected versions if in 'replace' mode, otherwise update all
-          const isReplaceMode = processMode === 'replace';
-          const shouldUpdate = (versionKey) => !isReplaceMode || versions.includes(versionKey);
+          // Only update selected versions if in 'replace' or 'manual' mode (user can select what to update)
+          const isSelectiveMode = processMode === 'replace' || processMode === 'manual';
+          const shouldUpdate = (versionKey) => !isSelectiveMode || versions.includes(versionKey);
 
           if (shouldUpdate('logo_url') && data.logoVersions?.original) {
             updates.logo_url = data.logoVersions.original;
@@ -1973,8 +1999,8 @@ export default function RestaurantDetail() {
             updates.logo_favicon_url = data.logoVersions.favicon;
           }
 
-          // Update colors based on selection (only in replace mode)
-          const shouldUpdateColor = (colorKey) => !isReplaceMode || colors.includes(colorKey);
+          // Update colors based on selection (in replace or manual mode)
+          const shouldUpdateColor = (colorKey) => !isSelectiveMode || colors.includes(colorKey);
 
           if (shouldUpdateColor('primary_color') && data.colors?.primaryColor) {
             updates.primary_color = data.colors.primaryColor;
@@ -2057,10 +2083,10 @@ export default function RestaurantDetail() {
 
         if (response.data.success) {
           const data = response.data.data;
-          
+
           // Update local state with processed logo versions
           const updates = {};
-          
+
           // Only update the versions that were selected for reprocessing
           if (versionsToUpdate.logo_nobg_url && data.logoVersions?.nobg) {
             updates.logo_nobg_url = data.logoVersions.nobg;
@@ -2120,7 +2146,7 @@ export default function RestaurantDetail() {
   // Platform extraction functions
   const detectPlatformFromUrl = (url) => {
     if (!url) return 'website';
-    
+
     if (url.includes('ubereats.com')) return 'ubereats';
     if (url.includes('doordash.com')) return 'doordash';
     if (url.includes('ordermeal.co.nz')) return 'ordermeal';
@@ -2129,7 +2155,7 @@ export default function RestaurantDetail() {
     if (url.includes('delivereasy.co.nz')) return 'delivereasy';
     if (url.includes('nextorder.co.nz')) return 'nextorder';
     if (url.includes('foodhub.co.nz')) return 'foodhub';
-    
+
     return 'website';
   };
 
@@ -2157,13 +2183,13 @@ export default function RestaurantDetail() {
 
   const startPlatformExtraction = async () => {
     if (!extractionConfig) return;
-    
+
     setIsExtracting(true);
     setError(null);
-    
+
     try {
       let response;
-      
+
       // Check if this is UberEats and premium mode is selected
       if (extractionConfig.platform === 'ubereats' && extractionMode === 'premium') {
         // Use premium extraction endpoint
@@ -2194,7 +2220,7 @@ export default function RestaurantDetail() {
           title: "Extraction started",
           description: `${extractionMode === 'premium' ? 'Premium' : 'Standard'} extraction from ${extractionConfig.platformName}`,
         });
-        
+
         // Navigate to extraction detail page with appropriate parameters
         const isPremium = response.data.statusUrl ? true : false;
         navigate(`/extractions/${response.data.jobId}?poll=true${isPremium ? '&premium=true' : ''}`);
@@ -2217,7 +2243,7 @@ export default function RestaurantDetail() {
   const handleFindUrl = async (platform) => {
     setSearchingForUrl(prev => ({ ...prev, [platform]: true }));
     setError(null);
-    
+
     try {
       const response = await api.post('/platform-url-search', {
         restaurantName: restaurant?.name,
@@ -2225,7 +2251,7 @@ export default function RestaurantDetail() {
         platform: platform,
         restaurantId: id
       });
-      
+
       if (response.data.success && response.data.url) {
         // Update the local restaurant state with the found URL
         const urlField = `${platform}_url`;
@@ -2233,12 +2259,12 @@ export default function RestaurantDetail() {
           ...prev,
           [urlField]: response.data.url
         }));
-        
+
         toast({
           title: 'URL Found',
           description: `Successfully found ${platform} URL`,
         });
-        
+
         // Refresh restaurant data
         await fetchRestaurantDetails();
       } else {
@@ -2264,7 +2290,7 @@ export default function RestaurantDetail() {
   const handleExtractDetails = (url, platform, platformName) => {
     const capabilities = PLATFORM_CAPABILITIES[platform];
     if (!capabilities?.canExtractDetails) return;
-    
+
     setDetailsExtractionConfig({
       url,
       platform,
@@ -2274,7 +2300,7 @@ export default function RestaurantDetail() {
       availableFields: capabilities.detailFields,
       fieldLabels: capabilities.fieldLabels
     });
-    
+
     // Pre-select all available fields
     setSelectedDetailFields(capabilities.detailFields);
     setDetailsDialogOpen(true);
@@ -2283,10 +2309,10 @@ export default function RestaurantDetail() {
   // Function to start the details extraction
   const startDetailsExtraction = async () => {
     if (!detailsExtractionConfig || selectedDetailFields.length === 0) return;
-    
+
     setExtractingDetails(true);
     setError(null);
-    
+
     try {
       const response = await api.post('/platform-details-extraction', {
         url: detailsExtractionConfig.url,
@@ -2295,23 +2321,23 @@ export default function RestaurantDetail() {
         restaurantId: detailsExtractionConfig.restaurantId,
         restaurantName: detailsExtractionConfig.restaurantName
       });
-      
+
       if (response.data.success) {
         const extracted = response.data.extracted;
         let successMessage = 'Successfully extracted: ';
         const extractedItems = [];
-        
+
         if (extracted.address) extractedItems.push('address');
         if (extracted.phone) extractedItems.push('phone');
         if (extracted.hours && extracted.hours.length > 0) extractedItems.push('opening hours');
-        
+
         successMessage += extractedItems.join(', ');
-        
+
         toast({
           title: 'Extraction Complete',
           description: successMessage,
         });
-        
+
         // Refresh restaurant data to show updated fields
         await fetchRestaurantDetails();
         setDetailsDialogOpen(false);
@@ -2336,7 +2362,7 @@ export default function RestaurantDetail() {
 
   const addOpeningHoursSlot = (day) => {
     const currentHours = editedData.opening_hours;
-    
+
     // If no hours exist yet, create object format by default
     if (!currentHours || (typeof currentHours === 'object' && Object.keys(currentHours).length === 0)) {
       setEditedData(prev => ({
@@ -2347,7 +2373,7 @@ export default function RestaurantDetail() {
       }));
       return;
     }
-    
+
     if (!Array.isArray(currentHours)) {
       // Object format - check if we need to convert to array (for multiple slots)
       if (currentHours[day]) {
@@ -2395,7 +2421,7 @@ export default function RestaurantDetail() {
   const removeOpeningHoursSlot = (day, index) => {
     const currentHours = editedData.opening_hours || [];
     if (Array.isArray(currentHours)) {
-      const updatedHours = currentHours.filter((slot, i) => 
+      const updatedHours = currentHours.filter((slot, i) =>
         !(slot.day === day && i === index)
       );
       setEditedData(prev => ({
@@ -2407,7 +2433,7 @@ export default function RestaurantDetail() {
 
   const deleteOpeningHours = (day) => {
     const currentHours = editedData.opening_hours || {};
-    
+
     if (Array.isArray(currentHours)) {
       // Remove all slots for this day from array format
       const updatedHours = currentHours.filter(slot => slot.day !== day);
@@ -2429,7 +2455,7 @@ export default function RestaurantDetail() {
   const renderOpeningHours = () => {
     const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     const hours = isEditing ? editedData.opening_hours : restaurant?.opening_hours;
-    
+
     if (!hours) {
       return daysOfWeek.map(day => (
         <div key={day} className="flex items-center justify-between">
@@ -2461,7 +2487,7 @@ export default function RestaurantDetail() {
 
       return daysOfWeek.map(day => {
         const daySlots = groupedHours[day] || [];
-        
+
         return (
           <div key={day} className="space-y-2 mb-3">
             <div className="flex items-start gap-4">
@@ -2679,25 +2705,25 @@ export default function RestaurantDetail() {
 
   const handleUploadImagesToCDN = async (menuId) => {
     try {
-      toast({ 
-        title: "Uploading images to CDN...", 
-        description: "This may take a moment" 
+      toast({
+        title: "Uploading images to CDN...",
+        description: "This may take a moment"
       });
-      
+
       const response = await api.post(`/menus/${menuId}/upload-images`);
-      
+
       if (response.data.success) {
-        toast({ 
-          title: "Success", 
-          description: `Uploaded ${response.data.uploadedCount || response.data.stats?.uploadedCount || 0} images to CDN` 
+        toast({
+          title: "Success",
+          description: `Uploaded ${response.data.uploadedCount || response.data.stats?.uploadedCount || 0} images to CDN`
         });
         // Refresh restaurant data to show updated status
         fetchRestaurantDetails();
       }
     } catch (error) {
       console.error('Failed to upload images:', error);
-      toast({ 
-        title: "Upload failed", 
+      toast({
+        title: "Upload failed",
         description: error.response?.data?.error || "Failed to upload images",
         variant: "destructive"
       });
@@ -2710,7 +2736,7 @@ export default function RestaurantDetail() {
         params: { download: 'true' },
         responseType: 'text'
       });
-      
+
       const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -2721,15 +2747,15 @@ export default function RestaurantDetail() {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      
-      toast({ 
-        title: "CSV exported", 
-        description: "Downloaded menu with CDN image URLs" 
+
+      toast({
+        title: "CSV exported",
+        description: "Downloaded menu with CDN image URLs"
       });
     } catch (error) {
       console.error('Failed to export CSV:', error);
-      toast({ 
-        title: "Export failed", 
+      toast({
+        title: "Export failed",
         description: error.response?.data?.error || "Failed to export CSV",
         variant: "destructive"
       });
@@ -2740,7 +2766,7 @@ export default function RestaurantDetail() {
   const PlatformUrlField = ({ platform, platformName, urlValue, fieldName, placeholder }) => {
     const capabilities = PLATFORM_CAPABILITIES[platform];
     const isSearching = searchingForUrl[platform];
-    
+
     return (
       <div>
         <div className="flex items-center justify-between">
@@ -2792,7 +2818,7 @@ export default function RestaurantDetail() {
             </div>
           )}
         </div>
-        
+
         {isEditing ? (
           <Input
             value={editedData[fieldName] || ''}
@@ -2803,7 +2829,7 @@ export default function RestaurantDetail() {
         ) : (
           <p className="text-sm mt-1">
             {urlValue ? (
-              <a 
+              <a
                 href={urlValue}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -2859,172 +2885,172 @@ export default function RestaurantDetail() {
           </div>
           {/* Status, Notes, and Actions */}
           <div className="flex flex-1 flex-wrap items-center justify-end gap-2 lg:gap-4">
-          {!isNewRestaurant && (
-            <div className="flex items-center gap-2">
-              <Select
-                value={restaurant?.onboarding_status || 'lead'}
-                onValueChange={handleStatusChange}
-              >
-                <SelectTrigger className="w-auto h-7 px-2 border-0 bg-transparent focus:ring-0 hover:bg-muted/50">
-                  {getStatusBadge(restaurant?.onboarding_status)}
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="lead">
-                    <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-gray-500" />
-                      Lead
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="info_gathered">
-                    <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-blue-500" />
-                      Info Gathered
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="registered">
-                    <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-purple-500" />
-                      Registered
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="menu_imported">
-                    <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-orange-500" />
-                      Menu Imported
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="configured">
-                    <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-green-500" />
-                      Configured
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="completed">
-                    <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                      Completed
-                    </span>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              <Popover open={notesPopoverOpen} onOpenChange={(open) => {
-                setNotesPopoverOpen(open);
-                if (open) {
-                  setLocalNotes(restaurant?.workflow_notes || '');
-                }
-              }}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                      "h-7 px-2 gap-1",
-                      restaurant?.workflow_notes ? "text-blue-600" : "text-muted-foreground"
-                    )}
-                  >
-                    <FileText className="h-4 w-4" />
-                    <span className="text-xs">Notes</span>
-                    {restaurant?.workflow_notes && (
-                      <span className="w-2 h-2 rounded-full bg-blue-500" />
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-96" align="start">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm font-medium">Workflow Notes</Label>
-                      <span className="text-xs text-muted-foreground">
-                        {localNotes.length} characters
+            {!isNewRestaurant && (
+              <div className="flex items-center gap-2">
+                <Select
+                  value={restaurant?.onboarding_status || 'lead'}
+                  onValueChange={handleStatusChange}
+                >
+                  <SelectTrigger className="w-auto h-7 px-2 border-0 bg-transparent focus:ring-0 hover:bg-muted/50">
+                    {getStatusBadge(restaurant?.onboarding_status)}
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="lead">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-gray-500" />
+                        Lead
                       </span>
+                    </SelectItem>
+                    <SelectItem value="info_gathered">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-blue-500" />
+                        Info Gathered
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="registered">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-purple-500" />
+                        Registered
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="menu_imported">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-orange-500" />
+                        Menu Imported
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="configured">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-green-500" />
+                        Configured
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="completed">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                        Completed
+                      </span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <Popover open={notesPopoverOpen} onOpenChange={(open) => {
+                  setNotesPopoverOpen(open);
+                  if (open) {
+                    setLocalNotes(restaurant?.workflow_notes || '');
+                  }
+                }}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "h-7 px-2 gap-1",
+                        restaurant?.workflow_notes ? "text-blue-600" : "text-muted-foreground"
+                      )}
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span className="text-xs">Notes</span>
+                      {restaurant?.workflow_notes && (
+                        <span className="w-2 h-2 rounded-full bg-blue-500" />
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-96" align="start">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">Workflow Notes</Label>
+                        <span className="text-xs text-muted-foreground">
+                          {localNotes.length} characters
+                        </span>
+                      </div>
+                      <Textarea
+                        value={localNotes}
+                        onChange={(e) => setLocalNotes(e.target.value)}
+                        placeholder="Add notes about this restaurant's onboarding process..."
+                        className="min-h-[150px] resize-y"
+                      />
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setNotesPopoverOpen(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={handleSaveNotes}
+                          disabled={savingNotes}
+                        >
+                          {savingNotes ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="h-4 w-4 mr-1" />
+                              Save Notes
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </div>
-                    <Textarea
-                      value={localNotes}
-                      onChange={(e) => setLocalNotes(e.target.value)}
-                      placeholder="Add notes about this restaurant's onboarding process..."
-                      className="min-h-[150px] resize-y"
-                    />
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setNotesPopoverOpen(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={handleSaveNotes}
-                        disabled={savingNotes}
-                      >
-                        {savingNotes ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                            Saving...
-                          </>
-                        ) : (
-                          <>
-                            <Save className="h-4 w-4 mr-1" />
-                            Save Notes
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
-          )}
-          <div className="flex gap-2">
-          {!isNewRestaurant && isFeatureEnabled('googleSearchExtraction') && (
-            <Button
-              onClick={handleGoogleSearch}
-              variant="outline"
-              disabled={searchingGoogle || !restaurant?.name}
-              title="Search Google for business information"
-            >
-              {searchingGoogle ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Searching...
-                </>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
+            <div className="flex gap-2">
+              {!isNewRestaurant && isFeatureEnabled('googleSearchExtraction') && (
+                <Button
+                  onClick={handleGoogleSearch}
+                  variant="outline"
+                  disabled={searchingGoogle || !restaurant?.name}
+                  title="Search Google for business information"
+                >
+                  {searchingGoogle ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Searching...
+                    </>
+                  ) : (
+                    <>
+                      <Search className="h-4 w-4 mr-2" />
+                      Google Search
+                    </>
+                  )}
+                </Button>
+              )}
+
+              {!isEditing && !isNewRestaurant ? (
+                <Button onClick={() => {
+                  setEditedData(restaurant);
+                  setIsEditing(true);
+                }}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Details
+                </Button>
               ) : (
                 <>
-                  <Search className="h-4 w-4 mr-2" />
-                  Google Search
+                  <Button
+                    variant="outline"
+                    onClick={handleCancel}
+                    disabled={saving}
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="bg-gradient-to-r from-brand-blue to-brand-green"
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    {saving ? 'Saving...' : (isNewRestaurant ? 'Create Restaurant' : 'Save Changes')}
+                  </Button>
                 </>
               )}
-            </Button>
-          )}
-          
-          {!isEditing && !isNewRestaurant ? (
-            <Button onClick={() => {
-              setEditedData(restaurant);
-              setIsEditing(true);
-            }}>
-              <Edit className="h-4 w-4 mr-2" />
-              Edit Details
-            </Button>
-          ) : (
-            <>
-              <Button
-                variant="outline"
-                onClick={handleCancel}
-                disabled={saving}
-              >
-                <X className="h-4 w-4 mr-2" />
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSave}
-                disabled={saving}
-                className="bg-gradient-to-r from-brand-blue to-brand-green"
-              >
-                <Save className="h-4 w-4 mr-2" />
-                {saving ? 'Saving...' : (isNewRestaurant ? 'Create Restaurant' : 'Save Changes')}
-              </Button>
-            </>
-          )}
-          </div>
+            </div>
           </div>
         </div>
       </div>
@@ -3076,7 +3102,7 @@ export default function RestaurantDetail() {
                     <p className="text-sm mt-1">{restaurant?.name || '-'}</p>
                   )}
                 </div>
-                
+
                 <div>
                   <Label>Organisation Name</Label>
                   {isEditing ? (
@@ -3222,317 +3248,317 @@ export default function RestaurantDetail() {
 
           {/* Sales Information */}
           {isFeatureEnabled('tasksAndSequences') && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Sales Information</CardTitle>
-              <CardDescription>Lead tracking, categorization, and sales pipeline management</CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 md:grid-cols-3 gap-4">
-              {/* Lead Type */}
-              <div>
-                <Label>Lead Type</Label>
-                {isEditing ? (
-                  <Select
-                    value={editedData.lead_type || ''}
-                    onValueChange={(value) => handleFieldChange('lead_type', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select lead type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="inbound">Inbound</SelectItem>
-                      <SelectItem value="outbound">Outbound</SelectItem>
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <p className="text-sm mt-1 capitalize">{restaurant?.lead_type || '-'}</p>
-                )}
-              </div>
-
-              {/* Lead Category */}
-              <div>
-                <Label>Lead Category</Label>
-                {isEditing ? (
-                  <Select
-                    value={editedData.lead_category || ''}
-                    onValueChange={(value) => handleFieldChange('lead_category', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="paid_ads">Paid Ads</SelectItem>
-                      <SelectItem value="organic_content">Organic Content</SelectItem>
-                      <SelectItem value="warm_outreach">Warm Outreach</SelectItem>
-                      <SelectItem value="cold_outreach">Cold Outreach</SelectItem>
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <p className="text-sm mt-1">{restaurant?.lead_category?.replace(/_/g, ' ') || '-'}</p>
-                )}
-              </div>
-
-              {/* Lead Engagement Source */}
-              <div>
-                <Label>Lead Engagement Source</Label>
-                {isEditing ? (
-                  <Select
-                    value={editedData.lead_engagement_source || ''}
-                    onValueChange={(value) => handleFieldChange('lead_engagement_source', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select engagement source" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="meta_ad_form">Meta Ad Form</SelectItem>
-                      <SelectItem value="landing_page_demo_booking">Landing Page Demo Booking</SelectItem>
-                      <SelectItem value="website_demo_booking">Website Demo Booking</SelectItem>
-                      <SelectItem value="website_live_chat">Website Live Chat</SelectItem>
-                      <SelectItem value="inbound_social_media_message">Inbound Social Media Message</SelectItem>
-                      <SelectItem value="inbound_email">Inbound Email</SelectItem>
-                      <SelectItem value="inbound_call">Inbound Call</SelectItem>
-                      <SelectItem value="cold_social_media_message">Cold Social Media Message</SelectItem>
-                      <SelectItem value="cold_email">Cold Email</SelectItem>
-                      <SelectItem value="cold_call">Cold Call</SelectItem>
-                      <SelectItem value="inbound_referral">Inbound Referral</SelectItem>
-                      <SelectItem value="outbound_referral">Outbound Referral</SelectItem>
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <p className="text-sm mt-1">{restaurant?.lead_engagement_source?.replace(/_/g, ' ') || '-'}</p>
-                )}
-              </div>
-
-              {/* Lead Warmth */}
-              <div>
-                <Label>Lead Warmth</Label>
-                {isEditing ? (
-                  <Select
-                    value={editedData.lead_warmth || ''}
-                    onValueChange={(value) => handleFieldChange('lead_warmth', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select warmth" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="frozen">Frozen</SelectItem>
-                      <SelectItem value="cold">Cold</SelectItem>
-                      <SelectItem value="warm">Warm</SelectItem>
-                      <SelectItem value="hot">Hot</SelectItem>
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <div className="mt-1">
-                    {restaurant?.lead_warmth ? getWarmthBadge(restaurant.lead_warmth) : '-'}
-                  </div>
-                )}
-              </div>
-
-              {/* Lead Stage */}
-              <div>
-                <Label>Lead Stage</Label>
-                {isEditing ? (
-                  <Select
-                    value={editedData.lead_stage || ''}
-                    onValueChange={(value) => handleFieldChange('lead_stage', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select stage" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="uncontacted">Uncontacted</SelectItem>
-                      <SelectItem value="reached_out">Reached Out</SelectItem>
-                      <SelectItem value="in_talks">In Talks</SelectItem>
-                      <SelectItem value="demo_booked">Demo Booked</SelectItem>
-                      <SelectItem value="rebook_demo">Rebook Demo</SelectItem>
-                      <SelectItem value="demo_completed">Demo Completed</SelectItem>
-                      <SelectItem value="contract_sent">Contract Sent</SelectItem>
-                      <SelectItem value="closed_won">Closed Won</SelectItem>
-                      <SelectItem value="closed_lost">Closed Lost</SelectItem>
-                      <SelectItem value="reengaging">Reengaging</SelectItem>
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <div className="mt-1">
-                    {restaurant?.lead_stage ? getStageBadge(restaurant.lead_stage) : '-'}
-                  </div>
-                )}
-              </div>
-
-              {/* Lead Status */}
-              <div>
-                <Label>Lead Status</Label>
-                {isEditing ? (
-                  <Select
-                    value={editedData.lead_status || ''}
-                    onValueChange={(value) => handleFieldChange('lead_status', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                      <SelectItem value="ghosted">Ghosted</SelectItem>
-                      <SelectItem value="reengaging">Reengaging</SelectItem>
-                      <SelectItem value="closed">Closed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <p className="text-sm mt-1 capitalize">{restaurant?.lead_status || '-'}</p>
-                )}
-              </div>
-
-              {/* ICP Rating */}
-              <div>
-                <Label>ICP Rating (0-10)</Label>
-                {isEditing ? (
-                  <Select
-                    value={editedData.icp_rating?.toString() || ''}
-                    onValueChange={(value) => handleFieldChange('icp_rating', parseInt(value))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select rating" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((rating) => (
-                        <SelectItem key={rating} value={rating.toString()}>
-                          {rating}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <p className="text-sm mt-1">
-                    {restaurant?.icp_rating !== null && restaurant?.icp_rating !== undefined
-                      ? `${restaurant.icp_rating}/10`
-                      : '-'}
-                  </p>
-                )}
-              </div>
-
-              {/* Last Contacted */}
-              <div>
-                <Label>Last Contacted</Label>
-                {isEditing ? (
-                  <DateTimePicker
-                    value={editedData.last_contacted ? new Date(editedData.last_contacted) : null}
-                    onChange={(date) => handleFieldChange('last_contacted', date ? date.toISOString() : null)}
-                    placeholder="Set last contacted"
-                  />
-                ) : (
-                  <p className="text-sm mt-1">
-                    {restaurant?.last_contacted
-                      ? new Date(restaurant.last_contacted).toLocaleString()
-                      : '-'}
-                  </p>
-                )}
-              </div>
-
-              {/* Assigned Sales Rep */}
-              <div>
-                <Label>Assigned Sales Rep</Label>
-                {isEditing ? (
-                  <Input
-                    value={editedData.assigned_sales_rep || ''}
-                    onChange={(e) => handleFieldChange('assigned_sales_rep', e.target.value)}
-                    placeholder="User ID (UUID)"
-                  />
-                ) : (
-                  <p className="text-sm mt-1">{restaurant?.assigned_sales_rep || '-'}</p>
-                )}
-              </div>
-              
-              {/* Demo Store Built */}
-              <div>
-                <Label>Demo Store Built</Label>
-                {isEditing ? (
-                  <div className="flex items-center space-x-2 mt-2">
-                    <Checkbox
-                      id="demo_store_built"
-                      checked={editedData.demo_store_built || false}
-                      onCheckedChange={(checked) => handleFieldChange('demo_store_built', checked)}
-                    />
-                    <label
-                      htmlFor="demo_store_built"
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                      Yes
-                    </label>
-                  </div>
-                ) : (
-                  <p className="text-sm mt-1">{restaurant?.demo_store_built ? 'Yes' : 'No'}</p>
-                )}
-              </div>
-
-              {/* Demo Store URL - conditional rendering */}
-              {(isEditing ? editedData.demo_store_built : restaurant?.demo_store_built) && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Sales Information</CardTitle>
+                <CardDescription>Lead tracking, categorization, and sales pipeline management</CardDescription>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 md:grid-cols-3 gap-4">
+                {/* Lead Type */}
                 <div>
-                  <Label>Demo Store URL</Label>
+                  <Label>Lead Type</Label>
                   {isEditing ? (
-                    <Input
-                      value={editedData.demo_store_url || ''}
-                      onChange={(e) => handleFieldChange('demo_store_url', e.target.value)}
-                      placeholder="https://demo-restaurant.pumpd.co.nz"
+                    <Select
+                      value={editedData.lead_type || ''}
+                      onValueChange={(value) => handleFieldChange('lead_type', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select lead type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="inbound">Inbound</SelectItem>
+                        <SelectItem value="outbound">Outbound</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="text-sm mt-1 capitalize">{restaurant?.lead_type || '-'}</p>
+                  )}
+                </div>
+
+                {/* Lead Category */}
+                <div>
+                  <Label>Lead Category</Label>
+                  {isEditing ? (
+                    <Select
+                      value={editedData.lead_category || ''}
+                      onValueChange={(value) => handleFieldChange('lead_category', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="paid_ads">Paid Ads</SelectItem>
+                        <SelectItem value="organic_content">Organic Content</SelectItem>
+                        <SelectItem value="warm_outreach">Warm Outreach</SelectItem>
+                        <SelectItem value="cold_outreach">Cold Outreach</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="text-sm mt-1">{restaurant?.lead_category?.replace(/_/g, ' ') || '-'}</p>
+                  )}
+                </div>
+
+                {/* Lead Engagement Source */}
+                <div>
+                  <Label>Lead Engagement Source</Label>
+                  {isEditing ? (
+                    <Select
+                      value={editedData.lead_engagement_source || ''}
+                      onValueChange={(value) => handleFieldChange('lead_engagement_source', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select engagement source" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="meta_ad_form">Meta Ad Form</SelectItem>
+                        <SelectItem value="landing_page_demo_booking">Landing Page Demo Booking</SelectItem>
+                        <SelectItem value="website_demo_booking">Website Demo Booking</SelectItem>
+                        <SelectItem value="website_live_chat">Website Live Chat</SelectItem>
+                        <SelectItem value="inbound_social_media_message">Inbound Social Media Message</SelectItem>
+                        <SelectItem value="inbound_email">Inbound Email</SelectItem>
+                        <SelectItem value="inbound_call">Inbound Call</SelectItem>
+                        <SelectItem value="cold_social_media_message">Cold Social Media Message</SelectItem>
+                        <SelectItem value="cold_email">Cold Email</SelectItem>
+                        <SelectItem value="cold_call">Cold Call</SelectItem>
+                        <SelectItem value="inbound_referral">Inbound Referral</SelectItem>
+                        <SelectItem value="outbound_referral">Outbound Referral</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="text-sm mt-1">{restaurant?.lead_engagement_source?.replace(/_/g, ' ') || '-'}</p>
+                  )}
+                </div>
+
+                {/* Lead Warmth */}
+                <div>
+                  <Label>Lead Warmth</Label>
+                  {isEditing ? (
+                    <Select
+                      value={editedData.lead_warmth || ''}
+                      onValueChange={(value) => handleFieldChange('lead_warmth', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select warmth" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="frozen">Frozen</SelectItem>
+                        <SelectItem value="cold">Cold</SelectItem>
+                        <SelectItem value="warm">Warm</SelectItem>
+                        <SelectItem value="hot">Hot</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="mt-1">
+                      {restaurant?.lead_warmth ? getWarmthBadge(restaurant.lead_warmth) : '-'}
+                    </div>
+                  )}
+                </div>
+
+                {/* Lead Stage */}
+                <div>
+                  <Label>Lead Stage</Label>
+                  {isEditing ? (
+                    <Select
+                      value={editedData.lead_stage || ''}
+                      onValueChange={(value) => handleFieldChange('lead_stage', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select stage" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="uncontacted">Uncontacted</SelectItem>
+                        <SelectItem value="reached_out">Reached Out</SelectItem>
+                        <SelectItem value="in_talks">In Talks</SelectItem>
+                        <SelectItem value="demo_booked">Demo Booked</SelectItem>
+                        <SelectItem value="rebook_demo">Rebook Demo</SelectItem>
+                        <SelectItem value="demo_completed">Demo Completed</SelectItem>
+                        <SelectItem value="contract_sent">Contract Sent</SelectItem>
+                        <SelectItem value="closed_won">Closed Won</SelectItem>
+                        <SelectItem value="closed_lost">Closed Lost</SelectItem>
+                        <SelectItem value="reengaging">Reengaging</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="mt-1">
+                      {restaurant?.lead_stage ? getStageBadge(restaurant.lead_stage) : '-'}
+                    </div>
+                  )}
+                </div>
+
+                {/* Lead Status */}
+                <div>
+                  <Label>Lead Status</Label>
+                  {isEditing ? (
+                    <Select
+                      value={editedData.lead_status || ''}
+                      onValueChange={(value) => handleFieldChange('lead_status', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                        <SelectItem value="ghosted">Ghosted</SelectItem>
+                        <SelectItem value="reengaging">Reengaging</SelectItem>
+                        <SelectItem value="closed">Closed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="text-sm mt-1 capitalize">{restaurant?.lead_status || '-'}</p>
+                  )}
+                </div>
+
+                {/* ICP Rating */}
+                <div>
+                  <Label>ICP Rating (0-10)</Label>
+                  {isEditing ? (
+                    <Select
+                      value={editedData.icp_rating?.toString() || ''}
+                      onValueChange={(value) => handleFieldChange('icp_rating', parseInt(value))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select rating" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((rating) => (
+                          <SelectItem key={rating} value={rating.toString()}>
+                            {rating}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="text-sm mt-1">
+                      {restaurant?.icp_rating !== null && restaurant?.icp_rating !== undefined
+                        ? `${restaurant.icp_rating}/10`
+                        : '-'}
+                    </p>
+                  )}
+                </div>
+
+                {/* Last Contacted */}
+                <div>
+                  <Label>Last Contacted</Label>
+                  {isEditing ? (
+                    <DateTimePicker
+                      value={editedData.last_contacted ? new Date(editedData.last_contacted) : null}
+                      onChange={(date) => handleFieldChange('last_contacted', date ? date.toISOString() : null)}
+                      placeholder="Set last contacted"
                     />
                   ) : (
                     <p className="text-sm mt-1">
-                      {restaurant?.demo_store_url ? (
+                      {restaurant?.last_contacted
+                        ? new Date(restaurant.last_contacted).toLocaleString()
+                        : '-'}
+                    </p>
+                  )}
+                </div>
+
+                {/* Assigned Sales Rep */}
+                <div>
+                  <Label>Assigned Sales Rep</Label>
+                  {isEditing ? (
+                    <Input
+                      value={editedData.assigned_sales_rep || ''}
+                      onChange={(e) => handleFieldChange('assigned_sales_rep', e.target.value)}
+                      placeholder="User ID (UUID)"
+                    />
+                  ) : (
+                    <p className="text-sm mt-1">{restaurant?.assigned_sales_rep || '-'}</p>
+                  )}
+                </div>
+
+                {/* Demo Store Built */}
+                <div>
+                  <Label>Demo Store Built</Label>
+                  {isEditing ? (
+                    <div className="flex items-center space-x-2 mt-2">
+                      <Checkbox
+                        id="demo_store_built"
+                        checked={editedData.demo_store_built || false}
+                        onCheckedChange={(checked) => handleFieldChange('demo_store_built', checked)}
+                      />
+                      <label
+                        htmlFor="demo_store_built"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        Yes
+                      </label>
+                    </div>
+                  ) : (
+                    <p className="text-sm mt-1">{restaurant?.demo_store_built ? 'Yes' : 'No'}</p>
+                  )}
+                </div>
+
+                {/* Demo Store URL - conditional rendering */}
+                {(isEditing ? editedData.demo_store_built : restaurant?.demo_store_built) && (
+                  <div>
+                    <Label>Demo Store URL</Label>
+                    {isEditing ? (
+                      <Input
+                        value={editedData.demo_store_url || ''}
+                        onChange={(e) => handleFieldChange('demo_store_url', e.target.value)}
+                        placeholder="https://demo-restaurant.pumpd.co.nz"
+                      />
+                    ) : (
+                      <p className="text-sm mt-1">
+                        {restaurant?.demo_store_url ? (
+                          <a
+                            href={restaurant.demo_store_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-brand-blue hover:underline"
+                          >
+                            {restaurant.demo_store_url}
+                          </a>
+                        ) : '-'}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Demo Store Subdomain */}
+                <div>
+                  <Label>Demo Store Subdomain</Label>
+                  {isEditing ? (
+                    <Input
+                      value={editedData.subdomain || ''}
+                      onChange={(e) => handleFieldChange('subdomain', e.target.value)}
+                      placeholder="restaurant-name"
+                    />
+                  ) : (
+                    <p className="text-sm mt-1">
+                      {restaurant?.subdomain ? (
                         <a
-                          href={restaurant.demo_store_url}
+                          href={`https://${restaurant.subdomain}.pumpd.co.nz`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-brand-blue hover:underline"
                         >
-                          {restaurant.demo_store_url}
+                          {restaurant.subdomain}
                         </a>
                       ) : '-'}
                     </p>
                   )}
                 </div>
-              )}
 
-              {/* Demo Store Subdomain */}
-              <div>
-                <Label>Demo Store Subdomain</Label>
-                {isEditing ? (
-                  <Input
-                    value={editedData.subdomain || ''}
-                    onChange={(e) => handleFieldChange('subdomain', e.target.value)}
-                    placeholder="restaurant-name"
-                  />
-                ) : (
-                  <p className="text-sm mt-1">
-                    {restaurant?.subdomain ? (
-                      <a
-                        href={`https://${restaurant.subdomain}.pumpd.co.nz`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-brand-blue hover:underline"
-                      >
-                        {restaurant.subdomain}
-                      </a>
-                    ) : '-'}
-                  </p>
-                )}
-              </div>
+                {/* Qualification Data Section */}
+                <div className="col-span-2 border-t pt-6 mt-6">
+                  <h3 className="text-lg font-semibold mb-4">Demo Qualification Data</h3>
 
-              {/* Qualification Data Section */}
-              <div className="col-span-2 border-t pt-6 mt-6">
-                <h3 className="text-lg font-semibold mb-4">Demo Qualification Data</h3>
-
-                {isEditing ? (
-                  <QualificationForm
-                    data={editedData}
-                    onChange={handleFieldChange}
-                  />
-                ) : (
-                  <QualificationDataDisplay data={restaurant} />
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                  {isEditing ? (
+                    <QualificationForm
+                      data={editedData}
+                      onChange={handleFieldChange}
+                    />
+                  ) : (
+                    <QualificationDataDisplay data={restaurant} />
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
 
@@ -3547,7 +3573,7 @@ export default function RestaurantDetail() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                
+
                 <PlatformUrlField
                   platform="website"
                   platformName="Website URL"
@@ -3596,7 +3622,7 @@ export default function RestaurantDetail() {
                   fieldName="delivereasy_url"
                   placeholder="https://delivereasy.co.nz/..."
                 />
-                
+
                 <PlatformUrlField
                   platform="ordermeal"
                   platformName="OrderMeal URL"
@@ -3648,7 +3674,7 @@ export default function RestaurantDetail() {
                 <div className="space-y-4">
                   {renderOpeningHours()}
                 </div>
-                
+
                 {isEditing && (
                   <div className="mt-4">
                     <Label>Opening Hours Description</Label>
@@ -3662,7 +3688,7 @@ export default function RestaurantDetail() {
                 )}
               </CardContent>
             </Card>
-          </div>  
+          </div>
 
           {/* Recent Menus */}
           <Card>
@@ -3700,26 +3726,26 @@ export default function RestaurantDetail() {
                           View Menu
                         </Button>
                         {isFeatureEnabled('csvWithImagesDownload') && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleUploadImagesToCDN(menu.id)}
-                          className="text-brand-green hover:text-brand-green hover:bg-brand-green/10"
-                        >
-                          <Upload className="h-4 w-4 mr-1" />
-                          Upload Images
-                        </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleUploadImagesToCDN(menu.id)}
+                            className="text-brand-green hover:text-brand-green hover:bg-brand-green/10"
+                          >
+                            <Upload className="h-4 w-4 mr-1" />
+                            Upload Images
+                          </Button>
                         )}
                         {isFeatureEnabled('csvWithImagesDownload') && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDownloadCSVWithCDN(menu.id)}
-                          className="text-brand-orange hover:text-brand-orange hover:bg-brand-orange/10"
-                        >
-                          <Download className="h-4 w-4 mr-1" />
-                          Download CSV
-                        </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDownloadCSVWithCDN(menu.id)}
+                            className="text-brand-orange hover:text-brand-orange hover:bg-brand-orange/10"
+                          >
+                            <Download className="h-4 w-4 mr-1" />
+                            Download CSV
+                          </Button>
                         )}
                       </div>
                     </div>
@@ -3836,7 +3862,7 @@ export default function RestaurantDetail() {
                   ) : (
                     <div className="flex items-center gap-2 mt-1">
                       {restaurant?.primary_color && (
-                        <div 
+                        <div
                           className="w-6 h-6 rounded border"
                           style={{ backgroundColor: restaurant.primary_color }}
                         />
@@ -3865,7 +3891,7 @@ export default function RestaurantDetail() {
                   ) : (
                     <div className="flex items-center gap-2 mt-1">
                       {restaurant?.secondary_color && (
-                        <div 
+                        <div
                           className="w-6 h-6 rounded border"
                           style={{ backgroundColor: restaurant.secondary_color }}
                         />
@@ -3894,7 +3920,7 @@ export default function RestaurantDetail() {
                   ) : (
                     <div className="flex items-center gap-2 mt-1">
                       {restaurant?.tertiary_color && (
-                        <div 
+                        <div
                           className="w-6 h-6 rounded border"
                           style={{ backgroundColor: restaurant.tertiary_color }}
                         />
@@ -3923,7 +3949,7 @@ export default function RestaurantDetail() {
                   ) : (
                     <div className="flex items-center gap-2 mt-1">
                       {restaurant?.accent_color && (
-                        <div 
+                        <div
                           className="w-6 h-6 rounded border"
                           style={{ backgroundColor: restaurant.accent_color }}
                         />
@@ -3952,7 +3978,7 @@ export default function RestaurantDetail() {
                   ) : (
                     <div className="flex items-center gap-2 mt-1">
                       {restaurant?.background_color && (
-                        <div 
+                        <div
                           className="w-6 h-6 rounded border"
                           style={{ backgroundColor: restaurant.background_color }}
                         />
@@ -3992,15 +4018,15 @@ export default function RestaurantDetail() {
                     )}
 
                     {isFeatureEnabled('logoProcessing') && (
-                    <Button
-                      onClick={() => setProcessLogoDialogOpen(true)}
-                      variant="outline"
-                      size="sm"
-                      title="Process logo manually or reprocess existing"
-                    >
-                      <Settings className="h-3 w-3 mr-1" />
-                      Process Logo
-                    </Button>
+                      <Button
+                        onClick={() => setProcessLogoDialogOpen(true)}
+                        variant="outline"
+                        size="sm"
+                        title="Process logo manually or reprocess existing"
+                      >
+                        <Settings className="h-3 w-3 mr-1" />
+                        Process Logo
+                      </Button>
                     )}
                   </div>
                 )}
@@ -4020,9 +4046,9 @@ export default function RestaurantDetail() {
                   ) : (
                     <div className="mt-2">
                       {restaurant?.logo_url ? (
-                        <img 
-                          src={restaurant.logo_url} 
-                          alt="Logo" 
+                        <img
+                          src={restaurant.logo_url}
+                          alt="Logo"
                           className="h-20 w-auto object-contain bg-gray-100 rounded p-2"
                         />
                       ) : (
@@ -4043,8 +4069,8 @@ export default function RestaurantDetail() {
                     />
                   ) : restaurant?.logo_nobg_url ? (
                     <div className="mt-2">
-                      <img 
-                        src={restaurant.logo_nobg_url} 
+                      <img
+                        src={restaurant.logo_nobg_url}
                         alt="Logo (No Background)"
                         className="h-20 w-auto object-contain bg-gray-100 rounded p-2"
                       />
@@ -4065,8 +4091,8 @@ export default function RestaurantDetail() {
                     />
                   ) : restaurant?.logo_standard_url ? (
                     <div className="mt-2">
-                      <img 
-                        src={restaurant.logo_standard_url} 
+                      <img
+                        src={restaurant.logo_standard_url}
                         alt="Logo (Standard)"
                         className="h-20 w-auto object-contain bg-white rounded border p-2"
                       />
@@ -4087,8 +4113,8 @@ export default function RestaurantDetail() {
                     />
                   ) : restaurant?.logo_favicon_url ? (
                     <div className="mt-2">
-                      <img 
-                        src={restaurant.logo_favicon_url} 
+                      <img
+                        src={restaurant.logo_favicon_url}
                         alt="Logo (Favicon)"
                         className="h-8 w-8 object-contain bg-gray-100 rounded border p-1"
                       />
@@ -4112,8 +4138,8 @@ export default function RestaurantDetail() {
                     />
                   ) : restaurant?.logo_thermal_url ? (
                     <div className="mt-2">
-                      <img 
-                        src={restaurant.logo_thermal_url} 
+                      <img
+                        src={restaurant.logo_thermal_url}
                         alt="Thermal (Inverted)"
                         className="h-20 w-auto object-contain bg-white rounded border border-gray-300 p-2"
                       />
@@ -4133,8 +4159,8 @@ export default function RestaurantDetail() {
                     />
                   ) : restaurant?.logo_thermal_alt_url ? (
                     <div className="mt-2">
-                      <img 
-                        src={restaurant.logo_thermal_alt_url} 
+                      <img
+                        src={restaurant.logo_thermal_alt_url}
                         alt="Thermal Alt"
                         className="h-20 w-auto object-contain bg-white rounded border border-gray-300 p-2"
                       />
@@ -4155,8 +4181,8 @@ export default function RestaurantDetail() {
                     />
                   ) : restaurant?.logo_thermal_contrast_url ? (
                     <div className="mt-2">
-                      <img 
-                        src={restaurant.logo_thermal_contrast_url} 
+                      <img
+                        src={restaurant.logo_thermal_contrast_url}
                         alt="Thermal High Contrast"
                         className="h-20 w-auto object-contain bg-white rounded border border-gray-300 p-2"
                       />
@@ -4177,8 +4203,8 @@ export default function RestaurantDetail() {
                     />
                   ) : restaurant?.logo_thermal_adaptive_url ? (
                     <div className="mt-2">
-                      <img 
-                        src={restaurant.logo_thermal_adaptive_url} 
+                      <img
+                        src={restaurant.logo_thermal_adaptive_url}
                         alt="Thermal Adaptive"
                         className="h-20 w-auto object-contain bg-white rounded border border-gray-300 p-2"
                       />
@@ -4192,132 +4218,132 @@ export default function RestaurantDetail() {
               {/* Header Images Grid - OG Images */}
               {(isEditing || restaurant?.website_og_image || restaurant?.ubereats_og_image ||
                 restaurant?.doordash_og_image || restaurant?.facebook_cover_image) && (
-                <div className="mt-6 pt-6 border-t">
-                  <Label className="text-base font-semibold mb-4 block">Header Images</Label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div>
-                      <Label className="text-sm text-muted-foreground">Website OG Image</Label>
-                      {isEditing ? (
-                        <>
-                          <Input
-                            value={editedData.website_og_image || ''}
-                            onChange={(e) => handleFieldChange('website_og_image', e.target.value)}
-                            placeholder="https://..."
-                            className="mt-2"
-                          />
-                          {editedData.website_og_image && (
-                            <img
-                              src={editedData.website_og_image}
-                              alt="Website OG Image Preview"
-                              className="w-full h-24 object-cover rounded border mt-2"
+                  <div className="mt-6 pt-6 border-t">
+                    <Label className="text-base font-semibold mb-4 block">Header Images</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div>
+                        <Label className="text-sm text-muted-foreground">Website OG Image</Label>
+                        {isEditing ? (
+                          <>
+                            <Input
+                              value={editedData.website_og_image || ''}
+                              onChange={(e) => handleFieldChange('website_og_image', e.target.value)}
+                              placeholder="https://..."
+                              className="mt-2"
                             />
-                          )}
-                        </>
-                      ) : restaurant?.website_og_image ? (
-                        <div className="mt-2">
-                          <img
-                            src={restaurant.website_og_image}
-                            alt="Website OG Image"
-                            className="w-full h-32 object-cover rounded border"
-                          />
-                        </div>
-                      ) : (
-                        <p className="text-sm mt-2 text-muted-foreground">-</p>
-                      )}
-                    </div>
-                    <div>
-                      <Label className="text-sm text-muted-foreground">UberEats Image</Label>
-                      {isEditing ? (
-                        <>
-                          <Input
-                            value={editedData.ubereats_og_image || ''}
-                            onChange={(e) => handleFieldChange('ubereats_og_image', e.target.value)}
-                            placeholder="https://..."
-                            className="mt-2"
-                          />
-                          {editedData.ubereats_og_image && (
+                            {editedData.website_og_image && (
+                              <img
+                                src={editedData.website_og_image}
+                                alt="Website OG Image Preview"
+                                className="w-full h-24 object-cover rounded border mt-2"
+                              />
+                            )}
+                          </>
+                        ) : restaurant?.website_og_image ? (
+                          <div className="mt-2">
                             <img
-                              src={editedData.ubereats_og_image}
-                              alt="UberEats Image Preview"
-                              className="w-full h-24 object-cover rounded border mt-2"
+                              src={restaurant.website_og_image}
+                              alt="Website OG Image"
+                              className="w-full h-32 object-cover rounded border"
                             />
-                          )}
-                        </>
-                      ) : restaurant?.ubereats_og_image ? (
-                        <div className="mt-2">
-                          <img
-                            src={restaurant.ubereats_og_image}
-                            alt="UberEats Image"
-                            className="w-full h-32 object-cover rounded border"
-                          />
-                        </div>
-                      ) : (
-                        <p className="text-sm mt-2 text-muted-foreground">-</p>
-                      )}
-                    </div>
-                    <div>
-                      <Label className="text-sm text-muted-foreground">DoorDash Image</Label>
-                      {isEditing ? (
-                        <>
-                          <Input
-                            value={editedData.doordash_og_image || ''}
-                            onChange={(e) => handleFieldChange('doordash_og_image', e.target.value)}
-                            placeholder="https://..."
-                            className="mt-2"
-                          />
-                          {editedData.doordash_og_image && (
+                          </div>
+                        ) : (
+                          <p className="text-sm mt-2 text-muted-foreground">-</p>
+                        )}
+                      </div>
+                      <div>
+                        <Label className="text-sm text-muted-foreground">UberEats Image</Label>
+                        {isEditing ? (
+                          <>
+                            <Input
+                              value={editedData.ubereats_og_image || ''}
+                              onChange={(e) => handleFieldChange('ubereats_og_image', e.target.value)}
+                              placeholder="https://..."
+                              className="mt-2"
+                            />
+                            {editedData.ubereats_og_image && (
+                              <img
+                                src={editedData.ubereats_og_image}
+                                alt="UberEats Image Preview"
+                                className="w-full h-24 object-cover rounded border mt-2"
+                              />
+                            )}
+                          </>
+                        ) : restaurant?.ubereats_og_image ? (
+                          <div className="mt-2">
                             <img
-                              src={editedData.doordash_og_image}
-                              alt="DoorDash Image Preview"
-                              className="w-full h-24 object-cover rounded border mt-2"
+                              src={restaurant.ubereats_og_image}
+                              alt="UberEats Image"
+                              className="w-full h-32 object-cover rounded border"
                             />
-                          )}
-                        </>
-                      ) : restaurant?.doordash_og_image ? (
-                        <div className="mt-2">
-                          <img
-                            src={restaurant.doordash_og_image}
-                            alt="DoorDash Image"
-                            className="w-full h-32 object-cover rounded border"
-                          />
-                        </div>
-                      ) : (
-                        <p className="text-sm mt-2 text-muted-foreground">-</p>
-                      )}
-                    </div>
-                    <div>
-                      <Label className="text-sm text-muted-foreground">Facebook Cover</Label>
-                      {isEditing ? (
-                        <>
-                          <Input
-                            value={editedData.facebook_cover_image || ''}
-                            onChange={(e) => handleFieldChange('facebook_cover_image', e.target.value)}
-                            placeholder="https://..."
-                            className="mt-2"
-                          />
-                          {editedData.facebook_cover_image && (
+                          </div>
+                        ) : (
+                          <p className="text-sm mt-2 text-muted-foreground">-</p>
+                        )}
+                      </div>
+                      <div>
+                        <Label className="text-sm text-muted-foreground">DoorDash Image</Label>
+                        {isEditing ? (
+                          <>
+                            <Input
+                              value={editedData.doordash_og_image || ''}
+                              onChange={(e) => handleFieldChange('doordash_og_image', e.target.value)}
+                              placeholder="https://..."
+                              className="mt-2"
+                            />
+                            {editedData.doordash_og_image && (
+                              <img
+                                src={editedData.doordash_og_image}
+                                alt="DoorDash Image Preview"
+                                className="w-full h-24 object-cover rounded border mt-2"
+                              />
+                            )}
+                          </>
+                        ) : restaurant?.doordash_og_image ? (
+                          <div className="mt-2">
                             <img
-                              src={editedData.facebook_cover_image}
-                              alt="Facebook Cover Preview"
-                              className="w-full h-24 object-cover rounded border mt-2"
+                              src={restaurant.doordash_og_image}
+                              alt="DoorDash Image"
+                              className="w-full h-32 object-cover rounded border"
                             />
-                          )}
-                        </>
-                      ) : restaurant?.facebook_cover_image ? (
-                        <div className="mt-2">
-                          <img
-                            src={restaurant.facebook_cover_image}
-                            alt="Facebook Cover"
-                            className="w-full h-32 object-cover rounded border"
-                          />
-                        </div>
-                      ) : (
-                        <p className="text-sm mt-2 text-muted-foreground">-</p>
-                      )}
+                          </div>
+                        ) : (
+                          <p className="text-sm mt-2 text-muted-foreground">-</p>
+                        )}
+                      </div>
+                      <div>
+                        <Label className="text-sm text-muted-foreground">Facebook Cover</Label>
+                        {isEditing ? (
+                          <>
+                            <Input
+                              value={editedData.facebook_cover_image || ''}
+                              onChange={(e) => handleFieldChange('facebook_cover_image', e.target.value)}
+                              placeholder="https://..."
+                              className="mt-2"
+                            />
+                            {editedData.facebook_cover_image && (
+                              <img
+                                src={editedData.facebook_cover_image}
+                                alt="Facebook Cover Preview"
+                                className="w-full h-24 object-cover rounded border mt-2"
+                              />
+                            )}
+                          </>
+                        ) : restaurant?.facebook_cover_image ? (
+                          <div className="mt-2">
+                            <img
+                              src={restaurant.facebook_cover_image}
+                              alt="Facebook Cover"
+                              className="w-full h-32 object-cover rounded border"
+                            />
+                          </div>
+                        ) : (
+                          <p className="text-sm mt-2 text-muted-foreground">-</p>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {/* Header Tags - Title and Description */}
               {(isEditing || restaurant?.website_og_title || restaurant?.website_og_description) && (
@@ -4360,1872 +4386,1872 @@ export default function RestaurantDetail() {
 
         {/* Tasks and Sequences Tab */}
         {isFeatureEnabled('tasksAndSequences') && (
-        <TabsContent value="tasks-sequences" className="space-y-6">
-          {/* Standalone Tasks Section - Moved to top */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold">Standalone Tasks</h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Tasks not part of any sequence
-                </p>
-              </div>
-              <Button onClick={() => setTaskModalOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                New Task
-              </Button>
-            </div>
-
-            <RestaurantTasksList
-              restaurantId={id}
-              onCreateTask={() => setTaskModalOpen(true)}
-              onEditTask={(taskId) => setEditTaskId(taskId)}
-              onDuplicateTask={(taskId) => setDuplicateTaskId(taskId)}
-              onFollowUpTask={(taskId) => setFollowUpTaskId(taskId)}
-              onStartSequence={(restaurant) => {
-                setStartSequenceModalOpen(true);
-              }}
-              refreshKey={tasksRefreshKey}
-            />
-          </div>
-
-          {/* Divider */}
-          <div className="border-t my-6" />
-
-          {/* Sequences Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold">Active Sequences</h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Automated task sequences for this restaurant
-                </p>
-              </div>
-              <Button onClick={() => setStartSequenceModalOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Start Sequence
-              </Button>
-            </div>
-          </div>
-
-          {/* Loading State */}
-          {sequencesLoading && (
-            <div className="flex justify-center items-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          )}
-
-          {/* Sequences List */}
-          {!sequencesLoading && restaurantSequences?.data && restaurantSequences.data.length > 0 && (
+          <TabsContent value="tasks-sequences" className="space-y-6">
+            {/* Standalone Tasks Section - Moved to top */}
             <div className="space-y-4">
-              {restaurantSequences.data.map((instance) => (
-                <SequenceProgressCard
-                  key={instance.id}
-                  instance={instance}
-                  compact={false}
-                  onPause={handlePauseSequence}
-                  onResume={handleResumeSequence}
-                  onCancel={handleCancelSequence}
-                  onFinish={handleFinishSequence}
-                  onDelete={handleDeleteSequence}
-                  onRefresh={refetchSequences}
-                  hideRestaurantLink={true}
-                  onStartSequence={() => {
-                    setStartSequenceModalOpen(true);
-                  }}
-                  onFollowUpTask={(taskId) => {
-                    setFollowUpTaskId(taskId);
-                  }}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Empty State */}
-          {!sequencesLoading && (!restaurantSequences?.data || restaurantSequences.data.length === 0) && (
-            <Card className="p-12">
-              <div className="flex flex-col items-center justify-center text-center space-y-4">
-                <div className="rounded-full bg-muted p-4">
-                  <Workflow className="h-8 w-8 text-muted-foreground" />
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold">Standalone Tasks</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Tasks not part of any sequence
+                  </p>
                 </div>
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold">No active sequences</h3>
-                  <p className="text-sm text-muted-foreground max-w-md">
-                    Start a sequence to automate follow-up tasks and streamline your workflow.
-                    Sequences help you stay organized and ensure nothing falls through the cracks.
+                <Button onClick={() => setTaskModalOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Task
+                </Button>
+              </div>
+
+              <RestaurantTasksList
+                restaurantId={id}
+                onCreateTask={() => setTaskModalOpen(true)}
+                onEditTask={(taskId) => setEditTaskId(taskId)}
+                onDuplicateTask={(taskId) => setDuplicateTaskId(taskId)}
+                onFollowUpTask={(taskId) => setFollowUpTaskId(taskId)}
+                onStartSequence={(restaurant) => {
+                  setStartSequenceModalOpen(true);
+                }}
+                refreshKey={tasksRefreshKey}
+              />
+            </div>
+
+            {/* Divider */}
+            <div className="border-t my-6" />
+
+            {/* Sequences Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold">Active Sequences</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Automated task sequences for this restaurant
                   </p>
                 </div>
                 <Button onClick={() => setStartSequenceModalOpen(true)}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Start Your First Sequence
+                  Start Sequence
                 </Button>
               </div>
-            </Card>
-          )}
+            </div>
 
-          {/* Start Sequence Modal */}
-          {restaurant && (
-            <StartSequenceModal
-              open={startSequenceModalOpen}
-              onClose={() => setStartSequenceModalOpen(false)}
-              restaurant={restaurant}
-            />
-          )}
+            {/* Loading State */}
+            {sequencesLoading && (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            )}
 
-          {/* Task Modals */}
-          {taskModalOpen && !duplicateTaskId && !followUpTaskId && (
-            <CreateTaskModal
-              open={taskModalOpen}
-              onClose={() => setTaskModalOpen(false)}
-              onSuccess={() => {
-                setTaskModalOpen(false);
-                setTasksRefreshKey(prev => prev + 1);
-              }}
-              restaurantId={id}
-            />
-          )}
+            {/* Sequences List */}
+            {!sequencesLoading && restaurantSequences?.data && restaurantSequences.data.length > 0 && (
+              <div className="space-y-4">
+                {restaurantSequences.data.map((instance) => (
+                  <SequenceProgressCard
+                    key={instance.id}
+                    instance={instance}
+                    compact={false}
+                    onPause={handlePauseSequence}
+                    onResume={handleResumeSequence}
+                    onCancel={handleCancelSequence}
+                    onFinish={handleFinishSequence}
+                    onDelete={handleDeleteSequence}
+                    onRefresh={refetchSequences}
+                    hideRestaurantLink={true}
+                    onStartSequence={() => {
+                      setStartSequenceModalOpen(true);
+                    }}
+                    onFollowUpTask={(taskId) => {
+                      setFollowUpTaskId(taskId);
+                    }}
+                  />
+                ))}
+              </div>
+            )}
 
-          {duplicateTaskId && (
-            <CreateTaskModal
-              open={!!duplicateTaskId}
-              onClose={() => setDuplicateTaskId(null)}
-              onSuccess={() => {
-                setDuplicateTaskId(null);
-                setTasksRefreshKey(prev => prev + 1);
-              }}
-              restaurantId={id}
-              duplicateFromTaskId={duplicateTaskId}
-            />
-          )}
+            {/* Empty State */}
+            {!sequencesLoading && (!restaurantSequences?.data || restaurantSequences.data.length === 0) && (
+              <Card className="p-12">
+                <div className="flex flex-col items-center justify-center text-center space-y-4">
+                  <div className="rounded-full bg-muted p-4">
+                    <Workflow className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-semibold">No active sequences</h3>
+                    <p className="text-sm text-muted-foreground max-w-md">
+                      Start a sequence to automate follow-up tasks and streamline your workflow.
+                      Sequences help you stay organized and ensure nothing falls through the cracks.
+                    </p>
+                  </div>
+                  <Button onClick={() => setStartSequenceModalOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Start Your First Sequence
+                  </Button>
+                </div>
+              </Card>
+            )}
 
-          {followUpTaskId && (
-            <CreateTaskModal
-              open={!!followUpTaskId}
-              onClose={() => setFollowUpTaskId(null)}
-              onSuccess={() => {
-                setFollowUpTaskId(null);
-                setTasksRefreshKey(prev => prev + 1);
-              }}
-              restaurantId={id}
-              followUpFromTaskId={followUpTaskId}
-            />
-          )}
+            {/* Start Sequence Modal */}
+            {restaurant && (
+              <StartSequenceModal
+                open={startSequenceModalOpen}
+                onClose={() => setStartSequenceModalOpen(false)}
+                restaurant={restaurant}
+              />
+            )}
 
-          {editTaskId && (
-            <TaskDetailModal
-              open={!!editTaskId}
-              taskId={editTaskId}
-              onClose={() => setEditTaskId(null)}
-              onSuccess={() => {
-                setEditTaskId(null);
-                setTasksRefreshKey(prev => prev + 1);
-              }}
-              initialMode="edit"
-            />
-          )}
-        </TabsContent>
+            {/* Task Modals */}
+            {taskModalOpen && !duplicateTaskId && !followUpTaskId && (
+              <CreateTaskModal
+                open={taskModalOpen}
+                onClose={() => setTaskModalOpen(false)}
+                onSuccess={() => {
+                  setTaskModalOpen(false);
+                  setTasksRefreshKey(prev => prev + 1);
+                }}
+                restaurantId={id}
+              />
+            )}
+
+            {duplicateTaskId && (
+              <CreateTaskModal
+                open={!!duplicateTaskId}
+                onClose={() => setDuplicateTaskId(null)}
+                onSuccess={() => {
+                  setDuplicateTaskId(null);
+                  setTasksRefreshKey(prev => prev + 1);
+                }}
+                restaurantId={id}
+                duplicateFromTaskId={duplicateTaskId}
+              />
+            )}
+
+            {followUpTaskId && (
+              <CreateTaskModal
+                open={!!followUpTaskId}
+                onClose={() => setFollowUpTaskId(null)}
+                onSuccess={() => {
+                  setFollowUpTaskId(null);
+                  setTasksRefreshKey(prev => prev + 1);
+                }}
+                restaurantId={id}
+                followUpFromTaskId={followUpTaskId}
+              />
+            )}
+
+            {editTaskId && (
+              <TaskDetailModal
+                open={!!editTaskId}
+                taskId={editTaskId}
+                onClose={() => setEditTaskId(null)}
+                onSuccess={() => {
+                  setEditTaskId(null);
+                  setTasksRefreshKey(prev => prev + 1);
+                }}
+                initialMode="edit"
+              />
+            )}
+          </TabsContent>
         )}
 
         {/* Registration Tab */}
         {isFeatureEnabled('registration') && (
-        <TabsContent value="registration" className="space-y-4">
-          {/* Registration Status Card */}
-          {(isFeatureEnabled('registration.userAccountRegistration') || isFeatureEnabled('registration.restaurantRegistration')) && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Pumpd Platform Registration</CardTitle>
-              <CardDescription>
-                Manage restaurant registration on the Pumpd platform
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {loadingRegistrationStatus ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Loading registration status...</span>
-                </div>
-              ) : registrationStatus ? (
-                <div className="space-y-4">
-                  {/* Account Status */}
-                  <div className="p-4 border rounded-lg space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-semibold">Account Status</h4>
-                      {registrationStatus.account?.registration_status === 'completed' ? (
-                        <Badge variant="success">
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Registered
-                        </Badge>
-                      ) : registrationStatus.account?.registration_status === 'in_progress' ? (
-                        <Badge variant="warning">
-                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                          In Progress
-                        </Badge>
+          <TabsContent value="registration" className="space-y-4">
+            {/* Registration Status Card */}
+            {(isFeatureEnabled('registration.userAccountRegistration') || isFeatureEnabled('registration.restaurantRegistration')) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Pumpd Platform Registration</CardTitle>
+                  <CardDescription>
+                    Manage restaurant registration on the Pumpd platform
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {loadingRegistrationStatus ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Loading registration status...</span>
+                    </div>
+                  ) : registrationStatus ? (
+                    <div className="space-y-4">
+                      {/* Account Status */}
+                      <div className="p-4 border rounded-lg space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-semibold">Account Status</h4>
+                          {registrationStatus.account?.registration_status === 'completed' ? (
+                            <Badge variant="success">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Registered
+                            </Badge>
+                          ) : registrationStatus.account?.registration_status === 'in_progress' ? (
+                            <Badge variant="warning">
+                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                              In Progress
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary">Not Registered</Badge>
+                          )}
+                        </div>
+                        {registrationStatus.account && (
+                          <div className="text-sm space-y-1 text-muted-foreground">
+                            <p>Email: {registrationStatus.account.email}</p>
+                            {registrationStatus.account.registration_date && (
+                              <p>Registered: {new Date(registrationStatus.account.registration_date).toLocaleDateString()}</p>
+                            )}
+                            {registrationStatus.account.pumpd_dashboard_url && (
+                              <a
+                                href={registrationStatus.account.pumpd_dashboard_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline flex items-center gap-1"
+                              >
+                                View Dashboard
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Restaurant Status */}
+                      <div className="p-4 border rounded-lg space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-semibold">Restaurant Status</h4>
+                          {registrationStatus.restaurant?.registration_status === 'completed' ? (
+                            <Badge variant="success">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Registered
+                            </Badge>
+                          ) : registrationStatus.restaurant?.registration_status === 'in_progress' ? (
+                            <Badge variant="warning">
+                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                              In Progress
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary">Not Registered</Badge>
+                          )}
+                        </div>
+                        {registrationStatus.restaurant && (
+                          <div className="text-sm space-y-1 text-muted-foreground">
+                            {registrationStatus.restaurant.pumpd_subdomain && (
+                              <p>Subdomain: {registrationStatus.restaurant.pumpd_subdomain}</p>
+                            )}
+                            {registrationStatus.restaurant.pumpd_full_url && (
+                              <a
+                                href={registrationStatus.restaurant.pumpd_full_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline flex items-center gap-1"
+                              >
+                                View Restaurant Page
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            )}
+                            {registrationStatus.restaurant.registration_date && (
+                              <p>Registered: {new Date(registrationStatus.restaurant.registration_date).toLocaleDateString()}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex gap-2">
+                        {!registrationStatus.account && isFeatureEnabled('registration.userAccountRegistration') && (
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              // Set type to account only
+                              setRegistrationType('account_only');
+                              // Pre-populate from restaurant email if available
+                              if (restaurant?.email) {
+                                setRegistrationEmail(restaurant.email);
+                              }
+                              // Generate default password hint
+                              if (restaurant?.name) {
+                                const cleaned = restaurant.name.replace(/[^a-zA-Z0-9]/g, '');
+                                const defaultPassword = cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase() + '789!';
+                                setRegistrationPassword(defaultPassword);
+                              }
+                              setRegistrationDialogOpen(true);
+                            }}
+                            disabled={registering}
+                          >
+                            <UserPlus className="h-4 w-4 mr-2" />
+                            Register Account
+                          </Button>
+                        )}
+
+                        {(!registrationStatus.restaurant || registrationStatus.restaurant.registration_status === 'failed') && isFeatureEnabled('registration.restaurantRegistration') && (
+                          <Button
+                            onClick={() => {
+                              // Pre-populate email and password from account if exists
+                              if (registrationStatus.account) {
+                                setRegistrationEmail(registrationStatus.account.email || '');
+                                setRegistrationPassword(registrationStatus.account.user_password_hint || '');
+                                // Pre-select registration type based on account's restaurant count
+                                if (registrationStatus.account.restaurant_count === 0) {
+                                  setRegistrationType('existing_account_first_restaurant');
+                                } else {
+                                  setRegistrationType('existing_account_additional_restaurant');
+                                }
+                              } else {
+                                // No existing account, pre-populate from restaurant data
+                                if (restaurant?.email) {
+                                  setRegistrationEmail(restaurant.email);
+                                }
+                                // Generate default password hint
+                                if (restaurant?.name) {
+                                  const cleaned = restaurant.name.replace(/[^a-zA-Z0-9]/g, '');
+                                  const defaultPassword = cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase() + '789!';
+                                  setRegistrationPassword(defaultPassword);
+                                }
+                              }
+                              setRegistrationDialogOpen(true);
+                            }}
+                            disabled={registering}
+                          >
+                            <LogIn className="h-4 w-4 mr-2" />
+                            Register Restaurant
+                          </Button>
+                        )}
+
+                        <Button
+                          variant="outline"
+                          onClick={fetchRegistrationLogs}
+                        >
+                          <History className="h-4 w-4 mr-2" />
+                          View Registration Logs
+                        </Button>
+
+                        <Button
+                          variant="outline"
+                          onClick={fetchRegistrationStatus}
+                          disabled={loadingRegistrationStatus}
+                        >
+                          <RefreshCw className={cn(
+                            "h-4 w-4 mr-2",
+                            loadingRegistrationStatus && "animate-spin"
+                          )} />
+                          Refresh Status
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 space-y-4">
+                      <p className="text-muted-foreground">No registration found for this restaurant</p>
+                      <div className="flex justify-center gap-2">
+                        {isFeatureEnabled('registration.userAccountRegistration') && (
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              // Set type to account only
+                              setRegistrationType('account_only');
+                              // Pre-populate from restaurant email if available
+                              if (restaurant?.email) {
+                                setRegistrationEmail(restaurant.email);
+                              }
+                              // Generate default password hint
+                              if (restaurant?.name) {
+                                const cleaned = restaurant.name.replace(/[^a-zA-Z0-9]/g, '');
+                                const defaultPassword = cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase() + '789!';
+                                setRegistrationPassword(defaultPassword);
+                              }
+                              setRegistrationDialogOpen(true);
+                            }}
+                            disabled={registering}
+                          >
+                            <UserPlus className="h-4 w-4 mr-2" />
+                            Register Account
+                          </Button>
+                        )}
+                        {isFeatureEnabled('registration.restaurantRegistration') && (
+                          <Button
+                            onClick={() => {
+                              // Pre-populate email and password from account if exists
+                              if (registrationStatus.account) {
+                                setRegistrationEmail(registrationStatus.account.email || '');
+                                setRegistrationPassword(registrationStatus.account.user_password_hint || '');
+                                // Pre-select registration type based on account's restaurant count
+                                if (registrationStatus.account.restaurant_count === 0) {
+                                  setRegistrationType('existing_account_first_restaurant');
+                                } else {
+                                  setRegistrationType('existing_account_additional_restaurant');
+                                }
+                              } else {
+                                // No existing account, pre-populate from restaurant data
+                                if (restaurant?.email) {
+                                  setRegistrationEmail(restaurant.email);
+                                }
+                                // Generate default password hint
+                                if (restaurant?.name) {
+                                  const cleaned = restaurant.name.replace(/[^a-zA-Z0-9]/g, '');
+                                  const defaultPassword = cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase() + '789!';
+                                  setRegistrationPassword(defaultPassword);
+                                }
+                              }
+                              setRegistrationDialogOpen(true);
+                            }}
+                            disabled={registering}
+                          >
+                            <LogIn className="h-4 w-4 mr-2" />
+                            Register Restaurant
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Recent Menus */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Menus</CardTitle>
+                <CardDescription>Latest menu versions for this restaurant</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {restaurant?.menus && restaurant.menus.length > 0 ? (
+                  <div className="space-y-2">
+                    {restaurant.menus.slice(0, 5).map((menu) => (
+                      <div key={menu.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">Version {menu.version}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {menu.platforms?.name || 'Unknown'}
+                            </span>
+                            {menu.is_active && (
+                              <Badge className="bg-green-100 text-green-800">Active</Badge>
+                            )}
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            Created: {new Date(menu.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => navigate(`/menus/${menu.id}`)}
+                            className="text-brand-blue hover:text-brand-blue hover:bg-brand-blue/10"
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            View Menu
+                          </Button>
+                          {isFeatureEnabled('csvWithImagesDownload') && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleUploadImagesToCDN(menu.id)}
+                              className="text-brand-green hover:text-brand-green hover:bg-brand-green/10"
+                            >
+                              <Upload className="h-4 w-4 mr-1" />
+                              Upload Images
+                            </Button>
+                          )}
+                          {isFeatureEnabled('csvWithImagesDownload') && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDownloadCSVWithCDN(menu.id)}
+                              className="text-brand-orange hover:text-brand-orange hover:bg-brand-orange/10"
+                            >
+                              <Download className="h-4 w-4 mr-1" />
+                              Download CSV
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => navigate(`/menus?restaurant=${id}`)}
+                    >
+                      View All Menus
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No menus found</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* CSV Menu Upload Card */}
+            {isFeatureEnabled('registration.menuUploading') && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileSpreadsheet className="h-5 w-5" />
+                    Menu CSV Upload
+                  </CardTitle>
+                  <CardDescription>
+                    Upload a CSV file to import menu items to your Pumpd restaurant
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Prerequisites Status */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      {registrationStatus?.account?.registration_status === 'completed' ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
                       ) : (
-                        <Badge variant="secondary">Not Registered</Badge>
+                        <AlertCircle className="h-4 w-4 text-gray-400" />
+                      )}
+                      <span className={registrationStatus?.account?.registration_status === 'completed' ? 'text-green-600' : 'text-gray-500'}>
+                        Account registered
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      {registrationStatus?.restaurant?.registration_status === 'completed' ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4 text-gray-400" />
+                      )}
+                      <span className={registrationStatus?.restaurant?.registration_status === 'completed' ? 'text-green-600' : 'text-gray-500'}>
+                        Restaurant registered
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* File Upload Section */}
+                  {registrationStatus?.account?.registration_status === 'completed' &&
+                    registrationStatus?.restaurant?.registration_status === 'completed' ? (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="csv-file-input">Select CSV File</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="csv-file-input"
+                            type="file"
+                            accept=".csv,text/csv"
+                            onChange={handleCsvFileSelect}
+                            disabled={isUploading}
+                            className="flex-1"
+                          />
+                          {csvFile && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setCsvFile(null);
+                                setUploadError(null);
+                                setUploadStatus(null);
+                                const fileInput = document.getElementById('csv-file-input');
+                                if (fileInput) fileInput.value = '';
+                              }}
+                              disabled={isUploading}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                        {csvFile && (
+                          <p className="text-sm text-muted-foreground">
+                            Selected: {csvFile.name} ({(csvFile.size / 1024).toFixed(2)} KB)
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Upload Button */}
+                      <Button
+                        onClick={handleCsvUpload}
+                        disabled={!csvFile || isUploading}
+                        className="w-full"
+                      >
+                        {isUploading ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4 mr-2" />
+                            Upload Menu
+                          </>
+                        )}
+                      </Button>
+
+                      {/* Add Tags Button */}
+                      {isFeatureEnabled('registration.itemTagUploading') && (
+                        <div className="space-y-2">
+                          <Button
+                            onClick={handleAddItemTags}
+                            disabled={isAddingTags}
+                            className="w-full"
+                            variant="outline"
+                          >
+                            {isAddingTags ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Adding Tags...
+                              </>
+                            ) : (
+                              <>
+                                <Tag className="h-4 w-4 mr-2" />
+                                Add Item Tags
+                              </>
+                            )}
+                          </Button>
+                          {isAddingTags && (
+                            <p className="text-xs text-muted-foreground text-center">
+                              This may take 2-3 minutes. Please don't close this window.
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Status Messages */}
+                      {uploadStatus === 'success' && (
+                        <Alert className="border-green-200 bg-green-50">
+                          <FileCheck className="h-4 w-4 text-green-600" />
+                          <AlertDescription className="text-green-800">
+                            Menu uploaded successfully! The items have been imported to your Pumpd restaurant.
+                          </AlertDescription>
+                        </Alert>
+                      )}
+
+                      {uploadError && (
+                        <Alert variant="destructive">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertDescription>
+                            {uploadError}
+                          </AlertDescription>
+                        </Alert>
+                      )}
+
+                      {/* Tags Status Messages */}
+                      {tagsStatus && (
+                        <Alert className={tagsStatus.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}>
+                          {tagsStatus.success ? (
+                            <FileCheck className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <AlertCircle className="h-4 w-4 text-red-600" />
+                          )}
+                          <AlertDescription className={tagsStatus.success ? 'text-green-800' : 'text-red-800'}>
+                            {tagsStatus.success
+                              ? 'Item tags configured successfully!'
+                              : (tagsStatus.error || 'Failed to configure item tags')}
+                          </AlertDescription>
+                        </Alert>
+                      )}
+
+                      {/* Option Sets Section */}
+                      {isFeatureEnabled('registration.optionSetUploading') && (
+                        <div className="border-t pt-4 mt-4">
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-sm font-medium">
+                              <Settings2 className="h-4 w-4" />
+                              Add Option Sets from Menu
+                            </div>
+
+                            {/* Menu Dropdown */}
+                            <Select
+                              value={selectedMenuForOptionSets}
+                              onValueChange={setSelectedMenuForOptionSets}
+                              disabled={isAddingOptionSets}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select a menu..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {restaurant?.menus && restaurant.menus.length > 0 ? (
+                                  restaurant.menus.map((menu) => (
+                                    <SelectItem key={menu.id} value={menu.id}>
+                                      Version {menu.version} - {menu.platforms?.name || 'Unknown'}
+                                      {menu.is_active && ' (Active)'}
+                                    </SelectItem>
+                                  ))
+                                ) : (
+                                  <SelectItem value="none" disabled>
+                                    No menus available
+                                  </SelectItem>
+                                )}
+                              </SelectContent>
+                            </Select>
+
+                            {/* Add Option Sets Button */}
+                            <div className="space-y-2">
+                              <Button
+                                onClick={handleAddOptionSets}
+                                disabled={isAddingOptionSets || !selectedMenuForOptionSets}
+                                className="w-full"
+                                variant="outline"
+                              >
+                                {isAddingOptionSets ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Adding Option Sets...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Settings2 className="h-4 w-4 mr-2" />
+                                    Add Option Sets
+                                  </>
+                                )}
+                              </Button>
+                              {isAddingOptionSets && (
+                                <p className="text-xs text-muted-foreground text-center">
+                                  This may take 2-3 minutes. Please don't close this window.
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Option Sets Status Messages */}
+                            {optionSetsStatus && (
+                              <Alert className={optionSetsStatus.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}>
+                                {optionSetsStatus.success ? (
+                                  <FileCheck className="h-4 w-4 text-green-600" />
+                                ) : (
+                                  <AlertCircle className="h-4 w-4 text-red-600" />
+                                )}
+                                <AlertDescription className={optionSetsStatus.success ? 'text-green-800' : 'text-red-800'}>
+                                  {optionSetsStatus.success
+                                    ? `Option sets configured successfully! (${optionSetsStatus.summary?.created || 0} created, ${optionSetsStatus.summary?.failed || 0} failed)`
+                                    : (optionSetsStatus.error || 'Failed to configure option sets')}
+                                </AlertDescription>
+                              </Alert>
+                            )}
+                          </div>
+                        </div>
                       )}
                     </div>
-                    {registrationStatus.account && (
-                      <div className="text-sm space-y-1 text-muted-foreground">
-                        <p>Email: {registrationStatus.account.email}</p>
-                        {registrationStatus.account.registration_date && (
-                          <p>Registered: {new Date(registrationStatus.account.registration_date).toLocaleDateString()}</p>
-                        )}
-                        {registrationStatus.account.pumpd_dashboard_url && (
-                          <a 
-                            href={registrationStatus.account.pumpd_dashboard_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline flex items-center gap-1"
-                          >
-                            View Dashboard
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        )}
+                  ) : (
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        Both account and restaurant registration must be completed before you can upload a menu.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Website Settings Card */}
+            {isFeatureEnabled('registration.websiteSettings') && (
+              <Card className="mt-4">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Settings className="h-5 w-5" />
+                        Website Settings
+                      </CardTitle>
+                      <CardDescription>
+                        Theme and branding settings required for website customization
+                      </CardDescription>
+                    </div>
+                    {!isEditing ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEditedData(restaurant);
+                          setIsEditing(true);
+                        }}
+                      >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit Settings
+                      </Button>
+                    ) : (
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setIsEditing(false);
+                            setEditedData({});
+                          }}
+                          disabled={saving}
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={handleSave}
+                          disabled={saving}
+                          className="bg-gradient-to-r from-brand-blue to-brand-green"
+                        >
+                          <Save className="h-4 w-4 mr-2" />
+                          {saving ? 'Saving...' : 'Save'}
+                        </Button>
                       </div>
                     )}
                   </div>
-
-                  {/* Restaurant Status */}
-                  <div className="p-4 border rounded-lg space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-semibold">Restaurant Status</h4>
-                      {registrationStatus.restaurant?.registration_status === 'completed' ? (
-                        <Badge variant="success">
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Registered
-                        </Badge>
-                      ) : registrationStatus.restaurant?.registration_status === 'in_progress' ? (
-                        <Badge variant="warning">
-                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                          In Progress
-                        </Badge>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {/* Theme */}
+                    <div>
+                      <Label>Theme</Label>
+                      {isEditing ? (
+                        <Select
+                          value={editedData.theme || 'light'}
+                          onValueChange={(value) => handleFieldChange('theme', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="light">Light</SelectItem>
+                            <SelectItem value="dark">Dark</SelectItem>
+                          </SelectContent>
+                        </Select>
                       ) : (
-                        <Badge variant="secondary">Not Registered</Badge>
+                        <div className="flex items-center gap-2 mt-1">
+                          {restaurant?.theme ? (
+                            <Badge variant="outline">{restaurant.theme}</Badge>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">-</span>
+                          )}
+                        </div>
                       )}
                     </div>
-                    {registrationStatus.restaurant && (
-                      <div className="text-sm space-y-1 text-muted-foreground">
-                        {registrationStatus.restaurant.pumpd_subdomain && (
-                          <p>Subdomain: {registrationStatus.restaurant.pumpd_subdomain}</p>
+
+                    {/* Cuisine */}
+                    <div>
+                      <Label>Cuisine</Label>
+                      {isEditing ? (
+                        <Input
+                          value={editedData.cuisine?.join(', ') || ''}
+                          onChange={(e) => handleFieldChange('cuisine', e.target.value.split(',').map(c => c.trim()))}
+                          placeholder="e.g., Italian, Pizza, Pasta"
+                        />
+                      ) : (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {restaurant?.cuisine?.length > 0 ? (
+                            restaurant.cuisine.map((c, i) => (
+                              <Badge key={i} variant="secondary">{c}</Badge>
+                            ))
+                          ) : (
+                            <span className="text-sm text-muted-foreground">-</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Primary Color */}
+                    <div>
+                      <Label>Primary Color</Label>
+                      {isEditing ? (
+                        <div className="flex gap-2">
+                          <Input
+                            type="color"
+                            value={editedData.primary_color || '#000000'}
+                            onChange={(e) => handleFieldChange('primary_color', e.target.value)}
+                            className="w-16 h-9"
+                          />
+                          <Input
+                            value={editedData.primary_color || ''}
+                            onChange={(e) => handleFieldChange('primary_color', e.target.value)}
+                            placeholder="#000000"
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 mt-1">
+                          {restaurant?.primary_color ? (
+                            <>
+                              <div
+                                className="w-6 h-6 rounded border"
+                                style={{ backgroundColor: restaurant.primary_color }}
+                              />
+                              <span className="text-sm">{restaurant.primary_color}</span>
+                            </>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">-</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Secondary Color */}
+                    <div>
+                      <Label>Secondary Color</Label>
+                      {isEditing ? (
+                        <div className="flex gap-2">
+                          <Input
+                            type="color"
+                            value={editedData.secondary_color || '#000000'}
+                            onChange={(e) => handleFieldChange('secondary_color', e.target.value)}
+                            className="w-16 h-9"
+                          />
+                          <Input
+                            value={editedData.secondary_color || ''}
+                            onChange={(e) => handleFieldChange('secondary_color', e.target.value)}
+                            placeholder="#000000"
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 mt-1">
+                          {restaurant?.secondary_color ? (
+                            <>
+                              <div
+                                className="w-6 h-6 rounded border"
+                                style={{ backgroundColor: restaurant.secondary_color }}
+                              />
+                              <span className="text-sm">{restaurant.secondary_color}</span>
+                            </>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">-</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Status indicators */}
+                  <div className="mt-4 pt-4 border-t">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                      <div className="flex items-center gap-1">
+                        {restaurant?.theme ? (
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-gray-400" />
                         )}
-                        {registrationStatus.restaurant.pumpd_full_url && (
-                          <a 
-                            href={registrationStatus.restaurant.pumpd_full_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline flex items-center gap-1"
-                          >
-                            View Restaurant Page
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        )}
-                        {registrationStatus.restaurant.registration_date && (
-                          <p>Registered: {new Date(registrationStatus.restaurant.registration_date).toLocaleDateString()}</p>
-                        )}
+                        <span className={restaurant?.theme ? 'text-green-600' : 'text-gray-500'}>Theme</span>
                       </div>
-                    )}
+                      <div className="flex items-center gap-1">
+                        {restaurant?.cuisine?.length > 0 ? (
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-gray-400" />
+                        )}
+                        <span className={restaurant?.cuisine?.length > 0 ? 'text-green-600' : 'text-gray-500'}>Cuisine</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {restaurant?.primary_color ? (
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-gray-400" />
+                        )}
+                        <span className={restaurant?.primary_color ? 'text-green-600' : 'text-gray-500'}>Primary</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {restaurant?.secondary_color ? (
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-gray-400" />
+                        )}
+                        <span className={restaurant?.secondary_color ? 'text-green-600' : 'text-gray-500'}>Secondary</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Website Customization Card */}
+            {(isFeatureEnabled('registration.codeInjection') || isFeatureEnabled('registration.websiteSettings')) && (
+              <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Palette className="h-5 w-5" />
+                    Website Customization
+                  </CardTitle>
+                  <CardDescription>
+                    Generate and apply custom styling to your Pumpd website
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Prerequisites Status */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      {registrationStatus?.account?.registration_status === 'completed' ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <XCircle className="h-4 w-4 text-gray-400" />
+                      )}
+                      <span className={registrationStatus?.account?.registration_status === 'completed' ? 'text-green-600' : 'text-gray-500'}>
+                        Account registered
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      {registrationStatus?.restaurant?.registration_status === 'completed' ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <XCircle className="h-4 w-4 text-gray-400" />
+                      )}
+                      <span className={registrationStatus?.restaurant?.registration_status === 'completed' ? 'text-green-600' : 'text-gray-500'}>
+                        Restaurant registered
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      {restaurant?.primary_color && restaurant?.secondary_color ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <XCircle className="h-4 w-4 text-gray-400" />
+                      )}
+                      <span className={restaurant?.primary_color && restaurant?.secondary_color ? 'text-green-600' : 'text-gray-500'}>
+                        Theme colors configured
+                        {restaurant?.primary_color && restaurant?.secondary_color && (
+                          <span className="ml-2">
+                            <span
+                              className="inline-block w-3 h-3 rounded-full border border-gray-300"
+                              style={{ backgroundColor: restaurant.primary_color }}
+                              title={`Primary: ${restaurant.primary_color}`}
+                            />
+                            <span
+                              className="inline-block w-3 h-3 rounded-full border border-gray-300 ml-1"
+                              style={{ backgroundColor: restaurant.secondary_color }}
+                              title={`Secondary: ${restaurant.secondary_color}`}
+                            />
+                          </span>
+                        )}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex gap-2">
-                    {!registrationStatus.account && isFeatureEnabled('registration.userAccountRegistration') && (
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          // Set type to account only
-                          setRegistrationType('account_only');
-                          // Pre-populate from restaurant email if available
-                          if (restaurant?.email) {
-                            setRegistrationEmail(restaurant.email);
-                          }
-                          // Generate default password hint
-                          if (restaurant?.name) {
-                            const cleaned = restaurant.name.replace(/[^a-zA-Z0-9]/g, '');
-                            const defaultPassword = cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase() + '789!';
-                            setRegistrationPassword(defaultPassword);
-                          }
-                          setRegistrationDialogOpen(true);
-                        }}
-                        disabled={registering}
-                      >
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        Register Account
-                      </Button>
-                    )}
+                  {registrationStatus?.account?.registration_status === 'completed' &&
+                    registrationStatus?.restaurant?.registration_status === 'completed' &&
+                    restaurant?.primary_color && restaurant?.secondary_color ? (
+                    <div className="space-y-4">
+                      {/* Mode Selector */}
+                      <div className="space-y-2">
+                        <Label>Configuration Method</Label>
+                        <RadioGroup value={customizationMode} onValueChange={handleModeChange}>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="generate" id="mode-generate" />
+                            <Label htmlFor="mode-generate" className="font-normal cursor-pointer">
+                              Generate new code injections
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="existing" id="mode-existing" />
+                            <Label htmlFor="mode-existing" className="font-normal cursor-pointer">
+                              Use existing HTML files
+                            </Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
 
-                    {(!registrationStatus.restaurant || registrationStatus.restaurant.registration_status === 'failed') && isFeatureEnabled('registration.restaurantRegistration') && (
-                      <Button
-                        onClick={() => {
-                          // Pre-populate email and password from account if exists
-                          if (registrationStatus.account) {
-                            setRegistrationEmail(registrationStatus.account.email || '');
-                            setRegistrationPassword(registrationStatus.account.user_password_hint || '');
-                            // Pre-select registration type based on account's restaurant count
-                            if (registrationStatus.account.restaurant_count === 0) {
-                              setRegistrationType('existing_account_first_restaurant');
-                            } else {
-                              setRegistrationType('existing_account_additional_restaurant');
+                      {/* Mode-specific UI */}
+                      {customizationMode === 'generate' ? (
+                        <>
+                          {/* Generate Code Injections Button */}
+                          {isFeatureEnabled('registration.codeInjection') && (
+                            <div className="space-y-2">
+                              <Button
+                                onClick={handleGenerateCodeInjections}
+                                disabled={isGenerating || isConfiguring}
+                                className="w-full"
+                                variant={codeGenerated ? "outline" : "default"}
+                              >
+                                {isGenerating ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Generating...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Code className="h-4 w-4 mr-2" />
+                                    {codeGenerated ? 'Regenerate Code Injections' : 'Generate Code Injections'}
+                                  </>
+                                )}
+                              </Button>
+                              {isGenerating && (
+                                <p className="text-xs text-muted-foreground text-center">
+                                  This may take 1-2 minutes. Please don't close this window.
+                                </p>
+                              )}
+                              {codeGenerated && !isGenerating && (
+                                <p className="text-xs text-muted-foreground text-center">
+                                  Code injections ready for configuration
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          {/* File Path Inputs */}
+                          <div className="space-y-3">
+                            <div className="space-y-2">
+                              <Label htmlFor="head-path">Head Injection File Path</Label>
+                              <Input
+                                id="head-path"
+                                type="text"
+                                placeholder="/path/to/head-injection.html"
+                                value={existingHeadPath}
+                                onChange={(e) => setExistingHeadPath(e.target.value)}
+                                disabled={isValidating || isConfiguring}
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Full path to your head injection HTML file
+                              </p>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="body-path">Body Injection File Path</Label>
+                              <Input
+                                id="body-path"
+                                type="text"
+                                placeholder="/path/to/body-injection.html"
+                                value={existingBodyPath}
+                                onChange={(e) => setExistingBodyPath(e.target.value)}
+                                disabled={isValidating || isConfiguring}
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Full path to your body injection HTML file
+                              </p>
+                            </div>
+
+                            {/* Validate Files Button */}
+                            <Button
+                              onClick={handleValidateFiles}
+                              disabled={!existingHeadPath || !existingBodyPath || isValidating || isConfiguring}
+                              className="w-full"
+                              variant={filesValidated ? "outline" : "default"}
+                            >
+                              {isValidating ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Validating...
+                                </>
+                              ) : (
+                                <>
+                                  <FileCheck className="h-4 w-4 mr-2" />
+                                  {filesValidated ? 'Files Validated ✓' : 'Validate Files'}
+                                </>
+                              )}
+                            </Button>
+                            {filesValidated && (
+                              <p className="text-xs text-muted-foreground text-center">
+                                Files validated and ready for configuration
+                              </p>
+                            )}
+                          </div>
+                        </>
+                      )}
+
+                      {/* Configure Website Settings Button (shown for both modes) */}
+                      {isFeatureEnabled('registration.websiteSettings') && (
+                        <div className="space-y-2">
+                          <Button
+                            onClick={handleConfigureWebsite}
+                            disabled={
+                              (customizationMode === 'generate' && !codeGenerated) ||
+                              (customizationMode === 'existing' && !filesValidated) ||
+                              isConfiguring || isGenerating || isValidating
                             }
-                          } else {
-                            // No existing account, pre-populate from restaurant data
-                            if (restaurant?.email) {
-                              setRegistrationEmail(restaurant.email);
-                            }
-                            // Generate default password hint
-                            if (restaurant?.name) {
-                              const cleaned = restaurant.name.replace(/[^a-zA-Z0-9]/g, '');
-                              const defaultPassword = cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase() + '789!';
-                              setRegistrationPassword(defaultPassword);
-                            }
-                          }
-                          setRegistrationDialogOpen(true);
-                        }}
-                        disabled={registering}
-                      >
-                        <LogIn className="h-4 w-4 mr-2" />
-                        Register Restaurant
-                      </Button>
-                    )}
-
-                    <Button 
-                      variant="outline"
-                      onClick={fetchRegistrationLogs}
-                    >
-                      <History className="h-4 w-4 mr-2" />
-                      View Registration Logs
-                    </Button>
-
-                    <Button 
-                      variant="outline"
-                      onClick={fetchRegistrationStatus}
-                      disabled={loadingRegistrationStatus}
-                    >
-                      <RefreshCw className={cn(
-                        "h-4 w-4 mr-2",
-                        loadingRegistrationStatus && "animate-spin"
-                      )} />
-                      Refresh Status
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8 space-y-4">
-                  <p className="text-muted-foreground">No registration found for this restaurant</p>
-                  <div className="flex justify-center gap-2">
-                    {isFeatureEnabled('registration.userAccountRegistration') && (
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        // Set type to account only
-                        setRegistrationType('account_only');
-                        // Pre-populate from restaurant email if available
-                        if (restaurant?.email) {
-                          setRegistrationEmail(restaurant.email);
-                        }
-                        // Generate default password hint
-                        if (restaurant?.name) {
-                          const cleaned = restaurant.name.replace(/[^a-zA-Z0-9]/g, '');
-                          const defaultPassword = cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase() + '789!';
-                          setRegistrationPassword(defaultPassword);
-                        }
-                        setRegistrationDialogOpen(true);
-                      }}
-                      disabled={registering}
-                    >
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Register Account
-                    </Button>
-                    )}
-                    {isFeatureEnabled('registration.restaurantRegistration') && (
-                    <Button
-                      onClick={() => {
-                        // Pre-populate email and password from account if exists
-                        if (registrationStatus.account) {
-                          setRegistrationEmail(registrationStatus.account.email || '');
-                          setRegistrationPassword(registrationStatus.account.user_password_hint || '');
-                          // Pre-select registration type based on account's restaurant count
-                          if (registrationStatus.account.restaurant_count === 0) {
-                            setRegistrationType('existing_account_first_restaurant');
-                          } else {
-                            setRegistrationType('existing_account_additional_restaurant');
-                          }
-                        } else {
-                          // No existing account, pre-populate from restaurant data
-                          if (restaurant?.email) {
-                            setRegistrationEmail(restaurant.email);
-                          }
-                          // Generate default password hint
-                          if (restaurant?.name) {
-                            const cleaned = restaurant.name.replace(/[^a-zA-Z0-9]/g, '');
-                            const defaultPassword = cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase() + '789!';
-                            setRegistrationPassword(defaultPassword);
-                          }
-                        }
-                        setRegistrationDialogOpen(true);
-                      }}
-                      disabled={registering}
-                    >
-                      <LogIn className="h-4 w-4 mr-2" />
-                      Register Restaurant
-                    </Button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-          )}
-
-          {/* Recent Menus */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Menus</CardTitle>
-              <CardDescription>Latest menu versions for this restaurant</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {restaurant?.menus && restaurant.menus.length > 0 ? (
-                <div className="space-y-2">
-                  {restaurant.menus.slice(0, 5).map((menu) => (
-                    <div key={menu.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">Version {menu.version}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {menu.platforms?.name || 'Unknown'}
-                          </span>
-                          {menu.is_active && (
-                            <Badge className="bg-green-100 text-green-800">Active</Badge>
+                            className="w-full"
+                            variant="default"
+                          >
+                            {isConfiguring ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Configuring...
+                              </>
+                            ) : (
+                              <>
+                                <Settings className="h-4 w-4 mr-2" />
+                                Configure Website Settings
+                              </>
+                            )}
+                          </Button>
+                          {isConfiguring && (
+                            <p className="text-xs text-muted-foreground text-center">
+                              This may take 2-3 minutes. Please don't close this window.
+                            </p>
                           )}
                         </div>
-                        <span className="text-xs text-muted-foreground">
-                          Created: {new Date(menu.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => navigate(`/menus/${menu.id}`)}
-                          className="text-brand-blue hover:text-brand-blue hover:bg-brand-blue/10"
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          View Menu
-                        </Button>
-                        {isFeatureEnabled('csvWithImagesDownload') && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleUploadImagesToCDN(menu.id)}
-                          className="text-brand-green hover:text-brand-green hover:bg-brand-green/10"
-                        >
-                          <Upload className="h-4 w-4 mr-1" />
-                          Upload Images
-                        </Button>
-                        )}
-                        {isFeatureEnabled('csvWithImagesDownload') && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDownloadCSVWithCDN(menu.id)}
-                          className="text-brand-orange hover:text-brand-orange hover:bg-brand-orange/10"
-                        >
-                          <Download className="h-4 w-4 mr-1" />
-                          Download CSV
-                        </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => navigate(`/menus?restaurant=${id}`)}
-                  >
-                    View All Menus
-                  </Button>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No menus found</p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* CSV Menu Upload Card */}
-          {isFeatureEnabled('registration.menuUploading') && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileSpreadsheet className="h-5 w-5" />
-                Menu CSV Upload
-              </CardTitle>
-              <CardDescription>
-                Upload a CSV file to import menu items to your Pumpd restaurant
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Prerequisites Status */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  {registrationStatus?.account?.registration_status === 'completed' ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <AlertCircle className="h-4 w-4 text-gray-400" />
-                  )}
-                  <span className={registrationStatus?.account?.registration_status === 'completed' ? 'text-green-600' : 'text-gray-500'}>
-                    Account registered
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  {registrationStatus?.restaurant?.registration_status === 'completed' ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <AlertCircle className="h-4 w-4 text-gray-400" />
-                  )}
-                  <span className={registrationStatus?.restaurant?.registration_status === 'completed' ? 'text-green-600' : 'text-gray-500'}>
-                    Restaurant registered
-                  </span>
-                </div>
-              </div>
-
-              {/* File Upload Section */}
-              {registrationStatus?.account?.registration_status === 'completed' && 
-               registrationStatus?.restaurant?.registration_status === 'completed' ? (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="csv-file-input">Select CSV File</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="csv-file-input"
-                        type="file"
-                        accept=".csv,text/csv"
-                        onChange={handleCsvFileSelect}
-                        disabled={isUploading}
-                        className="flex-1"
-                      />
-                      {csvFile && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setCsvFile(null);
-                            setUploadError(null);
-                            setUploadStatus(null);
-                            const fileInput = document.getElementById('csv-file-input');
-                            if (fileInput) fileInput.value = '';
-                          }}
-                          disabled={isUploading}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
                       )}
-                    </div>
-                    {csvFile && (
-                      <p className="text-sm text-muted-foreground">
-                        Selected: {csvFile.name} ({(csvFile.size / 1024).toFixed(2)} KB)
-                      </p>
-                    )}
-                  </div>
 
-                  {/* Upload Button */}
-                  <Button
-                    onClick={handleCsvUpload}
-                    disabled={!csvFile || isUploading}
-                    className="w-full"
-                  >
-                    {isUploading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Uploading...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Upload Menu
-                      </>
-                    )}
-                  </Button>
-
-                  {/* Add Tags Button */}
-                  {isFeatureEnabled('registration.itemTagUploading') && (
-                  <div className="space-y-2">
-                    <Button
-                      onClick={handleAddItemTags}
-                      disabled={isAddingTags}
-                      className="w-full"
-                      variant="outline"
-                    >
-                      {isAddingTags ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Adding Tags...
-                        </>
-                      ) : (
-                        <>
-                          <Tag className="h-4 w-4 mr-2" />
-                          Add Item Tags
-                        </>
+                      {/* Status Messages */}
+                      {customizationStatus && (
+                        <Alert className={customizationStatus.success ? 'border-green-600' : 'border-destructive'}>
+                          {customizationStatus.success ? (
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <AlertCircle className="h-4 w-4" />
+                          )}
+                          <AlertDescription className={customizationStatus.success ? 'text-green-600' : ''}>
+                            {customizationStatus.message}
+                          </AlertDescription>
+                        </Alert>
                       )}
-                    </Button>
-                    {isAddingTags && (
-                      <p className="text-xs text-muted-foreground text-center">
-                        This may take 2-3 minutes. Please don't close this window.
-                      </p>
-                    )}
-                  </div>
-                  )}
 
-                  {/* Status Messages */}
-                  {uploadStatus === 'success' && (
-                    <Alert className="border-green-200 bg-green-50">
-                      <FileCheck className="h-4 w-4 text-green-600" />
-                      <AlertDescription className="text-green-800">
-                        Menu uploaded successfully! The items have been imported to your Pumpd restaurant.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
-                  {uploadError && (
-                    <Alert variant="destructive">
+                      {/* Info Alert */}
+                      <Alert className="border-blue-200 bg-blue-50">
+                        <AlertCircle className="h-4 w-4 text-blue-600" />
+                        <AlertDescription className="text-blue-800 text-sm">
+                          <strong>Note:</strong> Website customization will use {restaurant?.theme === 'light' ? 'light' : 'dark'} theme mode.
+                          {customizationMode === 'generate' ? (
+                            <> First generate code injections, then apply them to your website.</>
+                          ) : (
+                            <> Validate your HTML files first, then apply them to your website.</>
+                          )}
+                        </AlertDescription>
+                      </Alert>
+                    </div>
+                  ) : (
+                    <Alert>
                       <AlertCircle className="h-4 w-4" />
                       <AlertDescription>
-                        {uploadError}
+                        {!restaurant?.primary_color || !restaurant?.secondary_color ? (
+                          <>Theme colors must be configured in the Branding tab before customizing website.</>
+                        ) : (
+                          <>Account and restaurant registration must be completed before customizing website.</>
+                        )}
                       </AlertDescription>
                     </Alert>
                   )}
+                </CardContent>
+              </Card>
+            )}
 
-                  {/* Tags Status Messages */}
-                  {tagsStatus && (
-                    <Alert className={tagsStatus.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}>
-                      {tagsStatus.success ? (
-                        <FileCheck className="h-4 w-4 text-green-600" />
+            {/* Payment & Services Configuration Card */}
+            {(isFeatureEnabled('registration.stripePayments') || isFeatureEnabled('registration.servicesConfiguration')) && (
+              <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CreditCard className="h-5 w-5" />
+                    Payment & Services Configuration
+                  </CardTitle>
+                  <CardDescription>
+                    Configure Stripe payments and service settings for your restaurant
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Prerequisites Status */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      {registrationStatus?.account?.registration_status === 'completed' ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
                       ) : (
-                        <AlertCircle className="h-4 w-4 text-red-600" />
+                        <XCircle className="h-4 w-4 text-gray-400" />
                       )}
-                      <AlertDescription className={tagsStatus.success ? 'text-green-800' : 'text-red-800'}>
-                        {tagsStatus.success
-                          ? 'Item tags configured successfully!'
-                          : (tagsStatus.error || 'Failed to configure item tags')}
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
-                  {/* Option Sets Section */}
-                  {isFeatureEnabled('registration.optionSetUploading') && (
-                  <div className="border-t pt-4 mt-4">
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 text-sm font-medium">
-                        <Settings2 className="h-4 w-4" />
-                        Add Option Sets from Menu
+                      <span className={registrationStatus?.account?.registration_status === 'completed' ? 'text-green-600' : 'text-gray-500'}>
+                        Account registered
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      {registrationStatus?.restaurant?.registration_status === 'completed' ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <XCircle className="h-4 w-4 text-gray-400" />
+                      )}
+                      <span className={registrationStatus?.restaurant?.registration_status === 'completed' ? 'text-green-600' : 'text-gray-500'}>
+                        Restaurant registered
+                      </span>
+                    </div>
+                    {restaurant?.stripe_connect_url && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <AlertCircle className="h-4 w-4 text-yellow-600" />
+                        <span className="text-yellow-600">
+                          Stripe Connect URL available - complete setup if not done
+                        </span>
                       </div>
+                    )}
+                  </div>
 
-                      {/* Menu Dropdown */}
-                      <Select
-                        value={selectedMenuForOptionSets}
-                        onValueChange={setSelectedMenuForOptionSets}
-                        disabled={isAddingOptionSets}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select a menu..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {restaurant?.menus && restaurant.menus.length > 0 ? (
-                            restaurant.menus.map((menu) => (
-                              <SelectItem key={menu.id} value={menu.id}>
-                                Version {menu.version} - {menu.platforms?.name || 'Unknown'}
-                                {menu.is_active && ' (Active)'}
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <SelectItem value="none" disabled>
-                              No menus available
-                            </SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-
-                      {/* Add Option Sets Button */}
+                  {/* Action buttons */}
+                  {registrationStatus?.account?.registration_status === 'completed' &&
+                    registrationStatus?.restaurant?.registration_status === 'completed' ? (
+                    <div className="space-y-4">
+                      {/* Stripe configuration options */}
                       <div className="space-y-2">
-                        <Button
-                          onClick={handleAddOptionSets}
-                          disabled={isAddingOptionSets || !selectedMenuForOptionSets}
-                          className="w-full"
-                          variant="outline"
-                        >
-                          {isAddingOptionSets ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Adding Option Sets...
-                            </>
-                          ) : (
-                            <>
-                              <Settings2 className="h-4 w-4 mr-2" />
-                              Add Option Sets
-                            </>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id="includeConnectLink"
+                            checked={includeConnectLink}
+                            onChange={(e) => setIncludeConnectLink(e.target.checked)}
+                            className="rounded border-gray-300"
+                          />
+                          <label htmlFor="includeConnectLink" className="text-sm text-gray-700">
+                            Include "Connect to Stripe" button (use if button is visible in UI)
+                          </label>
+                        </div>
+
+                        <div className="flex gap-4">
+                          {isFeatureEnabled('registration.stripePayments') && (
+                            <Button
+                              onClick={handleSetupStripePayments}
+                              disabled={isConfiguringPayments}
+                              className="flex items-center gap-2"
+                            >
+                              {isConfiguringPayments ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  Configuring Stripe...
+                                </>
+                              ) : (
+                                <>
+                                  <CreditCard className="h-4 w-4" />
+                                  Setup Stripe Payments
+                                </>
+                              )}
+                            </Button>
                           )}
-                        </Button>
-                        {isAddingOptionSets && (
+
+                          {isFeatureEnabled('registration.servicesConfiguration') && (
+                            <Button
+                              onClick={handleConfigureServices}
+                              disabled={isConfiguringServices}
+                              className="flex items-center gap-2"
+                              variant="outline"
+                            >
+                              {isConfiguringServices ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  Configuring Services...
+                                </>
+                              ) : (
+                                <>
+                                  <Settings className="h-4 w-4" />
+                                  Configure Services
+                                </>
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                        {(isConfiguringPayments || isConfiguringServices) && (
                           <p className="text-xs text-muted-foreground text-center">
                             This may take 2-3 minutes. Please don't close this window.
                           </p>
                         )}
                       </div>
 
-                      {/* Option Sets Status Messages */}
-                      {optionSetsStatus && (
-                        <Alert className={optionSetsStatus.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}>
-                          {optionSetsStatus.success ? (
-                            <FileCheck className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <AlertCircle className="h-4 w-4 text-red-600" />
-                          )}
-                          <AlertDescription className={optionSetsStatus.success ? 'text-green-800' : 'text-red-800'}>
-                            {optionSetsStatus.success
-                              ? `Option sets configured successfully! (${optionSetsStatus.summary?.created || 0} created, ${optionSetsStatus.summary?.failed || 0} failed)`
-                              : (optionSetsStatus.error || 'Failed to configure option sets')}
+                      {/* Payment Status/Results */}
+                      {paymentStatus && (
+                        <Alert className={paymentStatus.success ? 'border-green-500' : 'border-red-500'}>
+                          <AlertDescription>
+                            {paymentStatus.success ? (
+                              <>
+                                <CheckCircle className="inline h-4 w-4 text-green-500 mr-2" />
+                                {paymentStatus.message || 'Stripe configuration completed!'}
+                                {paymentStatus.stripeConnectUrl && (
+                                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded">
+                                    <strong className="block mb-2">Complete Stripe setup:</strong>
+                                    <a
+                                      href={paymentStatus.stripeConnectUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-blue-600 hover:text-blue-800 underline break-all flex items-center gap-1"
+                                    >
+                                      {paymentStatus.stripeConnectUrl}
+                                      <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                                    </a>
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <AlertCircle className="inline h-4 w-4 text-red-500 mr-2" />
+                                {paymentStatus.error || 'Failed to configure Stripe payments'}
+                              </>
+                            )}
+                          </AlertDescription>
+                        </Alert>
+                      )}
+
+                      {/* Services Status/Results */}
+                      {servicesStatus && (
+                        <Alert className={servicesStatus.success ? 'border-green-500' : 'border-red-500'}>
+                          <AlertDescription>
+                            {servicesStatus.success ? (
+                              <>
+                                <CheckCircle className="inline h-4 w-4 text-green-500 mr-2" />
+                                {servicesStatus.message || 'Services configured successfully!'}
+                              </>
+                            ) : (
+                              <>
+                                <AlertCircle className="inline h-4 w-4 text-red-500 mr-2" />
+                                {servicesStatus.error || 'Failed to configure services'}
+                              </>
+                            )}
+                          </AlertDescription>
+                        </Alert>
+                      )}
+
+                      {/* Show existing Stripe URL if available */}
+                      {restaurant?.stripe_connect_url && !paymentStatus && (
+                        <Alert className="border-blue-500">
+                          <AlertDescription>
+                            <AlertCircle className="inline h-4 w-4 text-blue-500 mr-2" />
+                            <strong>Existing Stripe Connect URL:</strong>
+                            <a
+                              href={restaurant.stripe_connect_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block mt-2 text-blue-600 hover:text-blue-800 underline break-all"
+                            >
+                              {restaurant.stripe_connect_url}
+                              <ExternalLink className="inline h-3 w-3 ml-1" />
+                            </a>
                           </AlertDescription>
                         </Alert>
                       )}
                     </div>
-                  </div>
+                  ) : (
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        Account and restaurant registration must be completed before configuring payments and services.
+                      </AlertDescription>
+                    </Alert>
                   )}
-                </div>
-              ) : (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Both account and restaurant registration must be completed before you can upload a menu.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </CardContent>
-          </Card>
-          )}
+                </CardContent>
+              </Card>
+            )}
 
-          {/* Website Settings Card */}
-          {isFeatureEnabled('registration.websiteSettings') && (
-          <Card className="mt-4">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
+            {/* Onboarding User Management Card */}
+            {isFeatureEnabled('registration.onboardingUserManagement') && (
+              <Card className="mt-4">
+                <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Settings className="h-5 w-5" />
-                    Website Settings
+                    <UserPlus className="h-5 w-5" />
+                    Onboarding User Management
                   </CardTitle>
                   <CardDescription>
-                    Theme and branding settings required for website customization
+                    Create and manage onboarding users for restaurant setup
                   </CardDescription>
-                </div>
-                {!isEditing ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setEditedData(restaurant);
-                      setIsEditing(true);
-                    }}
-                  >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit Settings
-                  </Button>
-                ) : (
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setIsEditing(false);
-                        setEditedData({});
-                      }}
-                      disabled={saving}
-                    >
-                      <X className="h-4 w-4 mr-2" />
-                      Cancel
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={handleSave}
-                      disabled={saving}
-                      className="bg-gradient-to-r from-brand-blue to-brand-green"
-                    >
-                      <Save className="h-4 w-4 mr-2" />
-                      {saving ? 'Saving...' : 'Save'}
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {/* Theme */}
-                <div>
-                  <Label>Theme</Label>
-                  {isEditing ? (
-                    <Select
-                      value={editedData.theme || 'light'}
-                      onValueChange={(value) => handleFieldChange('theme', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="light">Light</SelectItem>
-                        <SelectItem value="dark">Dark</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <div className="flex items-center gap-2 mt-1">
-                      {restaurant?.theme ? (
-                        <Badge variant="outline">{restaurant.theme}</Badge>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">-</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Cuisine */}
-                <div>
-                  <Label>Cuisine</Label>
-                  {isEditing ? (
-                    <Input
-                      value={editedData.cuisine?.join(', ') || ''}
-                      onChange={(e) => handleFieldChange('cuisine', e.target.value.split(',').map(c => c.trim()))}
-                      placeholder="e.g., Italian, Pizza, Pasta"
-                    />
-                  ) : (
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {restaurant?.cuisine?.length > 0 ? (
-                        restaurant.cuisine.map((c, i) => (
-                          <Badge key={i} variant="secondary">{c}</Badge>
-                        ))
-                      ) : (
-                        <span className="text-sm text-muted-foreground">-</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Primary Color */}
-                <div>
-                  <Label>Primary Color</Label>
-                  {isEditing ? (
-                    <div className="flex gap-2">
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Input fields */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium">User Name</label>
                       <Input
-                        type="color"
-                        value={editedData.primary_color || '#000000'}
-                        onChange={(e) => handleFieldChange('primary_color', e.target.value)}
-                        className="w-16 h-9"
-                      />
-                      <Input
-                        value={editedData.primary_color || ''}
-                        onChange={(e) => handleFieldChange('primary_color', e.target.value)}
-                        placeholder="#000000"
+                        value={onboardingUserName}
+                        onChange={(e) => setOnboardingUserName(e.target.value)}
+                        placeholder="Restaurant Owner Name"
+                        className="mt-1"
                       />
                     </div>
-                  ) : (
-                    <div className="flex items-center gap-2 mt-1">
-                      {restaurant?.primary_color ? (
-                        <>
-                          <div
-                            className="w-6 h-6 rounded border"
-                            style={{ backgroundColor: restaurant.primary_color }}
-                          />
-                          <span className="text-sm">{restaurant.primary_color}</span>
-                        </>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">-</span>
-                      )}
-                    </div>
-                  )}
-                </div>
 
-                {/* Secondary Color */}
-                <div>
-                  <Label>Secondary Color</Label>
-                  {isEditing ? (
-                    <div className="flex gap-2">
+                    <div>
+                      <label className="text-sm font-medium">User Email</label>
                       <Input
-                        type="color"
-                        value={editedData.secondary_color || '#000000'}
-                        onChange={(e) => handleFieldChange('secondary_color', e.target.value)}
-                        className="w-16 h-9"
-                      />
-                      <Input
-                        value={editedData.secondary_color || ''}
-                        onChange={(e) => handleFieldChange('secondary_color', e.target.value)}
-                        placeholder="#000000"
+                        type="email"
+                        value={onboardingUserEmail}
+                        onChange={(e) => setOnboardingUserEmail(e.target.value)}
+                        placeholder="owner@restaurant.com"
+                        className="mt-1"
                       />
                     </div>
-                  ) : (
-                    <div className="flex items-center gap-2 mt-1">
-                      {restaurant?.secondary_color ? (
-                        <>
-                          <div
-                            className="w-6 h-6 rounded border"
-                            style={{ backgroundColor: restaurant.secondary_color }}
-                          />
-                          <span className="text-sm">{restaurant.secondary_color}</span>
-                        </>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">-</span>
+
+                    <div>
+                      <label className="text-sm font-medium">
+                        Password (optional - auto-generated if empty)
+                      </label>
+                      <Input
+                        type="text"
+                        value={onboardingUserPassword}
+                        onChange={(e) => setOnboardingUserPassword(e.target.value)}
+                        placeholder="Leave empty for auto-generation"
+                        className="mt-1"
+                      />
+                      {!onboardingUserPassword && restaurant?.name && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Will use: {generateDefaultPassword(restaurant.name)}
+                        </p>
                       )}
                     </div>
-                  )}
-                </div>
-              </div>
 
-              {/* Status indicators */}
-              <div className="mt-4 pt-4 border-t">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-                  <div className="flex items-center gap-1">
-                    {restaurant?.theme ? (
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-gray-400" />
-                    )}
-                    <span className={restaurant?.theme ? 'text-green-600' : 'text-gray-500'}>Theme</span>
+                    <div>
+                      <label className="text-sm font-medium">Stripe Connect URL</label>
+                      <Input
+                        type="url"
+                        value={onboardingStripeConnectUrl}
+                        onChange={(e) => setOnboardingStripeConnectUrl(e.target.value)}
+                        placeholder="https://connect.stripe.com/..."
+                        className="mt-1"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        {onboardingStripeConnectUrl
+                          ? 'URL will be saved when updating record'
+                          : 'Paste the Stripe Connect onboarding link here'}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    {restaurant?.cuisine?.length > 0 ? (
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-gray-400" />
-                    )}
-                    <span className={restaurant?.cuisine?.length > 0 ? 'text-green-600' : 'text-gray-500'}>Cuisine</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {restaurant?.primary_color ? (
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-gray-400" />
-                    )}
-                    <span className={restaurant?.primary_color ? 'text-green-600' : 'text-gray-500'}>Primary</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {restaurant?.secondary_color ? (
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-gray-400" />
-                    )}
-                    <span className={restaurant?.secondary_color ? 'text-green-600' : 'text-gray-500'}>Secondary</span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          )}
 
-          {/* Website Customization Card */}
-          {(isFeatureEnabled('registration.codeInjection') || isFeatureEnabled('registration.websiteSettings')) && (
-          <Card className="mt-4">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Palette className="h-5 w-5" />
-                Website Customization
-              </CardTitle>
-              <CardDescription>
-                Generate and apply custom styling to your Pumpd website
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Prerequisites Status */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  {registrationStatus?.account?.registration_status === 'completed' ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <XCircle className="h-4 w-4 text-gray-400" />
-                  )}
-                  <span className={registrationStatus?.account?.registration_status === 'completed' ? 'text-green-600' : 'text-gray-500'}>
-                    Account registered
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  {registrationStatus?.restaurant?.registration_status === 'completed' ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <XCircle className="h-4 w-4 text-gray-400" />
-                  )}
-                  <span className={registrationStatus?.restaurant?.registration_status === 'completed' ? 'text-green-600' : 'text-gray-500'}>
-                    Restaurant registered
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  {restaurant?.primary_color && restaurant?.secondary_color ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <XCircle className="h-4 w-4 text-gray-400" />
-                  )}
-                  <span className={restaurant?.primary_color && restaurant?.secondary_color ? 'text-green-600' : 'text-gray-500'}>
-                    Theme colors configured
-                    {restaurant?.primary_color && restaurant?.secondary_color && (
-                      <span className="ml-2">
-                        <span 
-                          className="inline-block w-3 h-3 rounded-full border border-gray-300" 
-                          style={{ backgroundColor: restaurant.primary_color }}
-                          title={`Primary: ${restaurant.primary_color}`}
-                        />
-                        <span 
-                          className="inline-block w-3 h-3 rounded-full border border-gray-300 ml-1" 
-                          style={{ backgroundColor: restaurant.secondary_color }}
-                          title={`Secondary: ${restaurant.secondary_color}`}
-                        />
-                      </span>
-                    )}
-                  </span>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              {registrationStatus?.account?.registration_status === 'completed' && 
-               registrationStatus?.restaurant?.registration_status === 'completed' &&
-               restaurant?.primary_color && restaurant?.secondary_color ? (
-                <div className="space-y-4">
-                  {/* Mode Selector */}
+                  {/* Action buttons */}
                   <div className="space-y-2">
-                    <Label>Configuration Method</Label>
-                    <RadioGroup value={customizationMode} onValueChange={handleModeChange}>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="generate" id="mode-generate" />
-                        <Label htmlFor="mode-generate" className="font-normal cursor-pointer">
-                          Generate new code injections
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="existing" id="mode-existing" />
-                        <Label htmlFor="mode-existing" className="font-normal cursor-pointer">
-                          Use existing HTML files
-                        </Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
+                    <div className="flex gap-4">
+                      <Button
+                        onClick={handleCreateOnboardingUser}
+                        disabled={isCreatingOnboardingUser || !onboardingUserName || !onboardingUserEmail}
+                        className="flex items-center gap-2"
+                      >
+                        {isCreatingOnboardingUser ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Creating User...
+                          </>
+                        ) : (
+                          <>
+                            <UserPlus className="h-4 w-4" />
+                            Create Onboarding User
+                          </>
+                        )}
+                      </Button>
 
-                  {/* Mode-specific UI */}
-                  {customizationMode === 'generate' ? (
-                    <>
-                      {/* Generate Code Injections Button */}
-                      {isFeatureEnabled('registration.codeInjection') && (
-                      <div className="space-y-2">
+                      {isFeatureEnabled('registration.onboardingSync') && (
                         <Button
-                          onClick={handleGenerateCodeInjections}
-                          disabled={isGenerating || isConfiguring}
-                          className="w-full"
-                          variant={codeGenerated ? "outline" : "default"}
+                          onClick={handleUpdateOnboardingRecord}
+                          disabled={isUpdatingOnboarding || !onboardingUserEmail}
+                          variant="outline"
+                          className="flex items-center gap-2"
                         >
-                          {isGenerating ? (
+                          {isUpdatingOnboarding ? (
                             <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Generating...
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Updating Record...
                             </>
                           ) : (
                             <>
-                              <Code className="h-4 w-4 mr-2" />
-                              {codeGenerated ? 'Regenerate Code Injections' : 'Generate Code Injections'}
+                              <Database className="h-4 w-4" />
+                              Update Onboarding Record
                             </>
                           )}
                         </Button>
-                        {isGenerating && (
-                          <p className="text-xs text-muted-foreground text-center">
-                            This may take 1-2 minutes. Please don't close this window.
-                          </p>
-                        )}
-                        {codeGenerated && !isGenerating && (
-                          <p className="text-xs text-muted-foreground text-center">
-                            Code injections ready for configuration
-                          </p>
-                        )}
-                      </div>
                       )}
-                    </>
-                  ) : (
-                    <>
-                      {/* File Path Inputs */}
-                      <div className="space-y-3">
-                        <div className="space-y-2">
-                          <Label htmlFor="head-path">Head Injection File Path</Label>
-                          <Input
-                            id="head-path"
-                            type="text"
-                            placeholder="/path/to/head-injection.html"
-                            value={existingHeadPath}
-                            onChange={(e) => setExistingHeadPath(e.target.value)}
-                            disabled={isValidating || isConfiguring}
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Full path to your head injection HTML file
-                          </p>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="body-path">Body Injection File Path</Label>
-                          <Input
-                            id="body-path"
-                            type="text"
-                            placeholder="/path/to/body-injection.html"
-                            value={existingBodyPath}
-                            onChange={(e) => setExistingBodyPath(e.target.value)}
-                            disabled={isValidating || isConfiguring}
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Full path to your body injection HTML file
-                          </p>
-                        </div>
-
-                        {/* Validate Files Button */}
-                        <Button
-                          onClick={handleValidateFiles}
-                          disabled={!existingHeadPath || !existingBodyPath || isValidating || isConfiguring}
-                          className="w-full"
-                          variant={filesValidated ? "outline" : "default"}
-                        >
-                          {isValidating ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Validating...
-                            </>
-                          ) : (
-                            <>
-                              <FileCheck className="h-4 w-4 mr-2" />
-                              {filesValidated ? 'Files Validated ✓' : 'Validate Files'}
-                            </>
-                          )}
-                        </Button>
-                        {filesValidated && (
-                          <p className="text-xs text-muted-foreground text-center">
-                            Files validated and ready for configuration
-                          </p>
-                        )}
-                      </div>
-                    </>
-                  )}
-
-                  {/* Configure Website Settings Button (shown for both modes) */}
-                  {isFeatureEnabled('registration.websiteSettings') && (
-                  <div className="space-y-2">
-                    <Button
-                      onClick={handleConfigureWebsite}
-                      disabled={
-                        (customizationMode === 'generate' && !codeGenerated) ||
-                        (customizationMode === 'existing' && !filesValidated) ||
-                        isConfiguring || isGenerating || isValidating
-                      }
-                      className="w-full"
-                      variant="default"
-                    >
-                      {isConfiguring ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Configuring...
-                        </>
-                      ) : (
-                        <>
-                          <Settings className="h-4 w-4 mr-2" />
-                          Configure Website Settings
-                        </>
-                      )}
-                    </Button>
-                    {isConfiguring && (
-                      <p className="text-xs text-muted-foreground text-center">
+                    </div>
+                    {isCreatingOnboardingUser && (
+                      <p className="text-xs text-muted-foreground">
                         This may take 2-3 minutes. Please don't close this window.
                       </p>
                     )}
+
+                    {/* Status displays */}
+                    {onboardingUserStatus && (
+                      <Alert className={onboardingUserStatus.success ? 'border-green-500' : 'border-red-500'}>
+                        <AlertDescription>
+                          {onboardingUserStatus.success ? (
+                            <>
+                              <CheckCircle className="inline h-4 w-4 text-green-500 mr-2" />
+                              {onboardingUserStatus.message || 'Onboarding user created successfully'}
+                              {onboardingUserStatus.userEmail && (
+                                <span className="block mt-1">
+                                  Email: {onboardingUserStatus.userEmail}
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <AlertCircle className="inline h-4 w-4 text-red-500 mr-2" />
+                              {onboardingUserStatus.error || 'Failed to create onboarding user'}
+                            </>
+                          )}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    {onboardingUpdateStatus && (
+                      <Alert className={onboardingUpdateStatus.success ? 'border-green-500' : 'border-red-500'}>
+                        <AlertDescription>
+                          {onboardingUpdateStatus.success ? (
+                            <>
+                              <CheckCircle className="inline h-4 w-4 text-green-500 mr-2" />
+                              Record updated successfully
+                              {onboardingUpdateStatus.onboardingId && (
+                                <span className="block mt-1 text-xs text-gray-600">
+                                  Onboarding ID: {onboardingUpdateStatus.onboardingId}
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <AlertCircle className="inline h-4 w-4 text-red-500 mr-2" />
+                              {onboardingUpdateStatus.error || 'Failed to update onboarding record'}
+                            </>
+                          )}
+                        </AlertDescription>
+                      </Alert>
+                    )}
                   </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Finalise Setup Card */}
+            {isFeatureEnabled('registration.finalisingSetup') && (
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="h-5 w-5" />
+                    Finalise Setup
+                  </CardTitle>
+                  <CardDescription>
+                    Complete the restaurant configuration with system settings, API key creation, and Uber integration
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Prerequisites Check */}
+                  <Alert>
+                    <AlertDescription>
+                      <div className="space-y-2">
+                        <p className="font-medium">Prerequisites:</p>
+                        <ul className="list-disc list-inside text-sm space-y-1">
+                          <li>Restaurant must have a Pumpd account created</li>
+                          <li>User credentials must be available in the database</li>
+                          <li>Restaurant must be registered on the platform</li>
+                        </ul>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+
+                  {/* Receipt Logo Selection */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      Receipt Logo Selection
+                    </label>
+                    <div className="flex items-center gap-4">
+                      <Select value={receiptLogoVersion} onValueChange={setReceiptLogoVersion}>
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Select receipt logo version" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {restaurant?.logo_url && (
+                            <SelectItem value="logo_url">Original Logo</SelectItem>
+                          )}
+                          {restaurant?.logo_nobg_url && (
+                            <SelectItem value="logo_nobg_url">No Background Logo</SelectItem>
+                          )}
+                          {restaurant?.logo_standard_url && (
+                            <SelectItem value="logo_standard_url">Standard Logo</SelectItem>
+                          )}
+                          {restaurant?.logo_thermal_url && (
+                            <SelectItem value="logo_thermal_url">Thermal Logo</SelectItem>
+                          )}
+                          {restaurant?.logo_thermal_alt_url && (
+                            <SelectItem value="logo_thermal_alt_url">Thermal Alt Logo</SelectItem>
+                          )}
+                          {restaurant?.logo_thermal_contrast_url && (
+                            <SelectItem value="logo_thermal_contrast_url">Thermal High Contrast</SelectItem>
+                          )}
+                          {restaurant?.logo_thermal_adaptive_url && (
+                            <SelectItem value="logo_thermal_adaptive_url">Thermal Adaptive</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                      {receiptLogoVersion && restaurant?.[receiptLogoVersion] && (
+                        <div className="flex items-center gap-2">
+                          <img
+                            src={restaurant[receiptLogoVersion]}
+                            alt="Selected receipt logo"
+                            className="h-12 w-12 object-contain border rounded p-1"
+                          />
+                          <Badge variant="secondary">Selected</Badge>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      This logo will be converted to PNG format and used for receipts
+                    </p>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Setup System Settings Button */}
+                    <Card className="border-2 hover:border-brand-blue transition-colors">
+                      <CardContent className="p-4">
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <Settings className="h-8 w-8 text-brand-blue" />
+                            {systemSettingsStatus?.success && (
+                              <CheckCircle className="h-5 w-5 text-green-500" />
+                            )}
+                          </div>
+                          <div>
+                            <h4 className="font-semibold">System Settings</h4>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Configure GST, pickup times, and other system settings
+                            </p>
+                          </div>
+                          {isFeatureEnabled('registration.finalisingSetup') && (
+                            <Button
+                              onClick={handleSetupSystemSettings}
+                              disabled={isSettingUpSystemSettings || !restaurant?.id}
+                              className="w-full"
+                              variant={systemSettingsStatus?.success ? "outline" : "default"}
+                            >
+                              {isSettingUpSystemSettings ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                  Configuring...
+                                </>
+                              ) : systemSettingsStatus?.success ? (
+                                <>
+                                  <CheckCircle className="h-4 w-4 mr-2" />
+                                  Reconfigure
+                                </>
+                              ) : (
+                                <>
+                                  <Settings className="h-4 w-4 mr-2" />
+                                  Setup Settings
+                                </>
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Create API Key Button */}
+                    <Card className="border-2 hover:border-brand-blue transition-colors">
+                      <CardContent className="p-4">
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <Code className="h-8 w-8 text-brand-blue" />
+                            {apiKeyStatus?.success && (
+                              <CheckCircle className="h-5 w-5 text-green-500" />
+                            )}
+                          </div>
+                          <div>
+                            <h4 className="font-semibold">API Key</h4>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Generate API key for online ordering integration
+                            </p>
+                          </div>
+                          <Button
+                            onClick={handleCreateApiKey}
+                            disabled={isCreatingApiKey || !restaurant?.id || !setupCompletionStatus.system_settings}
+                            className="w-full"
+                            variant={apiKeyStatus?.success ? "outline" : "default"}
+                          >
+                            {isCreatingApiKey ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                Creating...
+                              </>
+                            ) : apiKeyStatus?.success ? (
+                              <>
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                Regenerate
+                              </>
+                            ) : (
+                              <>
+                                <Code className="h-4 w-4 mr-2" />
+                                Create API Key
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Configure Uber Integration Button */}
+                    <Card className="border-2 hover:border-brand-blue transition-colors">
+                      <CardContent className="p-4">
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <Link2 className="h-8 w-8 text-brand-blue" />
+                            {uberIntegrationStatus?.success && (
+                              <CheckCircle className="h-5 w-5 text-green-500" />
+                            )}
+                          </div>
+                          <div>
+                            <h4 className="font-semibold">Uber Integration</h4>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Complete Uber OAuth and configure integration
+                            </p>
+                          </div>
+                          <Button
+                            onClick={handleConfigureUberIntegration}
+                            disabled={isConfiguringUberIntegration || !restaurant?.id || !setupCompletionStatus.api_key}
+                            className="w-full"
+                            variant={uberIntegrationStatus?.success ? "outline" : "default"}
+                          >
+                            {isConfiguringUberIntegration ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                Configuring...
+                              </>
+                            ) : uberIntegrationStatus?.success ? (
+                              <>
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                Reconfigure
+                              </>
+                            ) : (
+                              <>
+                                <Link2 className="h-4 w-4 mr-2" />
+                                Configure Uber
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Loading state messages for Finalise Setup operations */}
+                  {(isSettingUpSystemSettings || isCreatingApiKey || isConfiguringUberIntegration) && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      {isSettingUpSystemSettings
+                        ? 'This may take 1-2 minutes. Please don\'t close this window.'
+                        : isCreatingApiKey
+                          ? 'This may take 1-2 minutes. Please don\'t close this window.'
+                          : 'This may take 2-3 minutes. Please don\'t close this window.'}
+                    </p>
                   )}
 
                   {/* Status Messages */}
-                  {customizationStatus && (
-                    <Alert className={customizationStatus.success ? 'border-green-600' : 'border-destructive'}>
-                      {customizationStatus.success ? (
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                      ) : (
-                        <AlertCircle className="h-4 w-4" />
-                      )}
-                      <AlertDescription className={customizationStatus.success ? 'text-green-600' : ''}>
-                        {customizationStatus.message}
+                  {systemSettingsStatus && (
+                    <Alert className={systemSettingsStatus.success ? 'border-green-500' : 'border-red-500'}>
+                      <AlertDescription>
+                        {systemSettingsStatus.success ? (
+                          <>
+                            <CheckCircle className="inline h-4 w-4 text-green-500 mr-2" />
+                            {systemSettingsStatus.message || 'System settings configured successfully'}
+                          </>
+                        ) : (
+                          <>
+                            <AlertCircle className="inline h-4 w-4 text-red-500 mr-2" />
+                            {systemSettingsStatus.error || 'Failed to configure system settings'}
+                          </>
+                        )}
                       </AlertDescription>
                     </Alert>
                   )}
 
-                  {/* Info Alert */}
-                  <Alert className="border-blue-200 bg-blue-50">
-                    <AlertCircle className="h-4 w-4 text-blue-600" />
-                    <AlertDescription className="text-blue-800 text-sm">
-                      <strong>Note:</strong> Website customization will use {restaurant?.theme === 'light' ? 'light' : 'dark'} theme mode.
-                      {customizationMode === 'generate' ? (
-                        <> First generate code injections, then apply them to your website.</>
-                      ) : (
-                        <> Validate your HTML files first, then apply them to your website.</>
-                      )}
-                    </AlertDescription>
-                  </Alert>
-                </div>
-              ) : (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    {!restaurant?.primary_color || !restaurant?.secondary_color ? (
-                      <>Theme colors must be configured in the Branding tab before customizing website.</>
-                    ) : (
-                      <>Account and restaurant registration must be completed before customizing website.</>
-                    )}
-                  </AlertDescription>
-                </Alert>
-              )}
-            </CardContent>
-          </Card>
-          )}
-
-          {/* Payment & Services Configuration Card */}
-          {(isFeatureEnabled('registration.stripePayments') || isFeatureEnabled('registration.servicesConfiguration')) && (
-          <Card className="mt-4">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
-                Payment & Services Configuration
-              </CardTitle>
-              <CardDescription>
-                Configure Stripe payments and service settings for your restaurant
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Prerequisites Status */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  {registrationStatus?.account?.registration_status === 'completed' ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <XCircle className="h-4 w-4 text-gray-400" />
-                  )}
-                  <span className={registrationStatus?.account?.registration_status === 'completed' ? 'text-green-600' : 'text-gray-500'}>
-                    Account registered
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  {registrationStatus?.restaurant?.registration_status === 'completed' ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <XCircle className="h-4 w-4 text-gray-400" />
-                  )}
-                  <span className={registrationStatus?.restaurant?.registration_status === 'completed' ? 'text-green-600' : 'text-gray-500'}>
-                    Restaurant registered
-                  </span>
-                </div>
-                {restaurant?.stripe_connect_url && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <AlertCircle className="h-4 w-4 text-yellow-600" />
-                    <span className="text-yellow-600">
-                      Stripe Connect URL available - complete setup if not done
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Action buttons */}
-              {registrationStatus?.account?.registration_status === 'completed' && 
-               registrationStatus?.restaurant?.registration_status === 'completed' ? (
-                <div className="space-y-4">
-                  {/* Stripe configuration options */}
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="includeConnectLink"
-                        checked={includeConnectLink}
-                        onChange={(e) => setIncludeConnectLink(e.target.checked)}
-                        className="rounded border-gray-300"
-                      />
-                      <label htmlFor="includeConnectLink" className="text-sm text-gray-700">
-                        Include "Connect to Stripe" button (use if button is visible in UI)
-                      </label>
-                    </div>
-                    
-                    <div className="flex gap-4">
-                      {isFeatureEnabled('registration.stripePayments') && (
-                      <Button
-                        onClick={handleSetupStripePayments}
-                        disabled={isConfiguringPayments}
-                        className="flex items-center gap-2"
-                      >
-                        {isConfiguringPayments ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Configuring Stripe...
-                          </>
-                        ) : (
-                          <>
-                            <CreditCard className="h-4 w-4" />
-                            Setup Stripe Payments
-                          </>
-                        )}
-                      </Button>
-                      )}
-
-                      {isFeatureEnabled('registration.servicesConfiguration') && (
-                      <Button
-                        onClick={handleConfigureServices}
-                        disabled={isConfiguringServices}
-                        className="flex items-center gap-2"
-                        variant="outline"
-                      >
-                        {isConfiguringServices ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Configuring Services...
-                          </>
-                        ) : (
-                          <>
-                            <Settings className="h-4 w-4" />
-                            Configure Services
-                          </>
-                        )}
-                      </Button>
-                      )}
-                    </div>
-                    {(isConfiguringPayments || isConfiguringServices) && (
-                      <p className="text-xs text-muted-foreground text-center">
-                        This may take 2-3 minutes. Please don't close this window.
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Payment Status/Results */}
-                  {paymentStatus && (
-                    <Alert className={paymentStatus.success ? 'border-green-500' : 'border-red-500'}>
+                  {apiKeyStatus && (
+                    <Alert className={apiKeyStatus.success ? 'border-green-500' : 'border-red-500'}>
                       <AlertDescription>
-                        {paymentStatus.success ? (
+                        {apiKeyStatus.success ? (
                           <>
                             <CheckCircle className="inline h-4 w-4 text-green-500 mr-2" />
-                            {paymentStatus.message || 'Stripe configuration completed!'}
-                            {paymentStatus.stripeConnectUrl && (
-                              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded">
-                                <strong className="block mb-2">Complete Stripe setup:</strong>
-                                <a 
-                                  href={paymentStatus.stripeConnectUrl} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 hover:text-blue-800 underline break-all flex items-center gap-1"
-                                >
-                                  {paymentStatus.stripeConnectUrl}
-                                  <ExternalLink className="h-3 w-3 flex-shrink-0" />
-                                </a>
+                            {apiKeyStatus.message || 'API key created successfully'}
+                            {apiKeyStatus.apiKey && (
+                              <div className="mt-2 p-2 bg-gray-100 rounded font-mono text-sm">
+                                {apiKeyStatus.apiKey}
                               </div>
                             )}
                           </>
                         ) : (
                           <>
                             <AlertCircle className="inline h-4 w-4 text-red-500 mr-2" />
-                            {paymentStatus.error || 'Failed to configure Stripe payments'}
+                            {apiKeyStatus.error || 'Failed to create API key'}
                           </>
                         )}
                       </AlertDescription>
                     </Alert>
                   )}
 
-                  {/* Services Status/Results */}
-                  {servicesStatus && (
-                    <Alert className={servicesStatus.success ? 'border-green-500' : 'border-red-500'}>
+                  {uberIntegrationStatus && (
+                    <Alert className={uberIntegrationStatus.success ? 'border-green-500' : 'border-red-500'}>
                       <AlertDescription>
-                        {servicesStatus.success ? (
+                        {uberIntegrationStatus.success ? (
                           <>
                             <CheckCircle className="inline h-4 w-4 text-green-500 mr-2" />
-                            {servicesStatus.message || 'Services configured successfully!'}
+                            {uberIntegrationStatus.message || 'Uber integration configured successfully'}
                           </>
                         ) : (
                           <>
                             <AlertCircle className="inline h-4 w-4 text-red-500 mr-2" />
-                            {servicesStatus.error || 'Failed to configure services'}
+                            {uberIntegrationStatus.error || 'Failed to configure Uber integration'}
                           </>
                         )}
                       </AlertDescription>
                     </Alert>
                   )}
-
-                  {/* Show existing Stripe URL if available */}
-                  {restaurant?.stripe_connect_url && !paymentStatus && (
-                    <Alert className="border-blue-500">
-                      <AlertDescription>
-                        <AlertCircle className="inline h-4 w-4 text-blue-500 mr-2" />
-                        <strong>Existing Stripe Connect URL:</strong>
-                        <a 
-                          href={restaurant.stripe_connect_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="block mt-2 text-blue-600 hover:text-blue-800 underline break-all"
-                        >
-                          {restaurant.stripe_connect_url}
-                          <ExternalLink className="inline h-3 w-3 ml-1" />
-                        </a>
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </div>
-              ) : (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Account and restaurant registration must be completed before configuring payments and services.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </CardContent>
-          </Card>
-          )}
-
-          {/* Onboarding User Management Card */}
-          {isFeatureEnabled('registration.onboardingUserManagement') && (
-          <Card className="mt-4">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <UserPlus className="h-5 w-5" />
-                Onboarding User Management
-              </CardTitle>
-              <CardDescription>
-                Create and manage onboarding users for restaurant setup
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Input fields */}
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium">User Name</label>
-                  <Input
-                    value={onboardingUserName}
-                    onChange={(e) => setOnboardingUserName(e.target.value)}
-                    placeholder="Restaurant Owner Name"
-                    className="mt-1"
-                  />
-                </div>
-                
-                <div>
-                  <label className="text-sm font-medium">User Email</label>
-                  <Input
-                    type="email"
-                    value={onboardingUserEmail}
-                    onChange={(e) => setOnboardingUserEmail(e.target.value)}
-                    placeholder="owner@restaurant.com"
-                    className="mt-1"
-                  />
-                </div>
-                
-                <div>
-                  <label className="text-sm font-medium">
-                    Password (optional - auto-generated if empty)
-                  </label>
-                  <Input
-                    type="text"
-                    value={onboardingUserPassword}
-                    onChange={(e) => setOnboardingUserPassword(e.target.value)}
-                    placeholder="Leave empty for auto-generation"
-                    className="mt-1"
-                  />
-                  {!onboardingUserPassword && restaurant?.name && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Will use: {generateDefaultPassword(restaurant.name)}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium">Stripe Connect URL</label>
-                  <Input
-                    type="url"
-                    value={onboardingStripeConnectUrl}
-                    onChange={(e) => setOnboardingStripeConnectUrl(e.target.value)}
-                    placeholder="https://connect.stripe.com/..."
-                    className="mt-1"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    {onboardingStripeConnectUrl
-                      ? 'URL will be saved when updating record'
-                      : 'Paste the Stripe Connect onboarding link here'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Action buttons */}
-              <div className="space-y-2">
-                <div className="flex gap-4">
-                  <Button
-                    onClick={handleCreateOnboardingUser}
-                    disabled={isCreatingOnboardingUser || !onboardingUserName || !onboardingUserEmail}
-                    className="flex items-center gap-2"
-                  >
-                    {isCreatingOnboardingUser ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Creating User...
-                      </>
-                    ) : (
-                      <>
-                        <UserPlus className="h-4 w-4" />
-                        Create Onboarding User
-                      </>
-                    )}
-                  </Button>
-
-                  {isFeatureEnabled('registration.onboardingSync') && (
-                <Button
-                  onClick={handleUpdateOnboardingRecord}
-                  disabled={isUpdatingOnboarding || !onboardingUserEmail}
-                  variant="outline"
-                  className="flex items-center gap-2"
-                >
-                  {isUpdatingOnboarding ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Updating Record...
-                    </>
-                  ) : (
-                    <>
-                      <Database className="h-4 w-4" />
-                      Update Onboarding Record
-                    </>
-                  )}
-                </Button>
-                )}
-              </div>
-              {isCreatingOnboardingUser && (
-                <p className="text-xs text-muted-foreground">
-                  This may take 2-3 minutes. Please don't close this window.
-                </p>
-              )}
-              
-              {/* Status displays */}
-              {onboardingUserStatus && (
-                <Alert className={onboardingUserStatus.success ? 'border-green-500' : 'border-red-500'}>
-                  <AlertDescription>
-                    {onboardingUserStatus.success ? (
-                      <>
-                        <CheckCircle className="inline h-4 w-4 text-green-500 mr-2" />
-                        {onboardingUserStatus.message || 'Onboarding user created successfully'}
-                        {onboardingUserStatus.userEmail && (
-                          <span className="block mt-1">
-                            Email: {onboardingUserStatus.userEmail}
-                          </span>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <AlertCircle className="inline h-4 w-4 text-red-500 mr-2" />
-                        {onboardingUserStatus.error || 'Failed to create onboarding user'}
-                      </>
-                    )}
-                  </AlertDescription>
-                </Alert>
-              )}
-              
-              {onboardingUpdateStatus && (
-                <Alert className={onboardingUpdateStatus.success ? 'border-green-500' : 'border-red-500'}>
-                  <AlertDescription>
-                    {onboardingUpdateStatus.success ? (
-                      <>
-                        <CheckCircle className="inline h-4 w-4 text-green-500 mr-2" />
-                        Record updated successfully
-                        {onboardingUpdateStatus.onboardingId && (
-                          <span className="block mt-1 text-xs text-gray-600">
-                            Onboarding ID: {onboardingUpdateStatus.onboardingId}
-                          </span>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <AlertCircle className="inline h-4 w-4 text-red-500 mr-2" />
-                        {onboardingUpdateStatus.error || 'Failed to update onboarding record'}
-                      </>
-                    )}
-                  </AlertDescription>
-                </Alert>
-              )}
-              </div>
-            </CardContent>
-          </Card>
-          )}
-
-          {/* Finalise Setup Card */}
-          {isFeatureEnabled('registration.finalisingSetup') && (
-          <Card className="mt-6">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                Finalise Setup
-              </CardTitle>
-              <CardDescription>
-                Complete the restaurant configuration with system settings, API key creation, and Uber integration
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Prerequisites Check */}
-              <Alert>
-                <AlertDescription>
-                  <div className="space-y-2">
-                    <p className="font-medium">Prerequisites:</p>
-                    <ul className="list-disc list-inside text-sm space-y-1">
-                      <li>Restaurant must have a Pumpd account created</li>
-                      <li>User credentials must be available in the database</li>
-                      <li>Restaurant must be registered on the platform</li>
-                    </ul>
-                  </div>
-                </AlertDescription>
-              </Alert>
-
-              {/* Receipt Logo Selection */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  Receipt Logo Selection
-                </label>
-                <div className="flex items-center gap-4">
-                  <Select value={receiptLogoVersion} onValueChange={setReceiptLogoVersion}>
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Select receipt logo version" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {restaurant?.logo_url && (
-                        <SelectItem value="logo_url">Original Logo</SelectItem>
-                      )}
-                      {restaurant?.logo_nobg_url && (
-                        <SelectItem value="logo_nobg_url">No Background Logo</SelectItem>
-                      )}
-                      {restaurant?.logo_standard_url && (
-                        <SelectItem value="logo_standard_url">Standard Logo</SelectItem>
-                      )}
-                      {restaurant?.logo_thermal_url && (
-                        <SelectItem value="logo_thermal_url">Thermal Logo</SelectItem>
-                      )}
-                      {restaurant?.logo_thermal_alt_url && (
-                        <SelectItem value="logo_thermal_alt_url">Thermal Alt Logo</SelectItem>
-                      )}
-                      {restaurant?.logo_thermal_contrast_url && (
-                        <SelectItem value="logo_thermal_contrast_url">Thermal High Contrast</SelectItem>
-                      )}
-                      {restaurant?.logo_thermal_adaptive_url && (
-                        <SelectItem value="logo_thermal_adaptive_url">Thermal Adaptive</SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  {receiptLogoVersion && restaurant?.[receiptLogoVersion] && (
-                    <div className="flex items-center gap-2">
-                      <img
-                        src={restaurant[receiptLogoVersion]}
-                        alt="Selected receipt logo"
-                        className="h-12 w-12 object-contain border rounded p-1"
-                      />
-                      <Badge variant="secondary">Selected</Badge>
-                    </div>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  This logo will be converted to PNG format and used for receipts
-                </p>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Setup System Settings Button */}
-                <Card className="border-2 hover:border-brand-blue transition-colors">
-                  <CardContent className="p-4">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <Settings className="h-8 w-8 text-brand-blue" />
-                        {systemSettingsStatus?.success && (
-                          <CheckCircle className="h-5 w-5 text-green-500" />
-                        )}
-                      </div>
-                      <div>
-                        <h4 className="font-semibold">System Settings</h4>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Configure GST, pickup times, and other system settings
-                        </p>
-                      </div>
-                      {isFeatureEnabled('registration.finalisingSetup') && (
-                      <Button
-                        onClick={handleSetupSystemSettings}
-                        disabled={isSettingUpSystemSettings || !restaurant?.id}
-                        className="w-full"
-                        variant={systemSettingsStatus?.success ? "outline" : "default"}
-                      >
-                        {isSettingUpSystemSettings ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Configuring...
-                          </>
-                        ) : systemSettingsStatus?.success ? (
-                          <>
-                            <CheckCircle className="h-4 w-4 mr-2" />
-                            Reconfigure
-                          </>
-                        ) : (
-                          <>
-                            <Settings className="h-4 w-4 mr-2" />
-                            Setup Settings
-                          </>
-                        )}
-                      </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Create API Key Button */}
-                <Card className="border-2 hover:border-brand-blue transition-colors">
-                  <CardContent className="p-4">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <Code className="h-8 w-8 text-brand-blue" />
-                        {apiKeyStatus?.success && (
-                          <CheckCircle className="h-5 w-5 text-green-500" />
-                        )}
-                      </div>
-                      <div>
-                        <h4 className="font-semibold">API Key</h4>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Generate API key for online ordering integration
-                        </p>
-                      </div>
-                      <Button
-                        onClick={handleCreateApiKey}
-                        disabled={isCreatingApiKey || !restaurant?.id || !setupCompletionStatus.system_settings}
-                        className="w-full"
-                        variant={apiKeyStatus?.success ? "outline" : "default"}
-                      >
-                        {isCreatingApiKey ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Creating...
-                          </>
-                        ) : apiKeyStatus?.success ? (
-                          <>
-                            <CheckCircle className="h-4 w-4 mr-2" />
-                            Regenerate
-                          </>
-                        ) : (
-                          <>
-                            <Code className="h-4 w-4 mr-2" />
-                            Create API Key
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Configure Uber Integration Button */}
-                <Card className="border-2 hover:border-brand-blue transition-colors">
-                  <CardContent className="p-4">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <Link2 className="h-8 w-8 text-brand-blue" />
-                        {uberIntegrationStatus?.success && (
-                          <CheckCircle className="h-5 w-5 text-green-500" />
-                        )}
-                      </div>
-                      <div>
-                        <h4 className="font-semibold">Uber Integration</h4>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Complete Uber OAuth and configure integration
-                        </p>
-                      </div>
-                      <Button
-                        onClick={handleConfigureUberIntegration}
-                        disabled={isConfiguringUberIntegration || !restaurant?.id || !setupCompletionStatus.api_key}
-                        className="w-full"
-                        variant={uberIntegrationStatus?.success ? "outline" : "default"}
-                      >
-                        {isConfiguringUberIntegration ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Configuring...
-                          </>
-                        ) : uberIntegrationStatus?.success ? (
-                          <>
-                            <CheckCircle className="h-4 w-4 mr-2" />
-                            Reconfigure
-                          </>
-                        ) : (
-                          <>
-                            <Link2 className="h-4 w-4 mr-2" />
-                            Configure Uber
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Loading state messages for Finalise Setup operations */}
-              {(isSettingUpSystemSettings || isCreatingApiKey || isConfiguringUberIntegration) && (
-                <p className="text-xs text-muted-foreground text-center">
-                  {isSettingUpSystemSettings
-                    ? 'This may take 1-2 minutes. Please don\'t close this window.'
-                    : isCreatingApiKey
-                    ? 'This may take 1-2 minutes. Please don\'t close this window.'
-                    : 'This may take 2-3 minutes. Please don\'t close this window.'}
-                </p>
-              )}
-
-              {/* Status Messages */}
-              {systemSettingsStatus && (
-                <Alert className={systemSettingsStatus.success ? 'border-green-500' : 'border-red-500'}>
-                  <AlertDescription>
-                    {systemSettingsStatus.success ? (
-                      <>
-                        <CheckCircle className="inline h-4 w-4 text-green-500 mr-2" />
-                        {systemSettingsStatus.message || 'System settings configured successfully'}
-                      </>
-                    ) : (
-                      <>
-                        <AlertCircle className="inline h-4 w-4 text-red-500 mr-2" />
-                        {systemSettingsStatus.error || 'Failed to configure system settings'}
-                      </>
-                    )}
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {apiKeyStatus && (
-                <Alert className={apiKeyStatus.success ? 'border-green-500' : 'border-red-500'}>
-                  <AlertDescription>
-                    {apiKeyStatus.success ? (
-                      <>
-                        <CheckCircle className="inline h-4 w-4 text-green-500 mr-2" />
-                        {apiKeyStatus.message || 'API key created successfully'}
-                        {apiKeyStatus.apiKey && (
-                          <div className="mt-2 p-2 bg-gray-100 rounded font-mono text-sm">
-                            {apiKeyStatus.apiKey}
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <AlertCircle className="inline h-4 w-4 text-red-500 mr-2" />
-                        {apiKeyStatus.error || 'Failed to create API key'}
-                      </>
-                    )}
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {uberIntegrationStatus && (
-                <Alert className={uberIntegrationStatus.success ? 'border-green-500' : 'border-red-500'}>
-                  <AlertDescription>
-                    {uberIntegrationStatus.success ? (
-                      <>
-                        <CheckCircle className="inline h-4 w-4 text-green-500 mr-2" />
-                        {uberIntegrationStatus.message || 'Uber integration configured successfully'}
-                      </>
-                    ) : (
-                      <>
-                        <AlertCircle className="inline h-4 w-4 text-red-500 mr-2" />
-                        {uberIntegrationStatus.error || 'Failed to configure Uber integration'}
-                      </>
-                    )}
-                  </AlertDescription>
-                </Alert>
-              )}
-            </CardContent>
-          </Card>
-          )}
-        </TabsContent>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
         )}
       </Tabs>
 
@@ -6259,18 +6285,18 @@ export default function RestaurantDetail() {
               <RadioGroup value={selectedLogoCandidate} onValueChange={setSelectedLogoCandidate}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {logoCandidates.map((candidate, index) => (
-                    <div 
+                    <div
                       key={index}
                       className={cn(
                         "relative border rounded-lg p-4 transition-all",
-                        selectedLogoCandidate === candidate.url 
-                          ? "border-brand-blue bg-blue-50/50" 
+                        selectedLogoCandidate === candidate.url
+                          ? "border-brand-blue bg-blue-50/50"
                           : "border-gray-200 hover:border-gray-300"
                       )}
                     >
                       <div className="flex items-start gap-3">
                         <div className="flex flex-col gap-2">
-                          <RadioGroupItem 
+                          <RadioGroupItem
                             value={candidate.url}
                             className="mt-1"
                             onClick={(e) => {
@@ -6298,7 +6324,7 @@ export default function RestaurantDetail() {
                         </div>
                         <div className="flex-1">
                           <div className="mb-2">
-                            <img 
+                            <img
                               src={candidate.preview || candidate.url}
                               alt={`Logo candidate ${index + 1}`}
                               className="max-h-32 max-w-full object-contain mx-auto border rounded bg-white p-2"
@@ -6361,9 +6387,9 @@ export default function RestaurantDetail() {
                   <p className="text-sm text-muted-foreground mb-2">
                     Visit the website to find the logo:
                   </p>
-                  <a 
-                    href={restaurant.website_url} 
-                    target="_blank" 
+                  <a
+                    href={restaurant.website_url}
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="text-brand-blue hover:underline inline-flex items-center gap-1"
                   >
@@ -6396,7 +6422,7 @@ export default function RestaurantDetail() {
                     // Process immediately after setting the URL
                     setProcessingLogo(true);
                     setError('');
-                    
+
                     try {
                       // Prepare additional images data  
                       const additionalImages = selectedAdditionalImages.map(imageUrl => {
@@ -6415,13 +6441,13 @@ export default function RestaurantDetail() {
                         websiteUrl: restaurant.website_url,
                         additionalImages
                       });
-                      
+
                       if (response.data.success) {
                         const data = response.data.data;
-                        
+
                         // Update local state with extracted logo and colors
                         const updates = {};
-                        
+
                         if (data.logoVersions?.original) {
                           updates.logo_url = data.logoVersions.original;
                         }
@@ -6464,23 +6490,23 @@ export default function RestaurantDetail() {
                         if (data.colors?.theme) {
                           updates.theme = data.colors.theme;
                         }
-                        
+
                         // Update both restaurant and editedData
                         setRestaurant(prev => ({
                           ...prev,
                           ...updates
                         }));
-                        
+
                         setEditedData(prev => ({
                           ...prev,
                           ...updates
                         }));
-                        
+
                         toast({
                           title: "Success",
                           description: "Logo and brand colors extracted successfully",
                         });
-                        
+
                         // Close dialog and reset state
                         setLogoDialogOpen(false);
                         setSelectedLogoCandidate('');
@@ -6523,15 +6549,15 @@ export default function RestaurantDetail() {
               )}
             </Button>
           </DialogFooter>
-          
+
           {restaurant?.website_url && logoCandidates.length > 0 && (
             <div className="text-center pt-4 mt-4 border-t">
               <p className="text-sm text-muted-foreground mb-2">
                 Don't see the correct logo? Visit the website:
               </p>
-              <a 
-                href={restaurant.website_url} 
-                target="_blank" 
+              <a
+                href={restaurant.website_url}
+                target="_blank"
                 rel="noopener noreferrer"
                 className="text-brand-blue hover:underline inline-flex items-center gap-1"
               >
@@ -6552,12 +6578,12 @@ export default function RestaurantDetail() {
           <DialogHeader>
             <DialogTitle>Process Restaurant Logo</DialogTitle>
             <DialogDescription>
-              {!restaurant?.logo_url 
+              {!restaurant?.logo_url
                 ? "Choose how to add and process your restaurant logo"
                 : "Update or reprocess your restaurant logo"}
             </DialogDescription>
           </DialogHeader>
-          
+
           {!restaurant?.logo_url ? (
             // Mode A: No Existing Logo
             <div className="space-y-4">
@@ -6573,7 +6599,7 @@ export default function RestaurantDetail() {
                     </div>
                   </label>
                 </div>
-                
+
                 <div className="flex items-start space-x-2 mt-3">
                   <RadioGroupItem value="manual" id="manual" />
                   <label htmlFor="manual" className="cursor-pointer">
@@ -6588,21 +6614,267 @@ export default function RestaurantDetail() {
               </RadioGroup>
 
               {processMode === 'manual' && (
-                <div className="space-y-2">
-                  <Label htmlFor="manualLogoUrl">Logo URL</Label>
-                  <Input
-                    id="manualLogoUrl"
-                    value={newLogoUrl}
-                    onChange={(e) => setNewLogoUrl(e.target.value)}
-                    placeholder="https://example.com/logo.png"
-                  />
-                </div>
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="manualLogoUrl">Logo URL</Label>
+                    <Input
+                      id="manualLogoUrl"
+                      value={newLogoUrl}
+                      onChange={(e) => setNewLogoUrl(e.target.value)}
+                      placeholder="https://example.com/logo.png"
+                    />
+                  </div>
+
+                  {/* Version selection checkboxes for manual mode */}
+                  <div className="space-y-2 mt-4">
+                    <p className="font-medium">Select which versions to generate:</p>
+                    <div className="space-y-2 pl-4">
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={versionsToUpdate.logo_url}
+                          onChange={(e) => setVersionsToUpdate(prev => ({
+                            ...prev,
+                            logo_url: e.target.checked
+                          }))}
+                        />
+                        <span className="text-sm">Logo URL (Original)</span>
+                      </label>
+
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={versionsToUpdate.logo_nobg_url}
+                          onChange={(e) => setVersionsToUpdate(prev => ({
+                            ...prev,
+                            logo_nobg_url: e.target.checked
+                          }))}
+                        />
+                        <span className="text-sm">Logo (No Background) - Remove/update background</span>
+                      </label>
+
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={versionsToUpdate.logo_standard_url}
+                          onChange={(e) => setVersionsToUpdate(prev => ({
+                            ...prev,
+                            logo_standard_url: e.target.checked
+                          }))}
+                        />
+                        <span className="text-sm">Logo (Standard) - 500x500 optimized version</span>
+                      </label>
+
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={versionsToUpdate.logo_thermal_url}
+                          onChange={(e) => setVersionsToUpdate(prev => ({
+                            ...prev,
+                            logo_thermal_url: e.target.checked
+                          }))}
+                        />
+                        <span className="text-sm">Logo (Thermal - Inverted) - For light background logos</span>
+                      </label>
+
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={versionsToUpdate.logo_thermal_alt_url}
+                          onChange={(e) => setVersionsToUpdate(prev => ({
+                            ...prev,
+                            logo_thermal_alt_url: e.target.checked
+                          }))}
+                        />
+                        <span className="text-sm">Logo (Thermal - Standard) - For dark background logos</span>
+                      </label>
+
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={versionsToUpdate.logo_thermal_contrast_url}
+                          onChange={(e) => setVersionsToUpdate(prev => ({
+                            ...prev,
+                            logo_thermal_contrast_url: e.target.checked
+                          }))}
+                        />
+                        <span className="text-sm">Logo (Thermal - High Contrast) - Binary black/white</span>
+                      </label>
+
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={versionsToUpdate.logo_thermal_adaptive_url}
+                          onChange={(e) => setVersionsToUpdate(prev => ({
+                            ...prev,
+                            logo_thermal_adaptive_url: e.target.checked
+                          }))}
+                        />
+                        <span className="text-sm">Logo (Thermal - Adaptive) - Preserves mid-tones</span>
+                      </label>
+
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={versionsToUpdate.logo_favicon_url}
+                          onChange={(e) => setVersionsToUpdate(prev => ({
+                            ...prev,
+                            logo_favicon_url: e.target.checked
+                          }))}
+                        />
+                        <span className="text-sm">Logo (Favicon) - 32x32 browser icon</span>
+                      </label>
+
+                      {/* Color Selection for manual mode */}
+                      <div className="mt-4 mb-2 pt-3 border-t">
+                        <p className="text-sm font-medium text-gray-700">Brand Colors to Update:</p>
+                        {(restaurant?.primary_color || restaurant?.secondary_color) && (
+                          <p className="text-xs text-amber-600 mt-1">
+                            Some colors already exist - uncheck to preserve them
+                          </p>
+                        )}
+                      </div>
+
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={colorsToUpdate.primary_color}
+                          onChange={(e) => setColorsToUpdate(prev => ({
+                            ...prev,
+                            primary_color: e.target.checked
+                          }))}
+                        />
+                        <span className="text-sm">
+                          Primary Color
+                          {restaurant?.primary_color && (
+                            <span className="ml-2 inline-flex items-center">
+                              <span
+                                className="w-3 h-3 rounded-full border inline-block"
+                                style={{ backgroundColor: restaurant.primary_color }}
+                              />
+                              <span className="text-xs text-muted-foreground ml-1">({restaurant.primary_color})</span>
+                            </span>
+                          )}
+                        </span>
+                      </label>
+
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={colorsToUpdate.secondary_color}
+                          onChange={(e) => setColorsToUpdate(prev => ({
+                            ...prev,
+                            secondary_color: e.target.checked
+                          }))}
+                        />
+                        <span className="text-sm">
+                          Secondary Color
+                          {restaurant?.secondary_color && (
+                            <span className="ml-2 inline-flex items-center">
+                              <span
+                                className="w-3 h-3 rounded-full border inline-block"
+                                style={{ backgroundColor: restaurant.secondary_color }}
+                              />
+                              <span className="text-xs text-muted-foreground ml-1">({restaurant.secondary_color})</span>
+                            </span>
+                          )}
+                        </span>
+                      </label>
+
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={colorsToUpdate.tertiary_color}
+                          onChange={(e) => setColorsToUpdate(prev => ({
+                            ...prev,
+                            tertiary_color: e.target.checked
+                          }))}
+                        />
+                        <span className="text-sm">
+                          Tertiary Color
+                          {restaurant?.tertiary_color && (
+                            <span className="ml-2 inline-flex items-center">
+                              <span
+                                className="w-3 h-3 rounded-full border inline-block"
+                                style={{ backgroundColor: restaurant.tertiary_color }}
+                              />
+                              <span className="text-xs text-muted-foreground ml-1">({restaurant.tertiary_color})</span>
+                            </span>
+                          )}
+                        </span>
+                      </label>
+
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={colorsToUpdate.accent_color}
+                          onChange={(e) => setColorsToUpdate(prev => ({
+                            ...prev,
+                            accent_color: e.target.checked
+                          }))}
+                        />
+                        <span className="text-sm">
+                          Accent Color
+                          {restaurant?.accent_color && (
+                            <span className="ml-2 inline-flex items-center">
+                              <span
+                                className="w-3 h-3 rounded-full border inline-block"
+                                style={{ backgroundColor: restaurant.accent_color }}
+                              />
+                              <span className="text-xs text-muted-foreground ml-1">({restaurant.accent_color})</span>
+                            </span>
+                          )}
+                        </span>
+                      </label>
+
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={colorsToUpdate.background_color}
+                          onChange={(e) => setColorsToUpdate(prev => ({
+                            ...prev,
+                            background_color: e.target.checked
+                          }))}
+                        />
+                        <span className="text-sm">
+                          Background Color
+                          {restaurant?.background_color && (
+                            <span className="ml-2 inline-flex items-center">
+                              <span
+                                className="w-3 h-3 rounded-full border inline-block"
+                                style={{ backgroundColor: restaurant.background_color }}
+                              />
+                              <span className="text-xs text-muted-foreground ml-1">({restaurant.background_color})</span>
+                            </span>
+                          )}
+                        </span>
+                      </label>
+
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={colorsToUpdate.theme}
+                          onChange={(e) => setColorsToUpdate(prev => ({
+                            ...prev,
+                            theme: e.target.checked
+                          }))}
+                        />
+                        <span className="text-sm">
+                          Theme (Light/Dark)
+                          {restaurant?.theme && (
+                            <span className="text-xs text-muted-foreground ml-2">({restaurant.theme})</span>
+                          )}
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                </>
               )}
 
               {restaurant?.website_url && (
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <p className="text-sm text-muted-foreground mb-2">Visit website to find logo:</p>
-                  <a 
+                  <a
                     href={restaurant.website_url}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -6623,9 +6895,9 @@ export default function RestaurantDetail() {
               {/* Show current logo */}
               <div>
                 <p className="font-medium mb-2">Current Logo:</p>
-                <img 
-                  src={restaurant.logo_url} 
-                  alt="Current logo" 
+                <img
+                  src={restaurant.logo_url}
+                  alt="Current logo"
                   className="h-20 object-contain border rounded p-2"
                 />
               </div>
@@ -6642,7 +6914,7 @@ export default function RestaurantDetail() {
                     </div>
                   </label>
                 </div>
-                
+
                 <div className="flex items-start space-x-2 mt-3">
                   <RadioGroupItem value="replace" id="replace" />
                   <label htmlFor="replace" className="cursor-pointer">
@@ -6671,13 +6943,13 @@ export default function RestaurantDetail() {
               {/* Version selection checkboxes */}
               <div className="space-y-2">
                 <p className="font-medium">
-                  {processMode === 'reprocess' 
-                    ? 'Select versions to regenerate:' 
-                    : processMode === 'replace' 
-                      ? 'Select which versions to replace:' 
+                  {processMode === 'reprocess'
+                    ? 'Select versions to regenerate:'
+                    : processMode === 'replace'
+                      ? 'Select which versions to replace:'
                       : ''}
                 </p>
-                
+
                 {(processMode === 'reprocess' || processMode === 'replace') && (
                   <div className="space-y-2 pl-4">
                     {processMode === 'replace' && (
@@ -6693,7 +6965,7 @@ export default function RestaurantDetail() {
                         <span className="text-sm">Logo URL (Original)</span>
                       </label>
                     )}
-                    
+
                     <label className="flex items-center space-x-2">
                       <input
                         type="checkbox"
@@ -6705,7 +6977,7 @@ export default function RestaurantDetail() {
                       />
                       <span className="text-sm">Logo (No Background) - Remove/update background</span>
                     </label>
-                    
+
                     <label className="flex items-center space-x-2">
                       <input
                         type="checkbox"
@@ -6717,7 +6989,7 @@ export default function RestaurantDetail() {
                       />
                       <span className="text-sm">Logo (Standard) - 500x500 optimized version</span>
                     </label>
-                    
+
                     <label className="flex items-center space-x-2">
                       <input
                         type="checkbox"
@@ -6729,7 +7001,7 @@ export default function RestaurantDetail() {
                       />
                       <span className="text-sm">Logo (Thermal - Inverted) - For light background logos</span>
                     </label>
-                    
+
                     <label className="flex items-center space-x-2">
                       <input
                         type="checkbox"
@@ -6741,7 +7013,7 @@ export default function RestaurantDetail() {
                       />
                       <span className="text-sm">Logo (Thermal - Standard) - For dark background logos</span>
                     </label>
-                    
+
                     <label className="flex items-center space-x-2">
                       <input
                         type="checkbox"
@@ -6753,7 +7025,7 @@ export default function RestaurantDetail() {
                       />
                       <span className="text-sm">Logo (Thermal - High Contrast) - Binary black/white</span>
                     </label>
-                    
+
                     <label className="flex items-center space-x-2">
                       <input
                         type="checkbox"
@@ -6765,7 +7037,7 @@ export default function RestaurantDetail() {
                       />
                       <span className="text-sm">Logo (Thermal - Adaptive) - Preserves mid-tones</span>
                     </label>
-                    
+
                     <label className="flex items-center space-x-2">
                       <input
                         type="checkbox"
@@ -6865,7 +7137,7 @@ export default function RestaurantDetail() {
               {restaurant?.website_url && (
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <p className="text-sm text-muted-foreground mb-2">Visit website:</p>
-                  <a 
+                  <a
                     href={restaurant.website_url}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -6915,7 +7187,7 @@ export default function RestaurantDetail() {
               Confirm extraction configuration before proceeding
             </DialogDescription>
           </DialogHeader>
-          
+
           {extractionConfig && (
             <div className="space-y-4">
               <div className="bg-gray-50 rounded-lg p-4 space-y-3">
@@ -6923,18 +7195,18 @@ export default function RestaurantDetail() {
                   <Label className="text-xs text-muted-foreground">Restaurant</Label>
                   <p className="font-medium">{extractionConfig.restaurantName}</p>
                 </div>
-                
+
                 <div>
                   <Label className="text-xs text-muted-foreground">Platform</Label>
                   <p className="font-medium">{extractionConfig.platformName}</p>
                 </div>
-                
+
                 <div>
                   <Label className="text-xs text-muted-foreground">URL</Label>
                   <p className="text-sm text-gray-600 break-all">{extractionConfig.url}</p>
                 </div>
               </div>
-              
+
               {/* Show extraction mode options only for UberEats */}
               {extractionConfig.platform === 'ubereats' && (
                 <div className="space-y-4">
@@ -6951,17 +7223,17 @@ export default function RestaurantDetail() {
                             </div>
                           </Label>
                         </div>
-                        
+
                         {isFeatureEnabled('premiumExtraction') && (
-                        <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-gray-50">
-                          <RadioGroupItem value="premium" id="premium" />
-                          <Label htmlFor="premium" className="flex-1 cursor-pointer">
-                            <div className="font-medium">Premium Extraction</div>
-                            <div className="text-sm text-muted-foreground mt-1">
-                              Advanced extraction with customization options, modifiers, and validated images
-                            </div>
-                          </Label>
-                        </div>
+                          <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+                            <RadioGroupItem value="premium" id="premium" />
+                            <Label htmlFor="premium" className="flex-1 cursor-pointer">
+                              <div className="font-medium">Premium Extraction</div>
+                              <div className="text-sm text-muted-foreground mt-1">
+                                Advanced extraction with customization options, modifiers, and validated images
+                              </div>
+                            </Label>
+                          </div>
                         )}
                       </div>
                     </RadioGroup>
@@ -6973,7 +7245,7 @@ export default function RestaurantDetail() {
                       <Label className="text-sm font-medium">Premium Options</Label>
                       <div className="space-y-2">
                         <div className="flex items-center space-x-2">
-                          <Checkbox 
+                          <Checkbox
                             id="extractOptionSets"
                             checked={extractOptionSets}
                             onCheckedChange={setExtractOptionSets}
@@ -6983,7 +7255,7 @@ export default function RestaurantDetail() {
                           </Label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <Checkbox 
+                          <Checkbox
                             id="validateImages"
                             checked={validateImages}
                             onCheckedChange={setValidateImages}
@@ -6997,18 +7269,18 @@ export default function RestaurantDetail() {
                   )}
                 </div>
               )}
-              
+
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
                   {extractionMode === 'premium' && extractionConfig.platform === 'ubereats' ? (
                     <>
-                      Premium extraction will extract detailed menu information including all customization options. 
+                      Premium extraction will extract detailed menu information including all customization options.
                       This process may take several minutes depending on the menu size.
                     </>
                   ) : (
                     <>
-                      This will scan the menu categories and extract all menu items from the {extractionConfig.platformName} page. 
+                      This will scan the menu categories and extract all menu items from the {extractionConfig.platformName} page.
                       The process may take several minutes depending on the menu size.
                     </>
                   )}
@@ -7016,7 +7288,7 @@ export default function RestaurantDetail() {
               </Alert>
             </div>
           )}
-          
+
           <DialogFooter>
             <Button
               variant="outline"
@@ -7041,7 +7313,7 @@ export default function RestaurantDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
+
       {/* Business Details Extraction Dialog */}
       <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
@@ -7051,7 +7323,7 @@ export default function RestaurantDetail() {
               Select which business details to extract from {detailsExtractionConfig?.platformName}
             </DialogDescription>
           </DialogHeader>
-          
+
           {detailsExtractionConfig && (
             <div className="space-y-4">
               <div className="bg-gray-50 rounded-lg p-4">
@@ -7064,7 +7336,7 @@ export default function RestaurantDetail() {
                   <p className="text-sm text-gray-600 break-all">{detailsExtractionConfig.url}</p>
                 </div>
               </div>
-              
+
               <div className="space-y-3">
                 <Label className="text-sm font-medium">Select fields to extract:</Label>
                 {detailsExtractionConfig.availableFields.map(field => (
@@ -7080,7 +7352,7 @@ export default function RestaurantDetail() {
                         }
                       }}
                     />
-                    <Label 
+                    <Label
                       htmlFor={field}
                       className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                     >
@@ -7089,7 +7361,7 @@ export default function RestaurantDetail() {
                   </div>
                 ))}
               </div>
-              
+
               {detailsExtractionConfig.availableFields.length === 0 ? (
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
@@ -7101,20 +7373,20 @@ export default function RestaurantDetail() {
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    {detailsExtractionConfig.platform === 'ubereats' ? 
+                    {detailsExtractionConfig.platform === 'ubereats' ?
                       'UberEats can provide address and opening hours information.' :
                       detailsExtractionConfig.platform === 'doordash' ?
-                      'DoorDash can only provide opening hours information.' :
-                      detailsExtractionConfig.platform === 'website' ?
-                      'Website extraction can provide address, opening hours, and phone number.' :
-                      'This platform can provide address, opening hours, and phone number.'
+                        'DoorDash can only provide opening hours information.' :
+                        detailsExtractionConfig.platform === 'website' ?
+                          'Website extraction can provide address, opening hours, and phone number.' :
+                          'This platform can provide address, opening hours, and phone number.'
                     }
                   </AlertDescription>
                 </Alert>
               )}
             </div>
           )}
-          
+
           <DialogFooter>
             <Button
               variant="outline"
@@ -7157,7 +7429,7 @@ export default function RestaurantDetail() {
               {registrationType === 'account_only' ? 'Register Account on Pumpd' : 'Register Restaurant on Pumpd'}
             </DialogTitle>
             <DialogDescription>
-              {registrationType === 'account_only' 
+              {registrationType === 'account_only'
                 ? 'Create a new Pumpd account for this restaurant'
                 : 'Select how you want to register this restaurant'
               }
@@ -7179,7 +7451,7 @@ export default function RestaurantDetail() {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start space-x-2 p-3 border rounded-lg">
                     <RadioGroupItem value="existing_account_first_restaurant" id="existing_first" />
                     <div className="space-y-1">
@@ -7191,7 +7463,7 @@ export default function RestaurantDetail() {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start space-x-2 p-3 border rounded-lg">
                     <RadioGroupItem value="existing_account_additional_restaurant" id="existing_additional" />
                     <div className="space-y-1">
