@@ -5153,13 +5153,16 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
 
     // Step 1: Search for all platform URLs (using dynamic country)
     const platformQueries = [
-      `${restaurantName} ${city} ${searchCountry} site:ubereats.com`,
-      `${restaurantName} ${city} ${searchCountry} site:doordash.com`,
-      `${restaurantName} ${city} ${searchCountry} site:facebook.com`,
-      `${restaurantName} ${city} ${searchCountry} site:instagram.com`,
-      ...countryConfig.deliveryPlatformDomains
-        .filter(domain => !['ubereats.com', 'doordash.com'].includes(domain))
-        .map(domain => `${restaurantName} ${city} ${searchCountry} site:${domain}`),
+      `${restaurantName} ${city} ${searchCountry} ubereats`,
+      `${restaurantName} ${city} ${searchCountry} doordash`,
+      `${restaurantName} ${city} ${searchCountry} facebook`,
+      `${restaurantName} ${city} ${searchCountry} instagram`,
+      `${restaurantName} ${city} ${searchCountry} meandu`,
+      `${restaurantName} ${city} ${searchCountry} mobi2go`,
+      `${restaurantName} ${city} ${searchCountry} delivereasy`,
+      `${restaurantName} ${city} ${searchCountry} nextorder`,
+      `${restaurantName} ${city} ${searchCountry} foodhub`,
+      `${restaurantName} ${city} ${searchCountry} ordermeal`,
       `${restaurantName} ${city} ${searchCountry} website contact hours` // General search for restaurant website
     ];
 
@@ -5214,25 +5217,25 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
         for (const result of results) {
           const url = result.url.toLowerCase();
           
-          if (url.includes('ubereats.com') && !foundUrls.ubereatsUrl) {
+          if (url.includes('ubereats') && !foundUrls.ubereatsUrl) {
             foundUrls.ubereatsUrl = result.url;
-          } else if (url.includes('doordash.com') && !foundUrls.doordashUrl) {
+          } else if (url.includes('doordash') && !foundUrls.doordashUrl) {
             foundUrls.doordashUrl = result.url;
           } else if (url.includes('facebook.com') && !foundUrls.facebookUrl) {
             foundUrls.facebookUrl = result.url;
           } else if (url.includes('instagram.com') && !foundUrls.instagramUrl) {
             foundUrls.instagramUrl = result.url;
-          } else if (url.includes('meandyou.co.nz') && !foundUrls.meandyouUrl) {
+          } else if (url.includes('meandu') && !foundUrls.meandyouUrl) {
             foundUrls.meandyouUrl = result.url;
-          } else if (url.includes('mobi2go.com') && !foundUrls.mobi2goUrl) {
+          } else if (url.includes('mobi2go') && !foundUrls.mobi2goUrl) {
             foundUrls.mobi2goUrl = result.url;
-          } else if (url.includes('delivereasy.co.nz') && !foundUrls.delivereasyUrl) {
+          } else if (url.includes('delivereasy') && !foundUrls.delivereasyUrl) {
             foundUrls.delivereasyUrl = result.url;
-          } else if (url.includes('nextorder.co.nz') && !foundUrls.nextorderUrl) {
+          } else if (url.includes('nextorder') && !foundUrls.nextorderUrl) {
             foundUrls.nextorderUrl = result.url;
-          } else if (url.includes('foodhub.co.nz') && !foundUrls.foodhubUrl) {
+          } else if (url.includes('foodhub') && !foundUrls.foodhubUrl) {
             foundUrls.foodhubUrl = result.url;
-          } else if (url.includes('ordermeal.co.nz') && !foundUrls.ordermealUrl) {
+          } else if (url.includes('ordermeal') && !foundUrls.ordermealUrl) {
             foundUrls.ordermealUrl = result.url;
           } else if (!foundUrls.websiteUrl && 
                     !url.includes('ubereats') && 
@@ -5880,37 +5883,37 @@ app.post('/api/platform-url-search', authMiddleware, async (req, res) => {
     let searchQuery = '';
     switch(platform) {
       case 'ubereats':
-        searchQuery = `${restaurantName} ${city} ${searchCountry} site:ubereats.com`;
+        searchQuery = `${restaurantName} ${city} ${searchCountry} ubereats`;
         break;
       case 'doordash':
-        searchQuery = `${restaurantName} ${city} ${searchCountry} site:doordash.com`;
+        searchQuery = `${restaurantName} ${city} ${searchCountry} doordash`;
         break;
       case 'facebook':
-        searchQuery = `${restaurantName} ${city} ${searchCountry} site:facebook.com`;
+        searchQuery = `${restaurantName} ${city} ${searchCountry} facebook`;
         break;
       case 'instagram':
-        searchQuery = `${restaurantName} ${city} ${searchCountry} site:instagram.com`;
+        searchQuery = `${restaurantName} ${city} ${searchCountry} instagram`;
         break;
       case 'website':
         searchQuery = `${restaurantName} ${city} ${searchCountry} website contact hours`;
         break;
       case 'meandyou':
-        searchQuery = `${restaurantName} ${city} ${searchCountry} site:meandyou.co.nz`;
+        searchQuery = `${restaurantName} ${city} ${searchCountry} meandu.pp`;
         break;
       case 'mobi2go':
-        searchQuery = `${restaurantName} ${city} ${searchCountry} site:mobi2go.com`;
+        searchQuery = `${restaurantName} ${city} ${searchCountry} mobi2go`;
         break;
       case 'delivereasy':
-        searchQuery = `${restaurantName} ${city} ${searchCountry} site:delivereasy.co.nz`;
+        searchQuery = `${restaurantName} ${city} ${searchCountry} delivereasy.co.nz`;
         break;
       case 'nextorder':
-        searchQuery = `${restaurantName} ${city} ${searchCountry} site:nextorder.co.nz`;
+        searchQuery = `${restaurantName} ${city} ${searchCountry} nextorder`;
         break;
       case 'foodhub':
-        searchQuery = `${restaurantName} ${city} ${searchCountry} site:foodhub.co.nz`;
+        searchQuery = `${restaurantName} ${city} ${searchCountry} foodhub`;
         break;
       case 'ordermeal':
-        searchQuery = `${restaurantName} ${city} ${searchCountry} site:ordermeal.co.nz`;
+        searchQuery = `${restaurantName} ${city} ${searchCountry} ordermeal`;
         break;
       default:
         return res.status(400).json({
@@ -5974,7 +5977,7 @@ app.post('/api/platform-url-search', authMiddleware, async (req, res) => {
                                 platform === 'doordash' ? 'doordash.com' :
                                 platform === 'facebook' ? 'facebook.com' :
                                 platform === 'instagram' ? 'instagram.com' :
-                                platform === 'meandyou' ? 'meandyou.co.nz' :
+                                platform === 'meandyou' ? 'meandu.app' :
                                 platform === 'mobi2go' ? 'mobi2go.com' :
                                 platform === 'delivereasy' ? 'delivereasy.co.nz' :
                                 platform === 'nextorder' ? 'nextorder.co.nz' :
