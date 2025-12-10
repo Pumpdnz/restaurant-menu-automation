@@ -604,7 +604,7 @@ export default function RestaurantDetail() {
           cuisine: restaurant.cuisine
         };
 
-        const response = await railwayApi.post('api/registration/register-restaurant', registrationData, {
+        const response = await railwayApi.post('/api/registration/register-restaurant', registrationData, {
           headers: {
             'Content-Type': 'application/json',
           }
