@@ -598,7 +598,7 @@ router.post('/register-restaurant', requireRegistrationRestaurant, async (req, r
 
     // Execute Playwright script for restaurant registration only
     // All registration types now use login-and-register-restaurant.js since account should exist
-    const scriptPath = '/Users/giannimunro/Desktop/cursor-projects/automation/scripts/restaurant-registration/login-and-register-restaurant.js';
+    const scriptPath = path.join(__dirname, '../../../scripts/restaurant-registration/login-and-register-restaurant.js');
 
     let command = `node ${scriptPath} --email="${email}" --password="${password}" --name="${restaurantName || restaurant.name}" --address="${restaurant.address || ''}" --phone="${restaurant.phone || ''}" --dayHours='${hoursJson}' --admin-url="${scriptConfig.adminUrl}" --country="${scriptConfig.country}" --timezone="${scriptConfig.timezoneDisplay}"`;
 
