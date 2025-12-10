@@ -5148,7 +5148,7 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
     console.log(`[Google Business Search] Searching for: ${restaurantName} in ${city} (${searchCountry})`);
 
     // Get country-specific delivery platforms
-    const { getCountryConfig } = require('./scripts/lib/country-config');
+    const { getCountryConfig } = require('../scripts/lib/country-config.cjs');
     const countryConfig = getCountryConfig(countryCode.toUpperCase());
 
     // Step 1: Search for all platform URLs (using dynamic country)
