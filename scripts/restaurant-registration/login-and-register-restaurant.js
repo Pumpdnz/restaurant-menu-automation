@@ -59,11 +59,11 @@ const {
   getCountryConfig,
   getAdminHostname,
   buildLoginUrl
-} = require('../lib/country-config');
+} = require('../lib/country-config.cjs');
 
 // Configuration
 const DEBUG_MODE = process.env.DEBUG_MODE === 'true';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "7uo@%K2^Hz%yiXDeP39Ckp6BvF!2";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 // Default values
 const DEFAULT_ADMIN_URL = 'https://admin.pumpd.co.nz';
