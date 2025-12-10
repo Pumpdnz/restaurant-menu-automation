@@ -5153,14 +5153,14 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
 
     // Step 1: Search for all platform URLs (using dynamic country)
     const platformQueries = [
-      `"${restaurantName}" "${city}" ${searchCountry} site:ubereats.com`,
-      `"${restaurantName}" "${city}" ${searchCountry} site:doordash.com`,
-      `"${restaurantName}" "${city}" ${searchCountry} site:facebook.com`,
-      `"${restaurantName}" "${city}" ${searchCountry} site:instagram.com`,
+      `${restaurantName} ${city} ${searchCountry} site:ubereats.com`,
+      `${restaurantName} ${city} ${searchCountry} site:doordash.com`,
+      `${restaurantName} ${city} ${searchCountry} site:facebook.com`,
+      `${restaurantName} ${city} ${searchCountry} site:instagram.com`,
       ...countryConfig.deliveryPlatformDomains
         .filter(domain => !['ubereats.com', 'doordash.com'].includes(domain))
-        .map(domain => `"${restaurantName}" "${city}" ${searchCountry} site:${domain}`),
-      `"${restaurantName}" "${city}" ${searchCountry} website contact hours` // General search for restaurant website
+        .map(domain => `${restaurantName} ${city} ${searchCountry} site:${domain}`),
+      `${restaurantName} ${city} ${searchCountry} website contact hours` // General search for restaurant website
     ];
 
     const foundUrls = {
@@ -5180,7 +5180,7 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
     console.log('[Google Business Search] Searching for platform URLs...');
     
     // Combine into a single search query to avoid rate limits
-    const combinedQuery = `"${restaurantName}" "${city}" ${searchCountry} (website OR ubereats OR doordash OR delivereasy OR facebook OR instagram OR menu OR order online)`;
+    const combinedQuery = `${restaurantName} ${city} ${searchCountry} (website OR ubereats OR doordash OR delivereasy OR facebook OR instagram OR menu OR order online)`;
     
     try {
       const searchResponse = await axios.post(
@@ -5272,7 +5272,7 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
           const simpleSearch = await axios.post(
             `${FIRECRAWL_API_URL}/v2/search`,
             {
-              query: `"${restaurantName}" "${city}" ${searchCountry}`,
+              query: `${restaurantName} ${city} ${searchCountry}`,
               limit: 10,
               lang: 'en',
               country: countryCode,
@@ -5325,10 +5325,10 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
         const doordashSearch = await axios.post(
           `${FIRECRAWL_API_URL}/v2/search`,
           {
-            query: `"${restaurantName}" "${city}" site:doordash.com`,
+            query: `${restaurantName} ${city} site:doordash.com`,
             limit: 3,
             lang: 'en',
-            country: 'nz',
+            country: countryCode,
             sources: [{ type: 'web' }]
           },
           {
@@ -5880,37 +5880,37 @@ app.post('/api/platform-url-search', authMiddleware, async (req, res) => {
     let searchQuery = '';
     switch(platform) {
       case 'ubereats':
-        searchQuery = `"${restaurantName}" "${city}" ${searchCountry} site:ubereats.com`;
+        searchQuery = `${restaurantName} ${city} ${searchCountry} site:ubereats.com`;
         break;
       case 'doordash':
-        searchQuery = `"${restaurantName}" "${city}" ${searchCountry} site:doordash.com`;
+        searchQuery = `${restaurantName} ${city} ${searchCountry} site:doordash.com`;
         break;
       case 'facebook':
-        searchQuery = `"${restaurantName}" "${city}" ${searchCountry} site:facebook.com`;
+        searchQuery = `${restaurantName} ${city} ${searchCountry} site:facebook.com`;
         break;
       case 'instagram':
-        searchQuery = `"${restaurantName}" "${city}" ${searchCountry} site:instagram.com`;
+        searchQuery = `${restaurantName} ${city} ${searchCountry} site:instagram.com`;
         break;
       case 'website':
-        searchQuery = `"${restaurantName}" "${city}" ${searchCountry} website contact hours`;
+        searchQuery = `${restaurantName} ${city} ${searchCountry} website contact hours`;
         break;
       case 'meandyou':
-        searchQuery = `"${restaurantName}" "${city}" ${searchCountry} site:meandyou.co.nz`;
+        searchQuery = `${restaurantName} ${city} ${searchCountry} site:meandyou.co.nz`;
         break;
       case 'mobi2go':
-        searchQuery = `"${restaurantName}" "${city}" ${searchCountry} site:mobi2go.com`;
+        searchQuery = `${restaurantName} ${city} ${searchCountry} site:mobi2go.com`;
         break;
       case 'delivereasy':
-        searchQuery = `"${restaurantName}" "${city}" ${searchCountry} site:delivereasy.co.nz`;
+        searchQuery = `${restaurantName} ${city} ${searchCountry} site:delivereasy.co.nz`;
         break;
       case 'nextorder':
-        searchQuery = `"${restaurantName}" "${city}" ${searchCountry} site:nextorder.co.nz`;
+        searchQuery = `${restaurantName} ${city} ${searchCountry} site:nextorder.co.nz`;
         break;
       case 'foodhub':
-        searchQuery = `"${restaurantName}" "${city}" ${searchCountry} site:foodhub.co.nz`;
+        searchQuery = `${restaurantName} ${city} ${searchCountry} site:foodhub.co.nz`;
         break;
       case 'ordermeal':
-        searchQuery = `"${restaurantName}" "${city}" ${searchCountry} site:ordermeal.co.nz`;
+        searchQuery = `${restaurantName} ${city} ${searchCountry} site:ordermeal.co.nz`;
         break;
       default:
         return res.status(400).json({
