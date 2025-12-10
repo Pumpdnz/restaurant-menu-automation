@@ -1,62 +1,67 @@
 #!/usr/bin/env node
 
 /**
- * Menu CSV Import Script for CloudWaitress Admin Portals
- *
- * This script performs automated CSV menu import including:
+ * Menu Item Tags Configuration Script for admin.pumpd.co.nz
+ * 
+ * This script performs automated configuration of the menu item tags including:
  * - Login to existing restaurant account
  * - Smart restaurant matching by name
  * - Navigation to correct restaurant management
- * - CSV import process
- * - File selection and upload
- *
- * Supports multiple CloudWaitress resellers with configurable admin URLs.
- *
+ * - Item tags configuration
+ * 
  * Usage:
- *   node import-csv-menu.js [options]
+ *   node add-item-tags.js [options]
  *
  * Options:
  *   --email=<email>           Login email (required)
  *   --password=<password>     User password (required)
  *   --name=<name>             Restaurant name for matching (required)
- *   --csvFile=<path>          Path to CSV file to import (optional, will find latest if not provided)
- *   --admin-url=<url>         CloudWaitress admin portal URL (default: https://admin.pumpd.co.nz)
+ *   --debug                   Keep browser open after completion
  *
  * Environment Variables:
- *   DEBUG_MODE              Enable debug mode (true/false)
+ *   DEBUG_MODE=true           Alternative way to enable debug mode
  *
- * Example (default NZ):
- *   node import-csv-menu.js --email="test@example.com" --password="Password123!" --name="Test Restaurant" --csvFile="/path/to/menu.csv"
- *
- * Example (custom admin URL):
- *   node import-csv-menu.js --email="test@example.com" --password="Password123!" --name="Test Restaurant" --csvFile="/path/to/menu.csv" --admin-url="https://admin.ozorders.com.au"
+ * Example:
+ *   node add-item-tags.js --email="test@example.com" --password="Password123!" --name="Test Restaurant"
+ *   node add-item-tags.js --email="test@example.com" --password="Password123!" --name="Test Restaurant" --debug
  */
 
 const { chromium } = require('playwright');
 const fs = require('fs').promises;
 const path = require('path');
 
-// Load environment variables from centralized .env file
-require('dotenv').config({ path: path.join(__dirname, '../../UberEats-Image-Extractor/.env') });
-
-// Import shared browser configuration
-const {
-  createBrowser,
-  createContext,
-  takeScreenshot: sharedTakeScreenshot
-} = require('../lib/browser-config.cjs');
-
-// Import country configuration
-const {
-  getAdminHostname,
-  buildLoginUrl
-} = require('../lib/country-config.cjs');
+// Load environment variables from script directory
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 // Configuration
-const DEBUG_MODE = process.env.DEBUG_MODE === 'true' || false;
+const LOGIN_URL = "https://admin.pumpd.co.nz/login";
 
-// Default values
-const DEFAULT_ADMIN_URL = 'https://admin.pumpd.co.nz';
+// DEBUG_MODE can be set via environment variable or --debug flag
+const DEBUG_MODE = process.env.DEBUG_MODE === 'true' || process.argv.includes('--debug');
+
+// Item Tags Configuration
+const ITEM_TAGS = [
+  { name: 'Popular', color: '#b400fa' },
+  { name: 'New', color: '#3f92ff' },
+  { name: 'Deal', color: '#4fc060' },
+  { name: 'Vegan', color: '#36AB36' },
+  { name: 'Vegetarian', color: '#32CD32' },
+  { name: 'Gluten Free', color: '#FF8C00' },
+  { name: 'Dairy Free', color: '#4682B4' },
+  { name: 'Nut Free', color: '#DEB887' },
+  { name: 'Halal', color: '#8B7355' },
+  { name: 'Spicy', color: '#FF3333' }
+];
+
+// Selectors for tag creation form
+const SELECTORS = {
+  createButton: '#scroll-root > div > div > div > div > div > div.m-t-8 > div.grid-2.xs.xs-gap.m-t-10 > div:nth-child(1) > div > button',
+  tagNameField: 'form > div > div:nth-child(3) > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > input',
+  tagTextField: 'form > div > div:nth-child(3) > div:nth-child(2) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > input',
+  colorPicker: 'form > div > div:nth-child(3) > div:nth-child(4) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.group__FormGroupComponent-evaCTb.joUTxJ.m-b-0.m-r-6 > div > div > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj > div',
+  colorInput: 'form > div > div:nth-child(3) > div:nth-child(4) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.group__FormGroupComponent-evaCTb.joUTxJ.m-b-0.m-r-6 > div > div > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input',
+  saveButton: 'form > div > div:nth-child(4) > button'
+};
 
 // Get parameters from command line arguments
 const args = process.argv.slice(2);
@@ -67,119 +72,45 @@ const getArg = (name) => {
 
 // Parse arguments
 const email = getArg('email');
-const password = getArg('password');
-const restaurantName = getArg('name');
-const csvFile = getArg('csvFile');
-
-// Parse configurable parameters (with defaults)
-const adminUrl = (getArg('admin-url') || DEFAULT_ADMIN_URL).replace(/\/$/, '');
-
-// Build URLs from admin base URL
-const LOGIN_URL = buildLoginUrl(adminUrl);
-const ADMIN_HOSTNAME = getAdminHostname(adminUrl);
+const password = getArg('password'); // NEW: Accept password as argument
+const restaurantName = getArg('name'); // NEW: Accept restaurant name for matching
 
 // Validate required arguments
 if (!email || !password || !restaurantName) {
   console.error('❌ Error: Missing required parameters');
   console.error('Required: --email=<email> --password=<password> --name=<restaurant_name>');
-  console.error('Optional: --csvFile=<path> (will find latest if not provided)');
   console.error('\nExample:');
-  console.error('node import-csv-menu.js --email=test@example.com --password=Password123! --name="Test Restaurant" --csvFile="/path/to/menu.csv"');
+  console.error('node add-item-tags.js --email=test@example.com --password=Password123! --name="Test Restaurant"');
   process.exit(1);
 }
 
-// If csvFile is not provided, try to find the most recent CSV for the restaurant
-async function findLatestCSV(name) {
-  const menuDir = path.join(__dirname, '../../extracted-menus');
-  try {
-    const files = await fs.readdir(menuDir);
-    
-    // Filter CSV files (excluding _no_images variants)
-    const csvFiles = files.filter(f => 
-      f.endsWith('.csv') && 
-      !f.includes('_no_images') && 
-      !f.includes('_cleaned') &&
-      !f.includes('_fixed') &&
-      !f.includes('.backup')
-    );
-    
-    if (csvFiles.length === 0) {
-      console.log('  ⚠️ No CSV files found in extracted-menus directory');
-      return null;
-    }
-    
-    // Sort by modification time to get the most recent
-    const fileStats = await Promise.all(
-      csvFiles.map(async (file) => {
-        const filePath = path.join(menuDir, file);
-        const stats = await fs.stat(filePath);
-        return { file, path: filePath, mtime: stats.mtime };
-      })
-    );
-    
-    fileStats.sort((a, b) => b.mtime - a.mtime);
-    
-    // If restaurant name provided, try to find matching file
-    if (name) {
-      const cleanName = name.toLowerCase().replace(/\s+/g, '');
-      const matchingFile = fileStats.find(f => 
-        f.file.toLowerCase().includes(cleanName)
-      );
-      if (matchingFile) {
-        console.log(`  ✓ Found matching CSV: ${matchingFile.file}`);
-        return matchingFile.path;
-      }
-    }
-    
-    // Return the most recent file
-    console.log(`  ✓ Using most recent CSV: ${fileStats[0].file}`);
-    return fileStats[0].path;
-    
-  } catch (error) {
-    console.error('  ❌ Error finding CSV file:', error.message);
-    return null;
-  }
-}
-
-// Screenshot utility - uses shared config (disabled by default)
-const SCREENSHOT_DIR = path.join(__dirname, 'screenshots');
+// Utility function for screenshots
 const takeScreenshot = async (page, name) => {
-  return sharedTakeScreenshot(page, `csv-import-${name}`, SCREENSHOT_DIR);
+  const screenshotPath = path.join(__dirname, 'screenshots', `csv-import-${name}-${Date.now()}.png`);
+  await fs.mkdir(path.dirname(screenshotPath), { recursive: true });
+  await page.screenshot({ path: screenshotPath, fullPage: true });
+  console.log(`📸 Screenshot: ${screenshotPath}`);
 };
 
-async function importCSVMenu() {
-  console.log('🚀 Starting CSV Menu Import...\n');
-  
-  // Determine CSV file to use
-  let csvPath = csvFile;
-  if (!csvPath) {
-    console.log('🔍 No CSV file specified, searching for latest...');
-    csvPath = await findLatestCSV(restaurantName);
-    if (!csvPath) {
-      console.error('❌ No CSV file found. Please specify --csvFile parameter');
-      process.exit(1);
-    }
-  }
-  
-  // Verify CSV file exists
-  try {
-    await fs.access(csvPath);
-    console.log(`📄 CSV File: ${csvPath}`);
-  } catch {
-    console.error(`❌ CSV file not found: ${csvPath}`);
-    process.exit(1);
-  }
-  
+async function addItemTags() {
+  console.log('🚀 Starting Menu Item Tags Configuration...\n');
   console.log('Configuration:');
-  console.log(`  Admin Portal: ${adminUrl}`);
   console.log(`  Email: ${email}`);
   console.log(`  Password: ${'*'.repeat(password.length)}`);
   console.log(`  Restaurant: ${restaurantName}`);
-  console.log(`  CSV File: ${path.basename(csvPath)}`);
+  console.log(`  Debug Mode: ${DEBUG_MODE ? 'ON (browser will stay open)' : 'OFF'}`);
   console.log('');
   
-  const browser = await createBrowser(chromium);
-  const context = await createContext(browser);
+  const browser = await chromium.launch({
+    headless: false,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    slowMo: 100 // Slow down for debugging
+  });
+  
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+    ignoreHTTPSErrors: true
+  });
   
   const page = await context.newPage();
   
@@ -200,7 +131,7 @@ async function importCSVMenu() {
     
     // Wait for dashboard
     console.log('\n⏳ Waiting for dashboard...');
-    await page.waitForURL(`**/${ADMIN_HOSTNAME}/**`, { timeout: 15000 });
+    await page.waitForURL('**/admin.pumpd.co.nz/**', { timeout: 15000 });
     console.log('  ✓ Reached dashboard:', page.url());
     
     // Wait for loading overlay to disappear
@@ -381,12 +312,12 @@ async function importCSVMenu() {
     // Wait for navigation to restaurant management page
     console.log('  ⏳ Waiting for restaurant management page...');
     try {
-      await page.waitForURL(`**/${ADMIN_HOSTNAME}/restaurant/**`, { timeout: 15000 });
+      await page.waitForURL('**/admin.pumpd.co.nz/restaurant/**', { timeout: 15000 });
       console.log('  ✓ Navigated to restaurant page');
     } catch (error) {
       console.log('  ⚠️ Navigation timeout, checking current URL...');
       const currentUrl = page.url();
-      if (currentUrl.includes(`${ADMIN_HOSTNAME}/restaurant/`)) {
+      if (currentUrl.includes('admin.pumpd.co.nz/restaurant/')) {
         console.log('  ✓ Already on restaurant page');
       } else {
         throw error;
@@ -448,191 +379,112 @@ async function importCSVMenu() {
     await page.waitForTimeout(3000);
     await takeScreenshot(page, '04-menu-page');
     
-    // STEP 4: Click CSV Import button
-    console.log('\n📥 STEP 4: Open CSV Import dialog');
-    
+    // STEP 4: Click Item Tags Button
+    console.log('\n📥 STEP 4: Navigate to Item Tags tab');
+
     try {
       // Try the provided selector first
-      await page.click('#scroll-root > div > div > div > div > div > div.flex-l-r-center.m-b-6 > div > div:nth-child(3) > button');
-      console.log('  ✓ Clicked CSV Import button');
+      await page.click('#scroll-root > div > div > div > div > div > div.group__ButtonGroupComponent-dVAWMN.puSOV.bsl-1 > button:nth-child(3)');
+      console.log('  ✓ Clicked Item tags tab button');
     } catch {
       // Fallback: Look for button with CSV or Import text
       try {
-        const csvButton = page.locator('button').filter({ hasText: /CSV|Import/i }).first();
-        await csvButton.click();
-        console.log('  ✓ Clicked CSV Import button (via text search)');
+        const tagsButton = page.locator('button').filter({ hasText: /Item|Tags/i }).first();
+        await tagsButton.click();
+        console.log('  ✓ Clicked Item tags tab button (via text search)');
       } catch {
-        console.error('  ❌ Could not find CSV Import button');
-        throw new Error('CSV Import button not found');
+        console.error('  ❌ Could not find Item tags tab button');
+        throw new Error('Item tags tab button not found');
       }
     }
-    
+
+    // Wait for Item Tags page to load
     await page.waitForTimeout(2000);
-    await takeScreenshot(page, '05-csv-import-dialog');
-    
-    // STEP 5: Type "import" in the confirmation field
-    console.log('\n✍️ STEP 5: Confirm import action');
-    
-    try {
-      // Use a more generic selector that doesn't rely on dynamic IDs
-      // Look for the modal content and find the input within it
-      const confirmInput = page.locator('div.content__Content-hOzsB.UWPkM input').first();
-      await confirmInput.click();
-      await confirmInput.fill('import');
-      console.log('  ✓ Typed "import" confirmation');
-    } catch {
-      // Fallback: Try with different class combinations
+    await takeScreenshot(page, '05-item-tags-page');
+
+    // STEP 5: Create Item Tags in loop
+    console.log('\n🏷️  STEP 5: Creating Item Tags');
+    console.log(`  📋 ${ITEM_TAGS.length} tags to create\n`);
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < ITEM_TAGS.length; i++) {
+      const tag = ITEM_TAGS[i];
+      console.log(`  [${i + 1}/${ITEM_TAGS.length}] Creating tag: "${tag.name}" (${tag.color})`);
+
       try {
-        const confirmInput = page.locator('div[class*="content__Content"] input').first();
-        await confirmInput.click();
-        await confirmInput.fill('import');
-        console.log('  ✓ Typed "import" confirmation (via class pattern)');
-      } catch {
-        // Last fallback: Find any visible input in a modal/dialog
+        // Step 5.1: Click "Create New Item Tag" button
+        await page.click(SELECTORS.createButton);
+        await page.waitForTimeout(500);
+
+        // Step 5.2: Fill Tag Name field
+        const tagNameField = page.locator(SELECTORS.tagNameField);
+        await tagNameField.fill(tag.name);
+
+        // Step 5.3: Fill Tag Text field (same as tag name)
+        const tagTextField = page.locator(SELECTORS.tagTextField);
+        await tagTextField.fill(tag.name);
+
+        // Step 5.4: Click color picker to open it
+        await page.click(SELECTORS.colorPicker);
+        await page.waitForTimeout(300);
+
+        // Step 5.5: Fill color input with hex value
+        const colorInput = page.locator(SELECTORS.colorInput);
+        await colorInput.fill(tag.color);
+        await page.waitForTimeout(200);
+
+        // Step 5.6: Click Save button
+        await page.click(SELECTORS.saveButton);
+
+        // Step 5.7: Wait for save to complete
+        await page.waitForTimeout(2000);
+
+        console.log(`      ✓ Created "${tag.name}"`);
+        successCount++;
+
+      } catch (tagError) {
+        console.error(`      ❌ Failed to create "${tag.name}": ${tagError.message}`);
+        failCount++;
+
+        // Try to close any open modal/form before continuing
         try {
-          const confirmInput = page.locator('input:visible').first();
-          await confirmInput.click();
-          await confirmInput.fill('import');
-          console.log('  ✓ Typed "import" confirmation (via visible input)');
+          await page.keyboard.press('Escape');
+          await page.waitForTimeout(500);
         } catch {
-          console.error('  ⚠️ Could not find confirmation input');
+          // Ignore escape errors
         }
       }
     }
-    
-    await takeScreenshot(page, '06-import-confirmed');
-    
-    // STEP 6: Click Proceed button
-    console.log('\n➡️ STEP 6: Proceed with import');
-    
-    try {
-      // Look for Proceed button without relying on dynamic IDs
-      await page.click('button:has-text("Proceed")');
-      console.log('  ✓ Clicked Proceed');
-    } catch {
-      // Fallback: Find button in modal content
-      try {
-        const proceedButton = page.locator('div.content__Content-hOzsB.UWPkM button').first();
-        await proceedButton.click();
-        console.log('  ✓ Clicked Proceed (via content class)');
-      } catch {
-        // Last fallback: Find any button with proceed-like text
-        const proceedButton = page.locator('button').filter({ hasText: /Proceed|Continue|Next/i }).first();
-        await proceedButton.click();
-        console.log('  ✓ Clicked Proceed (via text search)');
-      }
+
+    // Take final screenshot
+    await takeScreenshot(page, '06-tags-completed');
+
+    // Summary
+    console.log('\n📊 Item Tags Summary:');
+    console.log(`  ✅ Successfully created: ${successCount}/${ITEM_TAGS.length}`);
+    if (failCount > 0) {
+      console.log(`  ❌ Failed: ${failCount}/${ITEM_TAGS.length}`);
     }
-    
-    await page.waitForTimeout(2000);
-    await takeScreenshot(page, '07-file-selection-dialog');
-    
-    // STEP 7: Handle file upload
-    console.log('\n📁 STEP 7: Select and upload CSV file');
-    
-    // Playwright can handle file uploads directly without OS dialog interaction
-    // We need to find the actual file input element (might be hidden)
-    
-    try {
-      // Method 1: Direct file input selection
-      // Look for a hidden file input that's triggered by the button
-      const fileInput = await page.locator('input[type="file"]').first();
-      
-      if (await fileInput.count() > 0) {
-        // Set the file directly on the input element
-        await fileInput.setInputFiles(csvPath);
-        console.log('  ✓ CSV file selected via file input');
-        
-      } else {
-        console.log('  ⚠️ No file input found, trying alternative method...');
-        
-        // Method 2: Click the Choose File button and handle file chooser
-        page.on('filechooser', async (fileChooser) => {
-          await fileChooser.setFiles(csvPath);
-          console.log('  ✓ CSV file selected via file chooser event');
-        });
-        
-        // Click the Choose File button
-        try {
-          await page.click('button:has-text("Choose")');
-          console.log('  ⚠️ Clicked Choose File button');
-        } catch {
-          // Fallback: Find button in modal content
-          const chooseButton = page.locator('div[class*="content__Content"] button').filter({ hasText: /Choose|Select|Browse/i }).first();
-          await chooseButton.click();
-          console.log('  ⚠️ Clicked Choose File button (via pattern search)');
-        }
-      }
-      
-      await page.waitForTimeout(3000);
-      await takeScreenshot(page, '08-file-selected');
-      
-      // STEP 8: Confirm upload and wait for processing
-      console.log('\n⏳ STEP 8: Processing CSV import...');
-      
-      // Look for the Upload button specifically in the modal
-      try {
-        // Primary method: Look for Upload button specifically
-        await page.click('button:has-text("Upload"):visible');
-        console.log('  ✓ Clicked Upload button');
-      } catch {
-        try {
-          // Fallback: Use the exact selector from the modal
-          await page.click('#Os_dpmgVLp-content button, div[class*="content__Content"] button:has-text("Upload")');
-          console.log('  ✓ Clicked Upload button (via modal selector)');
-        } catch {
-          // Last resort: Find button that's actually visible and contains Upload
-          const uploadButton = page.locator('button:visible').filter({ hasText: 'Upload' }).first();
-          await uploadButton.click();
-          console.log('  ✓ Clicked Upload button (via visible filter)');
-        }
-      }
-      
-      // Wait for success indication
-      await page.waitForTimeout(5000);
-      
-      // Check for success message or navigation change
-      const successIndicator = page.locator('text=/Success|Imported|Complete/i').first();
-      if (await successIndicator.count() > 0) {
-        console.log('  ✅ CSV import completed successfully!');
-      } else {
-        console.log('  ⚠️ Import status unclear - check screenshot');
-      }
-      
-      await takeScreenshot(page, '09-import-complete');
-      
-    } catch (error) {
-      console.error('  ❌ File upload failed:', error.message);
-      await takeScreenshot(page, 'error-file-upload');
-      
-      // Alternative approach documentation
-      console.log('\n📝 Alternative Manual Approach:');
-      console.log('If automated file upload fails, you can:');
-      console.log('1. Use the browser window that remains open');
-      console.log('2. Manually click "Choose File" button');
-      console.log('3. Navigate to:', csvPath);
-      console.log('4. Select the CSV file manually');
-      console.log('5. Complete the import process');
+
+    if (successCount === ITEM_TAGS.length) {
+      console.log('\n✅ All item tags configured successfully!');
+    } else if (successCount > 0) {
+      console.log('\n⚠️ Item tags partially configured');
+    } else {
+      throw new Error('Failed to create any item tags');
     }
-    
-    console.log('\n✅ CSV IMPORT PROCESS COMPLETED!');
-    console.log('Summary:');
-    console.log(`  ✓ Logged in as: ${email}`);
-    console.log(`  ✓ CSV File: ${path.basename(csvPath)}`);
-    console.log(`  ✓ File Size: ${(await fs.stat(csvPath)).size} bytes`);
-    console.log('  ✓ Import initiated');
-    
+
   } catch (error) {
-    console.error('\n❌ Import failed:', error.message);
+    console.error('\n❌ Error during item tags configuration:', error.message);
     await takeScreenshot(page, 'error-state');
-    
-    console.log('\nCurrent URL:', page.url());
-    console.log('Page title:', await page.title());
-    
+    throw error;
   } finally {
     if (DEBUG_MODE) {
-      console.log('\n🐛 Browser left open for inspection');
+      console.log('\n🐛 DEBUG MODE: Browser left open for inspection');
       console.log('Press Ctrl+C to exit');
-      await new Promise(() => {}); // Keep alive
+      await new Promise(() => {}); // Keep alive indefinitely
     } else {
       await browser.close();
       console.log('\n✨ Browser closed');
@@ -640,5 +492,8 @@ async function importCSVMenu() {
   }
 }
 
-// Run the import
-importCSVMenu();
+// Run the script
+addItemTags().catch((error) => {
+  console.error('Script failed:', error.message);
+  process.exit(1);
+});

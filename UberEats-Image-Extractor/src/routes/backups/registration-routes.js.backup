@@ -586,24 +586,15 @@ router.post('/register-restaurant', requireRegistrationRestaurant, async (req, r
       
       hoursJson = JSON.stringify(hoursArray);
     }
-
-    // Get organization-specific script configuration (admin URL, country, timezone)
-    const scriptConfig = await OrganizationSettingsService.getScriptConfig(organisationId);
-    console.log('[Registration] Script config loaded:', {
-      adminUrl: scriptConfig.adminUrl,
-      country: scriptConfig.country,
-      timezone: scriptConfig.timezoneDisplay,
-      adminHostname: scriptConfig.adminHostname
-    });
-
+    
     // Execute Playwright script for restaurant registration only
     // All registration types now use login-and-register-restaurant.js since account should exist
     const scriptPath = '/Users/giannimunro/Desktop/cursor-projects/automation/scripts/restaurant-registration/login-and-register-restaurant.js';
-
-    let command = `node ${scriptPath} --email="${email}" --password="${password}" --name="${restaurantName || restaurant.name}" --address="${restaurant.address || ''}" --phone="${restaurant.phone || ''}" --dayHours='${hoursJson}' --admin-url="${scriptConfig.adminUrl}" --country="${scriptConfig.country}" --timezone="${scriptConfig.timezoneDisplay}"`;
-
+    
+    let command = `node ${scriptPath} --email="${email}" --password="${password}" --name="${restaurantName || restaurant.name}" --address="${restaurant.address || ''}" --phone="${restaurant.phone || ''}" --dayHours='${hoursJson}'`;
+    
     // No longer need hasExistingRestaurants flag - the script now auto-detects
-
+    
     console.log('[Registration] Executing restaurant registration:', command);
     
     try {
@@ -613,18 +604,14 @@ router.post('/register-restaurant', requireRegistrationRestaurant, async (req, r
       });
       
       // Parse subdomain and restaurant ID from stdout if available
-      // The subdomain format is: subdomain.domain (e.g., pizzapalace.pumpd.co.nz or pizzapalace.ozorders.com.au)
-      const subdomainMatch = stdout.match(/Subdomain:\s*([^\s]+)/);
-      const fullSubdomain = subdomainMatch ? subdomainMatch[1] : null;
-      // Extract just the subdomain prefix (before the first dot of the domain)
-      const subdomainBase = scriptConfig.adminHostname.replace(/^admin\./, '');
-      const subdomain = fullSubdomain ? fullSubdomain.replace(`.${subdomainBase}`, '') : restaurant.slug;
-
+      const subdomainMatch = stdout.match(/Subdomain:\s*([^\s]+)\.pumpd\.co\.nz/);
+      const subdomain = subdomainMatch ? subdomainMatch[1] : restaurant.slug;
+      
       // Parse restaurant ID from stdout
       // Restaurant IDs are in format: RES followed by alphanumeric characters (e.g., REShTCa6OoFcRJM2zWdM9g4S)
       const restaurantIdMatch = stdout.match(/RestaurantID:\s*(RES[A-Za-z0-9_-]+)/);
       const pumpdRestaurantId = restaurantIdMatch ? restaurantIdMatch[1] : null;
-
+      
       // Update restaurant registration status with the Pumpd restaurant ID
       // Only set dashboard URLs if we have a valid restaurant ID
       const updateData = {
@@ -632,15 +619,14 @@ router.post('/register-restaurant', requireRegistrationRestaurant, async (req, r
         registration_date: new Date().toISOString(),
         pumpd_restaurant_id: pumpdRestaurantId, // Save the Pumpd platform restaurant ID
         pumpd_subdomain: subdomain,
-        pumpd_full_url: `https://${subdomain}.${subdomainBase}`
+        pumpd_full_url: `https://${subdomain}.pumpd.co.nz`
       };
 
       // Only set the dashboard URLs if we successfully extracted the restaurant ID
-      // Use the organization's admin URL instead of hardcoded pumpd.co.nz
       if (pumpdRestaurantId) {
-        updateData.dashboard_url = `${scriptConfig.adminUrl}/restaurant/${pumpdRestaurantId}`;
-        updateData.settings_url = `${scriptConfig.adminUrl}/restaurant/${pumpdRestaurantId}/settings`;
-        updateData.menu_url = `${scriptConfig.adminUrl}/restaurant/${pumpdRestaurantId}/menus`;
+        updateData.dashboard_url = `https://admin.pumpd.co.nz/restaurant/${pumpdRestaurantId}`;
+        updateData.settings_url = `https://admin.pumpd.co.nz/restaurant/${pumpdRestaurantId}/settings`;
+        updateData.menu_url = `https://admin.pumpd.co.nz/restaurant/${pumpdRestaurantId}/menus`;
       } else {
         console.log('  ⚠️ Warning: Could not extract restaurant ID from script output');
         // Don't set incorrect URLs - leave them null
@@ -872,17 +858,10 @@ router.post('/upload-csv-menu', requireRegistrationMenuUpload, upload.single('cs
     }
 
     console.log('[CSV Upload] Account found:', finalAccount.email);
-
-    // Get organization-specific script configuration (admin URL)
-    const scriptConfig = await OrganizationSettingsService.getScriptConfig(organisationId);
-    console.log('[CSV Upload] Script config loaded:', {
-      adminUrl: scriptConfig.adminUrl,
-      adminHostname: scriptConfig.adminHostname
-    });
-
+    
     // Execute updated import-csv-menu.js script with smart matching
     const scriptPath = path.join(__dirname, '../../../scripts/restaurant-registration/import-csv-menu.js');
-
+    
     // Build command with proper escaping
     const command = [
       'node',
@@ -890,8 +869,7 @@ router.post('/upload-csv-menu', requireRegistrationMenuUpload, upload.single('cs
       `--email="${finalAccount.email}"`,
       `--password="${finalAccount.user_password_hint}"`,
       `--name="${restaurant.name}"`,
-      `--csvFile="${csvFile.path}"`,
-      `--admin-url="${scriptConfig.adminUrl}"`
+      `--csvFile="${csvFile.path}"`
     ].join(' ');
     
     console.log('[CSV Upload] Executing command:', command);
@@ -1322,14 +1300,6 @@ router.post('/configure-website', requireRegistrationWebsiteSettings, async (req
 
     console.log('[Website Config] Account found:', finalAccount.email);
 
-    // Get organization-specific script configuration (admin URL, country)
-    const scriptConfig = await OrganizationSettingsService.getScriptConfig(organisationId);
-    console.log('[Website Config] Script config loaded:', {
-      adminUrl: scriptConfig.adminUrl,
-      country: scriptConfig.country,
-      adminHostname: scriptConfig.adminHostname
-    });
-
     // Select appropriate script based on theme
     const isDark = restaurant.theme !== 'light';
     const scriptName = isDark ? 'edit-website-settings-dark.js' : 'edit-website-settings-light.js';
@@ -1346,8 +1316,7 @@ router.post('/configure-website', requireRegistrationWebsiteSettings, async (req
       `--name="${restaurant.name.replace(/"/g, '\\"')}"`,
       `--primary="${restaurant.primary_color}"`,
       `--head="${filePaths.headInjection}"`,
-      `--body="${filePaths.bodyInjection}"`,
-      `--admin-url="${scriptConfig.adminUrl}"`
+      `--body="${filePaths.bodyInjection}"`
     ];
 
     // Add secondary color if available
@@ -1703,14 +1672,6 @@ router.post('/configure-payment', requireRegistrationStripePayments, async (req,
 
     console.log('[Payment Config] Account found:', finalAccount.email);
 
-    // Get organization-specific script configuration (admin URL, country)
-    const scriptConfig = await OrganizationSettingsService.getScriptConfig(organisationId);
-    console.log('[Payment Config] Script config loaded:', {
-      adminUrl: scriptConfig.adminUrl,
-      country: scriptConfig.country,
-      adminHostname: scriptConfig.adminHostname
-    });
-
     // Choose script based on includeConnectLink parameter
     const scriptName = includeConnectLink ? 'setup-stripe-payments.js' : 'setup-stripe-payments-no-link.js';
     const scriptPath = path.join(__dirname, '../../../scripts', scriptName);
@@ -1723,9 +1684,7 @@ router.post('/configure-payment', requireRegistrationStripePayments, async (req,
       scriptPath,
       `--email="${finalAccount.email}"`,
       `--password="${finalAccount.user_password_hint}"`,
-      `--name="${restaurant.name.replace(/"/g, '\\"')}"`,
-      `--admin-url="${scriptConfig.adminUrl}"`,
-      `--country="${scriptConfig.country}"`
+      `--name="${restaurant.name.replace(/"/g, '\\"')}"`
     ].join(' ');
     
     console.log('[Payment Config] Executing payment configuration script...');
@@ -1869,13 +1828,6 @@ router.post('/configure-services', requireRegistrationServicesConfig, async (req
 
     console.log('[Services Config] Account found:', finalAccount.email);
 
-    // Get organization-specific script configuration (admin URL)
-    const scriptConfig = await OrganizationSettingsService.getScriptConfig(organisationId);
-    console.log('[Services Config] Script config loaded:', {
-      adminUrl: scriptConfig.adminUrl,
-      adminHostname: scriptConfig.adminHostname
-    });
-
     // Execute setup-services-settings.js script
     const scriptPath = path.join(__dirname, '../../../scripts/setup-services-settings.js');
 
@@ -1885,8 +1837,7 @@ router.post('/configure-services', requireRegistrationServicesConfig, async (req
       scriptPath,
       `--email="${finalAccount.email}"`,
       `--password="${finalAccount.user_password_hint}"`,
-      `--name="${restaurant.name.replace(/"/g, '\\"')}"`,
-      `--admin-url="${scriptConfig.adminUrl}"`
+      `--name="${restaurant.name.replace(/"/g, '\\"')}"`
     ].join(' ');
     
     console.log('[Services Config] Executing services configuration script...');
@@ -2004,13 +1955,6 @@ router.post('/add-item-tags', requireRegistrationItemTags, async (req, res) => {
 
     console.log('[Item Tags] Account found:', finalAccount.email);
 
-    // Get organization-specific script configuration (admin URL)
-    const scriptConfig = await OrganizationSettingsService.getScriptConfig(organisationId);
-    console.log('[Item Tags] Script config loaded:', {
-      adminUrl: scriptConfig.adminUrl,
-      adminHostname: scriptConfig.adminHostname
-    });
-
     // Execute add-item-tags.js script
     const scriptPath = path.join(__dirname, '../../../scripts/restaurant-registration/add-item-tags.js');
 
@@ -2020,8 +1964,7 @@ router.post('/add-item-tags', requireRegistrationItemTags, async (req, res) => {
       scriptPath,
       `--email="${finalAccount.email}"`,
       `--password="${finalAccount.user_password_hint}"`,
-      `--name="${restaurant.name.replace(/"/g, '\\"')}"`,
-      `--admin-url="${scriptConfig.adminUrl}"`
+      `--name="${restaurant.name.replace(/"/g, '\\"')}"`
     ].join(' ');
 
     console.log('[Item Tags] Executing item tags configuration script...');
@@ -2260,19 +2203,11 @@ router.post('/add-option-sets', requireRegistrationOptionSets, async (req, res) 
 
     console.log(`[Option Sets] Found ${optionSetsArray.length} unique option sets`);
 
-    // Get organization-specific script configuration (admin URL)
-    const scriptConfig = await OrganizationSettingsService.getScriptConfig(organisationId);
-    console.log('[Option Sets] Script config loaded:', {
-      adminUrl: scriptConfig.adminUrl,
-      adminHostname: scriptConfig.adminHostname
-    });
-
     // Create JSON payload for script
     const scriptPayload = {
       email: finalAccount.email,
       password: finalAccount.user_password_hint,
       restaurantName: restaurant.name,
-      adminUrl: scriptConfig.adminUrl,
       optionSets: optionSetsArray,
       menuItemMappings: menuItemMappings
     };
@@ -2856,14 +2791,6 @@ router.post('/setup-system-settings', requireRegistrationFinalizeSetup, async (r
       }
     }
 
-    // Get organization-specific script configuration (admin URL, country)
-    const scriptConfig = await OrganizationSettingsService.getScriptConfig(organisationId);
-    console.log('[System Settings] Script config loaded:', {
-      adminUrl: scriptConfig.adminUrl,
-      country: scriptConfig.country,
-      adminHostname: scriptConfig.adminHostname
-    });
-
     // Prepare script arguments
     const scriptPath = path.resolve(__dirname, '../../../scripts/setup-system-settings-user.js');
     const args = [
@@ -2872,8 +2799,6 @@ router.post('/setup-system-settings', requireRegistrationFinalizeSetup, async (r
       `--email="${finalAccount.email}"`,
       `--password="${finalAccount.user_password_hint}"`,
       `--name="${restaurant.name.replace(/"/g, '\\"')}"`,
-      `--admin-url="${scriptConfig.adminUrl}"`,
-      `--country="${scriptConfig.country}"`,
       gstNumber ? `--gst="${gstNumber}"` : '',
       googleOAuthClientId ? `--google-oauth="${googleOAuthClientId}"` : '',
       receiptLogoPath ? `--receiptLogo="${receiptLogoPath}"` : ''
@@ -3111,13 +3036,6 @@ router.post('/create-api-key', async (req, res) => {
       throw new Error('User account credentials not found. Please create a Pumpd account first.');
     }
 
-    // Get organization-specific script configuration (admin URL)
-    const scriptConfig = await OrganizationSettingsService.getScriptConfig(organisationId);
-    console.log('[API Key] Script config loaded:', {
-      adminUrl: scriptConfig.adminUrl,
-      adminHostname: scriptConfig.adminHostname
-    });
-
     // Prepare script arguments
     const scriptPath = path.resolve(__dirname, '../../../scripts/create-api-key-user.js');
     const command = [
@@ -3125,8 +3043,7 @@ router.post('/create-api-key', async (req, res) => {
       scriptPath,
       `--email="${finalAccount.email}"`,
       `--password="${finalAccount.user_password_hint}"`,
-      `--name="${restaurant.name.replace(/"/g, '\\"')}"`,
-      `--admin-url="${scriptConfig.adminUrl}"`
+      `--name="${restaurant.name.replace(/"/g, '\\"')}"`
     ].join(' ');
 
     console.log('[API Key] Creating API key for restaurant:', restaurant.name);
@@ -3360,13 +3277,6 @@ router.post('/configure-uber-integration', async (req, res) => {
       throw new Error('Missing required onboarding data. Please ensure all business details are provided.');
     }
 
-    // Get organization-specific script configuration (admin URL)
-    const scriptConfig = await OrganizationSettingsService.getScriptConfig(organisationId);
-    console.log('[Uber Integration] Script config loaded:', {
-      adminUrl: scriptConfig.adminUrl,
-      adminHostname: scriptConfig.adminHostname
-    });
-
     // Prepare script arguments
     const scriptPath = path.resolve(__dirname, '../../../scripts/finalise-onboarding-user.js');
     const command = [
@@ -3378,8 +3288,7 @@ router.post('/configure-uber-integration', async (req, res) => {
       `--company-name="${onboardingData.companyName.replace(/"/g, '\\"')}"`,
       `--trading-name="${onboardingData.tradingName.replace(/"/g, '\\"')}"`,
       `--director-name="${onboardingData.directorName.replace(/"/g, '\\"')}"`,
-      `--director-mobile="${onboardingData.directorMobile}"`,
-      `--admin-url="${scriptConfig.adminUrl}"`
+      `--director-mobile="${onboardingData.directorMobile}"`
     ].join(' ');
 
     console.log('[Uber Integration] Configuring Uber integration for restaurant:', restaurant.name);

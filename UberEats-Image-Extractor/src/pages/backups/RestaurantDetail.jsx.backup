@@ -70,7 +70,7 @@ import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Checkbox } from '../components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 import { cn } from '../lib/utils';
-import api, { railwayApi } from '../services/api';
+import api from '../services/api';
 import { SequenceProgressCard } from '../components/sequences/SequenceProgressCard';
 import { StartSequenceModal } from '../components/sequences/StartSequenceModal';
 import {
@@ -662,7 +662,7 @@ export default function RestaurantDetail() {
     formData.append('restaurantId', id);
 
     try {
-      const response = await railwayApi.post('/api/registration/upload-csv-menu', formData, {
+      const response = await api.post('/registration/upload-csv-menu', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -726,7 +726,7 @@ export default function RestaurantDetail() {
     setTagsStatus(null);
 
     try {
-      const response = await railwayApi.post('/api/registration/add-item-tags', {
+      const response = await api.post('/registration/add-item-tags', {
         restaurantId: id
       });
 
@@ -793,7 +793,7 @@ export default function RestaurantDetail() {
     setOptionSetsStatus(null);
 
     try {
-      const response = await railwayApi.post('/api/registration/add-option-sets', {
+      const response = await api.post('/registration/add-option-sets', {
         restaurantId: id,
         menuId: selectedMenuForOptionSets
       });
@@ -834,7 +834,7 @@ export default function RestaurantDetail() {
     setCustomizationStatus(null);
     
     try {
-      const response = await railwayApi.post('/api/registration/generate-code-injections', {
+      const response = await api.post('/registration/generate-code-injections', {
         restaurantId: id
       });
       
@@ -896,7 +896,7 @@ export default function RestaurantDetail() {
     setFilesValidated(false);
     
     try {
-      const response = await railwayApi.post('/api/registration/validate-files', {
+      const response = await api.post('/registration/validate-files', {
         headPath: existingHeadPath,
         bodyPath: existingBodyPath
       });
@@ -975,7 +975,7 @@ export default function RestaurantDetail() {
     setCustomizationStatus(null);
     
     try {
-      const response = await railwayApi.post('/api/registration/configure-website', {
+      const response = await api.post('/registration/configure-website', {
         restaurantId: id,
         filePaths: generatedFilePaths
       });
@@ -1030,7 +1030,7 @@ export default function RestaurantDetail() {
     setPaymentStatus(null);
     
     try {
-      const response = await railwayApi.post('/api/registration/configure-payment', {
+      const response = await api.post('/registration/configure-payment', {
         restaurantId: id,
         includeConnectLink
       });
@@ -1077,7 +1077,7 @@ export default function RestaurantDetail() {
     setServicesStatus(null);
     
     try {
-      const response = await railwayApi.post('/api/registration/configure-services', {
+      const response = await api.post('/registration/configure-services', {
         restaurantId: id
       });
       
@@ -1124,7 +1124,7 @@ export default function RestaurantDetail() {
     setOnboardingUserStatus(null);
     
     try {
-      const response = await railwayApi.post('/api/registration/create-onboarding-user', {
+      const response = await api.post('/registration/create-onboarding-user', {
         restaurantId: id,
         userName: onboardingUserName,
         userEmail: onboardingUserEmail,
@@ -1211,7 +1211,7 @@ export default function RestaurantDetail() {
     setSystemSettingsStatus(null);
 
     try {
-      const response = await railwayApi.post('/api/registration/setup-system-settings', {
+      const response = await api.post('/registration/setup-system-settings', {
         restaurantId: restaurant?.id || id,
         receiptLogoVersion: receiptLogoVersion
       });
@@ -1256,7 +1256,7 @@ export default function RestaurantDetail() {
     setApiKeyStatus(null);
 
     try {
-      const response = await railwayApi.post('/api/registration/create-api-key', {
+      const response = await api.post('/registration/create-api-key', {
         restaurantId: restaurant?.id || id
       });
 
@@ -1300,7 +1300,7 @@ export default function RestaurantDetail() {
     setUberIntegrationStatus(null);
 
     try {
-      const response = await railwayApi.post('/api/registration/configure-uber-integration', {
+      const response = await api.post('/registration/configure-uber-integration', {
         restaurantId: restaurant?.id || id
       });
 
@@ -4947,31 +4947,24 @@ export default function RestaurantDetail() {
 
                   {/* Add Tags Button */}
                   {isFeatureEnabled('registration.itemTagUploading') && (
-                  <div className="space-y-2">
-                    <Button
-                      onClick={handleAddItemTags}
-                      disabled={isAddingTags}
-                      className="w-full"
-                      variant="outline"
-                    >
-                      {isAddingTags ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Adding Tags...
-                        </>
-                      ) : (
-                        <>
-                          <Tag className="h-4 w-4 mr-2" />
-                          Add Item Tags
-                        </>
-                      )}
-                    </Button>
-                    {isAddingTags && (
-                      <p className="text-xs text-muted-foreground text-center">
-                        This may take 2-3 minutes. Please don't close this window.
-                      </p>
+                  <Button
+                    onClick={handleAddItemTags}
+                    disabled={isAddingTags}
+                    className="w-full"
+                    variant="outline"
+                  >
+                    {isAddingTags ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Adding Tags...
+                      </>
+                    ) : (
+                      <>
+                        <Tag className="h-4 w-4 mr-2" />
+                        Add Item Tags
+                      </>
                     )}
-                  </div>
+                  </Button>
                   )}
 
                   {/* Status Messages */}
@@ -5044,31 +5037,24 @@ export default function RestaurantDetail() {
                       </Select>
 
                       {/* Add Option Sets Button */}
-                      <div className="space-y-2">
-                        <Button
-                          onClick={handleAddOptionSets}
-                          disabled={isAddingOptionSets || !selectedMenuForOptionSets}
-                          className="w-full"
-                          variant="outline"
-                        >
-                          {isAddingOptionSets ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Adding Option Sets...
-                            </>
-                          ) : (
-                            <>
-                              <Settings2 className="h-4 w-4 mr-2" />
-                              Add Option Sets
-                            </>
-                          )}
-                        </Button>
-                        {isAddingOptionSets && (
-                          <p className="text-xs text-muted-foreground text-center">
-                            This may take 2-3 minutes. Please don't close this window.
-                          </p>
+                      <Button
+                        onClick={handleAddOptionSets}
+                        disabled={isAddingOptionSets || !selectedMenuForOptionSets}
+                        className="w-full"
+                        variant="outline"
+                      >
+                        {isAddingOptionSets ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Adding Option Sets...
+                          </>
+                        ) : (
+                          <>
+                            <Settings2 className="h-4 w-4 mr-2" />
+                            Add Option Sets
+                          </>
                         )}
-                      </div>
+                      </Button>
 
                       {/* Option Sets Status Messages */}
                       {optionSetsStatus && (
@@ -5424,12 +5410,7 @@ export default function RestaurantDetail() {
                             </>
                           )}
                         </Button>
-                        {isGenerating && (
-                          <p className="text-xs text-muted-foreground text-center">
-                            This may take 1-2 minutes. Please don't close this window.
-                          </p>
-                        )}
-                        {codeGenerated && !isGenerating && (
+                        {codeGenerated && (
                           <p className="text-xs text-muted-foreground text-center">
                             Code injections ready for configuration
                           </p>
@@ -5501,35 +5482,28 @@ export default function RestaurantDetail() {
 
                   {/* Configure Website Settings Button (shown for both modes) */}
                   {isFeatureEnabled('registration.websiteSettings') && (
-                  <div className="space-y-2">
-                    <Button
-                      onClick={handleConfigureWebsite}
-                      disabled={
-                        (customizationMode === 'generate' && !codeGenerated) ||
-                        (customizationMode === 'existing' && !filesValidated) ||
-                        isConfiguring || isGenerating || isValidating
-                      }
-                      className="w-full"
-                      variant="default"
-                    >
-                      {isConfiguring ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Configuring...
-                        </>
-                      ) : (
-                        <>
-                          <Settings className="h-4 w-4 mr-2" />
-                          Configure Website Settings
-                        </>
-                      )}
-                    </Button>
-                    {isConfiguring && (
-                      <p className="text-xs text-muted-foreground text-center">
-                        This may take 2-3 minutes. Please don't close this window.
-                      </p>
+                  <Button
+                    onClick={handleConfigureWebsite}
+                    disabled={
+                      (customizationMode === 'generate' && !codeGenerated) ||
+                      (customizationMode === 'existing' && !filesValidated) ||
+                      isConfiguring || isGenerating || isValidating
+                    }
+                    className="w-full"
+                    variant="default"
+                  >
+                    {isConfiguring ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Configuring...
+                      </>
+                    ) : (
+                      <>
+                        <Settings className="h-4 w-4 mr-2" />
+                        Configure Website Settings
+                      </>
                     )}
-                  </div>
+                  </Button>
                   )}
 
                   {/* Status Messages */}
@@ -5681,11 +5655,6 @@ export default function RestaurantDetail() {
                       </Button>
                       )}
                     </div>
-                    {(isConfiguringPayments || isConfiguringServices) && (
-                      <p className="text-xs text-muted-foreground text-center">
-                        This may take 2-3 minutes. Please don't close this window.
-                      </p>
-                    )}
                   </div>
 
                   {/* Payment Status/Results */}
@@ -5843,27 +5812,26 @@ export default function RestaurantDetail() {
               </div>
 
               {/* Action buttons */}
-              <div className="space-y-2">
-                <div className="flex gap-4">
-                  <Button
-                    onClick={handleCreateOnboardingUser}
-                    disabled={isCreatingOnboardingUser || !onboardingUserName || !onboardingUserEmail}
-                    className="flex items-center gap-2"
-                  >
-                    {isCreatingOnboardingUser ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Creating User...
-                      </>
-                    ) : (
-                      <>
-                        <UserPlus className="h-4 w-4" />
-                        Create Onboarding User
-                      </>
-                    )}
-                  </Button>
-
-                  {isFeatureEnabled('registration.onboardingSync') && (
+              <div className="flex gap-4">
+                <Button
+                  onClick={handleCreateOnboardingUser}
+                  disabled={isCreatingOnboardingUser || !onboardingUserName || !onboardingUserEmail}
+                  className="flex items-center gap-2"
+                >
+                  {isCreatingOnboardingUser ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Creating User...
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="h-4 w-4" />
+                      Create Onboarding User
+                    </>
+                  )}
+                </Button>
+                
+                {isFeatureEnabled('registration.onboardingSync') && (
                 <Button
                   onClick={handleUpdateOnboardingRecord}
                   disabled={isUpdatingOnboarding || !onboardingUserEmail}
@@ -5884,11 +5852,6 @@ export default function RestaurantDetail() {
                 </Button>
                 )}
               </div>
-              {isCreatingOnboardingUser && (
-                <p className="text-xs text-muted-foreground">
-                  This may take 2-3 minutes. Please don't close this window.
-                </p>
-              )}
               
               {/* Status displays */}
               {onboardingUserStatus && (
@@ -5936,7 +5899,6 @@ export default function RestaurantDetail() {
                   </AlertDescription>
                 </Alert>
               )}
-              </div>
             </CardContent>
           </Card>
           )}
@@ -6151,17 +6113,6 @@ export default function RestaurantDetail() {
                   </CardContent>
                 </Card>
               </div>
-
-              {/* Loading state messages for Finalise Setup operations */}
-              {(isSettingUpSystemSettings || isCreatingApiKey || isConfiguringUberIntegration) && (
-                <p className="text-xs text-muted-foreground text-center">
-                  {isSettingUpSystemSettings
-                    ? 'This may take 1-2 minutes. Please don\'t close this window.'
-                    : isCreatingApiKey
-                    ? 'This may take 1-2 minutes. Please don\'t close this window.'
-                    : 'This may take 2-3 minutes. Please don\'t close this window.'}
-                </p>
-              )}
 
               {/* Status Messages */}
               {systemSettingsStatus && (

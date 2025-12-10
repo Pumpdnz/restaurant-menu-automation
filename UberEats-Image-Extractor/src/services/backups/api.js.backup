@@ -1,32 +1,6 @@
 import axios from 'axios';
 
-// Import supabase to get the session
-import { supabase } from '../lib/supabase';
-
-// Shared auth interceptor for both API instances
-const createAuthInterceptor = () => async (config) => {
-  // Get the current session from Supabase
-  const { data: { session } } = await supabase.auth.getSession();
-
-  // Add auth token from Supabase session
-  if (session?.access_token) {
-    config.headers.Authorization = `Bearer ${session.access_token}`;
-    console.log('Sending request with auth token');
-  } else {
-    console.warn('No auth session found for API request');
-  }
-
-  // Add organization ID header for API filtering (as backup)
-  const orgId = localStorage.getItem('currentOrgId');
-  if (orgId) {
-    config.headers['X-Organization-ID'] = orgId;
-    console.log('Sending request with org ID:', orgId);
-  }
-
-  return config;
-};
-
-// Create axios instance with default config (goes through Netlify proxy)
+// Create axios instance with default config
 const api = axios.create({
   baseURL: '/api',
   headers: {
@@ -34,19 +8,34 @@ const api = axios.create({
   },
 });
 
-// Create Railway-specific API instance for long-running Playwright operations
-// This bypasses Netlify's ~30s gateway timeout by calling Railway directly
-const railwayApi = axios.create({
-  baseURL: import.meta.env.VITE_RAILWAY_API_URL || 'http://localhost:3007',
-  timeout: 300000, // 5 minutes - for Playwright scripts that take 2-5 min
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+// Import supabase to get the session
+import { supabase } from '../lib/supabase';
 
-// Apply auth interceptor to both instances
-api.interceptors.request.use(createAuthInterceptor(), (error) => Promise.reject(error));
-railwayApi.interceptors.request.use(createAuthInterceptor(), (error) => Promise.reject(error));
+// Add request interceptor for auth token and organization ID
+api.interceptors.request.use(
+  async (config) => {
+    // Get the current session from Supabase
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    // Add auth token from Supabase session
+    if (session?.access_token) {
+      config.headers.Authorization = `Bearer ${session.access_token}`;
+      console.log('Sending request with auth token');
+    } else {
+      console.warn('No auth session found for API request');
+    }
+    
+    // Add organization ID header for API filtering (as backup)
+    const orgId = localStorage.getItem('currentOrgId');
+    if (orgId) {
+      config.headers['X-Organization-ID'] = orgId;
+      console.log('Sending request with org ID:', orgId);
+    }
+    
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 // Restaurant APIs
 export const restaurantAPI = {
@@ -138,8 +127,5 @@ export const downloadCSV = (csvData, filename) => {
   link.click();
   URL.revokeObjectURL(link.href);
 };
-
-// Export railwayApi for long-running Playwright operations (bypasses Netlify timeout)
-export { railwayApi };
 
 export default api;

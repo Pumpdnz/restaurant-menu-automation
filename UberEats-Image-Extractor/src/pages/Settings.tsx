@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { useToast } from '../components/ui/use-toast';
-import { Loader2, UserPlus, Mail, Shield, User, Trash2, RefreshCw, Copy, Clock, CheckCircle, XCircle, Key, Eye, EyeOff, AlertTriangle } from 'lucide-react';
+import { Loader2, UserPlus, Mail, Shield, User, Trash2, RefreshCw, Copy, Clock, CheckCircle, XCircle, Key, AlertTriangle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { supabase } from '../lib/supabase';
 
@@ -35,23 +35,36 @@ export default function Settings() {
   // CloudWaitress config state
   const [cloudwaitressConfig, setCloudwaitressConfig] = useState({
     integratorId: '',
-    secretMasked: '',
+    secret: '',
     apiUrl: 'https://api.cloudwaitress.com',
+    adminUrl: 'https://admin.pumpd.co.nz',
+    country: 'NZ',
+    timezone: null as string | null,
     isConfigured: false,
     updatedAt: null as string | null
   });
-  const [showSecret, setShowSecret] = useState(false);
   const [configLoading, setConfigLoading] = useState(false);
   const [configSaving, setConfigSaving] = useState(false);
   const [newIntegratorId, setNewIntegratorId] = useState('');
   const [newSecret, setNewSecret] = useState('');
+  const [newAdminUrl, setNewAdminUrl] = useState('');
+  const [newCountry, setNewCountry] = useState('NZ');
+  const [newTimezone, setNewTimezone] = useState('');
+  const [availableTimezones, setAvailableTimezones] = useState<Array<{iana: string, display: string, city: string}>>([]);
+
+  // System-wide country state
+  const [systemCountry, setSystemCountry] = useState('NZ');
+  const [systemCountrySaving, setSystemCountrySaving] = useState(false);
 
   // Load organization data
   useEffect(() => {
     if (user?.organisationId) {
       loadOrganizationData();
-      if (isAdmin() && isFeatureEnabled('integrations.cloudwaitressIntegration')) {
-        loadCloudWaitressConfig();
+      if (isAdmin()) {
+        loadSystemCountry();
+        if (isFeatureEnabled('integrations.cloudwaitressIntegration')) {
+          loadCloudWaitressConfig();
+        }
       }
     }
   }, [user, isFeatureEnabled]);
@@ -81,6 +94,90 @@ export default function Settings() {
     }
   };
 
+  const loadSystemCountry = async () => {
+    if (!user?.organisationId || !isAdmin()) return;
+
+    try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+
+      const response = await fetch('/api/organization/settings/country', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setSystemCountry(data.country || 'NZ');
+      }
+    } catch (error) {
+      console.error('Failed to load system country:', error);
+    }
+  };
+
+  const saveSystemCountry = async (newCountry: string) => {
+    if (!user?.organisationId) return;
+
+    setSystemCountrySaving(true);
+    try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+
+      const response = await fetch('/api/organization/settings/country', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          country: newCountry,
+          updateCloudwaitress: false // Don't sync to cloudwaitress setting
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSystemCountry(newCountry);
+        toast({
+          title: 'Country updated',
+          description: 'System country setting has been saved.'
+        });
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Failed to update country',
+        description: error.message,
+        variant: 'destructive'
+      });
+    } finally {
+      setSystemCountrySaving(false);
+    }
+  };
+
+  const loadTimezones = async (countryCode: string) => {
+    try {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+
+      const response = await fetch(`/api/organization/settings/timezones/${countryCode}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setAvailableTimezones(data.timezones);
+      }
+    } catch (error) {
+      console.error('Failed to load timezones:', error);
+    }
+  };
+
   const loadCloudWaitressConfig = async () => {
     if (!user?.organisationId || !isAdmin()) return;
 
@@ -98,10 +195,14 @@ export default function Settings() {
 
       if (data.success) {
         setCloudwaitressConfig(data.config);
-        // Pre-fill edit fields if configured
-        if (data.config.isConfigured) {
-          setNewIntegratorId(data.config.integratorId);
-        }
+        // Pre-fill edit fields with existing values
+        setNewIntegratorId(data.config.integratorId || '');
+        setNewSecret(data.config.secret || '');
+        setNewAdminUrl(data.config.adminUrl || 'https://admin.pumpd.co.nz');
+        setNewCountry(data.config.country || 'NZ');
+        setNewTimezone(data.config.timezone || '');
+        // Load available timezones for the country
+        await loadTimezones(data.config.country || 'NZ');
       }
     } catch (error) {
       console.error('Failed to load CloudWaitress config:', error);
@@ -126,7 +227,10 @@ export default function Settings() {
         },
         body: JSON.stringify({
           integratorId: newIntegratorId || undefined,
-          secret: newSecret || undefined
+          secret: newSecret || undefined,
+          adminUrl: newAdminUrl || undefined,
+          country: newCountry || undefined,
+          timezone: newTimezone || undefined
         })
       });
 
@@ -137,7 +241,6 @@ export default function Settings() {
           title: 'Configuration saved',
           description: 'CloudWaitress API credentials have been updated.'
         });
-        setNewSecret('');
         await loadCloudWaitressConfig();
       } else {
         throw new Error(data.error);
@@ -145,45 +248,6 @@ export default function Settings() {
     } catch (error: any) {
       toast({
         title: 'Failed to save configuration',
-        description: error.message,
-        variant: 'destructive'
-      });
-    } finally {
-      setConfigSaving(false);
-    }
-  };
-
-  const clearCloudWaitressConfig = async () => {
-    if (!user?.organisationId) return;
-
-    setConfigSaving(true);
-    try {
-      const session = await supabase.auth.getSession();
-      const token = session.data.session?.access_token;
-
-      const response = await fetch('/api/organization/settings/cloudwaitress', {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        toast({
-          title: 'Configuration cleared',
-          description: 'Using system default credentials.'
-        });
-        setNewIntegratorId('');
-        setNewSecret('');
-        await loadCloudWaitressConfig();
-      } else {
-        throw new Error(data.error);
-      }
-    } catch (error: any) {
-      toast({
-        title: 'Failed to clear configuration',
         description: error.message,
         variant: 'destructive'
       });
@@ -649,6 +713,45 @@ export default function Settings() {
                   </p>
                 </div>
               )}
+
+              {/* System-wide Country - Admin Only */}
+              {isAdmin() && (
+                <div className="space-y-2 pt-4 border-t">
+                  <Label htmlFor="system-country">Country</Label>
+                  <div className="flex items-center space-x-2">
+                    <Select
+                      value={systemCountry}
+                      onValueChange={setSystemCountry}
+                      disabled={systemCountrySaving}
+                    >
+                      <SelectTrigger className="w-[200px]">
+                        <SelectValue placeholder="Select country" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="NZ">New Zealand</SelectItem>
+                        <SelectItem value="AU">Australia</SelectItem>
+                        <SelectItem value="US">United States</SelectItem>
+                        <SelectItem value="GB">United Kingdom</SelectItem>
+                        <SelectItem value="CA">Canada</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      onClick={() => saveSystemCountry(systemCountry)}
+                      disabled={systemCountrySaving}
+                      size="sm"
+                    >
+                      {systemCountrySaving ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        'Save'
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    System-wide country setting for searches and default configurations
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -699,6 +802,9 @@ export default function Settings() {
                       <Label htmlFor="integrator-id">Integrator ID</Label>
                       <Input
                         id="integrator-id"
+                        name="cw-integrator-id"
+                        autoComplete="off"
+                        data-form-type="other"
                         placeholder="CWI_xxxx-xxxx-xxxx-xxxx"
                         value={newIntegratorId}
                         onChange={(e) => setNewIntegratorId(e.target.value)}
@@ -710,42 +816,84 @@ export default function Settings() {
 
                     <div className="space-y-2">
                       <Label htmlFor="secret">Secret</Label>
-                      <div className="flex space-x-2">
-                        <div className="relative flex-1">
-                          <Input
-                            id="secret"
-                            type={showSecret ? 'text' : 'password'}
-                            placeholder={cloudwaitressConfig.secretMasked || 'CWS_xxxx-xxxx-xxxx-xxxx'}
-                            value={newSecret}
-                            onChange={(e) => setNewSecret(e.target.value)}
-                          />
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => setShowSecret(!showSecret)}
-                          type="button"
-                        >
-                          {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </Button>
-                      </div>
+                      <Input
+                        id="secret"
+                        name="cw-api-secret"
+                        autoComplete="off"
+                        data-form-type="other"
+                        placeholder="CWS_xxxx-xxxx-xxxx-xxxx"
+                        value={newSecret}
+                        onChange={(e) => setNewSecret(e.target.value)}
+                      />
                       <p className="text-xs text-gray-500">
-                        {cloudwaitressConfig.isConfigured
-                          ? 'Leave empty to keep existing secret, or enter a new one to update'
-                          : 'Your CloudWaitress API secret'}
+                        Your CloudWaitress API secret
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="admin-url">Admin Portal URL</Label>
+                      <Input
+                        id="admin-url"
+                        placeholder="https://admin.pumpd.co.nz"
+                        value={newAdminUrl}
+                        onChange={(e) => setNewAdminUrl(e.target.value)}
+                      />
+                      <p className="text-xs text-gray-500">
+                        Your CloudWaitress whitelabel admin portal URL
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="country">Country</Label>
+                      <Select
+                        value={newCountry}
+                        onValueChange={(value) => {
+                          setNewCountry(value);
+                          setNewTimezone(''); // Reset timezone when country changes
+                          loadTimezones(value);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select country" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="NZ">New Zealand</SelectItem>
+                          <SelectItem value="AU">Australia</SelectItem>
+                          <SelectItem value="US">United States</SelectItem>
+                          <SelectItem value="GB">United Kingdom</SelectItem>
+                          <SelectItem value="CA">Canada</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-gray-500">
+                        Country settings for timezone, currency, and tax configuration
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="timezone">Timezone</Label>
+                      <Select
+                        value={newTimezone || '_default'}
+                        onValueChange={(value) => setNewTimezone(value === '_default' ? '' : value)}
+                        disabled={availableTimezones.length === 0}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Use country default" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="_default">Use country default</SelectItem>
+                          {availableTimezones.map((tz) => (
+                            <SelectItem key={tz.iana} value={tz.city}>
+                              {tz.display}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-gray-500">
+                        Override the default timezone for restaurant registration. Leave empty to use the country's default.
                       </p>
                     </div>
 
                     <div className="flex justify-end space-x-2 pt-4">
-                      {cloudwaitressConfig.isConfigured && (
-                        <Button
-                          variant="outline"
-                          onClick={clearCloudWaitressConfig}
-                          disabled={configSaving}
-                        >
-                          Reset to Defaults
-                        </Button>
-                      )}
                       <Button
                         onClick={saveCloudWaitressConfig}
                         disabled={configSaving || (!newIntegratorId && !newSecret)}

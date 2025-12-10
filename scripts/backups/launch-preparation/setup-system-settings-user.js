@@ -12,8 +12,6 @@
  *   --email=<email>           Login email (required)
  *   --password=<password>     User password (required)
  *   --name=<restaurant_name>  Restaurant name for smart matching (required)
- *   --admin-url=<url>         CloudWaitress admin portal URL (default: https://admin.pumpd.co.nz)
- *   --country=<code>          Country code for locale settings (default: NZ)
  *   --receipt-logo=<path>     Path to receipt logo image (optional)
  *   --gst=<number>            GST number (optional)
  *   --google-oauth=<id>       Google OAuth Client ID (optional)
@@ -21,12 +19,6 @@
  *
  * Environment Variables:
  *   DEBUG_MODE              Enable debug mode (true/false)
- *
- * Example (default NZ):
- *   node setup-system-settings-user.js --email="test@example.com" --password="Password123!" --name="Test Restaurant"
- *
- * Example (Australian portal):
- *   node setup-system-settings-user.js --email="test@example.com" --password="Password123!" --name="Test Restaurant" --admin-url="https://admin.ozorders.com.au" --country="AU"
  */
 
 import { createRequire } from 'module';
@@ -36,24 +28,18 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import dotenv from 'dotenv';
 
-// Import shared browser configuration (ESM version)
-import {
-  createBrowser,
-  createContext,
-  takeScreenshot as sharedTakeScreenshot
-} from './lib/browser-config.mjs';
-
 const require = createRequire(import.meta.url);
 const { chromium } = require('./restaurant-registration/node_modules/playwright');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load environment variables from centralized .env file
-dotenv.config({ path: path.join(__dirname, '../UberEats-Image-Extractor/.env') });
+// Load environment variables
+dotenv.config();
 
-// Import country configuration (use createRequire for CommonJS module)
-const { getCountryConfig, getAdminHostname, buildLoginUrl } = require('./lib/country-config.cjs');
+// Configuration
+const LOGIN_URL = "https://admin.pumpd.co.nz/login";
+const DEBUG_MODE = process.env.DEBUG_MODE === 'true' || process.argv.includes('--debug');
 
 // Get parameters from command line arguments
 const args = process.argv.slice(2);
@@ -70,24 +56,6 @@ const receiptLogoPath = getArg('receipt-logo') || getArg('receiptLogo');
 const gstNumber = getArg('gst');
 const googleOAuthClientId = getArg('google-oauth');
 
-// ============================================================================
-// CONFIGURABLE ADMIN URL AND COUNTRY SUPPORT
-// ============================================================================
-const DEFAULT_ADMIN_URL = 'https://admin.pumpd.co.nz';
-const DEFAULT_COUNTRY = 'NZ';
-
-// Get admin URL and country from command line or use defaults
-const adminUrl = (getArg('admin-url') || DEFAULT_ADMIN_URL).replace(/\/$/, '');
-const country = getArg('country') || DEFAULT_COUNTRY;
-const countryConfig = getCountryConfig(country);
-
-// Build derived values
-const LOGIN_URL = buildLoginUrl(adminUrl);
-const ADMIN_HOSTNAME = getAdminHostname(adminUrl);
-
-// Configuration
-const DEBUG_MODE = process.env.DEBUG_MODE === 'true' || process.argv.includes('--debug');
-
 // Validate required arguments
 if (!email || !password || !restaurantName) {
   console.error('❌ Error: Email, password, and restaurant name are required');
@@ -95,20 +63,12 @@ if (!email || !password || !restaurantName) {
   process.exit(1);
 }
 
-console.log('Admin URL Configuration:');
-console.log('  Admin URL:', adminUrl);
-console.log('  Login URL:', LOGIN_URL);
-console.log('  Admin Hostname:', ADMIN_HOSTNAME);
-console.log('  Country:', country);
-console.log('  Phone Prefix:', countryConfig.phonePrefix);
-console.log('  GST Rate:', countryConfig.gstRate * 100 + '%');
-console.log('  GST Name:', countryConfig.gstName);
-console.log('');
-
-// Screenshot utility - uses shared config (disabled by default)
-const SCREENSHOT_DIR = path.join(__dirname, 'screenshots');
+// Utility function for screenshots
 const takeScreenshot = async (page, name) => {
-  return sharedTakeScreenshot(page, `system-settings-user-${name}`, SCREENSHOT_DIR);
+  const screenshotPath = path.join(__dirname, 'screenshots', `system-settings-user-${name}-${Date.now()}.png`);
+  await fs.mkdir(path.dirname(screenshotPath), { recursive: true });
+  await page.screenshot({ path: screenshotPath, fullPage: true });
+  console.log(`📸 Screenshot: ${screenshotPath}`);
 };
 
 // Smart Restaurant Matching Functions
@@ -199,8 +159,15 @@ async function setupSystemSettings() {
   console.log(`  Debug Mode: ${DEBUG_MODE}`);
   console.log('');
 
-  const browser = await createBrowser(chromium);
-  const context = await createContext(browser);
+  const browser = await chromium.launch({
+    headless: false,
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  });
+
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+    ignoreHTTPSErrors: true
+  });
 
   const page = await context.newPage();
 
@@ -222,10 +189,10 @@ async function setupSystemSettings() {
     await page.click('button[type="submit"], button:has-text("Login"), button:has-text("Sign In"), button:has-text("Log in")');
     console.log('  ✓ Clicked login');
 
-    // Wait for redirect using dynamic admin hostname pattern
+    // Wait for redirect using the pattern from setup-stripe-payments-no-link.js
     console.log('  ⏳ Waiting for redirect...');
     try {
-      await page.waitForURL(`**/${ADMIN_HOSTNAME}/**`, { timeout: 10000 });
+      await page.waitForURL('**/admin.pumpd.co.nz/**', { timeout: 10000 });
       console.log('  ✓ Successfully logged in!');
     } catch (error) {
       throw new Error('Login failed - not redirected to dashboard');
@@ -426,9 +393,9 @@ async function setupSystemSettings() {
     console.log('  ✓ General Settings menu opened');
     await takeScreenshot(page, '06-general-settings-open');
 
-    // 2. Try to create tax (might already exist) - uses country-specific GST name and rate
+    // 2. Try to create GST tax (might already exist)
     if (gstNumber) {
-      console.log(`  Configuring ${countryConfig.gstName} tax (${countryConfig.gstRate * 100}%)...`);
+      console.log('  Configuring GST tax...');
       try {
         const createTaxButtonSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(8) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div > button';
 
@@ -445,18 +412,17 @@ async function setupSystemSettings() {
         await page.waitForTimeout(1000);
         console.log('  ✓ Clicked Create New Tax button');
 
-        // 3. Set tax name using country config (GST for NZ/AU, VAT for UK, etc.)
+        // 3. Replace "TAX" with "GST" in name field
         const taxNameInputSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(8) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div > div > div.flex-line > div.flex-line > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > input';
         await page.fill(taxNameInputSelector, '');
-        await page.fill(taxNameInputSelector, countryConfig.gstName);
-        console.log(`  ✓ Set tax name to ${countryConfig.gstName}`);
+        await page.fill(taxNameInputSelector, 'GST');
+        console.log('  ✓ Set tax name to GST');
 
-        // 4. Set tax rate using country config (15% for NZ, 10% for AU, etc.)
+        // 4. Replace Rate default "0" with "15"
         const taxRateInputSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(8) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div > div > div.flex-line > div.flex-line > div:nth-child(2) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > input';
-        const taxRatePercent = Math.round(countryConfig.gstRate * 100).toString();
         await page.fill(taxRateInputSelector, '');
-        await page.fill(taxRateInputSelector, taxRatePercent);
-        console.log(`  ✓ Set tax rate to ${taxRatePercent}%`);
+        await page.fill(taxRateInputSelector, '15');
+        console.log('  ✓ Set tax rate to 15%');
       } catch (error) {
         console.log('  ⚠️ Tax configuration may already exist, continuing...');
       }
@@ -500,32 +466,30 @@ async function setupSystemSettings() {
     }, phoneInputSelector);
     await page.waitForTimeout(1000);
 
-    // 9. Format phone number with proper country code from config
+    // 9. Format phone number with proper NZ country code
     const currentPhone = await page.inputValue(phoneInputSelector);
     let newPhone = currentPhone;
-    const phonePrefix = countryConfig.phonePrefix; // e.g., '+64' for NZ, '+61' for AU
-    const phonePrefixDigits = phonePrefix.replace('+', ''); // e.g., '64' for NZ, '61' for AU
 
     if (currentPhone) {
       // Remove any spaces or special characters for processing
       const cleanPhone = currentPhone.replace(/[\s\-\(\)]/g, '');
 
-      if (cleanPhone.startsWith(phonePrefix)) {
-        // Already has correct format for this country
+      if (cleanPhone.startsWith('+64')) {
+        // Already has correct format
         newPhone = cleanPhone;
         console.log(`  ℹ️ Phone number already has correct format: ${newPhone}`);
       } else if (cleanPhone.startsWith('0')) {
-        // Replace leading 0 with country prefix
-        newPhone = phonePrefix + cleanPhone.substring(1);
+        // Replace leading 0 with +64
+        newPhone = '+64' + cleanPhone.substring(1);
         console.log(`  ✓ Updated phone number from ${currentPhone} to ${newPhone}`);
-      } else if (cleanPhone.startsWith(phonePrefixDigits)) {
-        // Add + prefix to existing country code
+      } else if (cleanPhone.startsWith('64')) {
+        // Add + prefix to existing 64
         newPhone = '+' + cleanPhone;
         console.log(`  ✓ Updated phone number from ${currentPhone} to ${newPhone}`);
       } else {
-        // No country code at all - add country prefix without removing anything
-        newPhone = phonePrefix + cleanPhone;
-        console.log(`  ✓ Added ${phonePrefix} prefix: ${currentPhone} to ${newPhone}`);
+        // No country code at all - add +64 without removing anything
+        newPhone = '+64' + cleanPhone;
+        console.log(`  ✓ Added +64 prefix: ${currentPhone} to ${newPhone}`);
       }
 
       // Update the field if changed

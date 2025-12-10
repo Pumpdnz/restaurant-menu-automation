@@ -1,119 +1,89 @@
 #!/usr/bin/env node
 
 /**
- * Restaurant Registration Production Script for admin.pumpd.co.nz
+ * Login and Restaurant Registration Script for admin.pumpd.co.nz
  * 
  * This script performs restaurant registration for an existing account:
- * - Login to existing account
- * - Navigate to restaurant creation
+ * - Login to existing user account
+ * - Navigate to restaurant section
+ * - Create a new restaurant
  * - Fill restaurant details form
- * - Configure operating hours
- * - Submit restaurant registration
- * 
- * NOTE: This script assumes the user account has already been created via API
  * 
  * Usage:
- *   node register-restaurant-production.js [options]
+ *   node login-and-register-restaurant.js [options]
  * 
  * Options:
  *   --email=<email>           Login email (required)
  *   --password=<password>     Login password (required)
  *   --name=<name>            Restaurant name (required)
- *   --address=<address>      Full address (default: Christchurch test address)
- *   --phone=<phone>          Phone number (default: "031234567")
- *   --dayHours=<json>        JSON string of day hours (default: standard hours)
+ *   --address=<address>      Full address (optional)
+ *   --phone=<phone>          Phone number (optional)
+ *   --dayHours=<json>        JSON string of day hours (optional)
  * 
  * Environment Variables:
- *   TEST_EMAIL               Login email
- *   TEST_PASSWORD            Login password
- *   RESTAURANT_NAME          Restaurant name
- *   RESTAURANT_ADDRESS       Restaurant address
- *   RESTAURANT_PHONE         Restaurant phone
- *   DAY_HOURS               JSON string of hours per day
  *   DEBUG_MODE              Enable debug mode (true/false)
+ *   ADMIN_PASSWORD          Admin password for bypassing confirmations
  * 
  * Example:
- *   node register-restaurant-production.js --email=test@example.com --password="Test789!" --name="Pizza Palace" --phone="03 456 7890"
+ *   node login-and-register-restaurant.js --email=test@example.com --password=Test789! --name="Pizza Palace" --phone="03 456 7890"
  * 
- * Example with custom hours (object format):
- *   node register-restaurant-production.js --dayHours='{"Monday":{"open":"11:00","close":"22:00"},"Tuesday":{"open":"11:00","close":"22:00"}}'
- * 
- * Example with hours crossing midnight (array format for duplicate days):
- *   node register-restaurant-production.js --dayHours='[{"day":"Tuesday","hours":{"open":"09:30","close":"20:30"}},{"day":"Friday","hours":{"open":"09:30","close":"23:59"}},{"day":"Saturday","hours":{"open":"00:00","close":"02:00"}},{"day":"Saturday","hours":{"open":"09:30","close":"23:59"}},{"day":"Sunday","hours":{"open":"00:00","close":"02:00"}}]'
+ * Example with custom hours (array format for midnight crossing):
+ *   node login-and-register-restaurant.js --email=test@example.com --password=Test789! --name="Late Night Bar" \
+ *     --dayHours='[{"day":"Friday","hours":{"open":"17:00","close":"23:59"}},{"day":"Saturday","hours":{"open":"00:00","close":"03:00"}}]'
  */
 
 const { chromium } = require('playwright');
+const fs = require('fs').promises;
 const path = require('path');
 
-// Load environment variables from centralized .env file
-require('dotenv').config({ path: path.join(__dirname, '../../UberEats-Image-Extractor/.env') });
-
-// Import shared browser configuration
-const {
-  createBrowser,
-  createContext,
-  takeScreenshot: sharedTakeScreenshot
-} = require('../lib/browser-config.cjs');
+// Load environment variables
+require('dotenv').config();
 
 // Configuration
 const LOGIN_URL = "https://admin.pumpd.co.nz/login";
-const DEBUG_MODE = process.env.DEBUG_MODE === 'true' || false;
+const DEBUG_MODE = process.env.DEBUG_MODE === 'true';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "7uo@%K2^Hz%yiXDeP39Ckp6BvF!2";
 
-// Get parameters from command line arguments or environment variables
+// Get parameters from command line arguments
 const args = process.argv.slice(2);
 const getArg = (name) => {
   const arg = args.find(a => a.startsWith(`--${name}=`));
   return arg ? arg.split('=')[1] : null;
 };
 
-// Parse restaurant data from arguments or use defaults
-const restaurantName = getArg('name') || process.env.RESTAURANT_NAME;
-if (!restaurantName) {
-  console.error('❌ Error: Restaurant name is required (--name="Restaurant Name")');
+// Parse required parameters
+const email = getArg('email');
+const password = getArg('password');
+const restaurantName = getArg('name');
+
+if (!email || !password || !restaurantName) {
+  console.error('❌ Error: Missing required parameters');
+  console.error('Required: --email=<email> --password=<password> --name=<restaurant_name>');
   process.exit(1);
 }
 
-// Clean password to remove any escape characters
-const cleanPassword = (pwd) => {
-  if (pwd === null || pwd === undefined) return null;
-  // Remove single backslashes that might be escaping special characters
-  return pwd.replace(/\\(.)/g, '$1');
-};
-
-const rawPassword = getArg('password') || process.env.TEST_PASSWORD;
-if (!rawPassword) {
-  console.error('❌ Error: Password is required (--password="Password")');
-  process.exit(1);
-}
-const cleanedPassword = cleanPassword(rawPassword);
-
-const email = getArg('email') || process.env.TEST_EMAIL;
-if (!email) {
-  console.error('❌ Error: Email is required (--email="email@example.com")');
-  process.exit(1);
-}
-
+// Parse restaurant data
 const TEST_DATA = {
   login: {
     email: email,
-    password: cleanedPassword
+    password: password
   },
   restaurant: {
     name: restaurantName,
-    address: getArg('address') || process.env.RESTAURANT_ADDRESS || "255 Saint Asaph Street, Christchurch Central City, Christchurch 8011, New Zealand",
-    phone: getArg('phone') || process.env.RESTAURANT_PHONE || "031234567"
+    address: getArg('address') || "255 Saint Asaph Street, Christchurch Central City, Christchurch 8011, New Zealand",
+    phone: getArg('phone') || "031234567"
   }
 };
 
 // Parse day hours if provided as JSON string or array
 let customDayHours = null;
-const dayHoursArg = getArg('dayHours') || process.env.DAY_HOURS;
+const dayHoursArg = getArg('dayHours');
 if (dayHoursArg) {
   try {
     const parsed = JSON.parse(dayHoursArg);
     // Check if it's an array (for duplicate days) or object
     if (Array.isArray(parsed)) {
-      // Convert array format to our internal format
+      // Already in array format
       customDayHours = parsed;
     } else {
       // Convert object to array format
@@ -124,20 +94,23 @@ if (dayHoursArg) {
   }
 }
 
-// Screenshot utility - uses shared config (disabled by default)
-const SCREENSHOT_DIR = path.join(__dirname, 'screenshots');
+// Utility function for screenshots
 const takeScreenshot = async (page, name) => {
-  return sharedTakeScreenshot(page, `restaurant-${name}`, SCREENSHOT_DIR);
+  const screenshotPath = path.join(__dirname, 'screenshots', `login-restaurant-${name}-${Date.now()}.png`);
+  await fs.mkdir(path.dirname(screenshotPath), { recursive: true });
+  await page.screenshot({ path: screenshotPath, fullPage: true });
+  console.log(`📸 Screenshot: ${screenshotPath}`);
 };
 
-async function registerRestaurantOnly() {
-  console.log('🚀 Starting Restaurant Registration (Account Already Exists)...\n');
+async function loginAndRegisterRestaurant() {
+  console.log('🚀 Starting Login and Restaurant Registration...\n');
   console.log('Configuration:');
   console.log(`  Email: ${TEST_DATA.login.email}`);
   console.log(`  Password: ${'*'.repeat(TEST_DATA.login.password.length)}`);
   console.log(`  Restaurant: ${TEST_DATA.restaurant.name}`);
   console.log(`  Address: ${TEST_DATA.restaurant.address}`);
   console.log(`  Phone: ${TEST_DATA.restaurant.phone}`);
+  console.log(`  Has Existing Restaurants: ${TEST_DATA.hasExistingRestaurants}`);
   if (customDayHours) {
     console.log(`  Custom Hours: Yes`);
     console.log('  Hours Configuration:');
@@ -149,8 +122,16 @@ async function registerRestaurantOnly() {
   }
   console.log('');
   
-  const browser = await createBrowser(chromium);
-  const context = await createContext(browser);
+  const browser = await chromium.launch({
+    headless: false,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    slowMo: 100 // Slow down for debugging
+  });
+  
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+    ignoreHTTPSErrors: true
+  });
   
   const page = await context.newPage();
   
@@ -160,25 +141,40 @@ async function registerRestaurantOnly() {
     await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await takeScreenshot(page, '01-login-page');
 
-    // STEP 2: Login to existing account
-    console.log('🔐 STEP 2: Logging in to existing account...');
+    // STEP 2: Fill login form
+    console.log('📝 STEP 2: Logging in...');
     
-    // Fill email
+    // Email
     await page.fill('input[type="email"]', TEST_DATA.login.email);
     console.log('  ✓ Email entered');
     
-    // Fill password
+    // Password
     await page.fill('input[type="password"]', TEST_DATA.login.password);
     console.log('  ✓ Password entered');
     
     await takeScreenshot(page, '02-login-filled');
     
-    // Click Continue/Login button
-    const loginButton = page.locator('button').filter({ hasText: /Continue|Login|Sign In/i }).first();
-    await loginButton.click();
-    console.log('  ✓ Clicked Login button');
+    // Click login button (try multiple selectors with better error handling)
+    try {
+      // First try type="submit" button
+      const submitButton = page.locator('button[type="submit"]');
+      if (await submitButton.count() > 0) {
+        await submitButton.click();
+        console.log('  ✓ Clicked submit button');
+      } else {
+        // Fallback to text-based selectors
+        const loginButton = page.locator('button').filter({ hasText: /Continue|Login|Sign In/i }).first();
+        await loginButton.click();
+        console.log('  ✓ Clicked login button');
+      }
+    } catch (error) {
+      console.error('  ❌ Failed to find login button, trying final fallback...');
+      // Final fallback - click any visible button
+      await page.click('button:visible');
+      console.log('  ✓ Clicked visible button');
+    }
     
-    // Wait for navigation to dashboard
+    // Wait for dashboard
     console.log('\n⏳ Waiting for dashboard after login...');
     await page.waitForURL('**/admin.pumpd.co.nz/**', { timeout: 15000 });
     console.log('  ✓ Reached dashboard:', page.url());
@@ -188,37 +184,37 @@ async function registerRestaurantOnly() {
     await page.waitForFunction(() => {
       const loader = document.querySelector('.cover-loader');
       return !loader || !loader.classList.contains('active');
-    }, { timeout: 10000 });
+    }, { timeout: 12000 });
     console.log('  ✓ Loading overlay gone');
     
-    await page.waitForTimeout(3000); // Extra wait
+    await page.waitForTimeout(15000); // Extra wait
     await takeScreenshot(page, '03-dashboard-loaded');
     
-    // STEP 4: Click Create New Restaurant
-    console.log('\n🏪 STEP 4: Click Create New Restaurant button');
+    // STEP 4: Navigate to restaurant creation
+    console.log('\n🏪 STEP 4: Navigate to restaurant creation');
     
-    // Check if there are existing restaurants (button text might be different)
-    let createButton = page.locator('button').filter({ hasText: /Create New Restaurant|Add Restaurant|New Restaurant/i }).first();
-    
-    // Check if button exists
-    const buttonExists = await createButton.count() > 0;
-    
-    if (buttonExists) {
-      await createButton.click();
-      console.log('  ✓ Clicked Create/Add Restaurant button');
-    } else {
-      // Try navigation menu approach
-      console.log('  ⚠️ No create button found, trying navigation menu...');
-      
-      // Click on Restaurants menu item
-      const restaurantsMenu = page.locator('nav a, nav button').filter({ hasText: /Restaurants/i }).first();
-      await restaurantsMenu.click();
-      await page.waitForTimeout(2000);
-      
-      // Now look for create button again
-      createButton = page.locator('button').filter({ hasText: /Create|Add|New/i }).first();
-      await createButton.click();
-      console.log('  ✓ Clicked Create Restaurant via menu');
+    // Unified approach - works for both new and existing restaurant accounts
+    try {
+      // First try: Primary selector (for accounts with no restaurants)
+      const primaryButton = page.locator('button:has-text("Create New Restaurant")');
+      if (await primaryButton.count() > 0) {
+        await primaryButton.click();
+        console.log('  ✓ Clicked Create New Restaurant button');
+      } else {
+        // Fallback: For accounts with existing restaurants
+        const fallbackButton = page.locator('button:has-text("Add Restaurant"), button:has-text("New Restaurant"), a:has-text("Add Restaurant"), a:has-text("New Restaurant")').first();
+        if (await fallbackButton.count() > 0) {
+          await fallbackButton.click();
+          console.log('  ✓ Clicked New/Add Restaurant button');
+        } else {
+          throw new Error('Could not find Create/Add Restaurant button');
+        }
+      }
+    } catch (error) {
+      console.log('  ❌ Failed to find restaurant creation button');
+      console.log('  Current URL:', page.url());
+      await takeScreenshot(page, 'error-no-create-button');
+      throw error;
     }
     
     // Handle potential notification popup
@@ -240,7 +236,7 @@ async function registerRestaurantOnly() {
     
     // STEP 6: Fill subdomain
     console.log('\n📋 STEP 6: Fill subdomain');
-    let subdomain = TEST_DATA.restaurant.name.toLowerCase().replace(/\s+/g, '');
+    let subdomain = TEST_DATA.restaurant.name.toLowerCase().replace(/[^a-z0-9]/g, '');
     
     // Ensure subdomain is at least 4 characters long
     if (subdomain.length < 4) {
@@ -301,7 +297,7 @@ async function registerRestaurantOnly() {
     try {
       const addressWrapper = page.locator('form > div:nth-child(4) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.selectasync__WrapperInner-fSgFTI.eMHWRb');
       await addressWrapper.click();
-      console.log('  ✓ Clicked address wrapper (exact selector)');
+      console.log('  ✓ Clicked address wrapper');
     } catch {
       await page.click('div.selectasync__WrapperInner-fSgFTI');
       console.log('  ✓ Clicked address wrapper (class selector)');
@@ -313,13 +309,13 @@ async function registerRestaurantOnly() {
     await page.keyboard.type(TEST_DATA.restaurant.address);
     console.log('  ✓ Typed address');
     
-    // STEP 9: Wait for and click dropdown
+    // Wait for and select dropdown
     console.log('\n📍 STEP 9: Select address from dropdown');
     console.log('  ⏳ Waiting for suggestions to load...');
     
     await page.waitForTimeout(2000); // Give autocomplete time to load
     
-    // Wait for the actual address suggestion
+    // Wait for dropdown with actual addresses
     await page.waitForFunction(
       () => {
         const dropdown = document.querySelector('div.selectasync__Dropdown-bYdgnM.dIqlbY');
@@ -334,11 +330,11 @@ async function registerRestaurantOnly() {
     
     console.log('  ✓ Address suggestion loaded');
     
-    // Extract the expected address pattern from our input
+    // Extract the expected address pattern
     const addressParts = TEST_DATA.restaurant.address.split(',')[0].trim();
     console.log(`  🔍 Looking for address containing: "${addressParts}"`);
     
-    // Click the address suggestion
+    // Try to click the best matching address
     try {
       const addressOption = page.locator('div.selectasync__DropdownOption-gQpgNZ').filter({ 
         hasText: addressParts 
@@ -348,7 +344,7 @@ async function registerRestaurantOnly() {
       await addressOption.click();
       console.log('  ✓ Clicked address suggestion');
     } catch {
-      // Fallback: click first option
+      // Fallback: just click the first option
       const firstOption = page.locator('div.selectasync__DropdownOption-gQpgNZ').first();
       await firstOption.click();
       console.log('  ✓ Selected first address option');
@@ -359,20 +355,6 @@ async function registerRestaurantOnly() {
     
     // STEP 10: Fill phone number
     console.log('\n📞 STEP 10: Fill phone number');
-    
-    // Scroll to phone number field
-    await page.evaluate(() => {
-      const phoneSection = document.querySelector('input[type="tel"]') || 
-                          Array.from(document.querySelectorAll('input')).find(input => 
-                            input.placeholder?.toLowerCase().includes('phone') ||
-                            input.parentElement?.textContent?.toLowerCase().includes('phone')
-                          );
-      if (phoneSection) {
-        phoneSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    });
-    
-    await page.waitForTimeout(500);
     
     try {
       await page.fill('input[type="tel"]', TEST_DATA.restaurant.phone);
@@ -441,8 +423,6 @@ async function registerRestaurantOnly() {
       has: page.locator('option:has-text("Monday")') 
     }).all();
     
-    console.log(`  Found ${daySelectors.length} day selectors`);
-    
     // Set each day selector
     for (let i = 0; i < Math.min(daySelectors.length, dayEntries.length); i++) {
       try {
@@ -454,9 +434,6 @@ async function registerRestaurantOnly() {
         console.log(`    ⚠️ Failed to set row ${i + 1}: ${error.message}`);
       }
     }
-    
-    // Configure opening and closing times
-    console.log('  ⏰ Setting opening and closing times...');
     
     // Helper function to clear and type in time input
     const setTimeInput = async (input, time) => {
@@ -476,10 +453,9 @@ async function registerRestaurantOnly() {
       await page.waitForTimeout(100);
     };
     
-    // Find all time inputs directly
+    // Find all time inputs and set them
     const openingHoursSection = page.locator('form > div:nth-child(6)');
     const allTimeInputs = await openingHoursSection.locator('input[type="text"]').all();
-    console.log(`  Found ${allTimeInputs.length} time inputs total`);
     
     // Process time inputs in pairs (open time, close time)
     let inputIndex = 0;
@@ -512,7 +488,6 @@ async function registerRestaurantOnly() {
     // STEP 12: Set System Locale
     console.log('\n🌍 STEP 12: Set System Locale');
     
-    // Scroll to system locale field
     await page.evaluate(() => {
       const localeSection = Array.from(document.querySelectorAll('h2, h3, h4, div')).find(el => 
         el.textContent?.includes('System Locale')
@@ -547,7 +522,6 @@ async function registerRestaurantOnly() {
     // STEP 13: Set Timezone
     console.log('\n⏰ STEP 13: Set Timezone');
     
-    // Scroll to timezone field
     await page.evaluate(() => {
       const timezoneSection = Array.from(document.querySelectorAll('h2, h3, h4, div')).find(el => 
         el.textContent?.includes('Timezone')
@@ -582,7 +556,6 @@ async function registerRestaurantOnly() {
     // STEP 14: Set Currency
     console.log('\n💰 STEP 14: Set Currency');
     
-    // Scroll to currency field
     await page.evaluate(() => {
       const currencySection = Array.from(document.querySelectorAll('h2, h3, h4, div')).find(el => 
         el.textContent?.includes('Currency')
@@ -617,7 +590,6 @@ async function registerRestaurantOnly() {
     // STEP 15: Toggle Tax in Prices
     console.log('\n💸 STEP 15: Toggle Tax in Prices');
     
-    // Scroll to tax toggle
     await page.evaluate(() => {
       const taxSection = Array.from(document.querySelectorAll('h2, h3, h4, div')).find(el => 
         el.textContent?.includes('Tax in Prices') || el.textContent?.includes('Tax In Prices')
@@ -635,21 +607,10 @@ async function registerRestaurantOnly() {
       console.log('  ✓ Toggled Tax in Prices to ON');
     } catch (error) {
       console.log('  ⚠️ Failed to toggle tax:', error.message);
-      
-      try {
-        const toggleLabel = page.locator('label').filter({
-          has: page.locator('span:has-text("Off")')
-        }).first();
-        await toggleLabel.click();
-        console.log('  ✓ Toggled tax via fallback method');
-      } catch (fallbackError) {
-        console.log('  ❌ Could not toggle tax');
-      }
     }
     
     await takeScreenshot(page, '15-tax-toggled');
     
-    // Wait after configuration for form to settle
     await page.waitForTimeout(2000);
     
     // STEP 16: Submit the form
@@ -660,30 +621,265 @@ async function registerRestaurantOnly() {
       await createButton.click();
       console.log('  ✓ Clicked Create Restaurant button');
     } catch (error) {
-      console.log('  ⚠️ Failed with form > button selector, trying exact selector...');
-      
-      try {
-        await page.click('#BFEs20ZQ--content > div.content__Content-hOzsB.UWPkM > form > button');
-        console.log('  ✓ Clicked Create Restaurant button (exact selector)');
-      } catch (error2) {
-        console.log('  ❌ Failed to click Create Restaurant button:', error2.message);
-        throw error2;
-      }
+      console.log('  ⚠️ Failed with form > button selector:', error.message);
+      throw error;
     }
     
     // STEP 17: Wait for success and return to dashboard
     console.log('\n⏳ STEP 17: Waiting for restaurant creation...');
     
+    let navigationSuccess = false;
     try {
-      await page.waitForURL('**/admin.pumpd.co.nz/restaurants**', { timeout: 30000 });
+      // Wait for navigation back to dashboard
+      await page.waitForURL('**/admin.pumpd.co.nz/**', { timeout: 30000 });
+      navigationSuccess = true;
+    } catch (navError) {
+      // Check if we're already on the dashboard (sometimes navigation is too quick)
+      const currentUrl = page.url();
+      if (currentUrl.includes('admin.pumpd.co.nz')) {
+        navigationSuccess = true;
+      }
+    }
+    
+    if (navigationSuccess) {
       console.log('  ✓ Restaurant created successfully!');
       console.log('  ✓ Returned to dashboard:', page.url());
       
-      await page.waitForLoadState('networkidle');
-      await page.waitForTimeout(2000);
+      // Wait for restaurant list to be visible instead of network state
+      try {
+        // Wait for restaurant list container or manage buttons to appear
+        await page.waitForSelector('button:has-text("Manage")', { timeout: 10000 });
+        console.log('  ✓ Restaurant list loaded');
+      } catch (e) {
+        console.log('  ⚠️ Timeout waiting for restaurant list - continuing anyway');
+      }
+      // Give extra time for restaurant list to fully update
+      await page.waitForTimeout(3000);
       
       await takeScreenshot(page, '16-restaurant-created-success');
-    } catch (error) {
+      
+      // STEP 18: Navigate to restaurant management
+      console.log('\n🏪 STEP 18: Navigate to restaurant management');
+      
+      // Find the Manage button for our specific restaurant by name
+      // First, find the element containing our restaurant name, then find the associated Manage button
+      console.log(`  🔍 Looking for restaurant: ${TEST_DATA.restaurant.name}`);
+      
+      // Wait a bit for the list to update
+      await page.waitForTimeout(3000);
+      
+      // Helper function for fuzzy restaurant name matching
+      const normalizeForMatching = (str) => {
+        return str
+          .toLowerCase()                    // Case insensitive
+          .replace(/['']/g, '')             // Remove apostrophes
+          .replace(/\s+/g, ' ')             // Normalize spaces
+          .trim();
+      };
+      
+      // Function to calculate match score between search term and restaurant name
+      const calculateMatchScore = (searchTerm, restaurantName) => {
+        const searchNorm = normalizeForMatching(searchTerm);
+        const nameNorm = normalizeForMatching(restaurantName);
+        
+        // Exact match (after normalization) - highest priority
+        if (searchNorm === nameNorm) {
+          return { score: 1000, reason: 'exact match' };
+        }
+        
+        // Split into words for word-based matching
+        const searchWords = searchNorm.split(' ').filter(w => w.length > 1); // Filter out single chars
+        const nameWords = nameNorm.split(' ');
+        
+        let score = 0;
+        let matchedWords = 0;
+        let reason = '';
+        
+        // Count how many search words are found in the restaurant name
+        for (const searchWord of searchWords) {
+          // Check for exact word match
+          if (nameWords.includes(searchWord)) {
+            score += 10;
+            matchedWords++;
+          }
+          // Check for partial word match (e.g., "zaikaa" matches "ziakaa")
+          else if (nameWords.some(nameWord => {
+            // Use Levenshtein-like simple check: if words are similar length and share most characters
+            const lengthDiff = Math.abs(nameWord.length - searchWord.length);
+            if (lengthDiff <= 2) {
+              const commonChars = searchWord.split('').filter(char => nameWord.includes(char)).length;
+              return commonChars >= Math.min(searchWord.length, nameWord.length) - 1;
+            }
+            return false;
+          })) {
+            score += 8;
+            matchedWords++;
+          }
+          // Check for substring match
+          else if (nameWords.some(nameWord => nameWord.includes(searchWord) || searchWord.includes(nameWord))) {
+            score += 5;
+            matchedWords++;
+          }
+        }
+        
+        // Bonus for matching all words
+        if (matchedWords === searchWords.length && searchWords.length > 0) {
+          score += 50;
+          reason = `all ${searchWords.length} words matched`;
+        } else if (matchedWords > 0) {
+          reason = `${matchedWords}/${searchWords.length} words matched`;
+        }
+        
+        // Penalty for extra words in restaurant name (less specific match)
+        const extraWords = nameWords.length - searchWords.length;
+        if (extraWords > 0 && score > 0) {
+          score -= extraWords * 2;
+        }
+        
+        // If the full search term is contained in the restaurant name (substring match)
+        if (score === 0 && nameNorm.includes(searchNorm)) {
+          score = 25;
+          reason = 'substring match';
+        }
+        
+        return { score, reason };
+      };
+      
+      // Try to find which index our restaurant is at by checking the h4 elements
+      let restaurantIndex = -1;
+      let bestScore = 0;
+      let bestMatch = null;
+      
+      const allRestaurantNames = await page.locator('h4').allTextContents();
+      
+      console.log(`  🔍 Searching for best match for: "${TEST_DATA.restaurant.name}"`);
+      console.log(`  📊 Evaluating ${allRestaurantNames.length} restaurants:`);
+      
+      for (let i = 0; i < allRestaurantNames.length; i++) {
+        const { score, reason } = calculateMatchScore(TEST_DATA.restaurant.name, allRestaurantNames[i]);
+        
+        if (score > 0) {
+          console.log(`    ${i}: "${allRestaurantNames[i]}" - Score: ${score} (${reason})`);
+          
+          if (score > bestScore) {
+            bestScore = score;
+            restaurantIndex = i;
+            bestMatch = { name: allRestaurantNames[i], reason };
+          }
+        }
+      }
+      
+      if (restaurantIndex >= 0) {
+        console.log(`  ✅ Best match: "${bestMatch.name}" at index ${restaurantIndex} (${bestMatch.reason})`);
+      } else {
+        console.log(`  ❌ No matching restaurant found for "${TEST_DATA.restaurant.name}"`);
+      }
+      
+      if (restaurantIndex >= 0) {
+        // Use the simple, reliable selector pattern with the found index
+        const manageButton = page.locator(`#restaurant-list-item-${restaurantIndex} button:has-text("Manage")`).first();
+        
+        // If the first selector doesn't work, try with view-store pattern
+        if (await manageButton.count() === 0) {
+          // Try the view-store ID pattern
+          const alternativeButton = page.locator(`button[id="restaurant-list-item-view-store-${restaurantIndex}"]`).first();
+          if (await alternativeButton.count() > 0) {
+            await alternativeButton.click();
+            console.log(`  ✓ Clicked Manage button using view-store pattern`);
+          } else {
+            // Final fallback - just click the button at that index
+            const allManageButtons = page.locator('button:has-text("Manage")');
+            if (await allManageButtons.count() > restaurantIndex) {
+              await allManageButtons.nth(restaurantIndex).click();
+              console.log(`  ✓ Clicked Manage button at index ${restaurantIndex}`);
+            }
+          }
+        } else {
+          await manageButton.click();
+          console.log(`  ✓ Clicked Manage button for ${TEST_DATA.restaurant.name}`);
+        }
+        
+        // Wait for navigation to complete and page to load
+        console.log('  ⏳ Waiting for restaurant management page to load...');
+        try {
+          // Wait for URL change to restaurant management
+          await page.waitForURL('**/restaurant/**', { timeout: 15000 });
+          console.log('  ✓ Navigated to restaurant page');
+        } catch (error) {
+          console.log('  ⚠️ Navigation timeout, checking current URL...');
+        }
+        
+        // Add extra wait to ensure URL is fully loaded and stable
+        await page.waitForTimeout(3000);
+        await page.waitForLoadState('networkidle');
+        
+        // Get the current URL for debugging
+        const restaurantUrl = page.url();
+        console.log('  📍 Current URL:', restaurantUrl);
+        
+        await takeScreenshot(page, '17-restaurant-admin');
+        
+        // Extract restaurant ID from URL (format: RES followed by alphanumeric characters)
+        console.log('  🔍 Attempting to extract restaurant ID from URL...');
+        
+        // Try multiple regex patterns to match different possible formats
+        let restaurantIdMatch = restaurantUrl.match(/restaurant\/(RES[A-Za-z0-9_-]+)/i);
+        
+        // If first pattern doesn't match, try a more generic pattern
+        if (!restaurantIdMatch) {
+          console.log('  ⚠️ Standard RES pattern did not match, trying generic pattern...');
+          restaurantIdMatch = restaurantUrl.match(/restaurant\/([A-Za-z0-9_-]+)/);
+        }
+        
+        if (restaurantIdMatch) {
+          const restaurantId = restaurantIdMatch[1];
+          console.log(`  ✓ Restaurant ID extracted: ${restaurantId}`);
+          
+          console.log('\n✅ RESTAURANT REGISTRATION COMPLETED!');
+          console.log('Successfully created restaurant with:');
+          console.log('  ✓ Login to existing account');
+          console.log('  ✓ Restaurant name and subdomain');
+          console.log('  ✓ Address selection with Google Maps');
+          console.log('  ✓ Phone number');
+          console.log('  ✓ Opening hours configured');
+          console.log('  ✓ System locale (English - New Zealand)');
+          console.log('  ✓ Timezone (Auckland)');
+          console.log('  ✓ Currency (NZD)');
+          console.log('  ✓ Tax in Prices toggle');
+          console.log('  ✓ Restaurant successfully created!');
+          
+          console.log('\n📊 Restaurant Details:');
+          console.log(`  Name: ${TEST_DATA.restaurant.name}`);
+          console.log(`  Subdomain: ${subdomain}.pumpd.co.nz`);
+          console.log(`  Restaurant ID: ${restaurantId}`);
+          console.log(`  Account Email: ${TEST_DATA.login.email}`);
+          
+          // Output for parsing
+          console.log('\nSubdomain:', `${subdomain}.pumpd.co.nz`);
+          console.log('RestaurantID:', restaurantId);
+          
+          // Success - close browser and exit
+          if (!DEBUG_MODE) {
+            await browser.close();
+            console.log('\n✨ Browser closed');
+          }
+          
+          // Return success with restaurant ID
+          return { success: true, restaurantId, subdomain };
+        } else {
+          console.log('  ❌ Could not extract restaurant ID from URL');
+          console.log('  URL format:', restaurantUrl);
+          console.log('  Expected format: .../restaurant/RESxxxxx or .../restaurant/[id]');
+          console.log('  Please check if the URL contains the restaurant ID in a different format');
+          throw new Error(`Failed to extract restaurant ID from URL: ${restaurantUrl}`);
+        }
+      } else {
+        console.log(`  ⚠️ Could not find restaurant "${TEST_DATA.restaurant.name}" in the list`);
+        console.log('  ℹ️ Restaurant was created but Manage button not found');
+        await takeScreenshot(page, '17-restaurant-list');
+        throw new Error('Could not find restaurant in list to click Manage button');
+      }
+    } else {
       console.log('  ⚠️ Navigation timeout - checking for error messages...');
       
       const errorElement = await page.locator('.error, .alert-danger, [role="alert"]').first();
@@ -696,40 +892,14 @@ async function registerRestaurantOnly() {
       throw new Error('Restaurant creation may have failed - check screenshot');
     }
     
-    console.log('\n✅ RESTAURANT REGISTRATION COMPLETED!');
-    console.log('Successfully created restaurant with:');
-    console.log('  ✓ Login to existing account');
-    console.log('  ✓ Restaurant name and subdomain');
-    console.log('  ✓ Address selection with Google Maps');
-    console.log('  ✓ Phone number');
-    console.log('  ✓ Opening hours configured');
-    console.log('  ✓ System locale (English - New Zealand)');
-    console.log('  ✓ Timezone (Auckland)');
-    console.log('  ✓ Currency (NZD)');
-    console.log('  ✓ Tax in Prices toggle');
-    console.log('  ✓ Restaurant successfully created!');
-    
-    console.log('\n📊 Restaurant Details:');
-    console.log(`  Name: ${TEST_DATA.restaurant.name}`);
-    console.log(`  Subdomain: ${subdomain}.pumpd.co.nz`);
-    console.log(`  Email: ${TEST_DATA.login.email}`);
-    
-    // Return success data
-    return {
-      success: true,
-      subdomain: subdomain,
-      restaurantName: TEST_DATA.restaurant.name,
-      dashboardUrl: page.url()
-    };
-    
   } catch (error) {
-    console.error('\n❌ Registration failed:', error.message);
+    console.error('\n❌ Test failed:', error.message);
     await takeScreenshot(page, 'error-state');
     
     console.log('\nCurrent URL:', page.url());
     console.log('Page title:', await page.title());
     
-    throw error;
+    throw error; // Re-throw for proper error handling
     
   } finally {
     if (DEBUG_MODE) {
@@ -744,16 +914,7 @@ async function registerRestaurantOnly() {
 }
 
 // Run the script
-registerRestaurantOnly()
-  .then(result => {
-    if (result && result.success) {
-      console.log('\n🎉 Script completed successfully');
-      // Output subdomain for parsing by the API
-      console.log(`Subdomain: ${result.subdomain}.pumpd.co.nz`);
-      process.exit(0);
-    }
-  })
-  .catch(error => {
-    console.error('\n💥 Script failed:', error.message);
-    process.exit(1);
-  });
+loginAndRegisterRestaurant().catch(error => {
+  console.error('Script failed:', error);
+  process.exit(1);
+});

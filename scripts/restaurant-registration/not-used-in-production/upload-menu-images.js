@@ -33,7 +33,7 @@ const {
   createBrowser,
   createContext,
   takeScreenshot: sharedTakeScreenshot
-} = require('../lib/browser-config.cjs');
+} = require('../../lib/browser-config.cjs');
 
 // Configuration
 const LOGIN_URL = "https://admin.pumpd.co.nz/login";

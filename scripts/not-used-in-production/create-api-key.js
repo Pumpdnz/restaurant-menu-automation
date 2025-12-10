@@ -26,7 +26,7 @@ import { dirname } from 'path';
 import dotenv from 'dotenv';
 
 const require = createRequire(import.meta.url);
-const { chromium } = require('./restaurant-registration/node_modules/playwright');
+const { chromium } = require('playwright');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

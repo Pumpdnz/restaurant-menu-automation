@@ -1,20 +1,17 @@
 #!/usr/bin/env node
 
 /**
- * Login and Restaurant Registration Script for CloudWaitress Admin Portals
- *
+ * Login and Restaurant Registration Script for admin.pumpd.co.nz
+ * 
  * This script performs restaurant registration for an existing account:
  * - Login to existing user account
  * - Navigate to restaurant section
  * - Create a new restaurant
  * - Fill restaurant details form
- *
- * Supports multiple CloudWaitress resellers with configurable admin URLs
- * and country-specific settings (locale, timezone, currency, etc.)
- *
+ * 
  * Usage:
  *   node login-and-register-restaurant.js [options]
- *
+ * 
  * Options:
  *   --email=<email>           Login email (required)
  *   --password=<password>     Login password (required)
@@ -22,20 +19,14 @@
  *   --address=<address>      Full address (optional)
  *   --phone=<phone>          Phone number (optional)
  *   --dayHours=<json>        JSON string of day hours (optional)
- *   --admin-url=<url>        CloudWaitress admin portal URL (default: https://admin.pumpd.co.nz)
- *   --country=<code>         Country code: NZ, AU, US, GB, CA (default: NZ)
- *
+ * 
  * Environment Variables:
  *   DEBUG_MODE              Enable debug mode (true/false)
  *   ADMIN_PASSWORD          Admin password for bypassing confirmations
- *
- * Example (NZ - default):
+ * 
+ * Example:
  *   node login-and-register-restaurant.js --email=test@example.com --password=Test789! --name="Pizza Palace" --phone="03 456 7890"
- *
- * Example (AU - custom admin URL):
- *   node login-and-register-restaurant.js --email=test@example.com --password=Test789! --name="Pizza Palace" \
- *     --admin-url=https://admin.ozorders.com.au --country=AU
- *
+ * 
  * Example with custom hours (array format for midnight crossing):
  *   node login-and-register-restaurant.js --email=test@example.com --password=Test789! --name="Late Night Bar" \
  *     --dayHours='[{"day":"Friday","hours":{"open":"17:00","close":"23:59"}},{"day":"Saturday","hours":{"open":"00:00","close":"03:00"}}]'
@@ -52,22 +43,12 @@ const {
   createBrowser,
   createContext,
   takeScreenshot: sharedTakeScreenshot
-} = require('../lib/browser-config.cjs');
-
-// Import country configuration
-const {
-  getCountryConfig,
-  getAdminHostname,
-  buildLoginUrl
-} = require('../lib/country-config');
+} = require('../../lib/browser-config.cjs');
 
 // Configuration
+const LOGIN_URL = "https://admin.pumpd.co.nz/login";
 const DEBUG_MODE = process.env.DEBUG_MODE === 'true';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "7uo@%K2^Hz%yiXDeP39Ckp6BvF!2";
-
-// Default values
-const DEFAULT_ADMIN_URL = 'https://admin.pumpd.co.nz';
-const DEFAULT_COUNTRY = 'NZ';
 
 // Get parameters from command line arguments
 const args = process.argv.slice(2);
@@ -80,20 +61,6 @@ const getArg = (name) => {
 const email = getArg('email');
 const password = getArg('password');
 const restaurantName = getArg('name');
-
-// Parse configurable parameters (with defaults)
-const adminUrl = (getArg('admin-url') || DEFAULT_ADMIN_URL).replace(/\/$/, ''); // Remove trailing slash
-const countryCode = (getArg('country') || DEFAULT_COUNTRY).toUpperCase();
-
-// Get country-specific configuration
-const countryConfig = getCountryConfig(countryCode);
-
-// Get timezone - can be overridden via argument, falls back to country default
-const timezone = getArg('timezone') || countryConfig.timezoneDisplay;
-
-// Build URLs from admin base URL
-const LOGIN_URL = buildLoginUrl(adminUrl);
-const ADMIN_HOSTNAME = getAdminHostname(adminUrl);
 
 if (!email || !password || !restaurantName) {
   console.error('❌ Error: Missing required parameters');
@@ -142,17 +109,12 @@ const takeScreenshot = async (page, name) => {
 async function loginAndRegisterRestaurant() {
   console.log('🚀 Starting Login and Restaurant Registration...\n');
   console.log('Configuration:');
-  console.log(`  Admin Portal: ${adminUrl}`);
-  console.log(`  Country: ${countryCode} (${countryConfig.name})`);
   console.log(`  Email: ${TEST_DATA.login.email}`);
   console.log(`  Password: ${'*'.repeat(TEST_DATA.login.password.length)}`);
   console.log(`  Restaurant: ${TEST_DATA.restaurant.name}`);
   console.log(`  Address: ${TEST_DATA.restaurant.address}`);
   console.log(`  Phone: ${TEST_DATA.restaurant.phone}`);
-  console.log('Country Settings:');
-  console.log(`  Locale: ${countryConfig.locale}`);
-  console.log(`  Timezone: ${timezone}${timezone !== countryConfig.timezoneDisplay ? ' (custom)' : ''}`);
-  console.log(`  Currency: ${countryConfig.currency}`);
+  console.log(`  Has Existing Restaurants: ${TEST_DATA.hasExistingRestaurants}`);
   if (customDayHours) {
     console.log(`  Custom Hours: Yes`);
     console.log('  Hours Configuration:');
@@ -210,7 +172,7 @@ async function loginAndRegisterRestaurant() {
     
     // Wait for dashboard
     console.log('\n⏳ Waiting for dashboard after login...');
-    await page.waitForURL(`**/${ADMIN_HOSTNAME}/**`, { timeout: 15000 });
+    await page.waitForURL('**/admin.pumpd.co.nz/**', { timeout: 15000 });
     console.log('  ✓ Reached dashboard:', page.url());
     
     // STEP 3: Wait for loading overlay to disappear
@@ -519,106 +481,106 @@ async function loginAndRegisterRestaurant() {
     
     await takeScreenshot(page, '11-times-configured');
     
-    // STEP 12: Set System Locale (country-specific)
+    // STEP 12: Set System Locale
     console.log('\n🌍 STEP 12: Set System Locale');
-
+    
     await page.evaluate(() => {
-      const localeSection = Array.from(document.querySelectorAll('h2, h3, h4, div')).find(el =>
+      const localeSection = Array.from(document.querySelectorAll('h2, h3, h4, div')).find(el => 
         el.textContent?.includes('System Locale')
       );
       if (localeSection) {
         localeSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     });
-
+    
     await page.waitForTimeout(1000);
-
+    
     try {
       const localeWrapper = page.locator('form > div:nth-child(7) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div');
       await localeWrapper.click();
       console.log('  ✓ Clicked locale selector');
-
+      
       await page.waitForTimeout(500);
-      await page.keyboard.type(countryConfig.locale);
-      console.log(`  ✓ Typed "${countryConfig.locale}"`);
-
+      await page.keyboard.type('New Zealand');
+      console.log('  ✓ Typed "New Zealand"');
+      
       await page.waitForTimeout(1500);
-
+      
       const dropdownOption = page.locator('form > div:nth-child(7) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.selectadv__Dropdown-eSUwYi.dtQnDO > div').first();
       await dropdownOption.click();
-      console.log(`  ✓ Selected ${countryConfig.locale} locale`);
+      console.log('  ✓ Selected New Zealand locale');
     } catch (error) {
       console.log('  ⚠️ Failed to set locale:', error.message);
     }
-
+    
     await takeScreenshot(page, '12-locale-set');
-
-    // STEP 13: Set Timezone (country-specific)
+    
+    // STEP 13: Set Timezone
     console.log('\n⏰ STEP 13: Set Timezone');
-
+    
     await page.evaluate(() => {
-      const timezoneSection = Array.from(document.querySelectorAll('h2, h3, h4, div')).find(el =>
+      const timezoneSection = Array.from(document.querySelectorAll('h2, h3, h4, div')).find(el => 
         el.textContent?.includes('Timezone')
       );
       if (timezoneSection) {
         timezoneSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     });
-
+    
     await page.waitForTimeout(1000);
-
+    
     try {
       const timezoneWrapper = page.locator('form > div:nth-child(9) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div');
       await timezoneWrapper.click();
       console.log('  ✓ Clicked timezone selector');
-
+      
       await page.waitForTimeout(500);
-      await page.keyboard.type(timezone);
-      console.log(`  ✓ Typed "${timezone}"`);
-
+      await page.keyboard.type('Auckland');
+      console.log('  ✓ Typed "Auckland"');
+      
       await page.waitForTimeout(1500);
-
+      
       const timezoneOption = page.locator('form > div:nth-child(9) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.selectadv__Dropdown-eSUwYi.dtQnDO > div').first();
       await timezoneOption.click();
-      console.log(`  ✓ Selected ${timezone} timezone`);
+      console.log('  ✓ Selected Auckland timezone');
     } catch (error) {
       console.log('  ⚠️ Failed to set timezone:', error.message);
     }
-
+    
     await takeScreenshot(page, '13-timezone-set');
-
-    // STEP 14: Set Currency (country-specific)
+    
+    // STEP 14: Set Currency
     console.log('\n💰 STEP 14: Set Currency');
-
+    
     await page.evaluate(() => {
-      const currencySection = Array.from(document.querySelectorAll('h2, h3, h4, div')).find(el =>
+      const currencySection = Array.from(document.querySelectorAll('h2, h3, h4, div')).find(el => 
         el.textContent?.includes('Currency')
       );
       if (currencySection) {
         currencySection.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     });
-
+    
     await page.waitForTimeout(1000);
-
+    
     try {
       const currencyWrapper = page.locator('form > div:nth-child(12) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div');
       await currencyWrapper.click();
       console.log('  ✓ Clicked currency selector');
-
+      
       await page.waitForTimeout(500);
-      await page.keyboard.type(countryConfig.currency);
-      console.log(`  ✓ Typed "${countryConfig.currency}"`);
-
+      await page.keyboard.type('NZD');
+      console.log('  ✓ Typed "NZD"');
+      
       await page.waitForTimeout(1500);
-
+      
       const currencyOption = page.locator('form > div:nth-child(12) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.selectadv__Dropdown-eSUwYi.dtQnDO > div').first();
       await currencyOption.click();
-      console.log(`  ✓ Selected ${countryConfig.currency} currency`);
+      console.log('  ✓ Selected NZD currency');
     } catch (error) {
       console.log('  ⚠️ Failed to set currency:', error.message);
     }
-
+    
     await takeScreenshot(page, '14-currency-set');
     
     // STEP 15: Toggle Tax in Prices
@@ -665,12 +627,12 @@ async function loginAndRegisterRestaurant() {
     let navigationSuccess = false;
     try {
       // Wait for navigation back to dashboard
-      await page.waitForURL(`**/${ADMIN_HOSTNAME}/**`, { timeout: 30000 });
+      await page.waitForURL('**/admin.pumpd.co.nz/**', { timeout: 30000 });
       navigationSuccess = true;
     } catch (navError) {
       // Check if we're already on the dashboard (sometimes navigation is too quick)
       const currentUrl = page.url();
-      if (currentUrl.includes(ADMIN_HOSTNAME)) {
+      if (currentUrl.includes('admin.pumpd.co.nz')) {
         navigationSuccess = true;
       }
     }
@@ -869,9 +831,6 @@ async function loginAndRegisterRestaurant() {
           const restaurantId = restaurantIdMatch[1];
           console.log(`  ✓ Restaurant ID extracted: ${restaurantId}`);
           
-          // Extract the subdomain base from admin URL (e.g., admin.pumpd.co.nz -> pumpd.co.nz)
-          const subdomainBase = ADMIN_HOSTNAME.replace(/^admin\./, '');
-
           console.log('\n✅ RESTAURANT REGISTRATION COMPLETED!');
           console.log('Successfully created restaurant with:');
           console.log('  ✓ Login to existing account');
@@ -879,22 +838,20 @@ async function loginAndRegisterRestaurant() {
           console.log('  ✓ Address selection with Google Maps');
           console.log('  ✓ Phone number');
           console.log('  ✓ Opening hours configured');
-          console.log(`  ✓ System locale (${countryConfig.locale})`);
-          console.log(`  ✓ Timezone (${timezone})`);
-          console.log(`  ✓ Currency (${countryConfig.currency})`);
+          console.log('  ✓ System locale (English - New Zealand)');
+          console.log('  ✓ Timezone (Auckland)');
+          console.log('  ✓ Currency (NZD)');
           console.log('  ✓ Tax in Prices toggle');
           console.log('  ✓ Restaurant successfully created!');
-
+          
           console.log('\n📊 Restaurant Details:');
           console.log(`  Name: ${TEST_DATA.restaurant.name}`);
-          console.log(`  Subdomain: ${subdomain}.${subdomainBase}`);
+          console.log(`  Subdomain: ${subdomain}.pumpd.co.nz`);
           console.log(`  Restaurant ID: ${restaurantId}`);
           console.log(`  Account Email: ${TEST_DATA.login.email}`);
-          console.log(`  Admin Portal: ${adminUrl}`);
-          console.log(`  Country: ${countryCode}`);
-
+          
           // Output for parsing
-          console.log('\nSubdomain:', `${subdomain}.${subdomainBase}`);
+          console.log('\nSubdomain:', `${subdomain}.pumpd.co.nz`);
           console.log('RestaurantID:', restaurantId);
           
           // Success - close browser and exit

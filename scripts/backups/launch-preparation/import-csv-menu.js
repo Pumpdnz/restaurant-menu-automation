@@ -1,62 +1,41 @@
 #!/usr/bin/env node
 
 /**
- * Menu CSV Import Script for CloudWaitress Admin Portals
- *
+ * Menu CSV Import Script for admin.pumpd.co.nz
+ * 
  * This script performs automated CSV menu import including:
  * - Login to existing restaurant account
  * - Smart restaurant matching by name
  * - Navigation to correct restaurant management
  * - CSV import process
  * - File selection and upload
- *
- * Supports multiple CloudWaitress resellers with configurable admin URLs.
- *
+ * 
  * Usage:
  *   node import-csv-menu.js [options]
- *
+ * 
  * Options:
  *   --email=<email>           Login email (required)
  *   --password=<password>     User password (required)
  *   --name=<name>             Restaurant name for matching (required)
  *   --csvFile=<path>          Path to CSV file to import (optional, will find latest if not provided)
- *   --admin-url=<url>         CloudWaitress admin portal URL (default: https://admin.pumpd.co.nz)
- *
+ * 
  * Environment Variables:
  *   DEBUG_MODE              Enable debug mode (true/false)
- *
- * Example (default NZ):
+ * 
+ * Example:
  *   node import-csv-menu.js --email="test@example.com" --password="Password123!" --name="Test Restaurant" --csvFile="/path/to/menu.csv"
- *
- * Example (custom admin URL):
- *   node import-csv-menu.js --email="test@example.com" --password="Password123!" --name="Test Restaurant" --csvFile="/path/to/menu.csv" --admin-url="https://admin.ozorders.com.au"
  */
 
 const { chromium } = require('playwright');
 const fs = require('fs').promises;
 const path = require('path');
 
-// Load environment variables from centralized .env file
-require('dotenv').config({ path: path.join(__dirname, '../../UberEats-Image-Extractor/.env') });
-
-// Import shared browser configuration
-const {
-  createBrowser,
-  createContext,
-  takeScreenshot: sharedTakeScreenshot
-} = require('../lib/browser-config.cjs');
-
-// Import country configuration
-const {
-  getAdminHostname,
-  buildLoginUrl
-} = require('../lib/country-config.cjs');
+// Load environment variables
+require('dotenv').config();
 
 // Configuration
+const LOGIN_URL = "https://admin.pumpd.co.nz/login";
 const DEBUG_MODE = process.env.DEBUG_MODE === 'true' || false;
-
-// Default values
-const DEFAULT_ADMIN_URL = 'https://admin.pumpd.co.nz';
 
 // Get parameters from command line arguments
 const args = process.argv.slice(2);
@@ -67,16 +46,9 @@ const getArg = (name) => {
 
 // Parse arguments
 const email = getArg('email');
-const password = getArg('password');
-const restaurantName = getArg('name');
+const password = getArg('password'); // NEW: Accept password as argument
+const restaurantName = getArg('name'); // NEW: Accept restaurant name for matching
 const csvFile = getArg('csvFile');
-
-// Parse configurable parameters (with defaults)
-const adminUrl = (getArg('admin-url') || DEFAULT_ADMIN_URL).replace(/\/$/, '');
-
-// Build URLs from admin base URL
-const LOGIN_URL = buildLoginUrl(adminUrl);
-const ADMIN_HOSTNAME = getAdminHostname(adminUrl);
 
 // Validate required arguments
 if (!email || !password || !restaurantName) {
@@ -141,10 +113,12 @@ async function findLatestCSV(name) {
   }
 }
 
-// Screenshot utility - uses shared config (disabled by default)
-const SCREENSHOT_DIR = path.join(__dirname, 'screenshots');
+// Utility function for screenshots
 const takeScreenshot = async (page, name) => {
-  return sharedTakeScreenshot(page, `csv-import-${name}`, SCREENSHOT_DIR);
+  const screenshotPath = path.join(__dirname, 'screenshots', `csv-import-${name}-${Date.now()}.png`);
+  await fs.mkdir(path.dirname(screenshotPath), { recursive: true });
+  await page.screenshot({ path: screenshotPath, fullPage: true });
+  console.log(`📸 Screenshot: ${screenshotPath}`);
 };
 
 async function importCSVMenu() {
@@ -171,15 +145,21 @@ async function importCSVMenu() {
   }
   
   console.log('Configuration:');
-  console.log(`  Admin Portal: ${adminUrl}`);
   console.log(`  Email: ${email}`);
   console.log(`  Password: ${'*'.repeat(password.length)}`);
-  console.log(`  Restaurant: ${restaurantName}`);
   console.log(`  CSV File: ${path.basename(csvPath)}`);
   console.log('');
   
-  const browser = await createBrowser(chromium);
-  const context = await createContext(browser);
+  const browser = await chromium.launch({
+    headless: false,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    slowMo: 100 // Slow down for debugging
+  });
+  
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+    ignoreHTTPSErrors: true
+  });
   
   const page = await context.newPage();
   
@@ -200,7 +180,7 @@ async function importCSVMenu() {
     
     // Wait for dashboard
     console.log('\n⏳ Waiting for dashboard...');
-    await page.waitForURL(`**/${ADMIN_HOSTNAME}/**`, { timeout: 15000 });
+    await page.waitForURL('**/admin.pumpd.co.nz/**', { timeout: 15000 });
     console.log('  ✓ Reached dashboard:', page.url());
     
     // Wait for loading overlay to disappear
@@ -381,12 +361,12 @@ async function importCSVMenu() {
     // Wait for navigation to restaurant management page
     console.log('  ⏳ Waiting for restaurant management page...');
     try {
-      await page.waitForURL(`**/${ADMIN_HOSTNAME}/restaurant/**`, { timeout: 15000 });
+      await page.waitForURL('**/admin.pumpd.co.nz/restaurant/**', { timeout: 15000 });
       console.log('  ✓ Navigated to restaurant page');
     } catch (error) {
       console.log('  ⚠️ Navigation timeout, checking current URL...');
       const currentUrl = page.url();
-      if (currentUrl.includes(`${ADMIN_HOSTNAME}/restaurant/`)) {
+      if (currentUrl.includes('admin.pumpd.co.nz/restaurant/')) {
         console.log('  ✓ Already on restaurant page');
       } else {
         throw error;

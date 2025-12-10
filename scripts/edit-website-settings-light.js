@@ -2,13 +2,15 @@
 
 /**
  * Edit Website Settings - Light Theme Configuration
- * 
+ *
  * This script logs into the admin portal, navigates to Website settings,
  * configures light theme with custom colors, and adds code injections
- * 
+ *
+ * Supports multiple CloudWaitress resellers with configurable admin URLs.
+ *
  * Usage:
  *   node edit-website-settings-light.js [options]
- * 
+ *
  * Options:
  *   --email=<email>           Login email (required)
  *   --password=<password>     User password (required)
@@ -23,13 +25,17 @@
  *   --location=<text>         Restaurant location (optional)
  *   --address=<text>          Restaurant address (optional)
  *   --phone=<text>            Restaurant phone number (optional)
+ *   --admin-url=<url>         CloudWaitress admin portal URL (default: https://admin.pumpd.co.nz)
  *   --debug                   Enable debug mode (keeps browser open)
- * 
+ *
  * Environment Variables:
  *   DEBUG_MODE              Enable debug mode (true/false)
- * 
- * Example:
+ *
+ * Example (default NZ):
  *   node edit-website-settings-light.js --email="test@example.com" --password="Password123!" --name="Curry Garden" --primary="#A47F20" --head="../generated-code/restaurant/head-injection.html" --body="../generated-code/restaurant/body-injection.html"
+ *
+ * Example (custom admin URL):
+ *   node edit-website-settings-light.js --email="test@example.com" --password="Password123!" --name="Curry Garden" --primary="#A47F20" --head="../generated-code/restaurant/head-injection.html" --body="../generated-code/restaurant/body-injection.html" --admin-url="https://admin.ozorders.com.au"
  */
 
 import { createRequire } from 'module';
@@ -46,6 +52,12 @@ import {
   takeScreenshot as sharedTakeScreenshot
 } from './lib/browser-config.mjs';
 
+// Import country configuration (ESM version)
+import {
+  getAdminHostname,
+  buildLoginUrl
+} from './lib/country-config.js';
+
 const require = createRequire(import.meta.url);
 const { chromium } = require('./restaurant-registration/node_modules/playwright');
 
@@ -56,8 +68,10 @@ const __dirname = dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '../UberEats-Image-Extractor/.env') });
 
 // Configuration
-const LOGIN_URL = "https://admin.pumpd.co.nz/login";
 const DEBUG_MODE = process.env.DEBUG_MODE === 'true' || process.argv.includes('--debug');
+
+// Default values
+const DEFAULT_ADMIN_URL = 'https://admin.pumpd.co.nz';
 
 // Get parameters from command line arguments
 const args = process.argv.slice(2);
@@ -68,7 +82,7 @@ const getArg = (name) => {
 
 // Parse arguments
 const email = getArg('email');
-const password = getArg('password'); // NEW: Accept password as argument
+const password = getArg('password');
 const primaryColor = getArg('primary');
 const secondaryColor = getArg('secondary'); // Secondary color for light theme
 const headPath = getArg('head');
@@ -81,6 +95,13 @@ const cuisine = getArg('cuisine');
 const location = getArg('location');
 const address = getArg('address');
 const phoneNumber = getArg('phone');
+
+// Parse configurable parameters (with defaults)
+const adminUrl = (getArg('admin-url') || DEFAULT_ADMIN_URL).replace(/\/$/, ''); // Remove trailing slash
+
+// Build URLs from admin base URL
+const LOGIN_URL = buildLoginUrl(adminUrl);
+const ADMIN_HOSTNAME = getAdminHostname(adminUrl);
 
 // Validate required arguments
 if (!email || !password || !primaryColor || !headPath || !bodyPath || !restaurantName) {
@@ -112,6 +133,7 @@ async function editWebsiteSettingsLight() {
   }
   
   console.log('\nConfiguration:');
+  console.log(`  Admin Portal: ${adminUrl}`);
   console.log(`  Email: ${email}`);
   console.log(`  Password: ${'*'.repeat(password.length)}`);
   console.log(`  Restaurant Name: ${restaurantName}`);
@@ -164,12 +186,12 @@ async function editWebsiteSettingsLight() {
     // Wait for redirect with better error handling (like test-get-restaurant-id.js)
     console.log('  ⏳ Waiting for redirect...');
     try {
-      await page.waitForURL('**/admin.pumpd.co.nz/**', { timeout: 15000 });
+      await page.waitForURL(`**/${ADMIN_HOSTNAME}/**`, { timeout: 15000 });
       console.log('  ✓ Successfully logged in!');
       console.log('  ✓ Redirected to dashboard');
     } catch (error) {
       const currentUrl = page.url();
-      if (currentUrl.includes('admin.pumpd.co.nz')) {
+      if (currentUrl.includes(ADMIN_HOSTNAME)) {
         console.log('  ✓ Successfully logged in (already on dashboard)');
       } else {
         throw new Error('Login failed - not redirected to dashboard');

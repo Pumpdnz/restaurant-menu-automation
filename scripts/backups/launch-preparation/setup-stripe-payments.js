@@ -1,29 +1,20 @@
 #!/usr/bin/env node
 
 /**
- * Setup Stripe Payments (No Connect Link)
- *
+ * Setup Stripe Payments
+ * 
  * This script logs into the admin portal and configures Stripe payment settings
- *
+ * 
  * Usage:
- *   node setup-stripe-payments-no-link.js --email=<email> --password=<password> --name=<restaurant_name> [options]
- *
+ *   node setup-stripe-payments.js --email=<email> [options]
+ * 
  * Options:
  *   --email=<email>           Login email (required)
- *   --password=<password>     User password (required)
- *   --name=<restaurant_name>  Restaurant name for smart matching (required)
- *   --admin-url=<url>         CloudWaitress admin portal URL (default: https://admin.pumpd.co.nz)
- *   --country=<code>          Country code for currency settings (default: NZ)
  *   --debug                   Enable debug mode (keeps browser open)
- *
+ * 
  * Environment Variables:
+ *   ADMIN_PASSWORD          Admin password for login
  *   DEBUG_MODE              Enable debug mode (true/false)
- *
- * Example (default NZ):
- *   node setup-stripe-payments-no-link.js --email="test@example.com" --password="Password123!" --name="Test Restaurant"
- *
- * Example (Australian portal):
- *   node setup-stripe-payments-no-link.js --email="test@example.com" --password="Password123!" --name="Test Restaurant" --admin-url="https://admin.ozorders.com.au" --country="AU"
  */
 
 import { createRequire } from 'module';
@@ -33,24 +24,18 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import dotenv from 'dotenv';
 
-// Import shared browser configuration (ESM version)
-import {
-  createBrowser,
-  createContext,
-  takeScreenshot as sharedTakeScreenshot
-} from './lib/browser-config.mjs';
-
 const require = createRequire(import.meta.url);
 const { chromium } = require('./restaurant-registration/node_modules/playwright');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load environment variables from centralized .env file
-dotenv.config({ path: path.join(__dirname, '../UberEats-Image-Extractor/.env') });
+// Load environment variables
+dotenv.config();
 
-// Import country configuration (use createRequire for CommonJS module)
-const { getCountryConfig, getAdminHostname, buildLoginUrl } = require('./lib/country-config.cjs');
+// Configuration
+const LOGIN_URL = "https://admin.pumpd.co.nz/login";
+const DEBUG_MODE = process.env.DEBUG_MODE === 'true' || process.argv.includes('--debug');
 
 // Get parameters from command line arguments
 const args = process.argv.slice(2);
@@ -61,26 +46,8 @@ const getArg = (name) => {
 
 // Parse arguments
 const email = getArg('email');
-const password = getArg('password');
-const restaurantName = getArg('name');
-
-// ============================================================================
-// CONFIGURABLE ADMIN URL AND COUNTRY SUPPORT
-// ============================================================================
-const DEFAULT_ADMIN_URL = 'https://admin.pumpd.co.nz';
-const DEFAULT_COUNTRY = 'NZ';
-
-// Get admin URL and country from command line or use defaults
-const adminUrl = (getArg('admin-url') || DEFAULT_ADMIN_URL).replace(/\/$/, '');
-const country = getArg('country') || DEFAULT_COUNTRY;
-const countryConfig = getCountryConfig(country);
-
-// Build derived values
-const LOGIN_URL = buildLoginUrl(adminUrl);
-const ADMIN_HOSTNAME = getAdminHostname(adminUrl);
-
-// Configuration
-const DEBUG_MODE = process.env.DEBUG_MODE === 'true' || process.argv.includes('--debug');
+const password = getArg('password');  // NEW: User password
+const restaurantName = getArg('name'); // NEW: For matching
 
 // Validate required arguments
 if (!email || !password || !restaurantName) {
@@ -89,18 +56,12 @@ if (!email || !password || !restaurantName) {
   process.exit(1);
 }
 
-console.log('Admin URL Configuration:');
-console.log('  Admin URL:', adminUrl);
-console.log('  Login URL:', LOGIN_URL);
-console.log('  Admin Hostname:', ADMIN_HOSTNAME);
-console.log('  Country:', country);
-console.log('  Currency:', countryConfig.currency);
-console.log('');
-
-// Screenshot utility - uses shared config (disabled by default)
-const SCREENSHOT_DIR = path.join(__dirname, 'screenshots');
+// Utility function for screenshots
 const takeScreenshot = async (page, name) => {
-  return sharedTakeScreenshot(page, `payments-settings-${name}`, SCREENSHOT_DIR);
+  const screenshotPath = path.join(__dirname, 'screenshots', `payments-settings-${name}-${Date.now()}.png`);
+  await fs.mkdir(path.dirname(screenshotPath), { recursive: true });
+  await page.screenshot({ path: screenshotPath, fullPage: true });
+  console.log(`📸 Screenshot: ${screenshotPath}`);
 };
 
 async function setupStripePayments() {
@@ -113,8 +74,16 @@ async function setupStripePayments() {
   console.log(`  Debug Mode: ${DEBUG_MODE}`);
   console.log('');
   
-  const browser = await createBrowser(chromium);
-  const context = await createContext(browser);
+  const browser = await chromium.launch({
+    headless: false,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    slowMo: 100
+  });
+  
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+    ignoreHTTPSErrors: true
+  });
   
   const page = await context.newPage();
   
@@ -131,10 +100,10 @@ async function setupStripePayments() {
     await page.click('button[type="submit"], button:has-text("Login"), button:has-text("Sign In")');
     console.log('  ✓ Clicked login');
     
-    // Wait for redirect using dynamic admin hostname pattern
+    // Wait for redirect
     console.log('  ⏳ Waiting for redirect...');
     try {
-      await page.waitForURL(`**/${ADMIN_HOSTNAME}/**`, { timeout: 10000 });
+      await page.waitForURL('**/admin.pumpd.co.nz/**', { timeout: 10000 });
       console.log('  ✓ Successfully logged in!');
     } catch (error) {
       throw new Error('Login failed - not redirected to dashboard');
@@ -487,53 +456,53 @@ async function setupStripePayments() {
     console.log('  ✓ Enabled Stripe');
     await page.waitForTimeout(1000);
     
-    // 7. Set Currency using country config
-    console.log(`  Setting currency to ${countryConfig.currency}...`);
-    const currencyInputSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(2) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div';
+    // 7. Set Currency to NZD
+    console.log('  Setting currency to NZD...');
+    const currencyInputSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(3) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div';
     await page.click(currencyInputSelector);
     await page.waitForTimeout(1000);
-
-    // 8. Type currency code from country config
-    await page.keyboard.type(countryConfig.currency);
+    
+    // 8. Type NZD
+    await page.keyboard.type('NZD');
     await page.waitForTimeout(1500);
-
-    // 9. Click currency option from dropdown
-    const currencyOptionSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(2) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.selectadv__Dropdown-eSUwYi.dtQnDO > div';
-    await page.click(currencyOptionSelector);
+    
+    // 9. Click NZD option from dropdown
+    const nzdOptionSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(3) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.selectadv__Dropdown-eSUwYi.dtQnDO > div';
+    await page.click(nzdOptionSelector);
     await page.waitForTimeout(1000);
-    console.log(`  ✓ Set currency to ${countryConfig.currency}`);
+    console.log('  ✓ Set currency to NZD');
     
     // 10. Set Layout to "Accordion without radio button"
     console.log('  Setting layout...');
-    const layoutSectionSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(5) > div > div.group__FormGroupContent-ccjnpO.kpPgpj';
+    const layoutSectionSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(6) > div > div.group__FormGroupContent-ccjnpO.kpPgpj';
     const layoutSection = page.locator(layoutSectionSelector);
     await layoutSection.scrollIntoViewIfNeeded();
     await layoutSection.click();
     await page.waitForTimeout(1000);
     
     // 11. Click "Accordion without radio button"
-    const accordionOptionSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(5) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.selectadv__Dropdown-eSUwYi.dtQnDO > div:nth-child(3)';
+    const accordionOptionSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(6) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.selectadv__Dropdown-eSUwYi.dtQnDO > div:nth-child(3)';
     await page.click(accordionOptionSelector);
     await page.waitForTimeout(1000);
     console.log('  ✓ Set layout to Accordion without radio button');
     
     // 12. Set Theme to "Flat"
     console.log('  Setting theme...');
-    const themeSectionSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(6) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div';
+    const themeSectionSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(7) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div';
     const themeSection = page.locator(themeSectionSelector);
     await themeSection.scrollIntoViewIfNeeded();
     await themeSection.click();
     await page.waitForTimeout(1000);
     
     // 13. Click "Flat"
-    const flatOptionSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(6) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.selectadv__Dropdown-eSUwYi.dtQnDO > div:nth-child(3)';
+    const flatOptionSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(7) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.selectadv__Dropdown-eSUwYi.dtQnDO > div:nth-child(3)';
     await page.click(flatOptionSelector);
     await page.waitForTimeout(1000);
     console.log('  ✓ Set theme to Flat');
     
     // 14-15. Set Label to "Stripe"
     console.log('  Setting labels...');
-    const labelInputSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(8) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > input';
+    const labelInputSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(9) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > input';
     const labelInput = page.locator(labelInputSelector);
     await labelInput.scrollIntoViewIfNeeded();
     await labelInput.click();
@@ -541,7 +510,7 @@ async function setupStripePayments() {
     console.log('  ✓ Set label to Stripe');
     
     // 16-17. Set Delivery Label to "Stripe"
-    const deliveryLabelSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(9) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > input';
+    const deliveryLabelSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(10) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > input';
     const deliveryLabel = page.locator(deliveryLabelSelector);
     await deliveryLabel.scrollIntoViewIfNeeded();
     await deliveryLabel.click();
@@ -549,7 +518,7 @@ async function setupStripePayments() {
     console.log('  ✓ Set delivery label to Stripe');
     
     // 18-19. Set Print Label to "Paid Online - Pump'd"
-    const printLabelSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(10) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > input';
+    const printLabelSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(11) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > input';
     const printLabel = page.locator(printLabelSelector);
     await printLabel.scrollIntoViewIfNeeded();
     await printLabel.click();
@@ -557,7 +526,7 @@ async function setupStripePayments() {
     console.log('  ✓ Set print label');
     
     // 20-21. Set Maximum Order Value to "9999"
-    const maxOrderSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(11) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > input';
+    const maxOrderSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(12) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > input';
     const maxOrder = page.locator(maxOrderSelector);
     await maxOrder.scrollIntoViewIfNeeded();
     await maxOrder.click();
@@ -565,7 +534,7 @@ async function setupStripePayments() {
     console.log('  ✓ Set maximum order value to $9999');
     
     // 22-23. Set Minimum Order Value to "2"
-    const minOrderSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(12) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > input';
+    const minOrderSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(13) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > input';
     const minOrder = page.locator(minOrderSelector);
     await minOrder.scrollIntoViewIfNeeded();
     await minOrder.click();
@@ -584,13 +553,76 @@ async function setupStripePayments() {
     console.log('  ⏳ Waiting for configuration to save...');
     await page.waitForTimeout(8000); // Increased from 3000 to 8000 for better reliability
     
-    // Note: Connect to Stripe button is no longer available in the UI
-    // The configuration is complete at this point
+    // 26. Click "Connect to Stripe"
+    console.log('\n🔗 STEP 6: Connecting to Stripe');
+    const connectStripeSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(2) > div > div > button';
+    const connectButton = page.locator(connectStripeSelector);
+    await connectButton.scrollIntoViewIfNeeded();
+    
+    // Store the current URL before clicking
+    const urlBeforeClick = page.url();
+    console.log('  Current URL before click:', urlBeforeClick);
+    
+    // Click the button and handle navigation
+    await connectButton.click();
+    console.log('  ✓ Clicked Connect to Stripe');
+    
+    // Wait longer for navigation to start (increased from 2000 to 5000)
+    console.log('  ⏳ Waiting for Stripe Connect to load...');
+    await page.waitForTimeout(5000);
+    
+    // Check what happened after clicking
+    let stripeConnectUrl = page.url();
+    let navigationMethod = 'unknown';
+    
+    // Check if URL changed in the same tab
+    if (stripeConnectUrl !== urlBeforeClick) {
+      if (stripeConnectUrl.includes('stripe.com')) {
+        navigationMethod = 'same-tab';
+        console.log('  ✓ Navigated to Stripe Connect in same tab');
+      } else {
+        console.log('  ⚠️ URL changed but not to Stripe:', stripeConnectUrl);
+      }
+    } else {
+      // URL didn't change, check for new tab
+      console.log('  URL unchanged, checking for new tab...');
+      const pages = context.pages();
+      console.log(`  Found ${pages.length} total page(s)`);
+      
+      if (pages.length > 1) {
+        const newPage = pages[pages.length - 1];
+        await newPage.waitForLoadState('domcontentloaded', { timeout: 10000 });
+        // Additional wait for the page to fully load
+        await newPage.waitForTimeout(3000);
+        stripeConnectUrl = newPage.url();
+        navigationMethod = 'new-tab';
+        console.log('  ✓ Stripe Connect opened in new tab');
+        console.log('  New tab URL:', stripeConnectUrl);
+      } else {
+        // No new tab, wait a bit more and check URL again
+        console.log('  No new tab detected, waiting for possible redirect...');
+        await page.waitForTimeout(5000);
+        stripeConnectUrl = page.url();
+        if (stripeConnectUrl !== urlBeforeClick) {
+          navigationMethod = 'delayed-redirect';
+          console.log('  ✓ Page redirected after delay');
+        } else {
+          navigationMethod = 'no-navigation';
+          console.log('  ⚠️ No navigation detected - button may require manual interaction');
+        }
+      }
+    }
+    
+    console.log('\n🌐 Stripe Connect Results:');
+    console.log('━'.repeat(50));
+    console.log(`Navigation Method: ${navigationMethod}`);
+    console.log(`Final URL: ${stripeConnectUrl}`);
+    console.log('━'.repeat(50));
     
     await takeScreenshot(page, '06-stripe-configured');
     
     console.log('\n✅ Stripe payment method successfully configured!');
-    console.log('ℹ️  Note: Stripe connection must be completed separately through the Stripe dashboard');
+    console.log('⚠️  Please complete the Stripe connection process at the URL above');
     
     // Keep browser open in debug mode
     if (DEBUG_MODE) {

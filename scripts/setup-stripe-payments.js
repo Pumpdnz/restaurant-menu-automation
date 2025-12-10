@@ -1,20 +1,29 @@
 #!/usr/bin/env node
 
 /**
- * Setup Stripe Payments
- * 
+ * Setup Stripe Payments (With Connect Link)
+ *
  * This script logs into the admin portal and configures Stripe payment settings
- * 
+ *
  * Usage:
- *   node setup-stripe-payments.js --email=<email> [options]
- * 
+ *   node setup-stripe-payments.js --email=<email> --password=<password> --name=<restaurant_name> [options]
+ *
  * Options:
  *   --email=<email>           Login email (required)
+ *   --password=<password>     User password (required)
+ *   --name=<restaurant_name>  Restaurant name for smart matching (required)
+ *   --admin-url=<url>         CloudWaitress admin portal URL (default: https://admin.pumpd.co.nz)
+ *   --country=<code>          Country code for currency settings (default: NZ)
  *   --debug                   Enable debug mode (keeps browser open)
- * 
+ *
  * Environment Variables:
- *   ADMIN_PASSWORD          Admin password for login
  *   DEBUG_MODE              Enable debug mode (true/false)
+ *
+ * Example (default NZ):
+ *   node setup-stripe-payments.js --email="test@example.com" --password="Password123!" --name="Test Restaurant"
+ *
+ * Example (Australian portal):
+ *   node setup-stripe-payments.js --email="test@example.com" --password="Password123!" --name="Test Restaurant" --admin-url="https://admin.ozorders.com.au" --country="AU"
  */
 
 import { createRequire } from 'module';
@@ -40,9 +49,8 @@ const __dirname = dirname(__filename);
 // Load environment variables from centralized .env file
 dotenv.config({ path: path.join(__dirname, '../UberEats-Image-Extractor/.env') });
 
-// Configuration
-const LOGIN_URL = "https://admin.pumpd.co.nz/login";
-const DEBUG_MODE = process.env.DEBUG_MODE === 'true' || process.argv.includes('--debug');
+// Import country configuration (use createRequire for CommonJS module)
+const { getCountryConfig, getAdminHostname, buildLoginUrl } = require('./lib/country-config.cjs');
 
 // Get parameters from command line arguments
 const args = process.argv.slice(2);
@@ -53,8 +61,26 @@ const getArg = (name) => {
 
 // Parse arguments
 const email = getArg('email');
-const password = getArg('password');  // NEW: User password
-const restaurantName = getArg('name'); // NEW: For matching
+const password = getArg('password');
+const restaurantName = getArg('name');
+
+// ============================================================================
+// CONFIGURABLE ADMIN URL AND COUNTRY SUPPORT
+// ============================================================================
+const DEFAULT_ADMIN_URL = 'https://admin.pumpd.co.nz';
+const DEFAULT_COUNTRY = 'NZ';
+
+// Get admin URL and country from command line or use defaults
+const adminUrl = (getArg('admin-url') || DEFAULT_ADMIN_URL).replace(/\/$/, '');
+const country = getArg('country') || DEFAULT_COUNTRY;
+const countryConfig = getCountryConfig(country);
+
+// Build derived values
+const LOGIN_URL = buildLoginUrl(adminUrl);
+const ADMIN_HOSTNAME = getAdminHostname(adminUrl);
+
+// Configuration
+const DEBUG_MODE = process.env.DEBUG_MODE === 'true' || process.argv.includes('--debug');
 
 // Validate required arguments
 if (!email || !password || !restaurantName) {
@@ -62,6 +88,14 @@ if (!email || !password || !restaurantName) {
   console.error('Required: --email=<email> --password=<password> --name=<restaurant_name>');
   process.exit(1);
 }
+
+console.log('Admin URL Configuration:');
+console.log('  Admin URL:', adminUrl);
+console.log('  Login URL:', LOGIN_URL);
+console.log('  Admin Hostname:', ADMIN_HOSTNAME);
+console.log('  Country:', country);
+console.log('  Currency:', countryConfig.currency);
+console.log('');
 
 // Screenshot utility - uses shared config (disabled by default)
 const SCREENSHOT_DIR = path.join(__dirname, 'screenshots');
@@ -97,10 +131,10 @@ async function setupStripePayments() {
     await page.click('button[type="submit"], button:has-text("Login"), button:has-text("Sign In")');
     console.log('  ✓ Clicked login');
     
-    // Wait for redirect
+    // Wait for redirect using dynamic admin hostname pattern
     console.log('  ⏳ Waiting for redirect...');
     try {
-      await page.waitForURL('**/admin.pumpd.co.nz/**', { timeout: 10000 });
+      await page.waitForURL(`**/${ADMIN_HOSTNAME}/**`, { timeout: 10000 });
       console.log('  ✓ Successfully logged in!');
     } catch (error) {
       throw new Error('Login failed - not redirected to dashboard');
@@ -453,21 +487,21 @@ async function setupStripePayments() {
     console.log('  ✓ Enabled Stripe');
     await page.waitForTimeout(1000);
     
-    // 7. Set Currency to NZD
-    console.log('  Setting currency to NZD...');
+    // 7. Set Currency using country config
+    console.log(`  Setting currency to ${countryConfig.currency}...`);
     const currencyInputSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(3) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div';
     await page.click(currencyInputSelector);
     await page.waitForTimeout(1000);
-    
-    // 8. Type NZD
-    await page.keyboard.type('NZD');
+
+    // 8. Type currency code from country config
+    await page.keyboard.type(countryConfig.currency);
     await page.waitForTimeout(1500);
-    
-    // 9. Click NZD option from dropdown
-    const nzdOptionSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(3) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.selectadv__Dropdown-eSUwYi.dtQnDO > div';
-    await page.click(nzdOptionSelector);
+
+    // 9. Click currency option from dropdown
+    const currencyOptionSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(3) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.selectadv__Dropdown-eSUwYi.dtQnDO > div';
+    await page.click(currencyOptionSelector);
     await page.waitForTimeout(1000);
-    console.log('  ✓ Set currency to NZD');
+    console.log(`  ✓ Set currency to ${countryConfig.currency}`);
     
     // 10. Set Layout to "Accordion without radio button"
     console.log('  Setting layout...');

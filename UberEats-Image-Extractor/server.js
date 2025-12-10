@@ -529,16 +529,17 @@ async function startBackgroundExtraction(jobId, url, categories, restaurantName 
 // Configure CORS for development and production
 const corsOptions = {
   origin: isDevelopment
-    ? ['http://localhost:3007', 'http://localhost:5007', 'http://localhost:5173', '*']
+    ? true  // Allow all origins in development
     : [
         // Production domains - update these after Railway/Netlify deployment
         process.env.FRONTEND_URL,           // e.g., https://your-app.netlify.app
+        'https://pumpd-menu-builder.netlify.app',
         /\.netlify\.app$/,                   // Any Netlify preview deploys
         /\.railway\.app$/,                   // Railway domains
       ].filter(Boolean),
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Organization-ID', 'X-Organisation-ID'],
   optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions));
@@ -5130,29 +5131,36 @@ app.patch('/api/restaurants/:id/workflow', authMiddleware, async (req, res) => {
 app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, async (req, res) => {
   try {
     const { restaurantName, city, restaurantId } = req.body;
-    
+    const organisationId = req.user?.organisationId;
+
     if (!restaurantName || !city) {
       return res.status(400).json({
         success: false,
         error: 'Restaurant name and city are required'
       });
     }
-    
-    console.log(`[Google Business Search] Searching for: ${restaurantName} in ${city}`);
-    
-    // Step 1: Search for all platform URLs
+
+    // Get organization-specific search country
+    const { OrganizationSettingsService } = require('./src/services/organization-settings-service');
+    const searchCountry = await OrganizationSettingsService.getSearchCountry(organisationId);
+    const countryCode = (await OrganizationSettingsService.getOrganizationCountry(organisationId)).toLowerCase();
+
+    console.log(`[Google Business Search] Searching for: ${restaurantName} in ${city} (${searchCountry})`);
+
+    // Get country-specific delivery platforms
+    const { getCountryConfig } = require('./scripts/lib/country-config');
+    const countryConfig = getCountryConfig(countryCode.toUpperCase());
+
+    // Step 1: Search for all platform URLs (using dynamic country)
     const platformQueries = [
-      `"${restaurantName}" "${city}" New Zealand site:ubereats.com`,
-      `"${restaurantName}" "${city}" New Zealand site:doordash.com`,
-      `"${restaurantName}" "${city}" New Zealand site:facebook.com`,
-      `"${restaurantName}" "${city}" New Zealand site:instagram.com`,
-      `"${restaurantName}" "${city}" New Zealand site:meandyou.co.nz`,
-      `"${restaurantName}" "${city}" New Zealand site:mobi2go.com`,
-      `"${restaurantName}" "${city}" New Zealand site:delivereasy.co.nz`,
-      `"${restaurantName}" "${city}" New Zealand site:nextorder.co.nz`,
-      `"${restaurantName}" "${city}" New Zealand site:foodhub.co.nz`,
-      `"${restaurantName}" "${city}" New Zealand site:ordermeal.co.nz`,
-      `"${restaurantName}" "${city}" New Zealand website contact hours` // General search for restaurant website
+      `"${restaurantName}" "${city}" ${searchCountry} site:ubereats.com`,
+      `"${restaurantName}" "${city}" ${searchCountry} site:doordash.com`,
+      `"${restaurantName}" "${city}" ${searchCountry} site:facebook.com`,
+      `"${restaurantName}" "${city}" ${searchCountry} site:instagram.com`,
+      ...countryConfig.deliveryPlatformDomains
+        .filter(domain => !['ubereats.com', 'doordash.com'].includes(domain))
+        .map(domain => `"${restaurantName}" "${city}" ${searchCountry} site:${domain}`),
+      `"${restaurantName}" "${city}" ${searchCountry} website contact hours` // General search for restaurant website
     ];
 
     const foundUrls = {
@@ -5172,7 +5180,7 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
     console.log('[Google Business Search] Searching for platform URLs...');
     
     // Combine into a single search query to avoid rate limits
-    const combinedQuery = `"${restaurantName}" "${city}" New Zealand (website OR ubereats OR doordash OR delivereasy OR facebook OR instagram OR menu OR order online)`;
+    const combinedQuery = `"${restaurantName}" "${city}" ${searchCountry} (website OR ubereats OR doordash OR delivereasy OR facebook OR instagram OR menu OR order online)`;
     
     try {
       const searchResponse = await axios.post(
@@ -5264,10 +5272,10 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
           const simpleSearch = await axios.post(
             `${FIRECRAWL_API_URL}/v2/search`,
             {
-              query: `"${restaurantName}" "${city}" New Zealand`,
+              query: `"${restaurantName}" "${city}" ${searchCountry}`,
               limit: 10,
               lang: 'en',
-              country: 'nz',
+              country: countryCode,
               sources: [{ type: 'web' }]
             },
             {
@@ -5819,7 +5827,6 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
     });
 
     // Track Google search usage
-    const organisationId = req.organizationId;
     if (organisationId) {
       UsageTrackingService.trackEvent(organisationId, UsageEventType.GOOGLE_SEARCH, 1, {
         restaurant_name: restaurantName,
@@ -5850,54 +5857,60 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
  * POST /api/platform-url-search
  * Search for a specific platform URL for a restaurant
  */
-app.post('/api/platform-url-search', async (req, res) => {
+app.post('/api/platform-url-search', authMiddleware, async (req, res) => {
   try {
     const { restaurantName, city, platform, restaurantId } = req.body;
-    
+    const organisationId = req.user?.organisationId;
+
     if (!restaurantName || !city || !platform) {
       return res.status(400).json({
         success: false,
         error: 'Restaurant name, city, and platform are required'
       });
     }
-    
-    console.log(`[Platform URL Search] Searching for ${platform} URL: ${restaurantName} in ${city}`);
-    
+
+    // Get organization-specific search country
+    const { OrganizationSettingsService } = require('./src/services/organization-settings-service');
+    const searchCountry = await OrganizationSettingsService.getSearchCountry(organisationId);
+    const countryCode = (await OrganizationSettingsService.getOrganizationCountry(organisationId)).toLowerCase();
+
+    console.log(`[Platform URL Search] Searching for ${platform} URL: ${restaurantName} in ${city} (${searchCountry})`);
+
     // Build platform-specific search query
     let searchQuery = '';
     switch(platform) {
       case 'ubereats':
-        searchQuery = `"${restaurantName}" "${city}" New Zealand site:ubereats.com`;
+        searchQuery = `"${restaurantName}" "${city}" ${searchCountry} site:ubereats.com`;
         break;
       case 'doordash':
-        searchQuery = `"${restaurantName}" "${city}" New Zealand site:doordash.com`;
+        searchQuery = `"${restaurantName}" "${city}" ${searchCountry} site:doordash.com`;
         break;
       case 'facebook':
-        searchQuery = `"${restaurantName}" "${city}" New Zealand site:facebook.com`;
+        searchQuery = `"${restaurantName}" "${city}" ${searchCountry} site:facebook.com`;
         break;
       case 'instagram':
-        searchQuery = `"${restaurantName}" "${city}" New Zealand site:instagram.com`;
+        searchQuery = `"${restaurantName}" "${city}" ${searchCountry} site:instagram.com`;
         break;
       case 'website':
-        searchQuery = `"${restaurantName}" "${city}" New Zealand website contact hours`;
+        searchQuery = `"${restaurantName}" "${city}" ${searchCountry} website contact hours`;
         break;
       case 'meandyou':
-        searchQuery = `"${restaurantName}" "${city}" New Zealand site:meandyou.co.nz`;
+        searchQuery = `"${restaurantName}" "${city}" ${searchCountry} site:meandyou.co.nz`;
         break;
       case 'mobi2go':
-        searchQuery = `"${restaurantName}" "${city}" New Zealand site:mobi2go.com`;
+        searchQuery = `"${restaurantName}" "${city}" ${searchCountry} site:mobi2go.com`;
         break;
       case 'delivereasy':
-        searchQuery = `"${restaurantName}" "${city}" New Zealand site:delivereasy.co.nz`;
+        searchQuery = `"${restaurantName}" "${city}" ${searchCountry} site:delivereasy.co.nz`;
         break;
       case 'nextorder':
-        searchQuery = `"${restaurantName}" "${city}" New Zealand site:nextorder.co.nz`;
+        searchQuery = `"${restaurantName}" "${city}" ${searchCountry} site:nextorder.co.nz`;
         break;
       case 'foodhub':
-        searchQuery = `"${restaurantName}" "${city}" New Zealand site:foodhub.co.nz`;
+        searchQuery = `"${restaurantName}" "${city}" ${searchCountry} site:foodhub.co.nz`;
         break;
       case 'ordermeal':
-        searchQuery = `"${restaurantName}" "${city}" New Zealand site:ordermeal.co.nz`;
+        searchQuery = `"${restaurantName}" "${city}" ${searchCountry} site:ordermeal.co.nz`;
         break;
       default:
         return res.status(400).json({
@@ -5905,7 +5918,7 @@ app.post('/api/platform-url-search', async (req, res) => {
           error: `Unsupported platform: ${platform}`
         });
     }
-    
+
     try {
       const searchResponse = await axios.post(
         `${FIRECRAWL_API_URL}/v2/search`,
@@ -5913,7 +5926,7 @@ app.post('/api/platform-url-search', async (req, res) => {
           query: searchQuery,
           limit: 5,
           lang: 'en',
-          country: 'nz',
+          country: countryCode,
           sources: [{ type: 'web' }]
         },
         {

@@ -2,15 +2,13 @@
 
 /**
  * Edit Website Settings - Dark Theme Configuration
- *
+ * 
  * This script logs into the admin portal, navigates to Website settings,
  * configures dark theme with custom colors, and adds code injections
- *
- * Supports multiple CloudWaitress resellers with configurable admin URLs.
- *
+ * 
  * Usage:
  *   node edit-website-settings-dark.js [options]
- *
+ * 
  * Options:
  *   --email=<email>           Login email (required)
  *   --password=<password>     User password (required)
@@ -25,17 +23,13 @@
  *   --location=<text>         Restaurant location (optional)
  *   --address=<text>          Restaurant address (optional)
  *   --phone=<text>            Restaurant phone number (optional)
- *   --admin-url=<url>         CloudWaitress admin portal URL (default: https://admin.pumpd.co.nz)
  *   --debug                   Enable debug mode (keeps browser open)
- *
+ * 
  * Environment Variables:
  *   DEBUG_MODE              Enable debug mode (true/false)
- *
- * Example (default NZ):
+ * 
+ * Example:
  *   node edit-website-settings-dark.js --email="test@example.com" --password="Password123!" --name="Curry Garden" --primary="#A47F20" --head="../generated-code/restaurant/head-injection.html" --body="../generated-code/restaurant/body-injection.html"
- *
- * Example (custom admin URL):
- *   node edit-website-settings-dark.js --email="test@example.com" --password="Password123!" --name="Curry Garden" --primary="#A47F20" --head="../generated-code/restaurant/head-injection.html" --body="../generated-code/restaurant/body-injection.html" --admin-url="https://admin.ozorders.com.au"
  */
 
 import { createRequire } from 'module';
@@ -45,33 +39,18 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import dotenv from 'dotenv';
 
-// Import shared browser configuration (ESM version)
-import {
-  createBrowser,
-  createContext,
-  takeScreenshot as sharedTakeScreenshot
-} from './lib/browser-config.mjs';
-
-// Import country configuration (ESM version)
-import {
-  getAdminHostname,
-  buildLoginUrl
-} from './lib/country-config.js';
-
 const require = createRequire(import.meta.url);
 const { chromium } = require('./restaurant-registration/node_modules/playwright');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load environment variables from centralized .env file
-dotenv.config({ path: path.join(__dirname, '../UberEats-Image-Extractor/.env') });
+// Load environment variables
+dotenv.config();
 
 // Configuration
+const LOGIN_URL = "https://admin.pumpd.co.nz/login";
 const DEBUG_MODE = process.env.DEBUG_MODE === 'true' || process.argv.includes('--debug');
-
-// Default values
-const DEFAULT_ADMIN_URL = 'https://admin.pumpd.co.nz';
 
 // Get parameters from command line arguments
 const args = process.argv.slice(2);
@@ -82,7 +61,7 @@ const getArg = (name) => {
 
 // Parse arguments
 const email = getArg('email');
-const password = getArg('password');
+const password = getArg('password'); // NEW: Accept password as argument
 const primaryColor = getArg('primary');
 const headPath = getArg('head');
 const bodyPath = getArg('body');
@@ -95,13 +74,6 @@ const location = getArg('location');
 const address = getArg('address');
 const phoneNumber = getArg('phone');
 
-// Parse configurable parameters (with defaults)
-const adminUrl = (getArg('admin-url') || DEFAULT_ADMIN_URL).replace(/\/$/, ''); // Remove trailing slash
-
-// Build URLs from admin base URL
-const LOGIN_URL = buildLoginUrl(adminUrl);
-const ADMIN_HOSTNAME = getAdminHostname(adminUrl);
-
 // Validate required arguments
 if (!email || !password || !primaryColor || !headPath || !bodyPath || !restaurantName) {
   console.error('❌ Error: Missing required parameters');
@@ -111,10 +83,12 @@ if (!email || !password || !primaryColor || !headPath || !bodyPath || !restauran
   process.exit(1);
 }
 
-// Screenshot utility - uses shared config (disabled by default)
-const SCREENSHOT_DIR = path.join(__dirname, 'screenshots');
+// Utility function for screenshots
 const takeScreenshot = async (page, name) => {
-  return sharedTakeScreenshot(page, `website-settings-${name}`, SCREENSHOT_DIR);
+  const screenshotPath = path.join(__dirname, 'screenshots', `website-settings-${name}-${Date.now()}.png`);
+  await fs.mkdir(path.dirname(screenshotPath), { recursive: true });
+  await page.screenshot({ path: screenshotPath, fullPage: true });
+  console.log(`📸 Screenshot: ${screenshotPath}`);
 };
 
 async function editWebsiteSettingsDark() {
@@ -132,7 +106,6 @@ async function editWebsiteSettingsDark() {
   }
   
   console.log('\nConfiguration:');
-  console.log(`  Admin Portal: ${adminUrl}`);
   console.log(`  Email: ${email}`);
   console.log(`  Password: ${'*'.repeat(password.length)}`);
   console.log(`  Restaurant Name: ${restaurantName}`);
@@ -149,8 +122,16 @@ async function editWebsiteSettingsDark() {
   console.log(`  Debug Mode: ${DEBUG_MODE}`);
   console.log('');
   
-  const browser = await createBrowser(chromium);
-  const context = await createContext(browser);
+  const browser = await chromium.launch({
+    headless: false,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    slowMo: 100
+  });
+  
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+    ignoreHTTPSErrors: true
+  });
   
   const page = await context.newPage();
   
@@ -184,12 +165,12 @@ async function editWebsiteSettingsDark() {
     // Wait for redirect with better error handling (like test-get-restaurant-id.js)
     console.log('  ⏳ Waiting for redirect...');
     try {
-      await page.waitForURL(`**/${ADMIN_HOSTNAME}/**`, { timeout: 15000 });
+      await page.waitForURL('**/admin.pumpd.co.nz/**', { timeout: 15000 });
       console.log('  ✓ Successfully logged in!');
       console.log('  ✓ Redirected to dashboard');
     } catch (error) {
       const currentUrl = page.url();
-      if (currentUrl.includes(ADMIN_HOSTNAME)) {
+      if (currentUrl.includes('admin.pumpd.co.nz')) {
         console.log('  ✓ Successfully logged in (already on dashboard)');
       } else {
         throw new Error('Login failed - not redirected to dashboard');

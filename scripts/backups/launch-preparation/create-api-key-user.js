@@ -7,23 +7,16 @@
  * for the specific restaurant passed as an argument.
  *
  * Usage:
- *   node create-api-key-user.js --email=<email> --password=<password> --name=<restaurant_name> [options]
+ *   node create-api-key-user.js --email=<email> --password=<password> --name=<restaurant_name>
  *
  * Options:
  *   --email=<email>           Login email (required)
  *   --password=<password>     User password (required)
  *   --name=<restaurant_name>  Restaurant name for smart matching (required)
- *   --admin-url=<url>         CloudWaitress admin portal URL (default: https://admin.pumpd.co.nz)
  *   --debug                   Enable debug mode (keeps browser open)
  *
  * Environment Variables:
  *   DEBUG_MODE              Enable debug mode (true/false)
- *
- * Example (default NZ):
- *   node create-api-key-user.js --email="test@example.com" --password="Password123!" --name="Test Restaurant"
- *
- * Example (Australian portal):
- *   node create-api-key-user.js --email="test@example.com" --password="Password123!" --name="Test Restaurant" --admin-url="https://admin.ozorders.com.au"
  */
 
 import { createRequire } from 'module';
@@ -33,24 +26,18 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import dotenv from 'dotenv';
 
-// Import shared browser configuration (ESM version)
-import {
-  createBrowser,
-  createContext,
-  takeScreenshot as sharedTakeScreenshot
-} from './lib/browser-config.mjs';
-
 const require = createRequire(import.meta.url);
 const { chromium } = require('./restaurant-registration/node_modules/playwright');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load environment variables from centralized .env file
-dotenv.config({ path: path.join(__dirname, '../UberEats-Image-Extractor/.env') });
+// Load environment variables
+dotenv.config();
 
-// Import country configuration (use createRequire for CommonJS module)
-const { getAdminHostname, buildLoginUrl } = require('./lib/country-config.cjs');
+// Configuration
+const LOGIN_URL = "https://admin.pumpd.co.nz/login";
+const DEBUG_MODE = process.env.DEBUG_MODE === 'true' || process.argv.includes('--debug');
 
 // Get parameters from command line arguments
 const args = process.argv.slice(2);
@@ -64,21 +51,6 @@ const email = getArg('email');
 const password = getArg('password');
 const restaurantName = getArg('name');
 
-// ============================================================================
-// CONFIGURABLE ADMIN URL SUPPORT
-// ============================================================================
-const DEFAULT_ADMIN_URL = 'https://admin.pumpd.co.nz';
-
-// Get admin URL from command line or use default
-const adminUrl = (getArg('admin-url') || DEFAULT_ADMIN_URL).replace(/\/$/, '');
-
-// Build derived values
-const LOGIN_URL = buildLoginUrl(adminUrl);
-const ADMIN_HOSTNAME = getAdminHostname(adminUrl);
-
-// Configuration
-const DEBUG_MODE = process.env.DEBUG_MODE === 'true' || process.argv.includes('--debug');
-
 // Validate required arguments
 if (!email || !password || !restaurantName) {
   console.error('❌ Error: Email, password, and restaurant name are required');
@@ -86,16 +58,12 @@ if (!email || !password || !restaurantName) {
   process.exit(1);
 }
 
-console.log('Admin URL Configuration:');
-console.log('  Admin URL:', adminUrl);
-console.log('  Login URL:', LOGIN_URL);
-console.log('  Admin Hostname:', ADMIN_HOSTNAME);
-console.log('');
-
-// Screenshot utility - uses shared config (disabled by default)
-const SCREENSHOT_DIR = path.join(__dirname, 'screenshots');
+// Utility function for screenshots
 const takeScreenshot = async (page, name) => {
-  return sharedTakeScreenshot(page, `api-key-user-${name}`, SCREENSHOT_DIR);
+  const screenshotPath = path.join(__dirname, 'screenshots', `api-key-user-${name}-${Date.now()}.png`);
+  await fs.mkdir(path.dirname(screenshotPath), { recursive: true });
+  await page.screenshot({ path: screenshotPath, fullPage: true });
+  console.log(`📸 Screenshot: ${screenshotPath}`);
 };
 
 
@@ -109,8 +77,15 @@ async function createApiKey() {
   console.log(`  Debug Mode: ${DEBUG_MODE}`);
   console.log('');
 
-  const browser = await createBrowser(chromium);
-  const context = await createContext(browser);
+  const browser = await chromium.launch({
+    headless: false,  // Always show browser for visibility
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  });
+
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+    ignoreHTTPSErrors: true
+  });
 
   const page = await context.newPage();
 
@@ -128,10 +103,10 @@ async function createApiKey() {
     await page.click('button[type="submit"], button:has-text("Login"), button:has-text("Sign In")');
     console.log('  ✓ Clicked login');
 
-    // Wait for redirect using dynamic admin hostname pattern
+    // Wait for redirect using the proven pattern
     console.log('  ⏳ Waiting for redirect...');
     try {
-      await page.waitForURL(`**/${ADMIN_HOSTNAME}/**`, { timeout: 10000 });
+      await page.waitForURL('**/admin.pumpd.co.nz/**', { timeout: 10000 });
       console.log('  ✓ Successfully logged in!');
     } catch (error) {
       throw new Error('Login failed - not redirected to dashboard');

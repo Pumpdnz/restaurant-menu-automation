@@ -5,7 +5,8 @@ import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
 import { Alert, AlertDescription } from '../../ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
-import { Loader2, AlertCircle, Users, Settings, Activity, Key, Eye, EyeOff } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
+import { Loader2, AlertCircle, Users, Settings, Activity, Key } from 'lucide-react';
 import { FeatureFlagsEditor } from './FeatureFlagsEditor';
 import { supabase } from '../../../lib/supabase';
 import { useToast } from '../../ui/use-toast';
@@ -17,6 +18,43 @@ interface OrganizationEditModalProps {
   organizationId: string;
 }
 
+// Timezone options grouped by country
+const TIMEZONE_OPTIONS: Record<string, Array<{iana: string, display: string, city: string}>> = {
+  NZ: [
+    { iana: 'Pacific/Auckland', display: 'Auckland (NZST/NZDT)', city: 'Auckland' },
+    { iana: 'Pacific/Chatham', display: 'Chatham Islands', city: 'Chatham' }
+  ],
+  AU: [
+    { iana: 'Australia/Sydney', display: 'Sydney (AEST/AEDT)', city: 'Sydney' },
+    { iana: 'Australia/Melbourne', display: 'Melbourne (AEST/AEDT)', city: 'Melbourne' },
+    { iana: 'Australia/Brisbane', display: 'Brisbane (AEST)', city: 'Brisbane' },
+    { iana: 'Australia/Perth', display: 'Perth (AWST)', city: 'Perth' },
+    { iana: 'Australia/Adelaide', display: 'Adelaide (ACST/ACDT)', city: 'Adelaide' },
+    { iana: 'Australia/Darwin', display: 'Darwin (ACST)', city: 'Darwin' },
+    { iana: 'Australia/Hobart', display: 'Hobart (AEST/AEDT)', city: 'Hobart' }
+  ],
+  US: [
+    { iana: 'America/New_York', display: 'Eastern Time (ET)', city: 'New York' },
+    { iana: 'America/Chicago', display: 'Central Time (CT)', city: 'Chicago' },
+    { iana: 'America/Denver', display: 'Mountain Time (MT)', city: 'Denver' },
+    { iana: 'America/Los_Angeles', display: 'Pacific Time (PT)', city: 'Los Angeles' },
+    { iana: 'America/Phoenix', display: 'Arizona (MST)', city: 'Phoenix' },
+    { iana: 'America/Anchorage', display: 'Alaska Time (AKT)', city: 'Anchorage' },
+    { iana: 'Pacific/Honolulu', display: 'Hawaii Time (HST)', city: 'Honolulu' }
+  ],
+  GB: [
+    { iana: 'Europe/London', display: 'London (GMT/BST)', city: 'London' }
+  ],
+  CA: [
+    { iana: 'America/Toronto', display: 'Eastern Time (ET)', city: 'Toronto' },
+    { iana: 'America/Winnipeg', display: 'Central Time (CT)', city: 'Winnipeg' },
+    { iana: 'America/Edmonton', display: 'Mountain Time (MT)', city: 'Edmonton' },
+    { iana: 'America/Vancouver', display: 'Pacific Time (PT)', city: 'Vancouver' },
+    { iana: 'America/Halifax', display: 'Atlantic Time (AT)', city: 'Halifax' },
+    { iana: 'America/St_Johns', display: 'Newfoundland (NT)', city: "St. John's" }
+  ]
+};
+
 export function OrganizationEditModal({ open, onClose, onSuccess, organizationId }: OrganizationEditModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +64,6 @@ export function OrganizationEditModal({ open, onClose, onSuccess, organizationId
   const [organization, setOrganization] = useState<any>(null);
   const [members, setMembers] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
-  const [showSecret, setShowSecret] = useState(false);
 
   useEffect(() => {
     if (open && organizationId) {
@@ -162,6 +199,36 @@ export function OrganizationEditModal({ open, onClose, onSuccess, organizationId
               />
             </div>
 
+            {/* System-wide Country */}
+            <div className="space-y-2">
+              <Label htmlFor="system-country">Country</Label>
+              <Select
+                value={organization.settings?.country || 'NZ'}
+                onValueChange={(value) => setOrganization({
+                  ...organization,
+                  settings: {
+                    ...organization.settings,
+                    country: value
+                  }
+                })}
+                disabled={loading || organization.status === 'archived'}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select country" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NZ">New Zealand</SelectItem>
+                  <SelectItem value="AU">Australia</SelectItem>
+                  <SelectItem value="US">United States</SelectItem>
+                  <SelectItem value="GB">United Kingdom</SelectItem>
+                  <SelectItem value="CA">Canada</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500">
+                System-wide country setting for searches and default configurations
+              </p>
+            </div>
+
             {/* Status */}
             <div className="space-y-2">
               <Label>Status</Label>
@@ -224,33 +291,22 @@ export function OrganizationEditModal({ open, onClose, onSuccess, organizationId
 
                 <div className="space-y-2">
                   <Label htmlFor="cw-secret">Secret</Label>
-                  <div className="flex space-x-2">
-                    <Input
-                      id="cw-secret"
-                      type={showSecret ? 'text' : 'password'}
-                      placeholder="CWS_xxxx-xxxx-xxxx-xxxx"
-                      value={organization.settings?.cloudwaitress?.secret || ''}
-                      onChange={(e) => setOrganization({
-                        ...organization,
-                        settings: {
-                          ...organization.settings,
-                          cloudwaitress: {
-                            ...organization.settings?.cloudwaitress,
-                            secret: e.target.value || null
-                          }
+                  <Input
+                    id="cw-secret"
+                    placeholder="CWS_xxxx-xxxx-xxxx-xxxx"
+                    value={organization.settings?.cloudwaitress?.secret || ''}
+                    onChange={(e) => setOrganization({
+                      ...organization,
+                      settings: {
+                        ...organization.settings,
+                        cloudwaitress: {
+                          ...organization.settings?.cloudwaitress,
+                          secret: e.target.value || null
                         }
-                      })}
-                      disabled={loading || organization.status === 'archived'}
-                    />
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setShowSecret(!showSecret)}
-                      type="button"
-                    >
-                      {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
+                      }
+                    })}
+                    disabled={loading || organization.status === 'archived'}
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -273,6 +329,95 @@ export function OrganizationEditModal({ open, onClose, onSuccess, organizationId
                   />
                   <p className="text-xs text-gray-500">
                     Leave empty to use default: https://api.cloudwaitress.com
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cw-admin-url">Admin Portal URL</Label>
+                  <Input
+                    id="cw-admin-url"
+                    placeholder="https://admin.pumpd.co.nz"
+                    value={organization.settings?.cloudwaitress?.admin_url || ''}
+                    onChange={(e) => setOrganization({
+                      ...organization,
+                      settings: {
+                        ...organization.settings,
+                        cloudwaitress: {
+                          ...organization.settings?.cloudwaitress,
+                          admin_url: e.target.value || null
+                        }
+                      }
+                    })}
+                    disabled={loading || organization.status === 'archived'}
+                  />
+                  <p className="text-xs text-gray-500">
+                    The whitelabel CloudWaitress admin portal URL for this organization
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cw-country">Country</Label>
+                  <Select
+                    value={organization.settings?.cloudwaitress?.country || 'NZ'}
+                    onValueChange={(value) => setOrganization({
+                      ...organization,
+                      settings: {
+                        ...organization.settings,
+                        cloudwaitress: {
+                          ...organization.settings?.cloudwaitress,
+                          country: value,
+                          timezone: null // Reset timezone when country changes
+                        }
+                      }
+                    })}
+                    disabled={loading || organization.status === 'archived'}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="NZ">New Zealand</SelectItem>
+                      <SelectItem value="AU">Australia</SelectItem>
+                      <SelectItem value="US">United States</SelectItem>
+                      <SelectItem value="GB">United Kingdom</SelectItem>
+                      <SelectItem value="CA">Canada</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500">
+                    Country settings for timezone, currency, and tax configuration
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cw-timezone">Timezone</Label>
+                  <Select
+                    value={organization.settings?.cloudwaitress?.timezone || '_default'}
+                    onValueChange={(value) => setOrganization({
+                      ...organization,
+                      settings: {
+                        ...organization.settings,
+                        cloudwaitress: {
+                          ...organization.settings?.cloudwaitress,
+                          timezone: value === '_default' ? null : value
+                        }
+                      }
+                    })}
+                    disabled={loading || organization.status === 'archived'}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Use country default" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_default">Use country default</SelectItem>
+                      {(TIMEZONE_OPTIONS[organization.settings?.cloudwaitress?.country || 'NZ'] || TIMEZONE_OPTIONS.NZ).map((tz) => (
+                        <SelectItem key={tz.iana} value={tz.city}>
+                          {tz.display}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500">
+                    Override the default timezone for restaurant registration
                   </p>
                 </div>
               </div>

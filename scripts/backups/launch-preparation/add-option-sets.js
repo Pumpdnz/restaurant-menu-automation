@@ -1,15 +1,13 @@
 #!/usr/bin/env node
 
 /**
- * Menu Option Sets Configuration Script for CloudWaitress Admin Portals
+ * Menu Option Sets Configuration Script for admin.pumpd.co.nz
  *
  * This script performs automated configuration of menu item option sets including:
  * - Login to existing restaurant account
  * - Smart restaurant matching by name
  * - Navigation to correct restaurant management
  * - Option Sets configuration with conditions and items
- *
- * Supports multiple CloudWaitress resellers with configurable admin URLs.
  *
  * Usage:
  *   node add-option-sets.js [options]
@@ -20,7 +18,6 @@
  *      email: string,
  *      password: string,
  *      restaurantName: string,
- *      adminUrl: string (optional - defaults to https://admin.pumpd.co.nz),
  *      optionSets: [{
  *        name: string,
  *        display_name: string,
@@ -33,41 +30,25 @@
  *      }],
  *      menuItemMappings: object (for future use)
  *   }
- *   --admin-url=<url>         Override admin portal URL from payload
  *   --debug                   Keep browser open after completion
  *
  * Environment Variables:
  *   DEBUG_MODE=true           Alternative way to enable debug mode
  *
- * Example (default NZ):
+ * Example:
  *   node add-option-sets.js --payload="/path/to/temp-option-sets-payload.json"
- *
- * Example (custom admin URL):
- *   node add-option-sets.js --payload="/path/to/temp-option-sets-payload.json" --admin-url="https://admin.ozorders.com.au"
+ *   node add-option-sets.js --payload="/path/to/temp-option-sets-payload.json" --debug
  */
 
 const { chromium } = require('playwright');
 const fs = require('fs').promises;
 const path = require('path');
 
-// Load environment variables from centralized .env file
-require('dotenv').config({ path: path.join(__dirname, '../../UberEats-Image-Extractor/.env') });
-
-// Import shared browser configuration
-const {
-  createBrowser,
-  createContext,
-  takeScreenshot: sharedTakeScreenshot
-} = require('../lib/browser-config.cjs');
-
-// Import country configuration
-const {
-  getAdminHostname,
-  buildLoginUrl
-} = require('../lib/country-config.cjs');
+// Load environment variables from script directory
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 // Configuration
-const DEFAULT_ADMIN_URL = 'https://admin.pumpd.co.nz';
+const LOGIN_URL = "https://admin.pumpd.co.nz/login";
 
 // DEBUG_MODE can be set via environment variable or --debug flag
 const DEBUG_MODE = process.env.DEBUG_MODE === 'true' || process.argv.includes('--debug');
@@ -115,7 +96,6 @@ const getArg = (name) => {
 
 // Parse arguments
 const payloadPath = getArg('payload');
-const adminUrlArg = getArg('admin-url'); // Can override payload's adminUrl
 
 // Validate required arguments
 if (!payloadPath) {
@@ -126,10 +106,12 @@ if (!payloadPath) {
   process.exit(1);
 }
 
-// Screenshot utility - uses shared config (disabled by default)
-const SCREENSHOT_DIR = path.join(__dirname, 'screenshots');
+// Utility function for screenshots
 const takeScreenshot = async (page, name) => {
-  return sharedTakeScreenshot(page, `option-sets-${name}`, SCREENSHOT_DIR);
+  const screenshotPath = path.join(__dirname, 'screenshots', `option-sets-${name}-${Date.now()}.png`);
+  await fs.mkdir(path.dirname(screenshotPath), { recursive: true });
+  await page.screenshot({ path: screenshotPath, fullPage: true });
+  console.log(`Screenshot: ${screenshotPath}`);
 };
 
 async function addOptionSets() {
@@ -145,11 +127,6 @@ async function addOptionSets() {
 
   const { email, password, restaurantName, optionSets, menuItemMappings } = payload;
 
-  // Get admin URL: command line arg > payload > default
-  const adminUrl = (adminUrlArg || payload.adminUrl || DEFAULT_ADMIN_URL).replace(/\/$/, '');
-  const LOGIN_URL = buildLoginUrl(adminUrl);
-  const ADMIN_HOSTNAME = getAdminHostname(adminUrl);
-
   // Validate payload
   if (!email || !password || !restaurantName) {
     console.error('Error: Payload missing required fields (email, password, restaurantName)');
@@ -163,7 +140,6 @@ async function addOptionSets() {
 
   console.log('Starting Menu Option Sets Configuration...\n');
   console.log('Configuration:');
-  console.log(`  Admin Portal: ${adminUrl}`);
   console.log(`  Email: ${email}`);
   console.log(`  Password: ${'*'.repeat(password.length)}`);
   console.log(`  Restaurant: ${restaurantName}`);
@@ -171,8 +147,16 @@ async function addOptionSets() {
   console.log(`  Debug Mode: ${DEBUG_MODE ? 'ON (browser will stay open)' : 'OFF'}`);
   console.log('');
 
-  const browser = await createBrowser(chromium);
-  const context = await createContext(browser);
+  const browser = await chromium.launch({
+    headless: false,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    slowMo: 100
+  });
+
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+    ignoreHTTPSErrors: true
+  });
 
   const page = await context.newPage();
 
@@ -193,7 +177,7 @@ async function addOptionSets() {
 
     // Wait for dashboard
     console.log('\nWaiting for dashboard...');
-    await page.waitForURL(`**/${ADMIN_HOSTNAME}/**`, { timeout: 15000 });
+    await page.waitForURL('**/admin.pumpd.co.nz/**', { timeout: 15000 });
     console.log('  Reached dashboard:', page.url());
 
     // Wait for loading overlay to disappear
@@ -355,12 +339,12 @@ async function addOptionSets() {
     // Wait for navigation
     console.log('  Waiting for restaurant management page...');
     try {
-      await page.waitForURL(`**/${ADMIN_HOSTNAME}/restaurant/**`, { timeout: 15000 });
+      await page.waitForURL('**/admin.pumpd.co.nz/restaurant/**', { timeout: 15000 });
       console.log('  Navigated to restaurant page');
     } catch (error) {
       console.log('  Navigation timeout, checking current URL...');
       const currentUrl = page.url();
-      if (currentUrl.includes(`${ADMIN_HOSTNAME}/restaurant/`)) {
+      if (currentUrl.includes('admin.pumpd.co.nz/restaurant/')) {
         console.log('  Already on restaurant page');
       } else {
         throw error;

@@ -1,16 +1,14 @@
 #!/usr/bin/env node
 
 /**
- * Edit Website Settings - Dark Theme Configuration
- *
+ * Edit Website Settings - Light Theme Configuration
+ * 
  * This script logs into the admin portal, navigates to Website settings,
- * configures dark theme with custom colors, and adds code injections
- *
- * Supports multiple CloudWaitress resellers with configurable admin URLs.
- *
+ * configures light theme with custom colors, and adds code injections
+ * 
  * Usage:
- *   node edit-website-settings-dark.js [options]
- *
+ *   node edit-website-settings-light.js [options]
+ * 
  * Options:
  *   --email=<email>           Login email (required)
  *   --password=<password>     User password (required)
@@ -25,17 +23,13 @@
  *   --location=<text>         Restaurant location (optional)
  *   --address=<text>          Restaurant address (optional)
  *   --phone=<text>            Restaurant phone number (optional)
- *   --admin-url=<url>         CloudWaitress admin portal URL (default: https://admin.pumpd.co.nz)
  *   --debug                   Enable debug mode (keeps browser open)
- *
+ * 
  * Environment Variables:
  *   DEBUG_MODE              Enable debug mode (true/false)
- *
- * Example (default NZ):
- *   node edit-website-settings-dark.js --email="test@example.com" --password="Password123!" --name="Curry Garden" --primary="#A47F20" --head="../generated-code/restaurant/head-injection.html" --body="../generated-code/restaurant/body-injection.html"
- *
- * Example (custom admin URL):
- *   node edit-website-settings-dark.js --email="test@example.com" --password="Password123!" --name="Curry Garden" --primary="#A47F20" --head="../generated-code/restaurant/head-injection.html" --body="../generated-code/restaurant/body-injection.html" --admin-url="https://admin.ozorders.com.au"
+ * 
+ * Example:
+ *   node edit-website-settings-light.js --email="test@example.com" --password="Password123!" --name="Curry Garden" --primary="#A47F20" --head="../generated-code/restaurant/head-injection.html" --body="../generated-code/restaurant/body-injection.html"
  */
 
 import { createRequire } from 'module';
@@ -45,33 +39,18 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import dotenv from 'dotenv';
 
-// Import shared browser configuration (ESM version)
-import {
-  createBrowser,
-  createContext,
-  takeScreenshot as sharedTakeScreenshot
-} from './lib/browser-config.mjs';
-
-// Import country configuration (ESM version)
-import {
-  getAdminHostname,
-  buildLoginUrl
-} from './lib/country-config.js';
-
 const require = createRequire(import.meta.url);
 const { chromium } = require('./restaurant-registration/node_modules/playwright');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load environment variables from centralized .env file
-dotenv.config({ path: path.join(__dirname, '../UberEats-Image-Extractor/.env') });
+// Load environment variables
+dotenv.config();
 
 // Configuration
+const LOGIN_URL = "https://admin.pumpd.co.nz/login";
 const DEBUG_MODE = process.env.DEBUG_MODE === 'true' || process.argv.includes('--debug');
-
-// Default values
-const DEFAULT_ADMIN_URL = 'https://admin.pumpd.co.nz';
 
 // Get parameters from command line arguments
 const args = process.argv.slice(2);
@@ -82,8 +61,9 @@ const getArg = (name) => {
 
 // Parse arguments
 const email = getArg('email');
-const password = getArg('password');
+const password = getArg('password'); // NEW: Accept password as argument
 const primaryColor = getArg('primary');
+const secondaryColor = getArg('secondary'); // Secondary color for light theme
 const headPath = getArg('head');
 const bodyPath = getArg('body');
 const restaurantName = getArg('name');
@@ -95,13 +75,6 @@ const location = getArg('location');
 const address = getArg('address');
 const phoneNumber = getArg('phone');
 
-// Parse configurable parameters (with defaults)
-const adminUrl = (getArg('admin-url') || DEFAULT_ADMIN_URL).replace(/\/$/, ''); // Remove trailing slash
-
-// Build URLs from admin base URL
-const LOGIN_URL = buildLoginUrl(adminUrl);
-const ADMIN_HOSTNAME = getAdminHostname(adminUrl);
-
 // Validate required arguments
 if (!email || !password || !primaryColor || !headPath || !bodyPath || !restaurantName) {
   console.error('❌ Error: Missing required parameters');
@@ -111,14 +84,16 @@ if (!email || !password || !primaryColor || !headPath || !bodyPath || !restauran
   process.exit(1);
 }
 
-// Screenshot utility - uses shared config (disabled by default)
-const SCREENSHOT_DIR = path.join(__dirname, 'screenshots');
+// Utility function for screenshots
 const takeScreenshot = async (page, name) => {
-  return sharedTakeScreenshot(page, `website-settings-${name}`, SCREENSHOT_DIR);
+  const screenshotPath = path.join(__dirname, 'screenshots', `website-settings-${name}-${Date.now()}.png`);
+  await fs.mkdir(path.dirname(screenshotPath), { recursive: true });
+  await page.screenshot({ path: screenshotPath, fullPage: true });
+  console.log(`📸 Screenshot: ${screenshotPath}`);
 };
 
-async function editWebsiteSettingsDark() {
-  console.log('🚀 Starting Dark Theme Website Configuration...\n');
+async function editWebsiteSettingsLight() {
+  console.log('🚀 Starting Light Theme Website Configuration...\n');
   
   // Read the injection files
   let headCode, bodyCode;
@@ -132,11 +107,11 @@ async function editWebsiteSettingsDark() {
   }
   
   console.log('\nConfiguration:');
-  console.log(`  Admin Portal: ${adminUrl}`);
   console.log(`  Email: ${email}`);
   console.log(`  Password: ${'*'.repeat(password.length)}`);
   console.log(`  Restaurant Name: ${restaurantName}`);
   console.log(`  Primary Color: ${primaryColor}`);
+  console.log(`  Secondary Color: ${secondaryColor || '#FFFBF2 (default cream)'}`);
   console.log(`  Head file: ${headPath} (${headCode.length} chars)`);
   console.log(`  Body file: ${bodyPath} (${bodyCode.length} chars)`);
   if (logoPath) console.log(`  Logo: ${logoPath}`);
@@ -149,8 +124,16 @@ async function editWebsiteSettingsDark() {
   console.log(`  Debug Mode: ${DEBUG_MODE}`);
   console.log('');
   
-  const browser = await createBrowser(chromium);
-  const context = await createContext(browser);
+  const browser = await chromium.launch({
+    headless: false,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    slowMo: 100
+  });
+  
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+    ignoreHTTPSErrors: true
+  });
   
   const page = await context.newPage();
   
@@ -184,12 +167,12 @@ async function editWebsiteSettingsDark() {
     // Wait for redirect with better error handling (like test-get-restaurant-id.js)
     console.log('  ⏳ Waiting for redirect...');
     try {
-      await page.waitForURL(`**/${ADMIN_HOSTNAME}/**`, { timeout: 15000 });
+      await page.waitForURL('**/admin.pumpd.co.nz/**', { timeout: 15000 });
       console.log('  ✓ Successfully logged in!');
       console.log('  ✓ Redirected to dashboard');
     } catch (error) {
       const currentUrl = page.url();
-      if (currentUrl.includes(ADMIN_HOSTNAME)) {
+      if (currentUrl.includes('admin.pumpd.co.nz')) {
         console.log('  ✓ Successfully logged in (already on dashboard)');
       } else {
         throw new Error('Login failed - not redirected to dashboard');
@@ -551,23 +534,24 @@ async function editWebsiteSettingsDark() {
       await page.waitForTimeout(1000);
     }
     
-    // STEP 6: Click Dark Theme button
-    console.log('\n🌙 STEP 6: Selecting Dark Theme');
+    // STEP 6: Click Light Theme button
+    console.log('\n☀️ STEP 6: Selecting Light Theme');
     
-    const darkThemeSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > div > div > div > div > button:nth-child(3)';
+    // Light theme is typically the second button (index 2)
+    const lightThemeSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > div > div > div > div > button:nth-child(2)';
     
     try {
-      await page.click(darkThemeSelector);
-      console.log('  ✓ Clicked Dark Theme button');
+      await page.click(lightThemeSelector);
+      console.log('  ✓ Clicked Light Theme button');
       
       // Wait for theme to apply (dialog will be handled automatically)
       await page.waitForTimeout(4000);
-      console.log('  ✓ Dark theme applied successfully');
+      console.log('  ✓ Light theme applied successfully');
       
-      await takeScreenshot(page, '06-dark-theme-applied');
+      await takeScreenshot(page, '06-light-theme-applied');
     } catch (error) {
-      console.log('  ⚠️ Using fallback selector for Dark Theme');
-      await page.click('button:has-text("Dark Theme")');
+      console.log('  ⚠️ Using fallback selector for Light Theme');
+      await page.click('button:has-text("Light Theme")');
       await page.waitForTimeout(4000);
     }
     
@@ -594,36 +578,75 @@ async function editWebsiteSettingsDark() {
       await page.waitForTimeout(1000);
     }
     
-    // STEP 8: Set Primary Color
-    console.log('\n🎨 STEP 8: Setting Primary Color');
-    
-    const colorPickerSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj';
-    const colorInputSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input';
-    
-    try {
-      // Click on color picker to open it
-      await page.click(colorPickerSelector);
-      await page.waitForTimeout(500);
-      console.log('  ✓ Opened color picker');
-      
-      // Find and fill the color input
-      await page.fill(colorInputSelector, primaryColor);
-      console.log(`  ✓ Set primary color to ${primaryColor}`);
-      
-      // Click outside to close color picker
-      await page.keyboard.press('Escape');
-      await page.waitForTimeout(500);
-      
-      await takeScreenshot(page, '08-color-set');
-    } catch (error) {
-      console.log('  ⚠️ Using alternative color input method');
-      // Try to find any visible color input
-      const colorInput = page.locator('input[type="text"][value^="#"]').first();
-      await colorInput.click();
-      await colorInput.clear();
-      await colorInput.fill(primaryColor);
-      console.log(`  ✓ Set primary color to ${primaryColor} (fallback)`);
+    // STEP 8: Set all color configurations
+    console.log('\n🎨 STEP 8: Setting Color Configurations');
+
+    // Use secondary color or default cream for light theme backgrounds
+    const lightBgColor = secondaryColor || '#FFFBF2';
+
+    // Define selectors for each color field - IN REVERSE ORDER (bottom to top) to avoid picker overlap
+    const colorFields = [
+      {
+        name: 'Box & Popup Text',
+        pickerSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(6) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj',
+        inputSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(6) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input',
+        value: secondaryColor || primaryColor  // Use secondary if available, else primary
+      },
+      {
+        name: 'Box & Popup Background',
+        pickerSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(5) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj',
+        inputSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(5) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input',
+        value: '#FFFBF2'  // Cream background for boxes
+      },
+      {
+        name: 'Text',
+        pickerSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(4) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj',
+        inputSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(4) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input',
+        value: '#323232'  // Dark gray text for light mode
+      },
+      {
+        name: 'Background',
+        pickerSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(3) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj',
+        inputSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(3) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input',
+        value: '#FFFBF2'  // Cream background for light mode
+      },
+      {
+        name: 'Primary Text',
+        pickerSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(2) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj',
+        inputSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(2) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input',
+        value: '#FFFBF2'  // Cream text on primary
+      },
+      {
+        name: 'Primary',
+        pickerSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj',
+        inputSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input',
+        value: primaryColor
+      }
+    ];
+
+    // Set each color (in reverse order to avoid picker overlap)
+    for (const field of colorFields) {
+      try {
+        console.log(`  Setting ${field.name} color...`);
+
+        // Click on color picker to open it
+        await page.click(field.pickerSelector);
+        await page.waitForTimeout(500);
+
+        // Find and fill the color input - this clears existing value automatically
+        await page.fill(field.inputSelector, field.value);
+        console.log(`  ✓ Set ${field.name} to ${field.value}`);
+
+        // Press escape to close the color picker before moving to next
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(800);
+
+      } catch (error) {
+        console.log(`  ⚠️ Failed to set ${field.name} color:`, error.message);
+      }
     }
+
+    await takeScreenshot(page, '08-colors-configured');
     
     // STEP 9: Save color changes
     console.log('\n💾 STEP 9: Saving color configuration');
@@ -760,10 +783,48 @@ async function editWebsiteSettingsDark() {
         await topNavText.click();
         await page.waitForTimeout(1000);
       }
-      
-      // Click Upload Logo button
+
+      // First set nav bar colors
+      console.log('  Setting Nav Bar colors...');
+
+      // Always use cream for nav background in light theme
+      const navBgColor = '#FFFBF2';
+
+      // Set Nav Bar Background Color
+      const navBgPickerSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj.grid-2.sm.sm-gap.max300 > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj';
+      const navBgInputSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj.grid-2.sm.sm-gap.max300 > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input';
+
+      try {
+        await page.click(navBgPickerSelector);
+        await page.waitForTimeout(500);
+        await page.fill(navBgInputSelector, navBgColor);
+        console.log(`  ✓ Set Nav Bar Background to ${navBgColor}`);
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(500);
+      } catch (error) {
+        console.log('  ⚠️ Failed to set nav bar background color:', error.message);
+      }
+
+      // Set Nav Bar Text Color
+      const navTextPickerSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj.grid-2.sm.sm-gap.max300 > div:nth-child(2) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj > div';
+      const navTextInputSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj.grid-2.sm.sm-gap.max300 > div:nth-child(2) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input';
+
+      try {
+        await page.click(navTextPickerSelector);
+        await page.waitForTimeout(500);
+        const navTextColor = secondaryColor || primaryColor;  // Use secondary if available, else primary
+        await page.fill(navTextInputSelector, navTextColor);
+        console.log(`  ✓ Set Nav Bar Text to ${navTextColor}`);
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(500);
+      } catch (error) {
+        console.log('  ⚠️ Failed to set nav bar text color:', error.message);
+      }
+
+      // Now Upload Logo
+      console.log('  Uploading Logo...');
       const uploadLogoSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(3) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > button:nth-child(1)';
-      
+
       try {
         await page.click(uploadLogoSelector);
         console.log('  ✓ Clicked Upload Logo button');
@@ -1143,7 +1204,7 @@ async function editWebsiteSettingsDark() {
     
     await takeScreenshot(page, '18-final-state');
     
-    console.log('\n✅ Dark theme configuration completed successfully!');
+    console.log('\n✅ Light theme configuration completed successfully!');
     console.log(`Primary Color: ${primaryColor}`);
     console.log(`Head code: ${headCode.length} characters`);
     console.log(`Body code: ${bodyCode.length} characters`);
@@ -1230,4 +1291,4 @@ async function editWebsiteSettingsDark() {
 }
 
 // Run the script
-editWebsiteSettingsDark();
+editWebsiteSettingsLight().catch(console.error);

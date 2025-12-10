@@ -2,32 +2,25 @@
 
 /**
  * Finalise Onboarding Script
- *
+ * 
  * This script completes the onboarding process by configuring Uber Delivery Management integration
  * and setting the default delivery provider to Uber
- *
+ * 
  * Usage:
- *   node finalise-onboarding-user.js --email=<email> --password=<password> --nzbn=<nzbn> --company-name=<name> --trading-name=<name> --director-name=<name> --director-mobile=<mobile> [options]
- *
+ *   node finalise-onboarding.js --email=<email> --nzbn=<nzbn> --company-name=<name> --trading-name=<name> --director-name=<name> --director-mobile=<mobile> [options]
+ * 
  * Options:
  *   --email=<email>               Login email (required)
- *   --password=<password>         User password (required)
  *   --nzbn=<nzbn>                 NZBN number (required)
  *   --company-name=<name>         Legal company name (required)
  *   --trading-name=<name>         Trading name (required)
  *   --director-name=<name>        Director's full name (required)
  *   --director-mobile=<mobile>    Director's mobile number (required)
- *   --admin-url=<url>             CloudWaitress admin portal URL (default: https://admin.pumpd.co.nz)
  *   --debug                       Enable debug mode (keeps browser open)
- *
+ * 
  * Environment Variables:
+ *   ADMIN_PASSWORD               Admin password for login
  *   DEBUG_MODE                   Enable debug mode (true/false)
- *
- * Example (default NZ):
- *   node finalise-onboarding-user.js --email="test@example.com" --password="Password123!" --nzbn="123456789" --company-name="Company Ltd" --trading-name="Trading Name" --director-name="John Doe" --director-mobile="0211234567"
- *
- * Example (Australian portal):
- *   node finalise-onboarding-user.js --email="test@example.com" --password="Password123!" --nzbn="123456789" --company-name="Company Ltd" --trading-name="Trading Name" --director-name="John Doe" --director-mobile="0411234567" --admin-url="https://admin.ozorders.com.au"
  */
 
 import { createRequire } from 'module';
@@ -46,8 +39,9 @@ const __dirname = dirname(__filename);
 // Load environment variables
 dotenv.config();
 
-// Import country configuration (use createRequire for CommonJS module)
-const { getAdminHostname, buildLoginUrl } = require('./lib/country-config.cjs');
+// Configuration
+const LOGIN_URL = "https://admin.pumpd.co.nz/login";
+const DEBUG_MODE = process.env.DEBUG_MODE === 'true' || process.argv.includes('--debug');
 
 // Get parameters from command line arguments
 const args = process.argv.slice(2);
@@ -58,32 +52,18 @@ const getArg = (name) => {
 
 // Parse arguments
 const email = getArg('email');
-const password = getArg('password');
 const nzbn = getArg('nzbn');
 const companyName = getArg('company-name');
 const tradingName = getArg('trading-name');
 const directorName = getArg('director-name');
 const directorMobile = getArg('director-mobile');
 
-// ============================================================================
-// CONFIGURABLE ADMIN URL SUPPORT
-// ============================================================================
-const DEFAULT_ADMIN_URL = 'https://admin.pumpd.co.nz';
-
-// Get admin URL from command line or use default
-const adminUrl = (getArg('admin-url') || DEFAULT_ADMIN_URL).replace(/\/$/, '');
-
-// Build derived values
-const LOGIN_URL = buildLoginUrl(adminUrl);
-const ADMIN_HOSTNAME = getAdminHostname(adminUrl);
-
-// Configuration
-const DEBUG_MODE = process.env.DEBUG_MODE === 'true' || process.argv.includes('--debug');
+// Use admin password from environment or default
+const password = process.env.ADMIN_PASSWORD || '7uo@%K2^Hz%yiXDeP39Ckp6BvF!2';
 
 // Validate required arguments
 const requiredArgs = {
   email,
-  password,
   nzbn,
   'company-name': companyName,
   'trading-name': tradingName,
@@ -97,15 +77,9 @@ const missingArgs = Object.entries(requiredArgs)
 
 if (missingArgs.length > 0) {
   console.error('❌ Error: Missing required arguments:', missingArgs.join(', '));
-  console.error('Usage: node finalise-onboarding-user.js --email="email@example.com" --password="password123" --nzbn="123456789" --company-name="Company Ltd" --trading-name="Trading Name" --director-name="John Doe" --director-mobile="0211234567"');
+  console.error('Usage: node finalise-onboarding.js --email="email@example.com" --nzbn="123456789" --company-name="Company Ltd" --trading-name="Trading Name" --director-name="John Doe" --director-mobile="0211234567"');
   process.exit(1);
 }
-
-console.log('Admin URL Configuration:');
-console.log('  Admin URL:', adminUrl);
-console.log('  Login URL:', LOGIN_URL);
-console.log('  Admin Hostname:', ADMIN_HOSTNAME);
-console.log('');
 
 // Utility function for screenshots
 const takeScreenshot = async (page, name) => {
@@ -154,9 +128,8 @@ async function finaliseOnboarding() {
     
     await page.click('button[type="submit"], button:has-text("Login"), button:has-text("Sign In")');
     console.log('  ✓ Clicked login');
-
-    // Wait for redirect using dynamic admin hostname pattern
-    await page.waitForURL(`**/${ADMIN_HOSTNAME}/**`, { timeout: 15000 });
+    
+    await page.waitForURL('**/admin.pumpd.co.nz/**', { timeout: 15000 });
     console.log('  ✓ Login successful');
     
     // Wait for dashboard to load
@@ -333,23 +306,12 @@ async function finaliseOnboarding() {
     console.log('  ⏳ Waiting for Uber integration to save...');
     await page.waitForTimeout(5000);
     console.log('  ✓ Uber Delivery Management configured');
+    await takeScreenshot(page, '07-uber-saved');
     
-    // 10. Click close button
-    const closeButton = page.locator('.modal__CloseButton-ciHmJi');
-    await closeButton.click();
-    console.log('  ✓ Clicked close button');
-
-    // 11. Wait 2 seconds for dialog to close
-    console.log('  ⏳ Waiting for Uber integration to close...');
-    await page.waitForTimeout(2000);
-    console.log('  ✓ Uber integration modal closed');
+    // 10. Scroll to top of page
+    await page.evaluate(() => window.scrollTo(0, 0));
+    console.log('  ✓ Scrolled to top of page');
     
-    // 12. Scroll to top of page using the scroll-root container
-    console.log('  Scrolling to top...');
-    const scrollRoot = page.locator('#scroll-root');
-    await scrollRoot.evaluate(el => el.scrollTop = 0);
-    await page.waitForTimeout(2000);
-
     // STEP 6: Navigate to Services tab
     console.log('\n🛠️ STEP 6: Navigate to Services tab');
     
@@ -390,7 +352,7 @@ async function finaliseOnboarding() {
     await page.waitForTimeout(1500);
     
     // 13. Click the Default Delivery Provider dropdown
-    const providerDropdown = page.locator('#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > div > form > div > div > div > div > div > div:nth-child(3) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div.selectadv__Wrapper-cKWklP.hPMCFC > div.selectadv__InputIcon-dZhktu.PrPXn');
+    const providerDropdown = page.locator('#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > div > form > div > div > div > div > div > div:nth-child(3) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div.selectadv__Wrapper-cKWklP.FVSIE > div.selectadv__InputIcon-dZhktu.PrPXn');
     await providerDropdown.click();
     console.log('  ✓ Opened Default Delivery Provider dropdown');
     await page.waitForTimeout(1000);

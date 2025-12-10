@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 
 /**
- * Menu Item Tags Configuration Script for admin.pumpd.co.nz
- * 
+ * Menu Item Tags Configuration Script for CloudWaitress Admin Portals
+ *
  * This script performs automated configuration of the menu item tags including:
  * - Login to existing restaurant account
  * - Smart restaurant matching by name
  * - Navigation to correct restaurant management
  * - Item tags configuration
- * 
+ *
+ * Supports multiple CloudWaitress resellers with configurable admin URLs.
+ *
  * Usage:
  *   node add-item-tags.js [options]
  *
@@ -16,14 +18,17 @@
  *   --email=<email>           Login email (required)
  *   --password=<password>     User password (required)
  *   --name=<name>             Restaurant name for matching (required)
+ *   --admin-url=<url>         CloudWaitress admin portal URL (default: https://admin.pumpd.co.nz)
  *   --debug                   Keep browser open after completion
  *
  * Environment Variables:
  *   DEBUG_MODE=true           Alternative way to enable debug mode
  *
- * Example:
+ * Example (default NZ):
  *   node add-item-tags.js --email="test@example.com" --password="Password123!" --name="Test Restaurant"
- *   node add-item-tags.js --email="test@example.com" --password="Password123!" --name="Test Restaurant" --debug
+ *
+ * Example (custom admin URL):
+ *   node add-item-tags.js --email="test@example.com" --password="Password123!" --name="Test Restaurant" --admin-url="https://admin.ozorders.com.au"
  */
 
 const { chromium } = require('playwright');
@@ -39,8 +44,14 @@ const {
   takeScreenshot: sharedTakeScreenshot
 } = require('../lib/browser-config.cjs');
 
+// Import country configuration
+const {
+  getAdminHostname,
+  buildLoginUrl
+} = require('../lib/country-config.cjs');
+
 // Configuration
-const LOGIN_URL = "https://admin.pumpd.co.nz/login";
+const DEFAULT_ADMIN_URL = 'https://admin.pumpd.co.nz';
 
 // DEBUG_MODE can be set via environment variable or --debug flag
 const DEBUG_MODE = process.env.DEBUG_MODE === 'true' || process.argv.includes('--debug');
@@ -78,8 +89,15 @@ const getArg = (name) => {
 
 // Parse arguments
 const email = getArg('email');
-const password = getArg('password'); // NEW: Accept password as argument
-const restaurantName = getArg('name'); // NEW: Accept restaurant name for matching
+const password = getArg('password');
+const restaurantName = getArg('name');
+
+// Parse configurable parameters (with defaults)
+const adminUrl = (getArg('admin-url') || DEFAULT_ADMIN_URL).replace(/\/$/, '');
+
+// Build URLs from admin base URL
+const LOGIN_URL = buildLoginUrl(adminUrl);
+const ADMIN_HOSTNAME = getAdminHostname(adminUrl);
 
 // Validate required arguments
 if (!email || !password || !restaurantName) {
@@ -99,6 +117,7 @@ const takeScreenshot = async (page, name) => {
 async function addItemTags() {
   console.log('🚀 Starting Menu Item Tags Configuration...\n');
   console.log('Configuration:');
+  console.log(`  Admin Portal: ${adminUrl}`);
   console.log(`  Email: ${email}`);
   console.log(`  Password: ${'*'.repeat(password.length)}`);
   console.log(`  Restaurant: ${restaurantName}`);
@@ -128,7 +147,7 @@ async function addItemTags() {
     
     // Wait for dashboard
     console.log('\n⏳ Waiting for dashboard...');
-    await page.waitForURL('**/admin.pumpd.co.nz/**', { timeout: 15000 });
+    await page.waitForURL(`**/${ADMIN_HOSTNAME}/**`, { timeout: 15000 });
     console.log('  ✓ Reached dashboard:', page.url());
     
     // Wait for loading overlay to disappear
@@ -309,12 +328,12 @@ async function addItemTags() {
     // Wait for navigation to restaurant management page
     console.log('  ⏳ Waiting for restaurant management page...');
     try {
-      await page.waitForURL('**/admin.pumpd.co.nz/restaurant/**', { timeout: 15000 });
+      await page.waitForURL(`**/${ADMIN_HOSTNAME}/restaurant/**`, { timeout: 15000 });
       console.log('  ✓ Navigated to restaurant page');
     } catch (error) {
       console.log('  ⚠️ Navigation timeout, checking current URL...');
       const currentUrl = page.url();
-      if (currentUrl.includes('admin.pumpd.co.nz/restaurant/')) {
+      if (currentUrl.includes(`${ADMIN_HOSTNAME}/restaurant/`)) {
         console.log('  ✓ Already on restaurant page');
       } else {
         throw error;
