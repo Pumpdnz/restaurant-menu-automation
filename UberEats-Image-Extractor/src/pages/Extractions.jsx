@@ -412,7 +412,13 @@ export default function Extractions() {
                             )}
                           </>
                         )}
-                        {extraction.status === 'failed' && (
+                        {/* {extraction.status === 'failed' && (
+                          // Disabled for now until we have a better way to retry failed extractions
+                          // TODO: Retry button disabled - the retry endpoint passes empty categories
+                          // which causes the extraction to complete immediately without extracting.
+                          // To fix: The retry endpoint needs to either:
+                          // 1. Re-scan categories from the URL before calling startBackgroundExtraction
+                          // 2. Store original categories in the job config and pass them on retry
                           <Button
                             size="sm"
                             variant="ghost"
@@ -421,7 +427,7 @@ export default function Extractions() {
                           >
                             <RefreshCw className="h-4 w-4" />
                           </Button>
-                        )}
+                        )} */}
                         <Button
                           size="sm"
                           variant="ghost"
