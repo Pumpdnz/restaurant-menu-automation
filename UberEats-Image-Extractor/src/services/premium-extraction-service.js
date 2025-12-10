@@ -884,7 +884,7 @@ Focus ONLY on the "${categoryName}" category section.`;
 
       // Track premium extraction usage
       UsageTrackingService.trackExtraction(orgId, 'premium', allItems.length, {
-        restaurant_id: providedRestaurantId,
+        restaurant_id: restaurantId,
         job_id: jobId,
         url: storeUrl,
         categories_count: categories.length
