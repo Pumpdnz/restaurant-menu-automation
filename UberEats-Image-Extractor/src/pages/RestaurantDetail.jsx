@@ -82,6 +82,7 @@ import {
   useDeleteSequenceInstance
 } from '../hooks/useSequences';
 import { QualificationForm } from '../components/demo-meeting/QualificationForm';
+import { RestaurantSwitcher } from '../components/restaurants/RestaurantSwitcher';
 import { QualificationDataDisplay } from '../components/demo-meeting/QualificationDataDisplay';
 import { RestaurantTasksList } from '../components/tasks/RestaurantTasksList';
 import { CreateTaskModal } from '../components/tasks/CreateTaskModal';
@@ -143,6 +144,10 @@ export default function RestaurantDetail() {
   const [extractionMode, setExtractionMode] = useState('standard'); // 'standard' or 'premium'
   const [extractOptionSets, setExtractOptionSets] = useState(true);
   const [validateImages, setValidateImages] = useState(true);
+
+  // Active extractions state (for showing loading state in Recent Menus)
+  const [activeExtractions, setActiveExtractions] = useState([]);
+  const [extractionPollingRef, setExtractionPollingRef] = useState(null);
 
   // Sequence states
   const [startSequenceModalOpen, setStartSequenceModalOpen] = useState(false);
@@ -2222,14 +2227,36 @@ export default function RestaurantDetail() {
       }
 
       if (response.data.success) {
+        const jobId = response.data.jobId;
+        const isPremium = !!response.data.statusUrl;
+
+        // Add to active extractions (for showing loading state in Recent Menus)
+        setActiveExtractions(prev => [...prev, {
+          jobId,
+          platform: extractionConfig.platformName,
+          isPremium,
+          status: 'running',
+          startTime: Date.now()
+        }]);
+
+        // Show success toast
         toast({
           title: "Extraction started",
-          description: `${extractionMode === 'premium' ? 'Premium' : 'Standard'} extraction from ${extractionConfig.platformName}`,
+          description: (
+            <div>
+              <p>{isPremium ? 'Premium' : 'Standard'} extraction from {extractionConfig.platformName}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Check Recent Menus for progress
+              </p>
+            </div>
+          ),
         });
 
-        // Navigate to extraction detail page with appropriate parameters
-        const isPremium = response.data.statusUrl ? true : false;
-        navigate(`/extractions/${response.data.jobId}?poll=true${isPremium ? '&premium=true' : ''}`);
+        // Close dialog - user stays on page
+        setExtractionDialogOpen(false);
+
+        // Start polling for extraction status
+        startExtractionPolling(jobId, isPremium);
       }
     } catch (error) {
       console.error('Extraction error:', error);
@@ -2241,9 +2268,67 @@ export default function RestaurantDetail() {
       });
     } finally {
       setIsExtracting(false);
-      setExtractionDialogOpen(false);
     }
   };
+
+  // Polling function for extraction status
+  const startExtractionPolling = (jobId, isPremium) => {
+    // Clear any existing polling
+    if (extractionPollingRef) {
+      clearInterval(extractionPollingRef);
+    }
+
+    const pollInterval = setInterval(async () => {
+      try {
+        let status;
+        if (isPremium) {
+          const response = await api.get(`/premium-extract-status/${jobId}`);
+          status = response.data.status;
+        } else {
+          const response = await api.get(`/extractions/${jobId}`);
+          status = response.data.job?.status || response.data.job?.state;
+        }
+
+        // Update active extraction status
+        setActiveExtractions(prev => prev.map(ext =>
+          ext.jobId === jobId ? { ...ext, status } : ext
+        ));
+
+        // If completed or failed, stop polling and refresh restaurant data
+        if (status === 'completed' || status === 'failed') {
+          clearInterval(pollInterval);
+          setExtractionPollingRef(null);
+
+          // Remove from active extractions
+          setActiveExtractions(prev => prev.filter(ext => ext.jobId !== jobId));
+
+          // Refresh restaurant data to get new menu
+          fetchRestaurant();
+
+          toast({
+            title: status === 'completed' ? "Extraction complete" : "Extraction failed",
+            description: status === 'completed'
+              ? "New menu has been added to Recent Menus"
+              : "Check extraction details for more information",
+            variant: status === 'completed' ? 'default' : 'destructive'
+          });
+        }
+      } catch (error) {
+        console.error('Polling error:', error);
+      }
+    }, 5000); // Poll every 5 seconds
+
+    setExtractionPollingRef(pollInterval);
+  };
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (extractionPollingRef) {
+        clearInterval(extractionPollingRef);
+      }
+    };
+  }, [extractionPollingRef]);
 
   // New function to handle finding a platform URL
   const handleFindUrl = async (platform) => {
@@ -2881,12 +2966,23 @@ export default function RestaurantDetail() {
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">
-                {isNewRestaurant ? 'Add New Restaurant' : (restaurant?.name || 'Restaurant Details')}
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                {isNewRestaurant ? 'Fill in the details below' : (restaurant?.address || 'No address provided')}
-              </p>
+              {isNewRestaurant ? (
+                <>
+                  <h1 className="text-2xl font-bold text-foreground">
+                    Add New Restaurant
+                  </h1>
+                  <p className="text-sm text-muted-foreground">
+                    Fill in the details below
+                  </p>
+                </>
+              ) : (
+                <RestaurantSwitcher
+                  currentRestaurantId={id}
+                  currentRestaurantName={restaurant?.name || 'Restaurant Details'}
+                  currentRestaurantAddress={restaurant?.address}
+                  disabled={loading}
+                />
+              )}
             </div>
           </div>
           {/* Status, Notes, and Actions */}
@@ -3703,6 +3799,44 @@ export default function RestaurantDetail() {
               <CardDescription>Latest menu versions for this restaurant</CardDescription>
             </CardHeader>
             <CardContent>
+              {/* Active Extractions */}
+              {activeExtractions.length > 0 && (
+                <div className="mb-4 space-y-2">
+                  <Label className="text-xs text-muted-foreground uppercase">In Progress</Label>
+                  {activeExtractions.map((extraction) => (
+                    <div
+                      key={extraction.jobId}
+                      className="flex items-center justify-between p-3 border rounded-lg bg-blue-50/50 border-blue-200"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+                        <div>
+                          <span className="text-sm font-medium">
+                            {extraction.isPremium ? 'Premium' : 'Standard'} Extraction
+                          </span>
+                          <span className="text-xs text-muted-foreground ml-2">
+                            from {extraction.platform}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-blue-600 border-blue-300">
+                          {extraction.status}
+                        </Badge>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => navigate(`/extractions/${extraction.jobId}?poll=true${extraction.isPremium ? '&premium=true' : ''}`)}
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          View Details
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {restaurant?.menus && restaurant.menus.length > 0 ? (
                 <div className="space-y-2">
                   {restaurant.menus.slice(0, 5).map((menu) => (
@@ -4840,6 +4974,44 @@ export default function RestaurantDetail() {
                 <CardDescription>Latest menu versions for this restaurant</CardDescription>
               </CardHeader>
               <CardContent>
+                {/* Active Extractions */}
+                {activeExtractions.length > 0 && (
+                  <div className="mb-4 space-y-2">
+                    <Label className="text-xs text-muted-foreground uppercase">In Progress</Label>
+                    {activeExtractions.map((extraction) => (
+                      <div
+                        key={extraction.jobId}
+                        className="flex items-center justify-between p-3 border rounded-lg bg-blue-50/50 border-blue-200"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+                          <div>
+                            <span className="text-sm font-medium">
+                              {extraction.isPremium ? 'Premium' : 'Standard'} Extraction
+                            </span>
+                            <span className="text-xs text-muted-foreground ml-2">
+                              from {extraction.platform}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-blue-600 border-blue-300">
+                            {extraction.status}
+                          </Badge>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => navigate(`/extractions/${extraction.jobId}?poll=true${extraction.isPremium ? '&premium=true' : ''}`)}
+                            className="text-blue-600 hover:text-blue-700"
+                          >
+                            View Details
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {restaurant?.menus && restaurant.menus.length > 0 ? (
                   <div className="space-y-2">
                     {restaurant.menus.slice(0, 5).map((menu) => (
