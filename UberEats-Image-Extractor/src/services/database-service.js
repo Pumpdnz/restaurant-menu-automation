@@ -1375,6 +1375,31 @@ async function getAllRestaurantsList() {
 }
 
 /**
+ * Get minimal restaurant list for switcher dropdown
+ * Only fetches fields needed for the restaurant switcher: id, name, address, city, onboarding_status
+ */
+async function getRestaurantSwitcherList() {
+  if (!isDatabaseAvailable()) return [];
+
+  const orgId = getCurrentOrganizationId();
+
+  try {
+    const client = getSupabaseClient();
+    const { data, error } = await client
+      .from('restaurants')
+      .select('id, name, address, city, onboarding_status')
+      .eq('organisation_id', orgId)
+      .order('name');
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('[Database] Error getting restaurant switcher list:', error);
+    return [];
+  }
+}
+
+/**
  * Get restaurant by ID
  */
 async function getRestaurantById(restaurantId, organisationId = null) {
@@ -3228,6 +3253,7 @@ module.exports = {
   updateRestaurantWorkflow,
   getAllRestaurants,
   getAllRestaurantsList,
+  getRestaurantSwitcherList,
   getRestaurantById,
   getRestaurantDetails,
   getRestaurantMenus,

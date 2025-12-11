@@ -39,9 +39,9 @@ const api = axios.create({
 const railwayApi = axios.create({
   baseURL: import.meta.env.VITE_RAILWAY_API_URL || 'http://localhost:3007',
   timeout: 300000, // 5 minutes - for Playwright scripts that take 2-5 min
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  // headers: {
+  //   'Content-Type': 'application/json',
+  // }, // Commented out to avoid errors passing csv files to the railway api
 });
 
 // Apply auth interceptor to both instances
@@ -56,6 +56,8 @@ export const restaurantAPI = {
   update: (id, data) => api.patch(`/restaurants/${id}`, data),
   getMenus: (id) => api.get(`/restaurants/${id}/menus`),
   getPriceHistory: (id, params) => api.get(`/restaurants/${id}/price-history`, { params }),
+  // Minimal list for switcher dropdown (id, name, address, city, onboarding_status only)
+  getSwitcherList: () => api.get('/restaurants/switcher'),
 };
 
 // Menu APIs
