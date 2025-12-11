@@ -207,16 +207,27 @@ export function SignupPage() {
       if (!inviteData && data.organizationName) {
         localStorage.setItem('pendingOrgName', data.organizationName);
       }
-      
-      toast({
-        title: 'Account created!',
-        description: inviteData 
-          ? `Please check your email to verify your account and join ${inviteData.organisationName}.`
-          : 'Please check your email to verify your account.'
-      });
 
-      // Navigate to login page
-      navigate('/login');
+      // Check if user is automatically logged in (email confirmation disabled)
+      if (authData.session) {
+        toast({
+          title: 'Account created successfully!',
+          description: inviteData
+            ? `Welcome to ${inviteData.organisationName}!`
+            : `Welcome to ${data.organizationName}!`
+        });
+
+        // Navigate to auth callback to process invitation and set up profile
+        navigate(`/auth/callback${inviteToken ? `?invite=${inviteToken}` : ''}`);
+      } else {
+        // Email confirmation required (fallback)
+        toast({
+          title: 'Account created!',
+          description: 'Please check your email to verify your account.'
+        });
+
+        navigate('/login');
+      }
     } catch (err: any) {
       if (err.message?.includes('already registered')) {
         setError('This email is already registered. Please login instead.');
