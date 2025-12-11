@@ -12,6 +12,7 @@ ENV HEADLESS=true
 
 # Copy package files first (for Docker layer caching)
 COPY UberEats-Image-Extractor/package*.json ./UberEats-Image-Extractor/
+COPY scripts/package*.json ./scripts/
 COPY scripts/restaurant-registration/package*.json ./scripts/restaurant-registration/
 
 # Install UberEats-Image-Extractor dependencies
@@ -19,7 +20,11 @@ COPY scripts/restaurant-registration/package*.json ./scripts/restaurant-registra
 WORKDIR /app/UberEats-Image-Extractor
 RUN npm ci --omit=dev --legacy-peer-deps
 
-# Install scripts dependencies
+# Install scripts dependencies (for dotenv, sharp, etc. used by ordering-page-customization.js)
+WORKDIR /app/scripts
+RUN npm ci --omit=dev --legacy-peer-deps
+
+# Install restaurant-registration scripts dependencies (for playwright, etc.)
 WORKDIR /app/scripts/restaurant-registration
 RUN npm ci --omit=dev --legacy-peer-deps
 
