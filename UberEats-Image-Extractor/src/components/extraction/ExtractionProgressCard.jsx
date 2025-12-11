@@ -87,14 +87,28 @@ export default function ExtractionProgressCard({
   const isInProgress = status === 'running' || status === 'processing' || status === 'in_progress';
 
   // Determine which optional phases are enabled (from extraction data or progress)
+  // Show option sets phase if: explicitly enabled, has extracted count, or currently in option sets phase
+  const isInOptionSetsPhase = isPhaseActive(['extracting_option_sets', 'deduplicating_option_sets']) ||
+    isPhaseComplete('deduplicating_option_sets');
   const extractOptionSets = extraction?.extractOptionSets ??
     extraction?.extracted_data?.extractOptionSets ??
-    progress?.optionSetsExtracted > 0 ??
-    true; // Default to showing if we can't determine
+    (progress?.optionSetsExtracted > 0 || isInOptionSetsPhase || true); // Default to showing if we can't determine
 
   const validateImages = extraction?.validateImages ??
     extraction?.extracted_data?.validateImages ??
     false;
+
+  // Build detail string for items phase - show both count and current category
+  const getItemsDetail = () => {
+    const parts = [];
+    if (progress?.itemsExtracted > 0) {
+      parts.push(`${progress.itemsExtracted} items`);
+    }
+    if (progress?.currentCategory && isPhaseActive(['extracting_items', 'cleaning_urls'])) {
+      parts.push(`Processing: ${progress.currentCategory}`);
+    }
+    return parts.length > 0 ? parts.join(' • ') : null;
+  };
 
   return (
     <Card className="w-full">
@@ -153,8 +167,7 @@ export default function ExtractionProgressCard({
                   name="Extracting Items"
                   isActive={isPhaseActive(['extracting_items', 'cleaning_urls'])}
                   isComplete={isPhaseComplete('cleaning_urls')}
-                  detail={progress.itemsExtracted > 0 ? `${progress.itemsExtracted} items` :
-                    progress.currentCategory ? `Processing: ${progress.currentCategory}` : null}
+                  detail={getItemsDetail()}
                 />
 
                 {/* Phase 3: Option Sets (conditional) */}
@@ -183,6 +196,37 @@ export default function ExtractionProgressCard({
                   isActive={isPhaseActive('saving_to_database')}
                   isComplete={progress.savedToDatabase === true || isPhaseComplete('saving_to_database')}
                 />
+              </div>
+            </div>
+          )}
+
+          {/* Standard Extraction Progress - show current category and items count */}
+          {!isPremium && isInProgress && progress && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-gray-700">Extraction Progress</h4>
+              <div className="space-y-1.5">
+                {progress.currentCategory && (
+                  <div className="flex items-center justify-between py-1.5 px-2 rounded bg-blue-50">
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-3 w-3 text-blue-600 animate-spin" />
+                      <span className="text-sm text-blue-700 font-medium">
+                        Processing: {progress.currentCategory}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {progress.itemsExtracted > 0 && (
+                  <div className="flex items-center justify-between py-1.5 px-2 rounded bg-gray-50">
+                    <span className="text-sm text-gray-600">Items extracted</span>
+                    <span className="text-sm font-medium text-gray-900">{progress.itemsExtracted}</span>
+                  </div>
+                )}
+                {progress.categoriesExtracted > 0 && (
+                  <div className="flex items-center justify-between py-1.5 px-2 rounded bg-gray-50">
+                    <span className="text-sm text-gray-600">Categories found</span>
+                    <span className="text-sm font-medium text-gray-900">{progress.categoriesExtracted}</span>
+                  </div>
+                )}
               </div>
             </div>
           )}

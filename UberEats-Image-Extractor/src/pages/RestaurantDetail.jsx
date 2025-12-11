@@ -439,6 +439,21 @@ export default function RestaurantDetail() {
     }
   };
 
+  // Lightweight function to refresh only menus without touching other restaurant data
+  const refreshMenus = async () => {
+    try {
+      const response = await api.get(`/restaurants/${id}/details`);
+      const restaurantData = response.data.restaurant;
+      // Only update the menus array, preserve everything else
+      setRestaurant(prev => ({
+        ...prev,
+        menus: restaurantData.menus
+      }));
+    } catch (err) {
+      console.error('Failed to refresh menus:', err);
+    }
+  };
+
   const fetchRegistrationStatus = async () => {
     setLoadingRegistrationStatus(true);
     try {
@@ -2302,8 +2317,8 @@ export default function RestaurantDetail() {
           // Remove from active extractions
           setActiveExtractions(prev => prev.filter(ext => ext.jobId !== jobId));
 
-          // Refresh restaurant data to get new menu
-          fetchRestaurant();
+          // Refresh only the menus list (lightweight, preserves other state)
+          refreshMenus();
 
           toast({
             title: status === 'completed' ? "Extraction complete" : "Extraction failed",
@@ -4699,9 +4714,9 @@ export default function RestaurantDetail() {
             {(isFeatureEnabled('registration.userAccountRegistration') || isFeatureEnabled('registration.restaurantRegistration')) && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Pumpd Platform Registration</CardTitle>
+                  <CardTitle>Platform Registration</CardTitle>
                   <CardDescription>
-                    Manage restaurant registration on the Pumpd platform
+                    Manage restaurant registration with automation tools
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -5088,7 +5103,7 @@ export default function RestaurantDetail() {
                     Menu CSV Upload
                   </CardTitle>
                   <CardDescription>
-                    Upload a CSV file to import menu items to your Pumpd restaurant
+                    Upload a CSV file to import menu items to your restaurant
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -5208,7 +5223,7 @@ export default function RestaurantDetail() {
                         <Alert className="border-green-200 bg-green-50">
                           <FileCheck className="h-4 w-4 text-green-600" />
                           <AlertDescription className="text-green-800">
-                            Menu uploaded successfully! The items have been imported to your Pumpd restaurant.
+                            Menu uploaded successfully! The items have been imported to your restaurant.
                           </AlertDescription>
                         </Alert>
                       )}
@@ -5553,7 +5568,7 @@ export default function RestaurantDetail() {
                     Website Customization
                   </CardTitle>
                   <CardDescription>
-                    Generate and apply custom styling to your Pumpd website
+                    Generate and apply custom styling to your restaurant's website
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -6189,7 +6204,7 @@ export default function RestaurantDetail() {
                       <div className="space-y-2">
                         <p className="font-medium">Prerequisites:</p>
                         <ul className="list-disc list-inside text-sm space-y-1">
-                          <li>Restaurant must have a Pumpd account created</li>
+                          <li>Restaurant must have an account created</li>
                           <li>User credentials must be available in the database</li>
                           <li>Restaurant must be registered on the platform</li>
                         </ul>
@@ -7629,11 +7644,11 @@ export default function RestaurantDetail() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {registrationType === 'account_only' ? 'Register Account on Pumpd' : 'Register Restaurant on Pumpd'}
+              {registrationType === 'account_only' ? 'Register Account' : 'Register Restaurant'}
             </DialogTitle>
             <DialogDescription>
               {registrationType === 'account_only'
-                ? 'Create a new Pumpd account for this restaurant'
+                ? 'Create a new account for this restaurant'
                 : 'Select how you want to register this restaurant'
               }
             </DialogDescription>
@@ -7650,7 +7665,7 @@ export default function RestaurantDetail() {
                         New Account with Restaurant
                       </Label>
                       <p className="text-sm text-muted-foreground">
-                        Create a new Pumpd account and register this restaurant
+                        Create a new account and register this restaurant
                       </p>
                     </div>
                   </div>
@@ -7682,7 +7697,7 @@ export default function RestaurantDetail() {
               </RadioGroup>
             ) : (
               <div className="text-sm text-muted-foreground">
-                Enter your email and password to create a new Pumpd account.
+                Enter your email and password to create a new account for your restaurant.
               </div>
             )}
 
@@ -7694,7 +7709,7 @@ export default function RestaurantDetail() {
                   <Input
                     id="registration-email"
                     type="email"
-                    placeholder="Enter your Pumpd account email"
+                    placeholder="Enter your restaurant's account email"
                     value={registrationEmail}
                     onChange={(e) => setRegistrationEmail(e.target.value)}
                   />
@@ -7705,7 +7720,7 @@ export default function RestaurantDetail() {
                     <Input
                       id="registration-password"
                       type={showPassword ? "text" : "password"}
-                      placeholder="Enter your Pumpd account password"
+                      placeholder="Enter your restaurant's account password"
                       value={registrationPassword}
                       onChange={(e) => setRegistrationPassword(e.target.value)}
                       className="pr-10"

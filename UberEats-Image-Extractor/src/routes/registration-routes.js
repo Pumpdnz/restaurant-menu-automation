@@ -1131,9 +1131,14 @@ router.post('/generate-code-injections', requireRegistrationCodeInjection, async
       scriptPath,
       `--primary=${restaurant.primary_color}`,
       `--secondary=${restaurant.secondary_color}`,
-      `--name=${restaurant.name}`,
-      '--keep-browser-open'
+      `--name=${restaurant.name}`
     ];
+
+    // Only keep browser open in development mode (not on Railway/production)
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT;
+    if (!isProduction) {
+      args.push('--keep-browser-open');
+    }
 
     // Add lightmode flag only if theme is explicitly "light"
     if (restaurant.theme === 'light') {
@@ -1213,9 +1218,13 @@ router.post('/generate-code-injections', requireRegistrationCodeInjection, async
       restaurant_id: restaurantId
     }).catch(err => console.error('[UsageTracking] Failed to track code injection:', err));
 
+    const browserMessage = isProduction
+      ? 'Code injections generated successfully.'
+      : 'Code injections generated successfully. Browser remains open for manual configuration.';
+
     res.json({
       success: true,
-      message: 'Code injections generated successfully. Browser remains open for manual configuration.',
+      message: browserMessage,
       filePaths
     });
     
