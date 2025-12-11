@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { exec, spawn } = require('child_process');
+const { exec } = require('child_process');
 const { promisify } = require('util');
 const execAsync = promisify(exec);
 const multer = require('multer');
@@ -1126,69 +1126,37 @@ router.post('/generate-code-injections', requireRegistrationCodeInjection, async
     const sanitizedName = restaurant.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     const outputDir = path.join(__dirname, '../../../generated-code', sanitizedName);
 
-    // Build arguments array for spawn
-    const args = [
-      scriptPath,
-      `--primary=${restaurant.primary_color}`,
-      `--secondary=${restaurant.secondary_color}`,
-      `--name=${restaurant.name}`
-    ];
-
-    // Only keep browser open in development mode (not on Railway/production)
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT;
-    if (!isProduction) {
-      args.push('--keep-browser-open');
-    }
+    // Build command string (same pattern as other registration scripts)
+    let command = `node "${scriptPath}" --primary="${restaurant.primary_color}" --secondary="${restaurant.secondary_color}" --name="${restaurant.name.replace(/"/g, '\\"')}"`;
 
     // Add lightmode flag only if theme is explicitly "light"
     if (restaurant.theme === 'light') {
-      args.push('--lightmode');
+      command += ' --lightmode';
     }
 
-    console.log('[Code Generation] Spawning script in background...');
+    console.log('[Code Generation] Executing script:', command);
 
-    // Spawn the process in detached mode so it can continue running
-    const child = spawn('node', args, {
-      detached: true,
-      stdio: 'ignore',
-      env: { ...process.env }
+    // Execute script and wait for completion (same pattern as other registration scripts)
+    const { stdout, stderr } = await execAsync(command, {
+      env: { ...process.env, DEBUG_MODE: 'false' },
+      timeout: 120000 // 2 minute timeout
     });
 
-    // Unref so parent process doesn't wait for child
-    child.unref();
+    if (stdout) console.log('[Code Generation] Output:', stdout);
+    if (stderr) console.error('[Code Generation] Stderr:', stderr);
 
-    console.log('[Code Generation] Process spawned, polling for completion...');
-
-    // Poll for completion.json file
+    // Verify completion file exists
     const completionPath = path.join(outputDir, 'completion.json');
-    const maxAttempts = 60; // 60 seconds timeout
-    const pollInterval = 1000; // Check every second
-
-    let attempts = 0;
-    let completionFound = false;
-
-    while (attempts < maxAttempts && !completionFound) {
-      try {
-        await fs.access(completionPath);
-        // File exists, read and validate it
-        const completionData = await fs.readFile(completionPath, 'utf-8');
-        const completion = JSON.parse(completionData);
-
-        if (completion.success) {
-          console.log('[Code Generation] ✓ Completion marker found');
-          completionFound = true;
-          break;
-        }
-      } catch (error) {
-        // File doesn't exist yet, continue polling
+    try {
+      await fs.access(completionPath);
+      const completionData = await fs.readFile(completionPath, 'utf-8');
+      const completion = JSON.parse(completionData);
+      if (!completion.success) {
+        throw new Error('Script completed but reported failure');
       }
-
-      attempts++;
-      await new Promise(resolve => setTimeout(resolve, pollInterval));
-    }
-
-    if (!completionFound) {
-      throw new Error('Script timed out waiting for completion. The script may still be running in the background.');
+      console.log('[Code Generation] ✓ Completion verified');
+    } catch (error) {
+      throw new Error(`Script completed but output files not found: ${error.message}`);
     }
 
     // Define file paths for verification
@@ -1211,20 +1179,15 @@ router.post('/generate-code-injections', requireRegistrationCodeInjection, async
     }
     
     console.log('[Code Generation] Success! Files generated at:', outputDir);
-    console.log('[Code Generation] Browser remains open for manual adjustments');
 
     // Track usage
     UsageTrackingService.trackRegistrationStep(organisationId, 'code_injection', {
       restaurant_id: restaurantId
     }).catch(err => console.error('[UsageTracking] Failed to track code injection:', err));
 
-    const browserMessage = isProduction
-      ? 'Code injections generated successfully.'
-      : 'Code injections generated successfully. Browser remains open for manual configuration.';
-
     res.json({
       success: true,
-      message: browserMessage,
+      message: 'Code injections generated successfully.',
       filePaths
     });
     
