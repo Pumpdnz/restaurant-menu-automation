@@ -3171,6 +3171,32 @@ app.get('/api/restaurants/list', authMiddleware, async (req, res) => {
 });
 
 /**
+ * GET /api/restaurants/switcher
+ * Get minimal restaurant list for switcher dropdown
+ * Only returns: id, name, address, city, onboarding_status
+ */
+app.get('/api/restaurants/switcher', authMiddleware, async (req, res) => {
+  try {
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+
+    const restaurants = await db.getRestaurantSwitcherList();
+
+    return res.json(restaurants);
+  } catch (error) {
+    console.error('[API] Error getting restaurant switcher list:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get restaurant switcher list'
+    });
+  }
+});
+
+/**
  * GET /api/restaurants/:id/menus
  * Get all menus for a specific restaurant
  */
