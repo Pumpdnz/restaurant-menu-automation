@@ -4,11 +4,24 @@ import { Badge } from '../ui/badge';
 import { Progress } from '../ui/progress';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 
-export default function ExtractionProgressCard({ 
-  extraction, 
+// Backend phase order for determining completion
+const PHASE_ORDER = [
+  'starting',
+  'extracting_categories',
+  'extracting_items',
+  'cleaning_urls',
+  'extracting_option_sets',
+  'deduplicating_option_sets',
+  'validating_images',
+  'saving_to_database',
+  'completed'
+];
+
+export default function ExtractionProgressCard({
+  extraction,
   progress,
   isPremium = false,
-  showDetails = true 
+  showDetails = true
 }) {
   const getStatusColor = (status) => {
     switch (status) {
@@ -44,23 +57,44 @@ export default function ExtractionProgressCard({
     }
   };
 
+  // Check if a phase is complete by comparing phase order
+  const isPhaseComplete = (targetPhase) => {
+    if (!progress?.phase) return false;
+    const currentIndex = PHASE_ORDER.indexOf(progress.phase);
+    const targetIndex = PHASE_ORDER.indexOf(targetPhase);
+    return currentIndex > targetIndex;
+  };
+
+  // Check if a phase is currently active
+  const isPhaseActive = (phases) => {
+    if (!progress?.phase) return false;
+    const phaseArray = Array.isArray(phases) ? phases : [phases];
+    return phaseArray.includes(progress.phase);
+  };
+
+  // Calculate progress percentage based on backend phases
   const getProgressPercentage = () => {
-    if (!progress) return 0;
-    
-    const phases = [
-      'categoriesScanned',
-      'itemsExtracted',
-      'optionSetsExtracted',
-      'imagesValidated',
-      'savedToDatabase'
-    ];
-    
-    const completedPhases = phases.filter(phase => progress[phase]).length;
-    return (completedPhases / phases.length) * 100;
+    if (!progress?.phase) return 0;
+
+    const currentIndex = PHASE_ORDER.indexOf(progress.phase);
+    if (currentIndex === -1) return 0;
+
+    // completed phase is at the end, so we calculate based on position
+    return Math.round((currentIndex / (PHASE_ORDER.length - 1)) * 100);
   };
 
   const status = extraction?.state || extraction?.status || 'unknown';
   const isInProgress = status === 'running' || status === 'processing' || status === 'in_progress';
+
+  // Determine which optional phases are enabled (from extraction data or progress)
+  const extractOptionSets = extraction?.extractOptionSets ??
+    extraction?.extracted_data?.extractOptionSets ??
+    progress?.optionSetsExtracted > 0 ??
+    true; // Default to showing if we can't determine
+
+  const validateImages = extraction?.validateImages ??
+    extraction?.extracted_data?.validateImages ??
+    false;
 
   return (
     <Card className="w-full">
@@ -68,7 +102,7 @@ export default function ExtractionProgressCard({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CardTitle className="text-lg">
-              {extraction?.restaurant || 'Extraction Job'}
+              {extraction?.restaurant || extraction?.restaurantName || 'Extraction Job'}
             </CardTitle>
             {isPremium && (
               <Badge variant="secondary" className="text-xs">
@@ -85,7 +119,7 @@ export default function ExtractionProgressCard({
           {extraction?.url || 'No URL provided'}
         </CardDescription>
       </CardHeader>
-      
+
       {showDetails && (
         <CardContent className="space-y-4">
           {/* Progress Bar for Premium Extraction */}
@@ -94,7 +128,7 @@ export default function ExtractionProgressCard({
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-600">Progress</span>
                 <span className="text-gray-900 font-medium">
-                  {Math.round(getProgressPercentage())}%
+                  {getProgressPercentage()}%
                 </span>
               </div>
               <Progress value={getProgressPercentage()} className="h-2" />
@@ -106,38 +140,48 @@ export default function ExtractionProgressCard({
             <div className="space-y-2">
               <h4 className="text-sm font-medium text-gray-700">Extraction Phases</h4>
               <div className="space-y-1.5">
+                {/* Phase 1: Extracting Categories */}
                 <ExtractionPhase
                   name="Scanning Categories"
-                  isActive={progress.phase === 'scanning_categories'}
-                  isComplete={progress.categoriesScanned}
-                  detail={progress.categoriesFound ? `${progress.categoriesFound} found` : null}
+                  isActive={isPhaseActive('extracting_categories')}
+                  isComplete={isPhaseComplete('extracting_categories')}
+                  detail={progress.categoriesExtracted > 0 ? `${progress.categoriesExtracted} found` : null}
                 />
+
+                {/* Phase 2: Extracting Items */}
                 <ExtractionPhase
                   name="Extracting Items"
-                  isActive={progress.phase === 'extracting_items'}
-                  isComplete={progress.itemsExtracted}
-                  detail={progress.itemsFound ? `${progress.itemsFound} items` : null}
+                  isActive={isPhaseActive(['extracting_items', 'cleaning_urls'])}
+                  isComplete={isPhaseComplete('cleaning_urls')}
+                  detail={progress.itemsExtracted > 0 ? `${progress.itemsExtracted} items` :
+                    progress.currentCategory ? `Processing: ${progress.currentCategory}` : null}
                 />
-                {progress.extractOptionSets && (
+
+                {/* Phase 3: Option Sets (conditional) */}
+                {extractOptionSets && (
                   <ExtractionPhase
                     name="Extracting Option Sets"
-                    isActive={progress.phase === 'extracting_options'}
-                    isComplete={progress.optionSetsExtracted}
-                    detail={progress.optionSetsFound ? `${progress.optionSetsFound} sets` : null}
+                    isActive={isPhaseActive(['extracting_option_sets', 'deduplicating_option_sets'])}
+                    isComplete={isPhaseComplete('deduplicating_option_sets')}
+                    detail={progress.optionSetsExtracted > 0 ? `${progress.optionSetsExtracted} sets` : null}
                   />
                 )}
-                {progress.validateImages && (
+
+                {/* Phase 4: Image Validation (conditional) */}
+                {validateImages && (
                   <ExtractionPhase
                     name="Validating Images"
-                    isActive={progress.phase === 'validating_images'}
-                    isComplete={progress.imagesValidated}
-                    detail={progress.imagesProcessed ? `${progress.imagesProcessed} validated` : null}
+                    isActive={isPhaseActive('validating_images')}
+                    isComplete={isPhaseComplete('validating_images')}
+                    detail={progress.imagesValidated > 0 ? `${progress.imagesValidated} validated` : null}
                   />
                 )}
+
+                {/* Phase 5: Saving to Database */}
                 <ExtractionPhase
                   name="Saving to Database"
-                  isActive={progress.phase === 'saving_to_database'}
-                  isComplete={progress.savedToDatabase}
+                  isActive={isPhaseActive('saving_to_database')}
+                  isComplete={progress.savedToDatabase === true || isPhaseComplete('saving_to_database')}
                 />
               </div>
             </div>
@@ -151,11 +195,11 @@ export default function ExtractionProgressCard({
                 {extraction?.id || 'N/A'}
               </span>
             </div>
-            {extraction?.created_at && (
+            {(extraction?.created_at || extraction?.startTime) && (
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Started</span>
                 <span className="text-gray-700">
-                  {new Date(extraction.created_at).toLocaleString()}
+                  {new Date(extraction.created_at || extraction.startTime).toLocaleString()}
                 </span>
               </div>
             )}
@@ -180,7 +224,7 @@ export default function ExtractionProgressCard({
           {isInProgress && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm text-blue-700">
-                {isPremium 
+                {isPremium
                   ? 'Premium extraction with option sets in progress. This typically takes 2-5 minutes.'
                   : 'Extraction in progress. This typically takes 1-3 minutes.'}
               </p>
@@ -206,7 +250,7 @@ function ExtractionPhase({ name, isActive, isComplete, detail }) {
           <div className="h-3 w-3 rounded-full border-2 border-gray-300" />
         )}
         <span className={`text-sm ${
-          isActive ? 'text-blue-700 font-medium' : 
+          isActive ? 'text-blue-700 font-medium' :
           isComplete ? 'text-green-700' : 'text-gray-500'
         }`}>
           {name}

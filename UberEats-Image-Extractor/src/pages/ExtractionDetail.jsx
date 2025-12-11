@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import api, { menuItemAPI, extractionAPI } from '../services/api';
-import { 
+import {
   ArrowLeftIcon,
   DocumentArrowDownIcon,
   PhotoIcon,
@@ -13,19 +13,23 @@ import {
   ArrowPathIcon,
   TrashIcon,
   ChevronDownIcon,
-  CloudArrowUpIcon
+  CloudArrowUpIcon,
+  ArrowTopRightOnSquareIcon,
+  BuildingStorefrontIcon
 } from '@heroicons/react/24/outline';
 import EditableMenuItem from '../components/menu/EditableMenuItem';
 import OptionSetsManagement from '../components/menu/OptionSetsManagement';
 import { validateMenuItem, validateMenuItems, getChangedItems } from '../components/menu/MenuItemValidator';
 import { useToast } from '../hooks/use-toast';
 import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
+import ExtractionProgressCard from '../components/extraction/ExtractionProgressCard';
 
 export default function ExtractionDetail() {
   const { jobId } = useParams();
@@ -868,26 +872,58 @@ export default function ExtractionDetail() {
 
   return (
     <div>
-      {/* Header */}
+      {/* Header with Navigation */}
       <div className="mb-6">
-        <button
-          onClick={() => navigate('/extractions')}
-          className="flex items-center text-sm text-gray-500 hover:text-gray-700"
-        >
-          <ArrowLeftIcon className="h-4 w-4 mr-1" />
-          Back to Extractions
-        </button>
+        <div className="flex items-center gap-4 flex-wrap">
+          <button
+            onClick={() => navigate('/extractions')}
+            className="flex items-center text-sm text-gray-500 hover:text-gray-700"
+          >
+            <ArrowLeftIcon className="h-4 w-4 mr-1" />
+            Back to Extractions
+          </button>
+
+          {/* View Restaurant button - shown if restaurantId is available */}
+          {(job?.restaurant_id || job?.restaurantId) && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/restaurants/${job.restaurant_id || job.restaurantId}`)}
+            >
+              <BuildingStorefrontIcon className="h-4 w-4 mr-1" />
+              View Restaurant
+            </Button>
+          )}
+
+          {/* View Source Menu - opens URL in new tab */}
+          {job?.url && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.open(job.url, '_blank', 'noopener,noreferrer')}
+            >
+              <ArrowTopRightOnSquareIcon className="h-4 w-4 mr-1" />
+              View Source Menu
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Job Info */}
       <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
-        <div className="px-4 py-5 sm:px-6">
-          <h3 className="text-lg leading-6 font-medium text-gray-900">
-            Extraction Details
-          </h3>
-          <p className="mt-1 max-w-2xl text-sm text-gray-500">
-            {job.restaurant || job.restaurant?.name || 'Unknown Restaurant'}
-          </p>
+        <div className="px-4 py-5 sm:px-6 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg leading-6 font-medium text-gray-900">
+              Extraction Details
+            </h3>
+            <p className="mt-1 max-w-2xl text-sm text-gray-500">
+              {job.restaurant || job.restaurant?.name || 'Unknown Restaurant'}
+            </p>
+          </div>
+          {/* Extraction Type Badge */}
+          <Badge className={isPremiumExtraction ? 'bg-purple-100 text-purple-800 border-purple-200' : 'bg-blue-100 text-blue-800 border-blue-200'}>
+            {isPremiumExtraction ? 'Premium Extraction' : 'Standard Extraction'}
+          </Badge>
         </div>
         <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
           <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-3">
@@ -926,142 +962,26 @@ export default function ExtractionDetail() {
                  'Invalid Date'}
               </dd>
             </div>
-            {/* Progress Indicator for Running Jobs */}
-            {(job.state === 'running' || job.status === 'running' || job.state === 'processing' || 
+            {/* Progress Indicator for Running Jobs - Using ExtractionProgressCard */}
+            {(job.state === 'running' || job.status === 'running' || job.state === 'processing' ||
               job.status === 'processing' || job.state === 'in_progress' || job.status === 'in_progress') && (
               <div className="sm:col-span-3">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center mb-3">
-                    <ArrowPathIcon className="h-5 w-5 text-blue-600 animate-spin mr-2" />
-                    <h4 className="text-sm font-medium text-blue-900">
-                      {isPremiumExtraction ? 'Premium Extraction in Progress' : 'Extraction in Progress'}
-                    </h4>
-                    {isPolling && (
-                      <span className="ml-auto text-xs text-blue-600">
-                        Auto-refreshing every 3 seconds
-                      </span>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    {isPremiumExtraction && premiumProgress ? (
-                      <>
-                        {/* Premium extraction progress phases */}
-                        <div className="space-y-3">
-                          <div className={`flex items-center text-sm ${
-                            premiumProgress.phase === 'scanning_categories' ? 'text-blue-700' : 
-                            premiumProgress.categoriesScanned ? 'text-green-700' : 'text-gray-500'
-                          }`}>
-                            {premiumProgress.phase === 'scanning_categories' ? (
-                              <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse mr-2"></span>
-                            ) : premiumProgress.categoriesScanned ? (
-                              <CheckCircleIcon className="h-4 w-4 text-green-600 mr-2" />
-                            ) : (
-                              <span className="w-2 h-2 bg-gray-300 rounded-full mr-2"></span>
-                            )}
-                            <span>Scanning menu categories</span>
-                            {premiumProgress.categoriesFound > 0 && (
-                              <span className="ml-auto text-xs">
-                                {premiumProgress.categoriesFound} found
-                              </span>
-                            )}
-                          </div>
-                          
-                          <div className={`flex items-center text-sm ${
-                            premiumProgress.phase === 'extracting_items' ? 'text-blue-700' : 
-                            premiumProgress.itemsExtracted ? 'text-green-700' : 'text-gray-500'
-                          }`}>
-                            {premiumProgress.phase === 'extracting_items' ? (
-                              <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse mr-2"></span>
-                            ) : premiumProgress.itemsExtracted ? (
-                              <CheckCircleIcon className="h-4 w-4 text-green-600 mr-2" />
-                            ) : (
-                              <span className="w-2 h-2 bg-gray-300 rounded-full mr-2"></span>
-                            )}
-                            <span>Extracting menu items</span>
-                            {premiumProgress.itemsFound > 0 && (
-                              <span className="ml-auto text-xs">
-                                {premiumProgress.itemsFound} items
-                              </span>
-                            )}
-                          </div>
-                          
-                          {premiumProgress.extractOptionSets && (
-                            <div className={`flex items-center text-sm ${
-                              premiumProgress.phase === 'extracting_options' ? 'text-blue-700' : 
-                              premiumProgress.optionSetsExtracted ? 'text-green-700' : 'text-gray-500'
-                            }`}>
-                              {premiumProgress.phase === 'extracting_options' ? (
-                                <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse mr-2"></span>
-                              ) : premiumProgress.optionSetsExtracted ? (
-                                <CheckCircleIcon className="h-4 w-4 text-green-600 mr-2" />
-                              ) : (
-                                <span className="w-2 h-2 bg-gray-300 rounded-full mr-2"></span>
-                              )}
-                              <span>Extracting option sets</span>
-                              {premiumProgress.optionSetsFound > 0 && (
-                                <span className="ml-auto text-xs">
-                                  {premiumProgress.optionSetsFound} sets
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          
-                          {premiumProgress.validateImages && (
-                            <div className={`flex items-center text-sm ${
-                              premiumProgress.phase === 'validating_images' ? 'text-blue-700' : 
-                              premiumProgress.imagesValidated ? 'text-green-700' : 'text-gray-500'
-                            }`}>
-                              {premiumProgress.phase === 'validating_images' ? (
-                                <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse mr-2"></span>
-                              ) : premiumProgress.imagesValidated ? (
-                                <CheckCircleIcon className="h-4 w-4 text-green-600 mr-2" />
-                              ) : (
-                                <span className="w-2 h-2 bg-gray-300 rounded-full mr-2"></span>
-                              )}
-                              <span>Validating images</span>
-                              {premiumProgress.imagesProcessed > 0 && (
-                                <span className="ml-auto text-xs">
-                                  {premiumProgress.imagesProcessed} validated
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          
-                          <div className={`flex items-center text-sm ${
-                            premiumProgress.phase === 'saving_to_database' ? 'text-blue-700' : 
-                            premiumProgress.savedToDatabase ? 'text-green-700' : 'text-gray-500'
-                          }`}>
-                            {premiumProgress.phase === 'saving_to_database' ? (
-                              <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse mr-2"></span>
-                            ) : premiumProgress.savedToDatabase ? (
-                              <CheckCircleIcon className="h-4 w-4 text-green-600 mr-2" />
-                            ) : (
-                              <span className="w-2 h-2 bg-gray-300 rounded-full mr-2"></span>
-                            )}
-                            <span>Saving to database</span>
-                          </div>
-                        </div>
-                        
-                        <div className="text-xs text-blue-600 mt-3">
-                          Premium extraction with option sets typically takes 2-5 minutes.
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex items-center text-sm text-blue-700">
-                          <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse mr-2"></span>
-                          Scanning menu categories and items...
-                        </div>
-                        <div className="text-xs text-blue-600 mt-2">
-                          This process typically takes 1-3 minutes depending on menu size.
-                        </div>
-                      </>
-                    )}
-                  </div>
-                  {!isPolling && (
+                <ExtractionProgressCard
+                  extraction={job}
+                  progress={premiumProgress}
+                  isPremium={isPremiumExtraction}
+                  showDetails={true}
+                />
+                {/* Auto-refresh controls */}
+                <div className="mt-2 flex items-center justify-between text-xs">
+                  {isPolling ? (
+                    <span className="text-blue-600">
+                      Auto-refreshing every 3 seconds
+                    </span>
+                  ) : (
                     <button
                       onClick={() => fetchJobDetails(true)}
-                      className="mt-3 text-xs text-blue-600 hover:text-blue-800 underline"
+                      className="text-blue-600 hover:text-blue-800 underline"
                     >
                       Enable auto-refresh
                     </button>
