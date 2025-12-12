@@ -385,12 +385,14 @@ export default function RestaurantDetail() {
     fetchConfig();
   }, []);
 
-  // Set default branding source URL when restaurant loads
+  // Set default branding source URL when restaurant loads or when switching restaurants
   useEffect(() => {
-    if (restaurant?.website_url && !brandingSourceUrl) {
+    if (restaurant?.website_url) {
       setBrandingSourceUrl(restaurant.website_url);
+    } else {
+      setBrandingSourceUrl('');
     }
-  }, [restaurant?.website_url]);
+  }, [id, restaurant?.website_url]);
 
   // Smart defaults: When opening process logo dialog, uncheck colors that already exist
   useEffect(() => {
