@@ -369,9 +369,9 @@ router.post('/register-restaurant', requireRegistrationRestaurant, async (req, r
       });
     }
     
-    // Use email and password from request body first, fall back to database
+    // Use email and password from request body
     const email = requestEmail || restaurant.user_email || restaurant.email;
-    const password = requestPassword || restaurant.user_password_hint;
+    let password = requestPassword; // Will be updated if existing account found
     
     if (!email || !password) {
       return res.status(400).json({
@@ -420,6 +420,11 @@ router.post('/register-restaurant', requireRegistrationRestaurant, async (req, r
         account = newAccount;
       } else {
         account = existingAccount;
+        // Use the existing account's password instead of dialog/default
+        if (existingAccount.user_password_hint) {
+          password = existingAccount.user_password_hint;
+          console.log('[Registration] Using existing account password for:', email);
+        }
       }
     } else {
       // For new_account_with_restaurant, we need to first create account via CloudWaitress API

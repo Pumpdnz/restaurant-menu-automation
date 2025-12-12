@@ -137,6 +137,33 @@ export default function RestaurantDetail() {
   const [brandingSourceUrl, setBrandingSourceUrl] = useState('');
   const [useFirecrawlBranding, setUseFirecrawlBranding] = useState(false);
 
+  // Branding confirmation dialog states
+  const [brandingConfirmDialogOpen, setBrandingConfirmDialogOpen] = useState(false);
+  const [pendingBrandingData, setPendingBrandingData] = useState(null);
+  const [brandingVersionsToUpdate, setBrandingVersionsToUpdate] = useState({
+    logo_url: true,
+    logo_nobg_url: true,
+    logo_standard_url: true,
+    logo_thermal_url: true,
+    logo_thermal_alt_url: true,
+    logo_thermal_contrast_url: true,
+    logo_thermal_adaptive_url: true,
+    logo_favicon_url: true
+  });
+  const [brandingColorsToUpdate, setBrandingColorsToUpdate] = useState({
+    primary_color: true,
+    secondary_color: true,
+    tertiary_color: true,
+    accent_color: true,
+    background_color: true,
+    theme: true
+  });
+  const [brandingHeaderFieldsToUpdate, setBrandingHeaderFieldsToUpdate] = useState({
+    website_og_image: true,
+    website_og_title: true,
+    website_og_description: true
+  });
+
   // Platform extraction states
   const [extractionDialogOpen, setExtractionDialogOpen] = useState(false);
   const [extractionConfig, setExtractionConfig] = useState(null);
@@ -1740,6 +1767,57 @@ export default function RestaurantDetail() {
     return urls;
   };
 
+  // Check if restaurant has any existing branding values
+  const hasExistingBrandingValues = () => {
+    if (!restaurant) return false;
+    return !!(
+      restaurant.logo_url ||
+      restaurant.logo_nobg_url ||
+      restaurant.logo_standard_url ||
+      restaurant.logo_thermal_url ||
+      restaurant.logo_thermal_alt_url ||
+      restaurant.logo_thermal_contrast_url ||
+      restaurant.logo_thermal_adaptive_url ||
+      restaurant.logo_favicon_url ||
+      restaurant.primary_color ||
+      restaurant.secondary_color ||
+      restaurant.tertiary_color ||
+      restaurant.accent_color ||
+      restaurant.background_color ||
+      restaurant.theme ||
+      restaurant.website_og_image ||
+      restaurant.website_og_title ||
+      restaurant.website_og_description
+    );
+  };
+
+  // Set smart defaults for branding checkboxes - uncheck fields that already have values
+  const setBrandingSmartDefaults = () => {
+    setBrandingVersionsToUpdate({
+      logo_url: !restaurant?.logo_url,
+      logo_nobg_url: !restaurant?.logo_nobg_url,
+      logo_standard_url: !restaurant?.logo_standard_url,
+      logo_thermal_url: !restaurant?.logo_thermal_url,
+      logo_thermal_alt_url: !restaurant?.logo_thermal_alt_url,
+      logo_thermal_contrast_url: !restaurant?.logo_thermal_contrast_url,
+      logo_thermal_adaptive_url: !restaurant?.logo_thermal_adaptive_url,
+      logo_favicon_url: !restaurant?.logo_favicon_url
+    });
+    setBrandingColorsToUpdate({
+      primary_color: !restaurant?.primary_color,
+      secondary_color: !restaurant?.secondary_color,
+      tertiary_color: !restaurant?.tertiary_color,
+      accent_color: !restaurant?.accent_color,
+      background_color: !restaurant?.background_color,
+      theme: !restaurant?.theme
+    });
+    setBrandingHeaderFieldsToUpdate({
+      website_og_image: !restaurant?.website_og_image,
+      website_og_title: !restaurant?.website_og_title,
+      website_og_description: !restaurant?.website_og_description
+    });
+  };
+
   const handleExtractBranding = async () => {
     if (!brandingSourceUrl) {
       setError('Please select or enter a URL for branding extraction');
@@ -1750,50 +1828,26 @@ export default function RestaurantDetail() {
     setError(null);
 
     try {
+      // Step 1: Extract branding in preview mode first
       const response = await api.post('/website-extraction/branding', {
         restaurantId: id,
-        sourceUrl: brandingSourceUrl
+        sourceUrl: brandingSourceUrl,
+        previewOnly: true
       });
 
       if (response.data.success) {
         const data = response.data.data;
 
-        // Update local state
-        const updates = {};
-
-        // Logo versions
-        if (data.logoVersions?.original) updates.logo_url = data.logoVersions.original;
-        if (data.logoVersions?.nobg) updates.logo_nobg_url = data.logoVersions.nobg;
-        if (data.logoVersions?.standard) updates.logo_standard_url = data.logoVersions.standard;
-        if (data.logoVersions?.thermal) updates.logo_thermal_url = data.logoVersions.thermal;
-        if (data.logoVersions?.thermal_alt) updates.logo_thermal_alt_url = data.logoVersions.thermal_alt;
-        if (data.logoVersions?.thermal_contrast) updates.logo_thermal_contrast_url = data.logoVersions.thermal_contrast;
-        if (data.logoVersions?.thermal_adaptive) updates.logo_thermal_adaptive_url = data.logoVersions.thermal_adaptive;
-        if (data.images?.favicon || data.logoVersions?.favicon) {
-          updates.logo_favicon_url = data.images?.favicon || data.logoVersions?.favicon;
+        // Check if there are existing values that could be overwritten
+        if (hasExistingBrandingValues()) {
+          // Store the extracted data and show confirmation dialog
+          setPendingBrandingData(data);
+          setBrandingSmartDefaults();
+          setBrandingConfirmDialogOpen(true);
+        } else {
+          // No existing values - apply everything directly
+          await applyBrandingUpdates(data, true); // true = select all
         }
-
-        // Colors
-        if (data.colors?.primaryColor) updates.primary_color = data.colors.primaryColor;
-        if (data.colors?.secondaryColor) updates.secondary_color = data.colors.secondaryColor;
-        if (data.colors?.tertiaryColor) updates.tertiary_color = data.colors.tertiaryColor;
-        if (data.colors?.accentColor) updates.accent_color = data.colors.accentColor;
-        if (data.colors?.backgroundColor) updates.background_color = data.colors.backgroundColor;
-        if (data.colors?.theme) updates.theme = data.colors.theme;
-
-        // New OG fields
-        if (data.images?.ogImage) updates.website_og_image = data.images.ogImage;
-        if (data.metadata?.ogTitle) updates.website_og_title = data.metadata.ogTitle;
-        if (data.metadata?.ogDescription) updates.website_og_description = data.metadata.ogDescription;
-
-        setRestaurant(prev => ({ ...prev, ...updates }));
-        setEditedData(prev => ({ ...prev, ...updates }));
-
-        const confidencePercent = data.confidence ? Math.round(data.confidence * 100) : 0;
-        setSuccess(`Branding extracted successfully${confidencePercent > 0 ? ` (${confidencePercent}% confidence)` : ''}`);
-
-        // Refresh data
-        setTimeout(() => fetchRestaurantDetails(), 1000);
       } else {
         setError(response.data.error || 'Failed to extract branding');
       }
@@ -1802,6 +1856,93 @@ export default function RestaurantDetail() {
       setError(err.response?.data?.error || 'Failed to extract branding');
     } finally {
       setExtractingBranding(false);
+    }
+  };
+
+  // Apply branding updates with selection filtering - uses already-extracted data
+  const applyBrandingUpdates = async (data, selectAll = false) => {
+    try {
+      // Build arrays of selected fields
+      const versionsArray = selectAll
+        ? ['logo_url', 'logo_nobg_url', 'logo_standard_url', 'logo_thermal_url', 'logo_thermal_alt_url', 'logo_thermal_contrast_url', 'logo_thermal_adaptive_url', 'logo_favicon_url']
+        : Object.keys(brandingVersionsToUpdate).filter(key => brandingVersionsToUpdate[key]);
+
+      const colorsArray = selectAll
+        ? ['primary_color', 'secondary_color', 'tertiary_color', 'accent_color', 'background_color', 'theme']
+        : Object.keys(brandingColorsToUpdate).filter(key => brandingColorsToUpdate[key]);
+
+      const headerFieldsArray = selectAll
+        ? ['website_og_image', 'website_og_title', 'website_og_description']
+        : Object.keys(brandingHeaderFieldsToUpdate).filter(key => brandingHeaderFieldsToUpdate[key]);
+
+      // Call save endpoint with already-extracted data (no re-extraction)
+      const response = await api.post('/website-extraction/branding/save', {
+        restaurantId: id,
+        brandingData: data,
+        versionsToUpdate: versionsArray,
+        colorsToUpdate: colorsArray,
+        headerFieldsToUpdate: headerFieldsArray
+      });
+
+      if (response.data.success) {
+        // Update local state with only the fields that were selected
+        const updates = {};
+
+        // Logo versions
+        if (versionsArray.includes('logo_url') && data.logoVersions?.original) updates.logo_url = data.logoVersions.original;
+        if (versionsArray.includes('logo_nobg_url') && data.logoVersions?.nobg) updates.logo_nobg_url = data.logoVersions.nobg;
+        if (versionsArray.includes('logo_standard_url') && data.logoVersions?.standard) updates.logo_standard_url = data.logoVersions.standard;
+        if (versionsArray.includes('logo_thermal_url') && data.logoVersions?.thermal) updates.logo_thermal_url = data.logoVersions.thermal;
+        if (versionsArray.includes('logo_thermal_alt_url') && data.logoVersions?.thermal_alt) updates.logo_thermal_alt_url = data.logoVersions.thermal_alt;
+        if (versionsArray.includes('logo_thermal_contrast_url') && data.logoVersions?.thermal_contrast) updates.logo_thermal_contrast_url = data.logoVersions.thermal_contrast;
+        if (versionsArray.includes('logo_thermal_adaptive_url') && data.logoVersions?.thermal_adaptive) updates.logo_thermal_adaptive_url = data.logoVersions.thermal_adaptive;
+        if (versionsArray.includes('logo_favicon_url') && (data.images?.favicon || data.logoVersions?.favicon)) {
+          updates.logo_favicon_url = data.images?.favicon || data.logoVersions?.favicon;
+        }
+
+        // Colors
+        if (colorsArray.includes('primary_color') && data.colors?.primaryColor) updates.primary_color = data.colors.primaryColor;
+        if (colorsArray.includes('secondary_color') && data.colors?.secondaryColor) updates.secondary_color = data.colors.secondaryColor;
+        if (colorsArray.includes('tertiary_color') && data.colors?.tertiaryColor) updates.tertiary_color = data.colors.tertiaryColor;
+        if (colorsArray.includes('accent_color') && data.colors?.accentColor) updates.accent_color = data.colors.accentColor;
+        if (colorsArray.includes('background_color') && data.colors?.backgroundColor) updates.background_color = data.colors.backgroundColor;
+        if (colorsArray.includes('theme') && data.colors?.theme) updates.theme = data.colors.theme;
+
+        // Header fields
+        if (headerFieldsArray.includes('website_og_image') && data.images?.ogImage) updates.website_og_image = data.images.ogImage;
+        if (headerFieldsArray.includes('website_og_title') && data.metadata?.ogTitle) updates.website_og_title = data.metadata.ogTitle;
+        if (headerFieldsArray.includes('website_og_description') && data.metadata?.ogDescription) updates.website_og_description = data.metadata.ogDescription;
+
+        setRestaurant(prev => ({ ...prev, ...updates }));
+        setEditedData(prev => ({ ...prev, ...updates }));
+
+        const fieldsUpdated = response.data.fieldsUpdated?.length || 0;
+        const confidencePercent = data.confidence ? Math.round(data.confidence * 100) : 0;
+        setSuccess(`Branding updated successfully - ${fieldsUpdated} fields${confidencePercent > 0 ? ` (${confidencePercent}% confidence)` : ''}`);
+
+        // Refresh data
+        setTimeout(() => fetchRestaurantDetails(), 1000);
+      } else {
+        setError(response.data.error || 'Failed to save branding');
+      }
+    } catch (err) {
+      console.error('Branding save error:', err);
+      setError(err.response?.data?.error || 'Failed to save branding');
+    }
+  };
+
+  // Handle confirmation dialog submit
+  const handleConfirmBrandingUpdate = async () => {
+    if (!pendingBrandingData) return;
+
+    setBrandingConfirmDialogOpen(false);
+    setExtractingBranding(true);
+
+    try {
+      await applyBrandingUpdates(pendingBrandingData, false);
+    } finally {
+      setExtractingBranding(false);
+      setPendingBrandingData(null);
     }
   };
 
@@ -7390,6 +7531,298 @@ export default function RestaurantDetail() {
                 'Continue'
               ) : (
                 'Process Logo'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Branding Confirmation Dialog */}
+      <Dialog open={brandingConfirmDialogOpen} onOpenChange={setBrandingConfirmDialogOpen}>
+        <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Confirm Branding Updates</DialogTitle>
+            <DialogDescription>
+              Select which extracted values to apply. Unchecked items will preserve existing values.
+            </DialogDescription>
+          </DialogHeader>
+
+          {pendingBrandingData && (
+            <div className="space-y-6">
+              {/* Colors Section */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <h4 className="font-medium">Colors</h4>
+                  <div className="space-x-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setBrandingColorsToUpdate({
+                        primary_color: true,
+                        secondary_color: true,
+                        tertiary_color: true,
+                        accent_color: true,
+                        background_color: true,
+                        theme: true
+                      })}
+                    >
+                      Select All
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setBrandingColorsToUpdate({
+                        primary_color: false,
+                        secondary_color: false,
+                        tertiary_color: false,
+                        accent_color: false,
+                        background_color: false,
+                        theme: false
+                      })}
+                    >
+                      Deselect All
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2 pl-4">
+                  {[
+                    { key: 'primary_color', label: 'Primary Color', newValue: pendingBrandingData.colors?.primaryColor },
+                    { key: 'secondary_color', label: 'Secondary Color', newValue: pendingBrandingData.colors?.secondaryColor },
+                    { key: 'tertiary_color', label: 'Tertiary Color', newValue: pendingBrandingData.colors?.tertiaryColor },
+                    { key: 'accent_color', label: 'Accent Color', newValue: pendingBrandingData.colors?.accentColor },
+                    { key: 'background_color', label: 'Background Color', newValue: pendingBrandingData.colors?.backgroundColor },
+                    { key: 'theme', label: 'Theme', newValue: pendingBrandingData.colors?.theme }
+                  ].map(({ key, label, newValue }) => (
+                    <label key={key} className="flex items-center justify-between py-1">
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={brandingColorsToUpdate[key]}
+                          onChange={(e) => setBrandingColorsToUpdate(prev => ({
+                            ...prev,
+                            [key]: e.target.checked
+                          }))}
+                        />
+                        <span className="text-sm">{label}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {restaurant?.[key] && key !== 'theme' && (
+                          <>
+                            <div
+                              className="w-6 h-6 rounded border"
+                              style={{ backgroundColor: restaurant[key] }}
+                              title={`Current: ${restaurant[key]}`}
+                            />
+                            <span className="text-xs text-muted-foreground">→</span>
+                          </>
+                        )}
+                        {restaurant?.[key] && key === 'theme' && (
+                          <>
+                            <span className="text-xs">{restaurant[key]}</span>
+                            <span className="text-xs text-muted-foreground">→</span>
+                          </>
+                        )}
+                        {newValue && key !== 'theme' ? (
+                          <div
+                            className="w-6 h-6 rounded border"
+                            style={{ backgroundColor: newValue }}
+                            title={`New: ${newValue}`}
+                          />
+                        ) : newValue && key === 'theme' ? (
+                          <span className="text-xs font-medium">{newValue}</span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">-</span>
+                        )}
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Logo Versions Section */}
+              <div className="space-y-3 border-t pt-4">
+                <div className="flex justify-between items-center">
+                  <h4 className="font-medium">Logo Versions</h4>
+                  <div className="space-x-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setBrandingVersionsToUpdate({
+                        logo_url: true,
+                        logo_nobg_url: true,
+                        logo_standard_url: true,
+                        logo_thermal_url: true,
+                        logo_thermal_alt_url: true,
+                        logo_thermal_contrast_url: true,
+                        logo_thermal_adaptive_url: true,
+                        logo_favicon_url: true
+                      })}
+                    >
+                      Select All
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setBrandingVersionsToUpdate({
+                        logo_url: false,
+                        logo_nobg_url: false,
+                        logo_standard_url: false,
+                        logo_thermal_url: false,
+                        logo_thermal_alt_url: false,
+                        logo_thermal_contrast_url: false,
+                        logo_thermal_adaptive_url: false,
+                        logo_favicon_url: false
+                      })}
+                    >
+                      Deselect All
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2 pl-4">
+                  {[
+                    { key: 'logo_url', label: 'Original Logo', newValue: pendingBrandingData.logoVersions?.original },
+                    { key: 'logo_nobg_url', label: 'Logo (No Background)', newValue: pendingBrandingData.logoVersions?.nobg },
+                    { key: 'logo_standard_url', label: 'Logo (Standard)', newValue: pendingBrandingData.logoVersions?.standard },
+                    { key: 'logo_thermal_url', label: 'Thermal (Inverted)', newValue: pendingBrandingData.logoVersions?.thermal },
+                    { key: 'logo_thermal_alt_url', label: 'Thermal (Standard)', newValue: pendingBrandingData.logoVersions?.thermal_alt },
+                    { key: 'logo_thermal_contrast_url', label: 'Thermal (High Contrast)', newValue: pendingBrandingData.logoVersions?.thermal_contrast },
+                    { key: 'logo_thermal_adaptive_url', label: 'Thermal (Adaptive)', newValue: pendingBrandingData.logoVersions?.thermal_adaptive },
+                    { key: 'logo_favicon_url', label: 'Favicon', newValue: pendingBrandingData.images?.favicon || pendingBrandingData.logoVersions?.favicon }
+                  ].map(({ key, label, newValue }) => (
+                    <label key={key} className="flex items-center justify-between py-1">
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={brandingVersionsToUpdate[key]}
+                          onChange={(e) => setBrandingVersionsToUpdate(prev => ({
+                            ...prev,
+                            [key]: e.target.checked
+                          }))}
+                          disabled={!newValue}
+                        />
+                        <span className={`text-sm ${!newValue ? 'text-muted-foreground' : ''}`}>{label}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {restaurant?.[key] && (
+                          <>
+                            <span className="text-xs text-green-600">has value</span>
+                            <span className="text-xs text-muted-foreground">→</span>
+                          </>
+                        )}
+                        {newValue ? (
+                          <span className="text-xs text-blue-600">new value</span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">not extracted</span>
+                        )}
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Header Fields Section */}
+              <div className="space-y-3 border-t pt-4">
+                <div className="flex justify-between items-center">
+                  <h4 className="font-medium">Header Images & Tags</h4>
+                  <div className="space-x-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setBrandingHeaderFieldsToUpdate({
+                        website_og_image: true,
+                        website_og_title: true,
+                        website_og_description: true
+                      })}
+                    >
+                      Select All
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setBrandingHeaderFieldsToUpdate({
+                        website_og_image: false,
+                        website_og_title: false,
+                        website_og_description: false
+                      })}
+                    >
+                      Deselect All
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2 pl-4">
+                  {[
+                    { key: 'website_og_image', label: 'OG Image', newValue: pendingBrandingData.images?.ogImage },
+                    { key: 'website_og_title', label: 'OG Title', newValue: pendingBrandingData.metadata?.ogTitle },
+                    { key: 'website_og_description', label: 'OG Description', newValue: pendingBrandingData.metadata?.ogDescription }
+                  ].map(({ key, label, newValue }) => (
+                    <label key={key} className="flex items-center justify-between py-1">
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={brandingHeaderFieldsToUpdate[key]}
+                          onChange={(e) => setBrandingHeaderFieldsToUpdate(prev => ({
+                            ...prev,
+                            [key]: e.target.checked
+                          }))}
+                          disabled={!newValue}
+                        />
+                        <span className={`text-sm ${!newValue ? 'text-muted-foreground' : ''}`}>{label}</span>
+                      </div>
+                      <div className="flex items-center space-x-2 max-w-[200px]">
+                        {restaurant?.[key] && (
+                          <>
+                            <span className="text-xs text-green-600 truncate">has value</span>
+                            <span className="text-xs text-muted-foreground">→</span>
+                          </>
+                        )}
+                        {newValue ? (
+                          <span className="text-xs text-blue-600 truncate" title={newValue}>
+                            {key === 'website_og_image' ? 'image' : newValue.substring(0, 30) + (newValue.length > 30 ? '...' : '')}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">not extracted</span>
+                        )}
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Confidence indicator */}
+              {pendingBrandingData.confidence && (
+                <div className="border-t pt-4">
+                  <p className="text-sm text-muted-foreground">
+                    Extraction confidence: {Math.round(pendingBrandingData.confidence * 100)}%
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setBrandingConfirmDialogOpen(false);
+                setPendingBrandingData(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmBrandingUpdate}
+              disabled={extractingBranding}
+            >
+              {extractingBranding ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Applying...
+                </>
+              ) : (
+                'Apply Selected Updates'
               )}
             </Button>
           </DialogFooter>

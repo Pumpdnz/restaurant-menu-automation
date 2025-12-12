@@ -6799,8 +6799,8 @@ app.post('/api/website-extraction/process-selected-logo', authMiddleware, requir
         updateData.logo_favicon_url = logoVersions?.favicon;
       }
 
-      // Update colors based on selection
-      const shouldUpdateColor = (colorKey) => colorsToUpdate.length === 0 || colorsToUpdate.includes(colorKey);
+      // Update colors based on selection - only update if explicitly selected
+      const shouldUpdateColor = (colorKey) => colorsToUpdate.includes(colorKey);
 
       if (shouldUpdateColor('primary_color') && colors?.primaryColor) {
         updateData.primary_color = colors.primaryColor;
@@ -6820,9 +6820,9 @@ app.post('/api/website-extraction/process-selected-logo', authMiddleware, requir
       if (shouldUpdateColor('theme') && colors?.theme) {
         updateData.theme = colors.theme;
       }
-      // Always include brand_colors array if any color is being updated
-      if (colorsToUpdate.length === 0 || colorsToUpdate.length > 0) {
-        updateData.brand_colors = colors?.brandColors || [];
+      // Only include brand_colors array if user selected at least one color to update
+      if (colorsToUpdate.length > 0 && colors?.brandColors) {
+        updateData.brand_colors = colors.brandColors;
       }
       
       // Add saved images if any
@@ -6872,7 +6872,14 @@ app.post('/api/website-extraction/process-selected-logo', authMiddleware, requir
  */
 app.post('/api/website-extraction/branding', authMiddleware, requireFirecrawlBranding, async (req, res) => {
   try {
-    const { restaurantId, sourceUrl } = req.body;
+    const {
+      restaurantId,
+      sourceUrl,
+      previewOnly = false,
+      versionsToUpdate = [],
+      colorsToUpdate = [],
+      headerFieldsToUpdate = []
+    } = req.body;
 
     if (!restaurantId || !sourceUrl) {
       return res.status(400).json({
@@ -6882,6 +6889,7 @@ app.post('/api/website-extraction/branding', authMiddleware, requireFirecrawlBra
     }
 
     console.log('[API] Starting branding extraction for:', sourceUrl);
+    console.log('[API] Preview only:', previewOnly);
 
     const logoService = require('./src/services/logo-extraction-service');
 
@@ -6915,64 +6923,128 @@ app.post('/api/website-extraction/branding', authMiddleware, requireFirecrawlBra
       }
     }
 
-    // Step 3: Prepare database update
-    if (db.isDatabaseAvailable()) {
-      const updateData = {
-        // Colors from Firecrawl (use these instead of Vibrant.js extraction)
-        primary_color: brandingResult.colors?.primaryColor,
-        secondary_color: brandingResult.colors?.secondaryColor,
-        tertiary_color: brandingResult.colors?.tertiaryColor,
-        accent_color: brandingResult.colors?.accentColor,
-        background_color: brandingResult.colors?.backgroundColor,
-        theme: brandingResult.colors?.theme,
-
-        // Logo versions
-        logo_url: logoVersions?.original,
-        logo_nobg_url: logoVersions?.nobg,
-        logo_standard_url: logoVersions?.standard,
-        logo_thermal_url: logoVersions?.thermal,
-        logo_thermal_alt_url: logoVersions?.thermal_alt,
-        logo_thermal_contrast_url: logoVersions?.thermal_contrast,
-        logo_thermal_adaptive_url: logoVersions?.thermal_adaptive,
-
-        // Favicon: prefer Firecrawl's, fallback to processed
-        logo_favicon_url: brandingResult.images?.faviconUrl || logoVersions?.favicon,
-
-        // New OG fields
-        website_og_image: brandingResult.images?.ogImageUrl,
-        website_og_title: brandingResult.metadata?.ogTitle,
-        website_og_description: brandingResult.metadata?.ogDescription
-      };
-
-      // Remove null/undefined values
-      Object.keys(updateData).forEach(key => {
-        if (updateData[key] === null || updateData[key] === undefined) {
-          delete updateData[key];
+    // If preview only, return extracted data without saving to database
+    if (previewOnly) {
+      console.log('[API] Preview mode - returning extracted data without saving');
+      return res.json({
+        success: true,
+        previewMode: true,
+        data: {
+          logoVersions,
+          colors: brandingResult.colors,
+          metadata: brandingResult.metadata,
+          images: {
+            logo: brandingResult.images?.logoUrl,
+            favicon: brandingResult.images?.faviconUrl,
+            ogImage: brandingResult.images?.ogImageUrl
+          },
+          confidence: brandingResult.confidence,
+          logoReasoning: brandingResult.logoReasoning,
+          extractedAt: brandingResult.extractedAt
         }
       });
+    }
 
-      await db.updateRestaurantWorkflow(restaurantId, updateData);
-      console.log('[API] Updated restaurant with branding data:', Object.keys(updateData).length, 'fields');
+    // Step 3: Prepare database update with selection filtering
+    if (db.isDatabaseAvailable()) {
+      console.log('[API] Versions to update:', versionsToUpdate);
+      console.log('[API] Colors to update:', colorsToUpdate);
+      console.log('[API] Header fields to update:', headerFieldsToUpdate);
 
-      // Track branding extraction usage
-      try {
-        // Get organisation_id from restaurant
-        const { data: restaurant } = await db.supabase
-          .from('restaurants')
-          .select('organisation_id')
-          .eq('id', restaurantId)
-          .single();
+      // Helper functions to check if field should be updated
+      const shouldUpdateVersion = (key) => versionsToUpdate.includes(key);
+      const shouldUpdateColor = (key) => colorsToUpdate.includes(key);
+      const shouldUpdateHeader = (key) => headerFieldsToUpdate.includes(key);
 
-        if (restaurant?.organisation_id) {
-          UsageTrackingService.trackBrandingExtraction(restaurant.organisation_id, {
-            restaurant_id: restaurantId,
-            url: sourceUrl,
-            has_logo: !!brandingResult.images?.logoUrl,
-            confidence: brandingResult.confidence
-          }).catch(err => console.error('[UsageTracking] Failed to track branding extraction:', err));
+      const updateData = {};
+
+      // Colors - only update if selected
+      if (shouldUpdateColor('primary_color') && brandingResult.colors?.primaryColor) {
+        updateData.primary_color = brandingResult.colors.primaryColor;
+      }
+      if (shouldUpdateColor('secondary_color') && brandingResult.colors?.secondaryColor) {
+        updateData.secondary_color = brandingResult.colors.secondaryColor;
+      }
+      if (shouldUpdateColor('tertiary_color') && brandingResult.colors?.tertiaryColor) {
+        updateData.tertiary_color = brandingResult.colors.tertiaryColor;
+      }
+      if (shouldUpdateColor('accent_color') && brandingResult.colors?.accentColor) {
+        updateData.accent_color = brandingResult.colors.accentColor;
+      }
+      if (shouldUpdateColor('background_color') && brandingResult.colors?.backgroundColor) {
+        updateData.background_color = brandingResult.colors.backgroundColor;
+      }
+      if (shouldUpdateColor('theme') && brandingResult.colors?.theme) {
+        updateData.theme = brandingResult.colors.theme;
+      }
+
+      // Logo versions - only update if selected
+      if (shouldUpdateVersion('logo_url') && logoVersions?.original) {
+        updateData.logo_url = logoVersions.original;
+      }
+      if (shouldUpdateVersion('logo_nobg_url') && logoVersions?.nobg) {
+        updateData.logo_nobg_url = logoVersions.nobg;
+      }
+      if (shouldUpdateVersion('logo_standard_url') && logoVersions?.standard) {
+        updateData.logo_standard_url = logoVersions.standard;
+      }
+      if (shouldUpdateVersion('logo_thermal_url') && logoVersions?.thermal) {
+        updateData.logo_thermal_url = logoVersions.thermal;
+      }
+      if (shouldUpdateVersion('logo_thermal_alt_url') && logoVersions?.thermal_alt) {
+        updateData.logo_thermal_alt_url = logoVersions.thermal_alt;
+      }
+      if (shouldUpdateVersion('logo_thermal_contrast_url') && logoVersions?.thermal_contrast) {
+        updateData.logo_thermal_contrast_url = logoVersions.thermal_contrast;
+      }
+      if (shouldUpdateVersion('logo_thermal_adaptive_url') && logoVersions?.thermal_adaptive) {
+        updateData.logo_thermal_adaptive_url = logoVersions.thermal_adaptive;
+      }
+      if (shouldUpdateVersion('logo_favicon_url')) {
+        const faviconValue = brandingResult.images?.faviconUrl || logoVersions?.favicon;
+        if (faviconValue) {
+          updateData.logo_favicon_url = faviconValue;
         }
-      } catch (trackingError) {
-        console.error('[UsageTracking] Error getting organisation for tracking:', trackingError);
+      }
+
+      // Header fields (OG data) - only update if selected
+      if (shouldUpdateHeader('website_og_image') && brandingResult.images?.ogImageUrl) {
+        updateData.website_og_image = brandingResult.images.ogImageUrl;
+      }
+      if (shouldUpdateHeader('website_og_title') && brandingResult.metadata?.ogTitle) {
+        updateData.website_og_title = brandingResult.metadata.ogTitle;
+      }
+      if (shouldUpdateHeader('website_og_description') && brandingResult.metadata?.ogDescription) {
+        updateData.website_og_description = brandingResult.metadata.ogDescription;
+      }
+
+      // Only update if there are fields to update
+      if (Object.keys(updateData).length > 0) {
+        await db.updateRestaurantWorkflow(restaurantId, updateData);
+        console.log('[API] Updated restaurant with branding data:', Object.keys(updateData).length, 'fields');
+
+        // Track branding extraction usage
+        try {
+          const { data: restaurant } = await db.supabase
+            .from('restaurants')
+            .select('organisation_id')
+            .eq('id', restaurantId)
+            .single();
+
+          if (restaurant?.organisation_id) {
+            UsageTrackingService.trackBrandingExtraction(restaurant.organisation_id, {
+              restaurant_id: restaurantId,
+              url: sourceUrl,
+              has_logo: !!brandingResult.images?.logoUrl,
+              confidence: brandingResult.confidence,
+              fields_updated: Object.keys(updateData).length
+            }).catch(err => console.error('[UsageTracking] Failed to track branding extraction:', err));
+          }
+        } catch (trackingError) {
+          console.error('[UsageTracking] Error getting organisation for tracking:', trackingError);
+        }
+      } else {
+        console.log('[API] No fields selected for update');
       }
     }
 
@@ -6998,6 +7070,152 @@ app.post('/api/website-extraction/branding', authMiddleware, requireFirecrawlBra
     return res.status(500).json({
       success: false,
       error: error.message || 'Failed to extract branding'
+    });
+  }
+});
+
+/**
+ * POST /api/website-extraction/branding/save
+ * Save already-extracted branding data with selection filtering
+ * This avoids re-extracting when user confirms selections
+ */
+app.post('/api/website-extraction/branding/save', authMiddleware, async (req, res) => {
+  try {
+    const {
+      restaurantId,
+      brandingData,
+      versionsToUpdate = [],
+      colorsToUpdate = [],
+      headerFieldsToUpdate = []
+    } = req.body;
+
+    if (!restaurantId || !brandingData) {
+      return res.status(400).json({
+        success: false,
+        error: 'Restaurant ID and branding data are required'
+      });
+    }
+
+    console.log('[API] Saving branding data for restaurant:', restaurantId);
+    console.log('[API] Versions to update:', versionsToUpdate);
+    console.log('[API] Colors to update:', colorsToUpdate);
+    console.log('[API] Header fields to update:', headerFieldsToUpdate);
+
+    if (!db.isDatabaseAvailable()) {
+      return res.status(500).json({
+        success: false,
+        error: 'Database not available'
+      });
+    }
+
+    // Helper functions to check if field should be updated
+    const shouldUpdateVersion = (key) => versionsToUpdate.includes(key);
+    const shouldUpdateColor = (key) => colorsToUpdate.includes(key);
+    const shouldUpdateHeader = (key) => headerFieldsToUpdate.includes(key);
+
+    const updateData = {};
+
+    // Colors - only update if selected
+    if (shouldUpdateColor('primary_color') && brandingData.colors?.primaryColor) {
+      updateData.primary_color = brandingData.colors.primaryColor;
+    }
+    if (shouldUpdateColor('secondary_color') && brandingData.colors?.secondaryColor) {
+      updateData.secondary_color = brandingData.colors.secondaryColor;
+    }
+    if (shouldUpdateColor('tertiary_color') && brandingData.colors?.tertiaryColor) {
+      updateData.tertiary_color = brandingData.colors.tertiaryColor;
+    }
+    if (shouldUpdateColor('accent_color') && brandingData.colors?.accentColor) {
+      updateData.accent_color = brandingData.colors.accentColor;
+    }
+    if (shouldUpdateColor('background_color') && brandingData.colors?.backgroundColor) {
+      updateData.background_color = brandingData.colors.backgroundColor;
+    }
+    if (shouldUpdateColor('theme') && brandingData.colors?.theme) {
+      updateData.theme = brandingData.colors.theme;
+    }
+
+    // Logo versions - only update if selected
+    if (shouldUpdateVersion('logo_url') && brandingData.logoVersions?.original) {
+      updateData.logo_url = brandingData.logoVersions.original;
+    }
+    if (shouldUpdateVersion('logo_nobg_url') && brandingData.logoVersions?.nobg) {
+      updateData.logo_nobg_url = brandingData.logoVersions.nobg;
+    }
+    if (shouldUpdateVersion('logo_standard_url') && brandingData.logoVersions?.standard) {
+      updateData.logo_standard_url = brandingData.logoVersions.standard;
+    }
+    if (shouldUpdateVersion('logo_thermal_url') && brandingData.logoVersions?.thermal) {
+      updateData.logo_thermal_url = brandingData.logoVersions.thermal;
+    }
+    if (shouldUpdateVersion('logo_thermal_alt_url') && brandingData.logoVersions?.thermal_alt) {
+      updateData.logo_thermal_alt_url = brandingData.logoVersions.thermal_alt;
+    }
+    if (shouldUpdateVersion('logo_thermal_contrast_url') && brandingData.logoVersions?.thermal_contrast) {
+      updateData.logo_thermal_contrast_url = brandingData.logoVersions.thermal_contrast;
+    }
+    if (shouldUpdateVersion('logo_thermal_adaptive_url') && brandingData.logoVersions?.thermal_adaptive) {
+      updateData.logo_thermal_adaptive_url = brandingData.logoVersions.thermal_adaptive;
+    }
+    if (shouldUpdateVersion('logo_favicon_url')) {
+      const faviconValue = brandingData.images?.favicon || brandingData.logoVersions?.favicon;
+      if (faviconValue) {
+        updateData.logo_favicon_url = faviconValue;
+      }
+    }
+
+    // Header fields (OG data) - only update if selected
+    if (shouldUpdateHeader('website_og_image') && brandingData.images?.ogImage) {
+      updateData.website_og_image = brandingData.images.ogImage;
+    }
+    if (shouldUpdateHeader('website_og_title') && brandingData.metadata?.ogTitle) {
+      updateData.website_og_title = brandingData.metadata.ogTitle;
+    }
+    if (shouldUpdateHeader('website_og_description') && brandingData.metadata?.ogDescription) {
+      updateData.website_og_description = brandingData.metadata.ogDescription;
+    }
+
+    // Only update if there are fields to update
+    if (Object.keys(updateData).length > 0) {
+      await db.updateRestaurantWorkflow(restaurantId, updateData);
+      console.log('[API] Saved branding data:', Object.keys(updateData).length, 'fields');
+
+      // Track branding save usage
+      try {
+        const { data: restaurant } = await db.supabase
+          .from('restaurants')
+          .select('organisation_id')
+          .eq('id', restaurantId)
+          .single();
+
+        if (restaurant?.organisation_id) {
+          UsageTrackingService.trackBrandingExtraction(restaurant.organisation_id, {
+            restaurant_id: restaurantId,
+            fields_updated: Object.keys(updateData).length,
+            save_only: true
+          }).catch(err => console.error('[UsageTracking] Failed to track branding save:', err));
+        }
+      } catch (trackingError) {
+        console.error('[UsageTracking] Error getting organisation for tracking:', trackingError);
+      }
+
+      return res.json({
+        success: true,
+        fieldsUpdated: Object.keys(updateData)
+      });
+    } else {
+      console.log('[API] No fields selected for update');
+      return res.json({
+        success: true,
+        fieldsUpdated: []
+      });
+    }
+
+  } catch (error) {
+    console.error('[API] Branding save error:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to save branding'
     });
   }
 });
