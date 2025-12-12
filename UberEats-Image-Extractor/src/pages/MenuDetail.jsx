@@ -228,39 +228,60 @@ export default function MenuDetail() {
         clearInterval(uploadIntervalRef.current);
         uploadIntervalRef.current = null;
       }
-      
+
       toast({
         title: "Starting CDN upload...",
-        description: "Uploading images to CDN",
+        description: "Checking images to upload",
       });
-      
+
       const response = await api.post(`/menus/${id}/upload-images`, {
         options: {
           preserveFilenames: true,
           skipExisting: true
         }
       });
-      
+
       if (response.data.success) {
-        const batchId = response.data.batchId;
-        
+        const { mode, batchId, stats, message } = response.data;
+
+        // Handle case where all images are already uploaded (no batchId)
+        if (!batchId) {
+          toast({
+            title: stats?.alreadyUploaded > 0 ? "Images already uploaded" : "No images to upload",
+            description: message || `${stats?.alreadyUploaded || 0} images already on CDN`,
+            variant: "default"
+          });
+          return;
+        }
+
+        // Handle synchronous mode (small batches processed immediately)
+        if (mode === 'synchronous') {
+          toast({
+            title: "Upload complete!",
+            description: `Successfully uploaded ${response.data.stats?.successful || 0} images to CDN`,
+            variant: "success"
+          });
+          return;
+        }
+
+        // Handle asynchronous mode - set up polling
         toast({
           title: "Upload started",
-          description: `Uploading ${response.data.totalImages} images to CDN. Batch ID: ${batchId}`,
+          description: `Uploading ${response.data.totalImages} images to CDN...`,
         });
-        
+
         // Poll for progress using ref
         uploadIntervalRef.current = setInterval(async () => {
           try {
             const progressResponse = await api.get(`/upload-batches/${batchId}`);
             const batch = progressResponse.data.batch;
-            
+
             if (batch.status === 'completed') {
               clearInterval(uploadIntervalRef.current);
               uploadIntervalRef.current = null;
               toast({
                 title: "Upload complete!",
-                description: `Successfully uploaded ${batch.progress.uploaded} images to CDN`,
+                description: `Successfully uploaded ${batch.progress?.uploaded || batch.uploaded_count || 0} images to CDN`,
                 variant: "success"
               });
             } else if (batch.status === 'failed') {
@@ -271,11 +292,24 @@ export default function MenuDetail() {
                 description: "Some images failed to upload to CDN",
                 variant: "destructive"
               });
+            } else if (batch.status === 'processing') {
+              // Show progress toast
+              const uploaded = batch.progress?.uploaded || batch.uploaded_count || 0;
+              const total = batch.progress?.total || batch.total_images || 0;
+              toast({
+                title: "Uploading...",
+                description: `${uploaded}/${total} images uploaded`,
+              });
             }
           } catch (err) {
             console.error('Error checking progress:', err);
             clearInterval(uploadIntervalRef.current);
             uploadIntervalRef.current = null;
+            toast({
+              title: "Progress check failed",
+              description: "Could not check upload status. Images may still be uploading in the background.",
+              variant: "destructive"
+            });
           }
         }, 2000);
       }

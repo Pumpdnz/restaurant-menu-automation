@@ -475,35 +475,101 @@ async function createMenuItems(menuId, categoryMap, items, organisationId = null
 /**
  * Image Operations
  */
+/**
+ * Validates if a URL is a valid image URL (not a page URL)
+ * @param {string} url - The URL to validate
+ * @returns {boolean} - True if it's a valid image URL
+ */
+function isValidImageUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+
+  // Must be a valid URL
+  try {
+    new URL(url);
+  } catch {
+    return false;
+  }
+
+  // Known image CDN patterns that are valid
+  const validImagePatterns = [
+    /tb-static\.uber\.com.*image/i,           // UberEats images
+    /img\.cdn4dd\.com/i,                       // DoorDash images
+    /cloudinary\.com/i,                        // Cloudinary
+    /ucarecdn\.com/i,                          // UploadCare
+    /\.(jpg|jpeg|png|gif|webp|avif|svg)(\?|$)/i, // Direct image file extensions
+    /image-proc/i,                             // Generic image processing URLs
+  ];
+
+  // Invalid patterns - page URLs, not images
+  const invalidPatterns = [
+    /ubereats\.com\/.*\/store\//i,             // UberEats store pages
+    /doordash\.com\/store\//i,                 // DoorDash store pages
+    /\?mod=quickView/i,                        // UberEats modal URLs
+  ];
+
+  // Check if URL matches any invalid pattern
+  for (const pattern of invalidPatterns) {
+    if (pattern.test(url)) {
+      console.log(`[Database] Rejecting invalid image URL (page URL): ${url.substring(0, 80)}...`);
+      return false;
+    }
+  }
+
+  // Check if URL matches any valid pattern
+  for (const pattern of validImagePatterns) {
+    if (pattern.test(url)) {
+      return true;
+    }
+  }
+
+  // If no patterns match, log a warning but allow it (might be a new CDN)
+  console.log(`[Database] Warning: Unknown image URL pattern, allowing: ${url.substring(0, 80)}...`);
+  return true;
+}
+
 async function createItemImages(itemImageMap, organisationId = null) {
   if (!isDatabaseAvailable()) return [];
-  
+
   try {
     const imageData = [];
-    
+    let skippedCount = 0;
+
     // Use provided org ID or get current organization context
     const orgId = organisationId || getCurrentOrganizationId();
-    
+
     for (const [itemId, images] of Object.entries(itemImageMap)) {
       if (Array.isArray(images)) {
         images.forEach(img => {
-          imageData.push({
-            menu_item_id: itemId,
-            url: img.url || img,
-            type: img.type || 'primary',
-            organisation_id: orgId  // Add organization context for RLS
-          });
+          const url = img.url || img;
+          if (isValidImageUrl(url)) {
+            imageData.push({
+              menu_item_id: itemId,
+              url: url,
+              type: img.type || 'primary',
+              organisation_id: orgId
+            });
+          } else {
+            skippedCount++;
+          }
         });
       } else if (images) {
-        imageData.push({
-          menu_item_id: itemId,
-          url: images,
-          type: 'primary',
-          organisation_id: orgId  // Add organization context for RLS
-        });
+        if (isValidImageUrl(images)) {
+          imageData.push({
+            menu_item_id: itemId,
+            url: images,
+            type: 'primary',
+            organisation_id: orgId
+          });
+        } else {
+          skippedCount++;
+        }
       }
     }
-    
+
+    if (skippedCount > 0) {
+      console.log(`[Database] Skipped ${skippedCount} invalid image URLs (page URLs instead of image URLs)`);
+    }
+
     if (imageData.length === 0) return [];
     
     const client = getSupabaseClient();

@@ -3198,18 +3198,77 @@ export default function RestaurantDetail() {
     try {
       toast({
         title: "Uploading images to CDN...",
-        description: "This may take a moment"
+        description: "Checking images to upload"
       });
 
       const response = await api.post(`/menus/${menuId}/upload-images`);
 
       if (response.data.success) {
+        const { mode, batchId, stats, message } = response.data;
+
+        // Handle case where all images are already uploaded (no batchId)
+        if (!batchId) {
+          toast({
+            title: stats?.alreadyUploaded > 0 ? "Images already uploaded" : "No images to upload",
+            description: message || `${stats?.alreadyUploaded || 0} images already on CDN`
+          });
+          return;
+        }
+
+        // Handle synchronous mode (small batches processed immediately)
+        if (mode === 'synchronous') {
+          toast({
+            title: "Upload complete!",
+            description: `Successfully uploaded ${stats?.successful || 0} images to CDN`
+          });
+          fetchRestaurantDetails();
+          return;
+        }
+
+        // Handle asynchronous mode - set up polling
         toast({
-          title: "Success",
-          description: `Uploaded ${response.data.uploadedCount || response.data.stats?.uploadedCount || 0} images to CDN`
+          title: "Upload started",
+          description: `Uploading ${response.data.totalImages} images to CDN...`
         });
-        // Refresh restaurant data to show updated status
-        fetchRestaurantDetails();
+
+        // Poll for progress
+        const pollInterval = setInterval(async () => {
+          try {
+            const progressResponse = await api.get(`/upload-batches/${batchId}`);
+            const batch = progressResponse.data.batch;
+
+            if (batch.status === 'completed') {
+              clearInterval(pollInterval);
+              toast({
+                title: "Upload complete!",
+                description: `Successfully uploaded ${batch.progress?.uploaded || batch.uploaded_count || 0} images to CDN`
+              });
+              fetchRestaurantDetails();
+            } else if (batch.status === 'failed') {
+              clearInterval(pollInterval);
+              toast({
+                title: "Upload failed",
+                description: "Some images failed to upload to CDN",
+                variant: "destructive"
+              });
+            } else if (batch.status === 'processing') {
+              const uploaded = batch.progress?.uploaded || batch.uploaded_count || 0;
+              const total = batch.progress?.total || batch.total_images || 0;
+              toast({
+                title: "Uploading...",
+                description: `${uploaded}/${total} images uploaded`
+              });
+            }
+          } catch (err) {
+            console.error('Error checking progress:', err);
+            clearInterval(pollInterval);
+            toast({
+              title: "Progress check failed",
+              description: "Could not check upload status. Images may still be uploading in the background.",
+              variant: "destructive"
+            });
+          }
+        }, 2000);
       }
     } catch (error) {
       console.error('Failed to upload images:', error);
