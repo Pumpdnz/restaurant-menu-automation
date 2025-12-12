@@ -7,11 +7,12 @@
  * and setting the default delivery provider to Uber
  *
  * Usage:
- *   node finalise-onboarding-user.js --email=<email> --password=<password> --nzbn=<nzbn> --company-name=<name> --trading-name=<name> --director-name=<name> --director-mobile=<mobile> [options]
+ *   node finalise-onboarding-user.js --email=<email> --password=<password> --name=<restaurant_name> --nzbn=<nzbn> --company-name=<name> --trading-name=<name> --director-name=<name> --director-mobile=<mobile> [options]
  *
  * Options:
  *   --email=<email>               Login email (required)
  *   --password=<password>         User password (required)
+ *   --name=<restaurant_name>      Restaurant name for smart matching (required)
  *   --nzbn=<nzbn>                 NZBN number (required)
  *   --company-name=<name>         Legal company name (required)
  *   --trading-name=<name>         Trading name (required)
@@ -24,10 +25,10 @@
  *   DEBUG_MODE                   Enable debug mode (true/false)
  *
  * Example (default NZ):
- *   node finalise-onboarding-user.js --email="test@example.com" --password="Password123!" --nzbn="123456789" --company-name="Company Ltd" --trading-name="Trading Name" --director-name="John Doe" --director-mobile="0211234567"
+ *   node finalise-onboarding-user.js --email="test@example.com" --password="Password123!" --name="Test Restaurant" --nzbn="123456789" --company-name="Company Ltd" --trading-name="Trading Name" --director-name="John Doe" --director-mobile="0211234567"
  *
  * Example (Australian portal):
- *   node finalise-onboarding-user.js --email="test@example.com" --password="Password123!" --nzbn="123456789" --company-name="Company Ltd" --trading-name="Trading Name" --director-name="John Doe" --director-mobile="0411234567" --admin-url="https://admin.ozorders.com.au"
+ *   node finalise-onboarding-user.js --email="test@example.com" --password="Password123!" --name="Test Restaurant" --nzbn="123456789" --company-name="Company Ltd" --trading-name="Trading Name" --director-name="John Doe" --director-mobile="0411234567" --admin-url="https://admin.ozorders.com.au"
  */
 
 import { createRequire } from 'module';
@@ -59,6 +60,7 @@ const getArg = (name) => {
 // Parse arguments
 const email = getArg('email');
 const password = getArg('password');
+const restaurantName = getArg('name');
 const nzbn = getArg('nzbn');
 const companyName = getArg('company-name');
 const tradingName = getArg('trading-name');
@@ -84,6 +86,7 @@ const DEBUG_MODE = process.env.DEBUG_MODE === 'true' || process.argv.includes('-
 const requiredArgs = {
   email,
   password,
+  name: restaurantName,
   nzbn,
   'company-name': companyName,
   'trading-name': tradingName,
@@ -97,9 +100,84 @@ const missingArgs = Object.entries(requiredArgs)
 
 if (missingArgs.length > 0) {
   console.error('❌ Error: Missing required arguments:', missingArgs.join(', '));
-  console.error('Usage: node finalise-onboarding-user.js --email="email@example.com" --password="password123" --nzbn="123456789" --company-name="Company Ltd" --trading-name="Trading Name" --director-name="John Doe" --director-mobile="0211234567"');
+  console.error('Usage: node finalise-onboarding-user.js --email="email@example.com" --password="password123" --name="Restaurant Name" --nzbn="123456789" --company-name="Company Ltd" --trading-name="Trading Name" --director-name="John Doe" --director-mobile="0211234567"');
   process.exit(1);
 }
+
+// ============================================================================
+// SMART RESTAURANT MATCHING FUNCTIONS
+// ============================================================================
+
+// Helper function for fuzzy restaurant name matching
+const normalizeForMatching = (str) => {
+  return str
+    .toLowerCase()
+    .replace(/['']/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+// Function to calculate match score between search term and restaurant name
+const calculateMatchScore = (searchTerm, restaurantNameToMatch) => {
+  const searchNorm = normalizeForMatching(searchTerm);
+  const nameNorm = normalizeForMatching(restaurantNameToMatch);
+
+  // Exact match (after normalization) - highest priority
+  if (searchNorm === nameNorm) {
+    return { score: 1000, reason: 'exact match' };
+  }
+
+  // Split into words for word-based matching
+  const searchWords = searchNorm.split(' ').filter(w => w.length > 1);
+  const nameWords = nameNorm.split(' ');
+
+  let score = 0;
+  let matchedWords = 0;
+  let reason = '';
+
+  // Count how many search words are found in the restaurant name
+  for (const searchWord of searchWords) {
+    if (nameWords.includes(searchWord)) {
+      score += 10;
+      matchedWords++;
+    } else if (nameWords.some(nameWord => {
+      const lengthDiff = Math.abs(nameWord.length - searchWord.length);
+      if (lengthDiff <= 2) {
+        const commonChars = searchWord.split('').filter(char => nameWord.includes(char)).length;
+        return commonChars >= Math.min(searchWord.length, nameWord.length) - 1;
+      }
+      return false;
+    })) {
+      score += 8;
+      matchedWords++;
+    } else if (nameWords.some(nameWord => nameWord.includes(searchWord) || searchWord.includes(nameWord))) {
+      score += 5;
+      matchedWords++;
+    }
+  }
+
+  // Bonus for matching all words
+  if (matchedWords === searchWords.length && searchWords.length > 0) {
+    score += 50;
+    reason = `all ${searchWords.length} words matched`;
+  } else if (matchedWords > 0) {
+    reason = `${matchedWords}/${searchWords.length} words matched`;
+  }
+
+  // Penalty for extra words
+  const extraWords = nameWords.length - searchWords.length;
+  if (extraWords > 0 && score > 0) {
+    score -= extraWords * 2;
+  }
+
+  // Substring match fallback
+  if (score === 0 && nameNorm.includes(searchNorm)) {
+    score = 25;
+    reason = 'substring match';
+  }
+
+  return { score, reason };
+};
 
 console.log('Admin URL Configuration:');
 console.log('  Admin URL:', adminUrl);
@@ -163,10 +241,53 @@ async function finaliseOnboarding() {
     await page.waitForTimeout(3000);
     await takeScreenshot(page, '02-dashboard');
     
-    // STEP 2: Navigate to restaurant management
+    // STEP 2: Navigate to restaurant management with smart matching
     console.log('\n🏪 STEP 2: Navigate to restaurant management');
-    
-    const manageButton = page.locator('#restaurant-list-item-0 button:has-text("Manage")').first();
+    console.log(`  🔍 Looking for restaurant: ${restaurantName}`);
+
+    // Wait a bit for the list to fully render
+    await page.waitForTimeout(2000);
+
+    // Find the best matching restaurant using smart matching
+    let restaurantIndex = -1;
+    let bestScore = 0;
+    let bestMatch = null;
+
+    const allRestaurantNames = await page.locator('h4').allTextContents();
+
+    console.log(`  ℹ️ Found ${allRestaurantNames.length} restaurants in the list`);
+
+    if (allRestaurantNames.length > 0) {
+      console.log(`  📊 Evaluating restaurants for best match:`);
+
+      for (let i = 0; i < allRestaurantNames.length; i++) {
+        const { score, reason } = calculateMatchScore(restaurantName, allRestaurantNames[i]);
+
+        if (score > 0) {
+          console.log(`    ${i}: "${allRestaurantNames[i]}" - Score: ${score} (${reason})`);
+
+          if (score > bestScore) {
+            bestScore = score;
+            restaurantIndex = i;
+            bestMatch = { name: allRestaurantNames[i], reason };
+          }
+        }
+      }
+    }
+
+    if (restaurantIndex < 0) {
+      console.error(`  ❌ No matching restaurant found for "${restaurantName}"`);
+      console.log('  Available restaurants:');
+      allRestaurantNames.forEach((name, index) => {
+        console.log(`    ${index}: "${name}"`);
+      });
+      throw new Error(`Restaurant "${restaurantName}" not found in dashboard`);
+    }
+
+    console.log(`  ✅ Best match: "${bestMatch.name}" at index ${restaurantIndex} (${bestMatch.reason})`);
+
+    // Click the Manage button for the matched restaurant
+    const manageButton = page.locator(`#restaurant-list-item-${restaurantIndex} button:has-text("Manage")`).first();
     await manageButton.click();
     console.log('  ✓ Clicked Manage button');
     

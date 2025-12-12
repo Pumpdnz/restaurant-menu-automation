@@ -101,7 +101,7 @@ console.log('  Login URL:', LOGIN_URL);
 console.log('  Admin Hostname:', ADMIN_HOSTNAME);
 console.log('  Country:', country);
 console.log('  Phone Prefix:', countryConfig.phonePrefix);
-console.log('  GST Rate:', countryConfig.gstRate * 100 + '%');
+console.log('  GST Rate:', countryConfig.gstRate + '%');
 console.log('  GST Name:', countryConfig.gstName);
 console.log('');
 
@@ -428,7 +428,7 @@ async function setupSystemSettings() {
 
     // 2. Try to create tax (might already exist) - uses country-specific GST name and rate
     if (gstNumber) {
-      console.log(`  Configuring ${countryConfig.gstName} tax (${countryConfig.gstRate * 100}%)...`);
+      console.log(`  Configuring ${countryConfig.gstName} tax (${countryConfig.gstRate}%)...`);
       try {
         const createTaxButtonSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(8) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div > button';
 
@@ -453,7 +453,7 @@ async function setupSystemSettings() {
 
         // 4. Set tax rate using country config (15% for NZ, 10% for AU, etc.)
         const taxRateInputSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(8) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div > div > div.flex-line > div.flex-line > div:nth-child(2) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > input';
-        const taxRatePercent = Math.round(countryConfig.gstRate * 100).toString();
+        const taxRatePercent = countryConfig.gstRate.toString();
         await page.fill(taxRateInputSelector, '');
         await page.fill(taxRateInputSelector, taxRatePercent);
         console.log(`  ✓ Set tax rate to ${taxRatePercent}%`);

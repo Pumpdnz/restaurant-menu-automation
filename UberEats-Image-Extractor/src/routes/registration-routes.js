@@ -3425,6 +3425,7 @@ router.post('/configure-uber-integration', async (req, res) => {
       scriptPath,
       `--email="${finalAccount.email}"`,
       `--password="${finalAccount.user_password_hint}"`,
+      `--name="${restaurant.name.replace(/"/g, '\\"')}"`,
       `--nzbn="${onboardingData.nzbn}"`,
       `--company-name="${onboardingData.companyName.replace(/"/g, '\\"')}"`,
       `--trading-name="${onboardingData.tradingName.replace(/"/g, '\\"')}"`,

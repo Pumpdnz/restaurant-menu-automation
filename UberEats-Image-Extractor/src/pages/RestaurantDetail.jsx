@@ -102,6 +102,38 @@ export default function RestaurantDetail() {
   const [editedData, setEditedData] = useState({});
   const [activeTab, setActiveTab] = useState('overview');
   const [searchingGoogle, setSearchingGoogle] = useState(false);
+
+  // Google search URL confirmation dialog states (Phase 1)
+  const [googleSearchUrlDialogOpen, setGoogleSearchUrlDialogOpen] = useState(false);
+  const [pendingGoogleSearchUrls, setPendingGoogleSearchUrls] = useState(null);
+  const [editableWebsiteUrl, setEditableWebsiteUrl] = useState('');
+
+  // Google search data confirmation dialog states (Phase 2)
+  const [googleSearchConfirmDialogOpen, setGoogleSearchConfirmDialogOpen] = useState(false);
+  const [pendingGoogleSearchData, setPendingGoogleSearchData] = useState(null);
+
+  // Multi-source selection state for Google search
+  // For multi-source fields: { save: boolean, source: string | null }
+  // For single-source fields: { save: boolean }
+  const [googleSearchSelections, setGoogleSearchSelections] = useState({
+    // Multi-source fields (can come from UberEats, Website, etc.)
+    address: { save: true, source: null },
+    phone: { save: true, source: null },
+    opening_hours: { save: true, source: null },
+    // Single-source fields (platform URLs)
+    website_url: { save: true },
+    ubereats_url: { save: true },
+    doordash_url: { save: true },
+    instagram_url: { save: true },
+    facebook_url: { save: true },
+    meandyou_url: { save: true },
+    mobi2go_url: { save: true },
+    delivereasy_url: { save: true },
+    nextorder_url: { save: true },
+    foodhub_url: { save: true },
+    ordermeal_url: { save: true }
+  });
+
   const [extractingLogo, setExtractingLogo] = useState(false);
   const [logoDialogOpen, setLogoDialogOpen] = useState(false);
   const [logoCandidates, setLogoCandidates] = useState([]);
@@ -1658,6 +1690,157 @@ export default function RestaurantDetail() {
     }
   };
 
+  // Check if restaurant has existing Google search-related values
+  const hasExistingGoogleSearchValues = () => {
+    if (!restaurant) return false;
+    return !!(
+      restaurant.address ||
+      restaurant.phone ||
+      restaurant.website_url ||
+      restaurant.ubereats_url ||
+      restaurant.doordash_url ||
+      restaurant.instagram_url ||
+      restaurant.facebook_url ||
+      restaurant.meandyou_url ||
+      restaurant.mobi2go_url ||
+      restaurant.delivereasy_url ||
+      restaurant.nextorder_url ||
+      restaurant.foodhub_url ||
+      restaurant.ordermeal_url ||
+      (restaurant.opening_hours && restaurant.opening_hours.length > 0)
+    );
+  };
+
+  // Set smart defaults for multi-source selection
+  // - Uncheck fields that already have values
+  // - Auto-select the "best" source (UberEats for hours, Website for phone)
+  const setGoogleSearchSmartDefaults = (extractedBySource, platformUrls) => {
+    const sources = Object.keys(extractedBySource || {});
+
+    // Helper to find first source that has a value for a field
+    const findSourceWithValue = (field) => {
+      for (const source of sources) {
+        const data = extractedBySource[source];
+        if (field === 'openingHours' && data?.openingHours?.length > 0) return source;
+        if (data?.[field]) return source;
+      }
+      return null;
+    };
+
+    // Smart source selection:
+    // - Address: prefer UberEats, fallback to website
+    // - Phone: website only (UberEats never has phone)
+    // - Hours: prefer UberEats (most accurate)
+    const preferredSources = {
+      address: ['ubereats', 'website', 'doordash'],
+      phone: ['website'],  // UberEats never has phone numbers
+      openingHours: ['ubereats', 'website']
+    };
+
+    const selectBestSource = (field) => {
+      for (const preferredSource of preferredSources[field] || []) {
+        const data = extractedBySource?.[preferredSource];
+        if (field === 'openingHours' && data?.openingHours?.length > 0) return preferredSource;
+        if (data?.[field]) return preferredSource;
+      }
+      return findSourceWithValue(field);
+    };
+
+    setGoogleSearchSelections({
+      // Multi-source fields
+      address: {
+        save: !restaurant?.address && !!findSourceWithValue('address'),
+        source: selectBestSource('address')
+      },
+      phone: {
+        save: !restaurant?.phone && !!findSourceWithValue('phone'),
+        source: selectBestSource('phone')
+      },
+      opening_hours: {
+        save: !(restaurant?.opening_hours?.length > 0) && !!findSourceWithValue('openingHours'),
+        source: selectBestSource('openingHours')
+      },
+      // Single-source fields (platform URLs)
+      website_url: { save: !restaurant?.website_url && !!platformUrls?.websiteUrl },
+      ubereats_url: { save: !restaurant?.ubereats_url && !!platformUrls?.ubereatsUrl },
+      doordash_url: { save: !restaurant?.doordash_url && !!platformUrls?.doordashUrl },
+      instagram_url: { save: !restaurant?.instagram_url && !!platformUrls?.instagramUrl },
+      facebook_url: { save: !restaurant?.facebook_url && !!platformUrls?.facebookUrl },
+      meandyou_url: { save: !restaurant?.meandyou_url && !!platformUrls?.meandyouUrl },
+      mobi2go_url: { save: !restaurant?.mobi2go_url && !!platformUrls?.mobi2goUrl },
+      delivereasy_url: { save: !restaurant?.delivereasy_url && !!platformUrls?.delivereasyUrl },
+      nextorder_url: { save: !restaurant?.nextorder_url && !!platformUrls?.nextorderUrl },
+      foodhub_url: { save: !restaurant?.foodhub_url && !!platformUrls?.foodhubUrl },
+      ordermeal_url: { save: !restaurant?.ordermeal_url && !!platformUrls?.ordermealUrl }
+    });
+  };
+
+  // Apply Google search updates with multi-source selection
+  const applyGoogleSearchUpdates = async (data, selectAll = false) => {
+    try {
+      let selections;
+
+      if (selectAll) {
+        // Auto-select all available data using best sources
+        const sources = Object.keys(data.extractedBySource || {});
+        // For phone, only use 'website' source (UberEats never has phone)
+        const phoneSource = sources.includes('website') && data.extractedBySource?.website?.phone ? 'website' : null;
+        selections = {
+          address: { save: true, source: sources[0] },
+          phone: { save: !!phoneSource, source: phoneSource },
+          opening_hours: { save: true, source: sources[0] },
+          website_url: { save: !!data.platformUrls?.websiteUrl },
+          ubereats_url: { save: !!data.platformUrls?.ubereatsUrl },
+          doordash_url: { save: !!data.platformUrls?.doordashUrl },
+          instagram_url: { save: !!data.platformUrls?.instagramUrl },
+          facebook_url: { save: !!data.platformUrls?.facebookUrl },
+          meandyou_url: { save: !!data.platformUrls?.meandyouUrl },
+          mobi2go_url: { save: !!data.platformUrls?.mobi2goUrl },
+          delivereasy_url: { save: !!data.platformUrls?.delivereasyUrl },
+          nextorder_url: { save: !!data.platformUrls?.nextorderUrl },
+          foodhub_url: { save: !!data.platformUrls?.foodhubUrl },
+          ordermeal_url: { save: !!data.platformUrls?.ordermealUrl }
+        };
+      } else {
+        selections = googleSearchSelections;
+      }
+
+      const response = await api.post('/google-business-search/save', {
+        restaurantId: id,
+        selections,
+        extractedBySource: data.extractedBySource,
+        platformUrls: data.platformUrls
+      });
+
+      if (response.data.success) {
+        const fieldsUpdated = response.data.fieldsUpdated?.length || 0;
+        setSuccess(`Business information updated - ${fieldsUpdated} field${fieldsUpdated !== 1 ? 's' : ''}`);
+        setTimeout(() => fetchRestaurantDetails(), 1000);
+      } else {
+        setError(response.data.error || 'Failed to save business information');
+      }
+    } catch (err) {
+      console.error('Google search save error:', err);
+      setError(err.response?.data?.error || 'Failed to save business information');
+    }
+  };
+
+  // Handle confirmation dialog submit
+  const handleConfirmGoogleSearchUpdate = async () => {
+    if (!pendingGoogleSearchData) return;
+
+    setGoogleSearchConfirmDialogOpen(false);
+    setSearchingGoogle(true);
+
+    try {
+      await applyGoogleSearchUpdates(pendingGoogleSearchData, false);
+    } finally {
+      setSearchingGoogle(false);
+      setPendingGoogleSearchData(null);
+    }
+  };
+
+  // Phase 1: Search for URLs only (quick search)
   const handleGoogleSearch = async () => {
     if (!restaurant?.name) {
       setError('Restaurant name is required for search');
@@ -1678,44 +1861,103 @@ export default function RestaurantDetail() {
     setSuccess(null);
 
     try {
+      // Phase 1: Search for URLs only (quick) - user will confirm before extraction
       const response = await api.post('/google-business-search', {
         restaurantName: restaurant.name,
         city: city,
-        restaurantId: id
+        restaurantId: id,
+        urlsOnly: true  // Only search for URLs, don't extract content yet
       });
 
       if (response.data.success) {
         const data = response.data.data;
+        const platformUrls = data.platformUrls || {};
 
-        // Update local state with extracted data
-        const updates = {};
-        if (data.address) updates.address = data.address;
-        if (data.phone) updates.phone = data.phone;
-        if (data.websiteUrl) updates.website_url = data.websiteUrl;
-        if (data.instagramUrl) updates.instagram_url = data.instagramUrl;
-        if (data.facebookUrl) updates.facebook_url = data.facebookUrl;
-        if (data.openingHours && data.openingHours.length > 0) {
-          updates.opening_hours = data.openingHours;
+        // Check if any URLs were found
+        const hasAnyUrls = Object.values(platformUrls).some(url => url);
+
+        if (!hasAnyUrls) {
+          setError('No platform URLs found for this restaurant');
+          return;
         }
 
-        // Merge with existing data
-        setRestaurant(prev => ({
-          ...prev,
-          ...updates
-        }));
-
-        setSuccess(`Found business information: ${Object.keys(updates).length} fields updated`);
-
-        // Refresh data from server
-        setTimeout(() => {
-          fetchRestaurantDetails();
-        }, 1500);
+        // Store URLs and show confirmation dialog
+        setPendingGoogleSearchUrls(platformUrls);
+        setEditableWebsiteUrl(platformUrls.websiteUrl || '');
+        setGoogleSearchUrlDialogOpen(true);
+      } else {
+        setError(response.data.error || 'Failed to search for business information');
       }
     } catch (err) {
       console.error('Google search error:', err);
       setError(err.response?.data?.error || 'Failed to search for business information');
     } finally {
       setSearchingGoogle(false);
+    }
+  };
+
+  // Phase 2: Extract content from confirmed URLs
+  const handleConfirmGoogleSearchUrls = async () => {
+    if (!pendingGoogleSearchUrls) return;
+
+    setGoogleSearchUrlDialogOpen(false);
+    setSearchingGoogle(true);
+
+    // Use city field if available, otherwise try to extract from address
+    const city = restaurant?.city || (() => {
+      if (restaurant?.address) {
+        const cityMatch = restaurant.address.match(/([A-Za-z\s]+),?\s*(?:New Zealand)?$/);
+        return cityMatch ? cityMatch[1].trim() : 'New Zealand';
+      }
+      return 'New Zealand';
+    })();
+
+    try {
+      // Phase 2: Extract content using confirmed URLs
+      const confirmedUrls = {
+        ...pendingGoogleSearchUrls,
+        websiteUrl: editableWebsiteUrl || null  // Use edited website URL
+      };
+
+      const response = await api.post('/google-business-search', {
+        restaurantName: restaurant.name,
+        city: city,
+        restaurantId: id,
+        previewOnly: true,  // Return multi-source data without saving
+        confirmedUrls: confirmedUrls  // Use user-confirmed URLs for extraction
+      });
+
+      if (response.data.success) {
+        const data = response.data.data;
+
+        // Check if there are existing values OR multiple sources to choose from
+        const hasMultipleSources = data.sourcesScraped?.length > 1;
+        const hasAnyData = Object.keys(data.extractedBySource || {}).length > 0 ||
+                          Object.values(data.platformUrls || {}).some(url => url);
+
+        if (!hasAnyData) {
+          setError('No business information could be extracted from the confirmed URLs');
+          return;
+        }
+
+        if (hasExistingGoogleSearchValues() || hasMultipleSources) {
+          // Store data and show confirmation dialog with source selection
+          setPendingGoogleSearchData(data);
+          setGoogleSearchSmartDefaults(data.extractedBySource, data.platformUrls);
+          setGoogleSearchConfirmDialogOpen(true);
+        } else {
+          // No existing values and single source - apply everything directly
+          await applyGoogleSearchUpdates(data, true);
+        }
+      } else {
+        setError(response.data.error || 'Failed to extract business information');
+      }
+    } catch (err) {
+      console.error('Google search extraction error:', err);
+      setError(err.response?.data?.error || 'Failed to extract business information');
+    } finally {
+      setSearchingGoogle(false);
+      setPendingGoogleSearchUrls(null);
     }
   };
 
@@ -8271,6 +8513,491 @@ export default function RestaurantDetail() {
               onClick={() => setShowRegistrationLogs(false)}
             >
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Google Search URL Confirmation Dialog (Phase 1) */}
+      <Dialog open={googleSearchUrlDialogOpen} onOpenChange={setGoogleSearchUrlDialogOpen}>
+        <DialogContent className="w-[95vw] max-w-[800px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Confirm Platform URLs</DialogTitle>
+            <DialogDescription>
+              Review the URLs found. You can edit the website URL if incorrect.
+            </DialogDescription>
+          </DialogHeader>
+
+          {pendingGoogleSearchUrls && (
+            <div className="space-y-4 py-4">
+              {/* Editable Website URL */}
+              <div className="space-y-2">
+                <Label htmlFor="website-url" className="flex items-center gap-2 flex-wrap">
+                  <Globe className="h-4 w-4" />
+                  <span>Website URL</span>
+                  <Badge variant="outline" className="text-xs">Editable</Badge>
+                </Label>
+                <Input
+                  id="website-url"
+                  value={editableWebsiteUrl}
+                  onChange={(e) => setEditableWebsiteUrl(e.target.value)}
+                  placeholder="https://www.restaurant-website.com"
+                  className="font-mono text-xs sm:text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  This URL will be scraped for phone number and business hours.
+                </p>
+              </div>
+
+              {/* Read-only Platform URLs */}
+              <div className="space-y-3 pt-2 border-t">
+                <Label className="text-sm font-medium">Other Platform URLs Found</Label>
+
+                {[
+                  { key: 'ubereatsUrl', label: 'UberEats', icon: '🍔', currentKey: 'ubereats_url' },
+                  { key: 'doordashUrl', label: 'DoorDash', icon: '🚗', currentKey: 'doordash_url' },
+                  { key: 'instagramUrl', label: 'Instagram', icon: <Instagram className="h-4 w-4" />, currentKey: 'instagram_url' },
+                  { key: 'facebookUrl', label: 'Facebook', icon: <Facebook className="h-4 w-4" />, currentKey: 'facebook_url' },
+                  { key: 'delivereasyUrl', label: 'Delivereasy', icon: '📦', currentKey: 'delivereasy_url' },
+                  { key: 'meandyouUrl', label: 'MeAndU', icon: '📱', currentKey: 'meandyou_url' },
+                  { key: 'mobi2goUrl', label: 'Mobi2Go', icon: '📱', currentKey: 'mobi2go_url' },
+                  { key: 'nextorderUrl', label: 'NextOrder', icon: '🛒', currentKey: 'nextorder_url' },
+                  { key: 'foodhubUrl', label: 'FoodHub', icon: '🍽️', currentKey: 'foodhub_url' },
+                  { key: 'ordermealUrl', label: 'OrderMeal', icon: '🥡', currentKey: 'ordermeal_url' }
+                ].filter(({ key }) => pendingGoogleSearchUrls[key]).map(({ key, label, icon, currentKey }) => (
+                  <div key={key} className="flex flex-col gap-1 text-sm py-2 border-b last:border-b-0">
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 flex items-center justify-center flex-shrink-0">
+                        {typeof icon === 'string' ? icon : icon}
+                      </span>
+                      <span className="font-medium">{label}</span>
+                      {restaurant?.[currentKey] && (
+                        <Badge variant="outline" className="text-xs">Has existing</Badge>
+                      )}
+                    </div>
+                    {restaurant?.[currentKey] && (
+                      <div className="ml-7 text-xs">
+                        <span className="text-muted-foreground">Current: </span>
+                        <span className="font-mono break-all">{restaurant[currentKey]}</span>
+                      </div>
+                    )}
+                    <div className="ml-7 text-xs">
+                      <span className="text-muted-foreground">Found: </span>
+                      <a
+                        href={pendingGoogleSearchUrls[key]}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline break-all font-mono inline-flex items-center gap-1"
+                      >
+                        {pendingGoogleSearchUrls[key]}
+                        <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                      </a>
+                    </div>
+                  </div>
+                ))}
+
+                {!Object.entries(pendingGoogleSearchUrls).some(([k, v]) => k !== 'websiteUrl' && v) && (
+                  <p className="text-sm text-muted-foreground italic">No other platform URLs found</p>
+                )}
+              </div>
+
+              {/* Warning about existing data */}
+              {hasExistingGoogleSearchValues() && (
+                <Alert className="mt-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="text-sm">
+                    This restaurant already has some business information. You'll be able to choose which fields to update after extraction.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setGoogleSearchUrlDialogOpen(false);
+                setPendingGoogleSearchUrls(null);
+              }}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmGoogleSearchUrls}
+              disabled={searchingGoogle}
+              className="w-full sm:w-auto"
+            >
+              {searchingGoogle ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Extracting...
+                </>
+              ) : (
+                <>
+                  <Search className="mr-2 h-4 w-4" />
+                  Extract Business Info
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Google Search Data Selection Dialog (Phase 2) */}
+      <Dialog open={googleSearchConfirmDialogOpen} onOpenChange={setGoogleSearchConfirmDialogOpen}>
+        <DialogContent className="w-[95vw] max-w-[800px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Select Data to Save</DialogTitle>
+            <DialogDescription>
+              Choose which data to save. Select your preferred source for each field.
+            </DialogDescription>
+          </DialogHeader>
+
+          {pendingGoogleSearchData && (
+            <div className="space-y-4 sm:space-y-6 py-4">
+              {/* Multi-Source Fields Section */}
+              <div className="space-y-3 sm:space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <h4 className="font-medium">Business Information</h4>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const sources = Object.keys(pendingGoogleSearchData.extractedBySource || {});
+                        setGoogleSearchSelections(prev => ({
+                          ...prev,
+                          address: { save: true, source: sources[0] || prev.address.source },
+                          phone: { save: true, source: 'website' },
+                          opening_hours: { save: true, source: sources[0] || prev.opening_hours.source }
+                        }));
+                      }}
+                    >
+                      Select All
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setGoogleSearchSelections(prev => ({
+                          ...prev,
+                          address: { ...prev.address, save: false },
+                          phone: { ...prev.phone, save: false },
+                          opening_hours: { ...prev.opening_hours, save: false }
+                        }));
+                      }}
+                    >
+                      Deselect All
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Address Field */}
+                <div className="border rounded-lg p-3 sm:p-4 space-y-2 sm:space-y-3">
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      id="save-address"
+                      checked={googleSearchSelections.address.save}
+                      onCheckedChange={(checked) => setGoogleSearchSelections(prev => ({
+                        ...prev,
+                        address: { ...prev.address, save: !!checked }
+                      }))}
+                      className="mt-0.5"
+                    />
+                    <div className="flex-1 space-y-2 min-w-0">
+                      <Label htmlFor="save-address" className="flex items-center gap-2 cursor-pointer">
+                        <MapPin className="h-4 w-4 flex-shrink-0" />
+                        <span>Address</span>
+                      </Label>
+
+                      {restaurant?.address && (
+                        <div className="text-sm break-words">
+                          <span className="text-muted-foreground">Current: </span>
+                          <span>{restaurant.address}</span>
+                        </div>
+                      )}
+
+                      {/* Source selection for address */}
+                      {Object.entries(pendingGoogleSearchData.extractedBySource || {}).some(([_, data]) => data?.address) && (
+                        <div className="space-y-2">
+                          <Label className="text-xs text-muted-foreground">Select source:</Label>
+                          <RadioGroup
+                            value={googleSearchSelections.address.source || ''}
+                            onValueChange={(value) => setGoogleSearchSelections(prev => ({
+                              ...prev,
+                              address: { ...prev.address, source: value }
+                            }))}
+                            className="space-y-2"
+                          >
+                            {Object.entries(pendingGoogleSearchData.extractedBySource || {}).map(([source, data]) => (
+                              data?.address && (
+                                <div key={source} className="flex items-start space-x-2">
+                                  <RadioGroupItem value={source} id={`address-${source}`} className="mt-0.5" />
+                                  <Label htmlFor={`address-${source}`} className="flex-1 cursor-pointer text-sm break-words">
+                                    <span className="font-medium capitalize">{source}:</span>{' '}
+                                    <span className="text-muted-foreground">{data.address}</span>
+                                  </Label>
+                                </div>
+                              )
+                            ))}
+                          </RadioGroup>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Phone Field */}
+                <div className="border rounded-lg p-3 sm:p-4 space-y-2 sm:space-y-3">
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      id="save-phone"
+                      checked={googleSearchSelections.phone.save}
+                      onCheckedChange={(checked) => setGoogleSearchSelections(prev => ({
+                        ...prev,
+                        phone: { ...prev.phone, save: !!checked }
+                      }))}
+                      className="mt-0.5"
+                    />
+                    <div className="flex-1 space-y-2 min-w-0">
+                      <Label htmlFor="save-phone" className="flex items-center gap-2 cursor-pointer">
+                        <Phone className="h-4 w-4 flex-shrink-0" />
+                        <span>Phone Number</span>
+                      </Label>
+
+                      {restaurant?.phone && (
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">Current: </span>
+                          <span>{restaurant.phone}</span>
+                        </div>
+                      )}
+
+                      {/* Source selection for phone - only website */}
+                      {pendingGoogleSearchData.extractedBySource?.website?.phone ? (
+                        <div className="space-y-2">
+                          <Label className="text-xs text-muted-foreground">Source:</Label>
+                          <div className="flex items-center space-x-2 text-sm">
+                            <span className="font-medium">Website:</span>{' '}
+                            <span className="text-muted-foreground">{pendingGoogleSearchData.extractedBySource.website.phone}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground italic">No phone number found</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Opening Hours Field */}
+                <div className="border rounded-lg p-3 sm:p-4 space-y-2 sm:space-y-3">
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      id="save-hours"
+                      checked={googleSearchSelections.opening_hours.save}
+                      onCheckedChange={(checked) => setGoogleSearchSelections(prev => ({
+                        ...prev,
+                        opening_hours: { ...prev.opening_hours, save: !!checked }
+                      }))}
+                      className="mt-0.5"
+                    />
+                    <div className="flex-1 space-y-2 min-w-0">
+                      <Label htmlFor="save-hours" className="flex items-center gap-2 cursor-pointer">
+                        <Clock className="h-4 w-4 flex-shrink-0" />
+                        <span>Opening Hours</span>
+                      </Label>
+
+                      {restaurant?.opening_hours?.length > 0 && (
+                        <div className="text-sm space-y-1">
+                          <span className="text-muted-foreground">Current hours:</span>
+                          <div className="ml-2 text-xs space-y-0.5 max-h-32 overflow-y-auto bg-muted/30 rounded p-2">
+                            {restaurant.opening_hours.map((entry, idx) => (
+                              <div key={idx} className="flex justify-between gap-2">
+                                <span className="font-medium">{entry.day}</span>
+                                <span className="text-muted-foreground">
+                                  {entry.hours?.open || 'N/A'} - {entry.hours?.close || 'N/A'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Source selection for hours */}
+                      {Object.entries(pendingGoogleSearchData.extractedBySource || {}).some(([_, data]) => data?.openingHours?.length > 0) && (
+                        <div className="space-y-3">
+                          <Label className="text-xs text-muted-foreground">Select source:</Label>
+                          <RadioGroup
+                            value={googleSearchSelections.opening_hours.source || ''}
+                            onValueChange={(value) => setGoogleSearchSelections(prev => ({
+                              ...prev,
+                              opening_hours: { ...prev.opening_hours, source: value }
+                            }))}
+                            className="space-y-3"
+                          >
+                            {Object.entries(pendingGoogleSearchData.extractedBySource || {}).map(([source, data]) => (
+                              data?.openingHours?.length > 0 && (
+                                <div key={source} className="space-y-1 border rounded-lg p-2 bg-muted/20">
+                                  <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value={source} id={`hours-${source}`} />
+                                    <Label htmlFor={`hours-${source}`} className="cursor-pointer text-sm font-medium capitalize">
+                                      {source}
+                                    </Label>
+                                  </div>
+                                  <div className="ml-6 text-xs space-y-0.5 max-h-32 overflow-y-auto">
+                                    {data.openingHours.map((entry, idx) => (
+                                      <div key={idx} className="flex justify-between gap-2">
+                                        <span className="font-medium">{entry.day}</span>
+                                        <span className="text-muted-foreground">
+                                          {entry.hours?.open || 'N/A'} - {entry.hours?.close || 'N/A'}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )
+                            ))}
+                          </RadioGroup>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Platform URLs Section */}
+              <div className="space-y-3 sm:space-y-4 border-t pt-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <h4 className="font-medium">Platform URLs</h4>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const urls = pendingGoogleSearchData.platformUrls || {};
+                        setGoogleSearchSelections(prev => ({
+                          ...prev,
+                          website_url: { save: !!urls.websiteUrl },
+                          ubereats_url: { save: !!urls.ubereatsUrl },
+                          doordash_url: { save: !!urls.doordashUrl },
+                          instagram_url: { save: !!urls.instagramUrl },
+                          facebook_url: { save: !!urls.facebookUrl },
+                          meandyou_url: { save: !!urls.meandyouUrl },
+                          mobi2go_url: { save: !!urls.mobi2goUrl },
+                          delivereasy_url: { save: !!urls.delivereasyUrl },
+                          nextorder_url: { save: !!urls.nextorderUrl },
+                          foodhub_url: { save: !!urls.foodhubUrl },
+                          ordermeal_url: { save: !!urls.ordermealUrl }
+                        }));
+                      }}
+                    >
+                      Select All
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setGoogleSearchSelections(prev => ({
+                          ...prev,
+                          website_url: { save: false },
+                          ubereats_url: { save: false },
+                          doordash_url: { save: false },
+                          instagram_url: { save: false },
+                          facebook_url: { save: false },
+                          meandyou_url: { save: false },
+                          mobi2go_url: { save: false },
+                          delivereasy_url: { save: false },
+                          nextorder_url: { save: false },
+                          foodhub_url: { save: false },
+                          ordermeal_url: { save: false }
+                        }));
+                      }}
+                    >
+                      Deselect All
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2">
+                  {[
+                    { key: 'website_url', dataKey: 'websiteUrl', label: 'Website', icon: <Globe className="h-4 w-4" />, currentKey: 'website_url' },
+                    { key: 'ubereats_url', dataKey: 'ubereatsUrl', label: 'UberEats', icon: '🍔', currentKey: 'ubereats_url' },
+                    { key: 'doordash_url', dataKey: 'doordashUrl', label: 'DoorDash', icon: '🚗', currentKey: 'doordash_url' },
+                    { key: 'instagram_url', dataKey: 'instagramUrl', label: 'Instagram', icon: <Instagram className="h-4 w-4" />, currentKey: 'instagram_url' },
+                    { key: 'facebook_url', dataKey: 'facebookUrl', label: 'Facebook', icon: <Facebook className="h-4 w-4" />, currentKey: 'facebook_url' },
+                    { key: 'delivereasy_url', dataKey: 'delivereasyUrl', label: 'Delivereasy', icon: '📦', currentKey: 'delivereasy_url' },
+                    { key: 'meandyou_url', dataKey: 'meandyouUrl', label: 'MeAndU', icon: '📱', currentKey: 'meandyou_url' },
+                    { key: 'mobi2go_url', dataKey: 'mobi2goUrl', label: 'Mobi2Go', icon: '📱', currentKey: 'mobi2go_url' },
+                    { key: 'nextorder_url', dataKey: 'nextorderUrl', label: 'NextOrder', icon: '🛒', currentKey: 'nextorder_url' },
+                    { key: 'foodhub_url', dataKey: 'foodhubUrl', label: 'FoodHub', icon: '🍽️', currentKey: 'foodhub_url' },
+                    { key: 'ordermeal_url', dataKey: 'ordermealUrl', label: 'OrderMeal', icon: '🥡', currentKey: 'ordermeal_url' }
+                  ].filter(({ dataKey }) => pendingGoogleSearchData.platformUrls?.[dataKey]).map(({ key, dataKey, label, icon, currentKey }) => (
+                    <div key={key} className="flex items-start gap-3 py-2 px-3 border rounded-lg">
+                      <Checkbox
+                        id={`save-${key}`}
+                        checked={googleSearchSelections[key]?.save || false}
+                        onCheckedChange={(checked) => setGoogleSearchSelections(prev => ({
+                          ...prev,
+                          [key]: { save: !!checked }
+                        }))}
+                        className="mt-0.5"
+                      />
+                      <Label htmlFor={`save-${key}`} className="flex-1 cursor-pointer min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="w-5 h-5 flex items-center justify-center flex-shrink-0">
+                            {typeof icon === 'string' ? icon : icon}
+                          </span>
+                          <span className="font-medium">{label}</span>
+                          {restaurant?.[currentKey] && (
+                            <Badge variant="outline" className="text-xs">Has existing</Badge>
+                          )}
+                        </div>
+                        {restaurant?.[currentKey] && (
+                          <div className="text-xs mt-1">
+                            <span className="text-muted-foreground">Current: </span>
+                            <span className="font-mono break-all">{restaurant[currentKey]}</span>
+                          </div>
+                        )}
+                        <div className="text-xs mt-1">
+                          <span className="text-muted-foreground">New: </span>
+                          <span className="font-mono break-all text-blue-600">{pendingGoogleSearchData.platformUrls[dataKey]}</span>
+                        </div>
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setGoogleSearchConfirmDialogOpen(false);
+                setPendingGoogleSearchData(null);
+              }}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmGoogleSearchUpdate}
+              disabled={searchingGoogle}
+              className="w-full sm:w-auto"
+            >
+              {searchingGoogle ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Selected
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

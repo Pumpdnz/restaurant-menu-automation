@@ -77,6 +77,13 @@ const { UsageTrackingService, UsageEventType } = require('./src/services/usage-t
 // Import platform detector
 const { detectPlatform, extractRestaurantName, getExtractionConfig } = require('./src/utils/platform-detector');
 
+// Import URL validation functions for Google Business Search
+const {
+  cleanInstagramUrl,
+  cleanFacebookUrl,
+  cleanWebsiteUrl
+} = require('./src/services/lead-url-validation-service');
+
 // Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 3007;
@@ -5156,8 +5163,26 @@ app.patch('/api/restaurants/:id/workflow', authMiddleware, async (req, res) => {
  */
 app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, async (req, res) => {
   try {
-    const { restaurantName, city, restaurantId } = req.body;
+    const {
+      restaurantName,
+      city,
+      restaurantId,
+      previewOnly = false,
+      urlsOnly = false,  // Phase 1: Only search for URLs, skip content extraction
+      confirmedUrls = null  // Phase 2: Use these confirmed URLs for extraction instead of searching
+    } = req.body;
     const organisationId = req.user?.organisationId;
+
+    // Helper function to identify source from URL
+    const getSourceName = (url) => {
+      if (!url) return 'unknown';
+      const urlLower = url.toLowerCase();
+      if (urlLower.includes('ubereats.com')) return 'ubereats';
+      if (urlLower.includes('doordash.com')) return 'doordash';
+      if (urlLower.includes('menulog.')) return 'menulog';
+      if (urlLower.includes('delivereasy')) return 'delivereasy';
+      return 'website';
+    };
 
     if (!restaurantName || !city) {
       return res.status(400).json({
@@ -5381,23 +5406,84 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
       }
     }
     
-    console.log('[Google Business Search] Found URLs:', foundUrls);
+    console.log('[Google Business Search] Found URLs (before validation):', foundUrls);
 
-    // Step 3: Use platform-specific extraction based on URL type
-    // Helper function to clean social media URLs
-    const cleanSocialMediaUrl = (url) => {
-      if (!url) return null;
-      // Remove query parameters from Instagram URLs (like ?hl=en)
-      if (url.includes('instagram.com') && url.includes('?')) {
-        return url.split('?')[0];
+    // Step 3: Validate and clean URLs using lead-url-validation-service
+    // This properly filters out invalid social media URLs (reels, posts, stories, etc.)
+    // and validates website URLs (filters out delivery platforms)
+    if (foundUrls.instagramUrl) {
+      const cleanedInstagram = cleanInstagramUrl(foundUrls.instagramUrl);
+      if (!cleanedInstagram) {
+        console.log(`[Google Business Search] Rejected Instagram URL (invalid pattern): ${foundUrls.instagramUrl}`);
       }
-      // Remove query parameters from Facebook URLs (like ?locale=en_US)
-      if (url.includes('facebook.com') && url.includes('?')) {
-        return url.split('?')[0];
+      foundUrls.instagramUrl = cleanedInstagram;
+    }
+    if (foundUrls.facebookUrl) {
+      const cleanedFacebook = cleanFacebookUrl(foundUrls.facebookUrl);
+      if (!cleanedFacebook) {
+        console.log(`[Google Business Search] Rejected Facebook URL (invalid pattern): ${foundUrls.facebookUrl}`);
       }
-      return url;
-    };
+      foundUrls.facebookUrl = cleanedFacebook;
+    }
+    if (foundUrls.websiteUrl) {
+      const cleanedWebsite = cleanWebsiteUrl(foundUrls.websiteUrl);
+      if (!cleanedWebsite) {
+        console.log(`[Google Business Search] Rejected website URL (delivery platform): ${foundUrls.websiteUrl}`);
+      }
+      foundUrls.websiteUrl = cleanedWebsite;
+    }
 
+    console.log('[Google Business Search] Found URLs (after validation):', foundUrls);
+
+    // URLS ONLY MODE (Phase 1): Return URLs without content extraction
+    // This allows users to confirm the website URL is correct before extraction
+    if (urlsOnly) {
+      console.log('[Google Business Search] URLs only mode - returning platform URLs without extraction');
+
+      // Track usage even in URLs-only mode
+      if (organisationId) {
+        UsageTrackingService.trackEvent(organisationId, UsageEventType.GOOGLE_SEARCH, 1, {
+          restaurant_name: restaurantName,
+          city: city,
+          restaurant_id: restaurantId,
+          platforms_found: Object.entries(foundUrls).filter(([k, v]) => v).map(([k]) => k).length,
+          urls_only_mode: true
+        }).catch(err => console.error('[UsageTracking] Failed to track Google search:', err));
+      }
+
+      return res.json({
+        success: true,
+        urlsOnly: true,
+        data: {
+          platformUrls: {
+            websiteUrl: foundUrls.websiteUrl,
+            ubereatsUrl: foundUrls.ubereatsUrl ? foundUrls.ubereatsUrl.split('?')[0] : null,
+            doordashUrl: foundUrls.doordashUrl ? foundUrls.doordashUrl.split('?')[0] : null,
+            instagramUrl: foundUrls.instagramUrl,
+            facebookUrl: foundUrls.facebookUrl,
+            meandyouUrl: foundUrls.meandyouUrl,
+            mobi2goUrl: foundUrls.mobi2goUrl,
+            delivereasyUrl: foundUrls.delivereasyUrl,
+            nextorderUrl: foundUrls.nextorderUrl,
+            foodhubUrl: foundUrls.foodhubUrl,
+            ordermealUrl: foundUrls.ordermealUrl
+          }
+        }
+      });
+    }
+
+    // If confirmedUrls provided (Phase 2), use those instead of searched URLs
+    if (confirmedUrls) {
+      console.log('[Google Business Search] Using confirmed URLs for extraction:', confirmedUrls);
+      // Override found URLs with confirmed ones (user may have corrected the website URL)
+      if (confirmedUrls.websiteUrl !== undefined) foundUrls.websiteUrl = confirmedUrls.websiteUrl;
+      if (confirmedUrls.ubereatsUrl !== undefined) foundUrls.ubereatsUrl = confirmedUrls.ubereatsUrl;
+      if (confirmedUrls.doordashUrl !== undefined) foundUrls.doordashUrl = confirmedUrls.doordashUrl;
+      if (confirmedUrls.instagramUrl !== undefined) foundUrls.instagramUrl = confirmedUrls.instagramUrl;
+      if (confirmedUrls.facebookUrl !== undefined) foundUrls.facebookUrl = confirmedUrls.facebookUrl;
+    }
+
+    // Step 4: Use platform-specific extraction based on URL type
     let extractedData = {
       restaurantName: restaurantName,
       openingHours: [],
@@ -5406,8 +5492,8 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
       websiteUrl: foundUrls.websiteUrl,
       ubereatsUrl: foundUrls.ubereatsUrl,
       doordashUrl: foundUrls.doordashUrl,
-      facebookUrl: cleanSocialMediaUrl(foundUrls.facebookUrl),
-      instagramUrl: cleanSocialMediaUrl(foundUrls.instagramUrl),
+      facebookUrl: foundUrls.facebookUrl,
+      instagramUrl: foundUrls.instagramUrl,
       meandyouUrl: foundUrls.meandyouUrl,
       mobi2goUrl: foundUrls.mobi2goUrl,
       delivereasyUrl: foundUrls.delivereasyUrl,
@@ -5484,17 +5570,17 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
     // UberEats is FIRST priority for address and hours (most reliable)
     // Website is used for phone number and as fallback for all info if UberEats not available
     const urlsToTry = [];
-    
+
     // First priority: UberEats for address and hours (most reliable for these)
     if (foundUrls.ubereatsUrl) {
       urlsToTry.push({ url: foundUrls.ubereatsUrl, extractPhone: false, extractAddress: true, extractHours: true });
     }
-    
+
     // Second priority: website for phone (and fallback for address/hours if not from UberEats)
     if (foundUrls.websiteUrl) {
       urlsToTry.push({ url: foundUrls.websiteUrl, extractPhone: true, extractAddress: true, extractHours: true });
     }
-    
+
     // DoorDash excluded from automatic extraction - only used when user specifically requests it
 
     // Define what we're looking for
@@ -5503,25 +5589,36 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
       phone: !extractedData.phone,
       openingHours: extractedData.openingHours.length === 0
     };
-    
+
+    // Multi-source data collection for preview mode
+    // Stores extracted data from each source separately for user selection
+    const extractedBySource = {};
+
     // Try each URL based on what data we still need
     for (const urlConfig of urlsToTry) {
       const urlToScrape = urlConfig.url;
-      
-      // Check if we already have all the data we need
-      if (!extractionGoals.address && !extractionGoals.phone && !extractionGoals.openingHours) {
-        console.log('[Google Business Search] All required data found, skipping remaining URLs');
-        break;
-      }
-      
-      // Skip this URL if we already have what it can provide
-      if (!urlConfig.extractPhone || !extractionGoals.phone) {
-        if (!urlConfig.extractAddress || !extractionGoals.address) {
-          if (!urlConfig.extractHours || !extractionGoals.openingHours) {
-            console.log('[Google Business Search] Skipping', urlToScrape, '- already have data it can provide');
-            continue;
+      const sourceName = getSourceName(urlToScrape);
+
+      // In preview mode, always try all sources to give user choice
+      // In non-preview mode, use existing "first found wins" logic
+      if (!previewOnly) {
+        // Check if we already have all the data we need
+        if (!extractionGoals.address && !extractionGoals.phone && !extractionGoals.openingHours) {
+          console.log('[Google Business Search] All required data found, skipping remaining URLs');
+          break;
+        }
+
+        // Skip this URL if we already have what it can provide
+        if (!urlConfig.extractPhone || !extractionGoals.phone) {
+          if (!urlConfig.extractAddress || !extractionGoals.address) {
+            if (!urlConfig.extractHours || !extractionGoals.openingHours) {
+              console.log('[Google Business Search] Skipping', urlToScrape, '- already have data it can provide');
+              continue;
+            }
           }
         }
+      } else {
+        console.log(`[Google Business Search] Preview mode - extracting from ${sourceName}`);
       }
       
       // Clean the URL - remove query parameters for delivery platforms
@@ -5558,31 +5655,38 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
 
         if (scrapeResponse.data?.data?.json) {
           const jsonData = scrapeResponse.data.data.json;
-          console.log('[Google Business Search] JSON extraction result:', jsonData);
-          
+          console.log('[Google Business Search] JSON extraction result from', sourceName, ':', jsonData);
+
           // Check if we got valid data (not 'null' strings or empty data)
           const hasValidData = (
             (jsonData.address && jsonData.address !== 'null' && jsonData.address !== '') ||
             (jsonData.phone && jsonData.phone !== 'null' && jsonData.phone !== '') ||
             (jsonData.openingHours && jsonData.openingHours.length > 0)
           );
-          
+
           if (!hasValidData) {
             console.log('[Google Business Search] No valid data found from:', urlToScrape, '- trying next URL');
             continue; // Try next URL
           }
-          
+
+          // Initialize source data object for multi-source collection
+          const sourceData = {
+            address: null,
+            phone: null,
+            openingHours: []
+          };
+
           // Process opening hours - handle split hours and expand day ranges
           if (jsonData.openingHours && Array.isArray(jsonData.openingHours)) {
             const expandedHours = [];
             const allDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-            
+
             for (const hours of jsonData.openingHours) {
               // Skip invalid entries
               if (!hours.day || hours.day.toLowerCase().includes('menu') || hours.day.toLowerCase().includes('dinner menu')) {
                 continue;
               }
-              
+
               // Handle "Every day" or "Daily"
               const dayStr = hours.day.toLowerCase();
               if (dayStr.includes('every day') || dayStr === 'daily' || dayStr === 'everyday' || dayStr === 'every day') {
@@ -5603,7 +5707,7 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
                 const [startDay, endDay] = hours.day.split('-').map(d => d.trim());
                 const startIdx = allDays.findIndex(d => d.toLowerCase().startsWith(startDay.toLowerCase().substring(0, 3)));
                 const endIdx = allDays.findIndex(d => d.toLowerCase().startsWith(endDay.toLowerCase().substring(0, 3)));
-                
+
                 if (startIdx !== -1 && endIdx !== -1) {
                   for (let i = startIdx; i <= endIdx; i++) {
                     expandedHours.push({
@@ -5628,66 +5732,96 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
                 });
               }
             }
-            
-            extractedData.openingHours = expandedHours;
+
+            // Store in source data for multi-source collection
+            sourceData.openingHours = expandedHours;
+
+            // Also update extractedData for non-preview mode (existing behavior)
+            if (!previewOnly && expandedHours.length > 0) {
+              extractedData.openingHours = expandedHours;
+            }
           }
-          
-          // Process phone number with cleaning - only if this source should provide phone
-          if (urlConfig.extractPhone && jsonData.phone && jsonData.phone !== 'N/A' && jsonData.phone !== 'null') {
-            const cleanAndValidateNZPhone = (phoneStr) => {
-              let cleaned = phoneStr.replace(/[^\d+]/g, '');
-              if (cleaned.length < 9 || cleaned.length > 15) return null;
-              
-              const validPatterns = [
-                /^\+64[2-9]\d{7,9}$/,
-                /^0[3-9]\d{7}$/,
-                /^02[0-9]\d{7,8}$/,
-                /^0800\d{6,7}$/,
-                /^0508\d{6}$/
-              ];
-              
-              const isValid = validPatterns.some(pattern => pattern.test(cleaned));
-              if (!isValid) return null;
-              
-              if (!cleaned.startsWith('+64') && cleaned.startsWith('0')) {
-                cleaned = '+64' + cleaned.substring(1);
-              }
-              
-              return cleaned;
-            };
-            
+
+          // Phone number cleaning function
+          const cleanAndValidateNZPhone = (phoneStr) => {
+            let cleaned = phoneStr.replace(/[^\d+]/g, '');
+            if (cleaned.length < 9 || cleaned.length > 15) return null;
+
+            const validPatterns = [
+              /^\+64[2-9]\d{7,9}$/,
+              /^0[3-9]\d{7}$/,
+              /^02[0-9]\d{7,8}$/,
+              /^0800\d{6,7}$/,
+              /^0508\d{6}$/
+            ];
+
+            const isValid = validPatterns.some(pattern => pattern.test(cleaned));
+            if (!isValid) return null;
+
+            if (!cleaned.startsWith('+64') && cleaned.startsWith('0')) {
+              cleaned = '+64' + cleaned.substring(1);
+            }
+
+            return cleaned;
+          };
+
+          // Process phone number with cleaning
+          if (jsonData.phone && jsonData.phone !== 'N/A' && jsonData.phone !== 'null') {
             const cleanedPhone = cleanAndValidateNZPhone(jsonData.phone);
             if (cleanedPhone) {
-              extractedData.phone = cleanedPhone;
+              // Store in source data for multi-source collection
+              sourceData.phone = cleanedPhone;
+
+              // Also update extractedData for non-preview mode (existing behavior)
+              if (!previewOnly && urlConfig.extractPhone) {
+                extractedData.phone = cleanedPhone;
+              }
             }
           }
-          
-          // Process address (check it's not 'null' string) - only if this source should provide address
-          // AND we don't already have an address (UberEats address is more specific than website)
-          if (urlConfig.extractAddress && extractionGoals.address && jsonData.address && jsonData.address !== 'null' && jsonData.address !== '' && jsonData.address !== 'N/A') {
+
+          // Process address (check it's not 'null' string)
+          if (jsonData.address && jsonData.address !== 'null' && jsonData.address !== '' && jsonData.address !== 'N/A') {
             // Don't accept numbers-only addresses (like "35341547" from DoorDash)
             if (!/^\d+$/.test(jsonData.address)) {
-              extractedData.address = jsonData.address;
-              extractionGoals.address = false;
+              // Store in source data for multi-source collection
+              sourceData.address = jsonData.address;
+
+              // Also update extractedData for non-preview mode (existing behavior)
+              if (!previewOnly && urlConfig.extractAddress && extractionGoals.address) {
+                extractedData.address = jsonData.address;
+                extractionGoals.address = false;
+              }
             }
           }
-          
-          // Update extraction goals
-          if (extractedData.openingHours.length > 0) {
-            extractionGoals.openingHours = false;
+
+          // Store this source's data in the multi-source collection
+          if (sourceData.address || sourceData.phone || sourceData.openingHours.length > 0) {
+            extractedBySource[sourceName] = sourceData;
+            console.log(`[Google Business Search] Stored data from ${sourceName}:`, {
+              hasAddress: !!sourceData.address,
+              hasPhone: !!sourceData.phone,
+              hoursCount: sourceData.openingHours.length
+            });
           }
-          if (extractedData.phone) {
-            extractionGoals.phone = false;
-          }
-          
-          // Continue to next URL if we still need data and this source didn't have everything
-          const stillNeedData = extractionGoals.address || extractionGoals.phone || extractionGoals.openingHours;
-          if (!stillNeedData) {
-            console.log('[Google Business Search] All required data extracted successfully');
-            break;
-          } else {
-            console.log('[Google Business Search] Still missing:', Object.keys(extractionGoals).filter(k => extractionGoals[k]));
-            // Continue to next URL
+
+          // Update extraction goals (for non-preview mode)
+          if (!previewOnly) {
+            if (extractedData.openingHours.length > 0) {
+              extractionGoals.openingHours = false;
+            }
+            if (extractedData.phone) {
+              extractionGoals.phone = false;
+            }
+
+            // Continue to next URL if we still need data and this source didn't have everything
+            const stillNeedData = extractionGoals.address || extractionGoals.phone || extractionGoals.openingHours;
+            if (!stillNeedData) {
+              console.log('[Google Business Search] All required data extracted successfully');
+              break;
+            } else {
+              console.log('[Google Business Search] Still missing:', Object.keys(extractionGoals).filter(k => extractionGoals[k]));
+              // Continue to next URL
+            }
           }
         }
       } catch (scrapeError) {
@@ -5803,8 +5937,52 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
     if (extractedData.doordashUrl) {
       extractedData.doordashUrl = cleanPlatformUrl(extractedData.doordashUrl, 'doordash');
     }
-    
-    // Update restaurant if ID provided
+
+    // PREVIEW MODE: Return multi-source data without saving to database
+    // This allows the frontend to show a confirmation dialog with source selection
+    if (previewOnly) {
+      console.log('[Google Business Search] Preview mode - returning multi-source data');
+      console.log('[Google Business Search] Sources scraped:', Object.keys(extractedBySource));
+
+      // Track Google search usage even in preview mode
+      if (organisationId) {
+        UsageTrackingService.trackEvent(organisationId, UsageEventType.GOOGLE_SEARCH, 1, {
+          restaurant_name: restaurantName,
+          city: city,
+          restaurant_id: restaurantId,
+          platforms_found: Object.entries(foundUrls).filter(([k, v]) => v).map(([k]) => k).length,
+          preview_mode: true
+        }).catch(err => console.error('[UsageTracking] Failed to track Google search:', err));
+      }
+
+      return res.json({
+        success: true,
+        previewMode: true,
+        data: {
+          // Platform URLs (single source each - from search results)
+          platformUrls: {
+            websiteUrl: foundUrls.websiteUrl,
+            ubereatsUrl: cleanPlatformUrl(foundUrls.ubereatsUrl, 'ubereats'),
+            doordashUrl: cleanPlatformUrl(foundUrls.doordashUrl, 'doordash'),
+            instagramUrl: foundUrls.instagramUrl,
+            facebookUrl: foundUrls.facebookUrl,
+            meandyouUrl: foundUrls.meandyouUrl,
+            mobi2goUrl: foundUrls.mobi2goUrl,
+            delivereasyUrl: foundUrls.delivereasyUrl,
+            nextorderUrl: foundUrls.nextorderUrl,
+            foodhubUrl: foundUrls.foodhubUrl,
+            ordermealUrl: foundUrls.ordermealUrl
+          },
+          // Multi-source extracted data (address, phone, hours from each source)
+          extractedBySource,
+          // Metadata
+          sourcesScraped: Object.keys(extractedBySource),
+          extractionNotes: extractedData.extractionNotes
+        }
+      });
+    }
+
+    // Update restaurant if ID provided (non-preview mode)
     if (restaurantId && db.isDatabaseAvailable()) {
       const updateData = {};
       
@@ -5878,6 +6056,197 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
     return res.status(500).json({
       success: false,
       error: error.message || 'Failed to search for business information'
+    });
+  }
+});
+
+/**
+ * POST /api/google-business-search/save
+ * Save Google search data with per-field source selection
+ * Used after preview mode to apply user-selected fields
+ *
+ * Request body:
+ * {
+ *   restaurantId: "uuid",
+ *   selections: {
+ *     address: { save: true, source: "ubereats" },
+ *     phone: { save: true, source: "website" },
+ *     opening_hours: { save: true, source: "ubereats" },
+ *     website_url: { save: true },
+ *     instagram_url: { save: false },
+ *     facebook_url: { save: true },
+ *     // ... other platform URLs
+ *   },
+ *   extractedBySource: { ... },  // Multi-source data from preview
+ *   platformUrls: { ... }        // Platform URLs from preview
+ * }
+ */
+app.post('/api/google-business-search/save', authMiddleware, async (req, res) => {
+  try {
+    const {
+      restaurantId,
+      selections,
+      extractedBySource,
+      platformUrls
+    } = req.body;
+
+    if (!restaurantId || !selections) {
+      return res.status(400).json({
+        success: false,
+        error: 'Restaurant ID and selections are required'
+      });
+    }
+
+    console.log('[API] Saving Google search data for restaurant:', restaurantId);
+    console.log('[API] Selections:', JSON.stringify(selections, null, 2));
+
+    if (!db.isDatabaseAvailable()) {
+      return res.status(500).json({
+        success: false,
+        error: 'Database not available'
+      });
+    }
+
+    const updateData = {};
+
+    // Process multi-source fields (address, phone, opening_hours)
+    // These require looking up the value from the selected source
+    if (selections.address?.save && selections.address?.source && extractedBySource) {
+      const sourceData = extractedBySource[selections.address.source];
+      if (sourceData?.address) {
+        updateData.address = sourceData.address;
+        console.log(`[API] Using address from ${selections.address.source}: ${sourceData.address}`);
+      }
+    }
+
+    if (selections.phone?.save && selections.phone?.source && extractedBySource) {
+      const sourceData = extractedBySource[selections.phone.source];
+      if (sourceData?.phone) {
+        updateData.phone = sourceData.phone;
+        console.log(`[API] Using phone from ${selections.phone.source}: ${sourceData.phone}`);
+      }
+    }
+
+    if (selections.opening_hours?.save && selections.opening_hours?.source && extractedBySource) {
+      const sourceData = extractedBySource[selections.opening_hours.source];
+      if (sourceData?.openingHours?.length > 0) {
+        // Process opening hours with 24-hour format and midnight crossing handling
+        const formattedHours = [];
+        const hoursByDay = {};
+
+        sourceData.openingHours.forEach(hours => {
+          if (!hours.day || !hours.hours?.open || !hours.hours?.close) return;
+
+          const day = hours.day;
+          if (!hoursByDay[day]) {
+            hoursByDay[day] = [];
+          }
+
+          // Convert to 24-hour format
+          const open24 = convertTo24Hour(hours.hours.open);
+          const close24 = convertTo24Hour(hours.hours.close);
+
+          if (!open24 || !close24) return;
+
+          hoursByDay[day].push({
+            open: open24,
+            close: close24,
+            period: hours.hours.period || ''
+          });
+        });
+
+        // Process each day's hours with midnight crossing handling
+        Object.entries(hoursByDay).forEach(([day, slots]) => {
+          slots.forEach(slot => {
+            const openTime = parseTime(slot.open);
+            const closeTime = parseTime(slot.close);
+
+            // Check for midnight crossing
+            if (closeTime < openTime && closeTime !== 0) {
+              // Split into two entries for midnight crossing
+              formattedHours.push({
+                day: day,
+                hours: {
+                  open: slot.open,
+                  close: "23:59",
+                  ...(slot.period && { period: slot.period })
+                }
+              });
+
+              const nextDay = getNextDay(day);
+              formattedHours.push({
+                day: nextDay,
+                hours: {
+                  open: "00:00",
+                  close: slot.close,
+                  ...(slot.period && { period: slot.period })
+                }
+              });
+            } else {
+              // Normal hours (no midnight crossing)
+              formattedHours.push({
+                day: day,
+                hours: {
+                  open: slot.open,
+                  close: slot.close,
+                  ...(slot.period && { period: slot.period })
+                }
+              });
+            }
+          });
+        });
+
+        if (formattedHours.length > 0) {
+          updateData.opening_hours = formattedHours;
+          console.log(`[API] Using opening_hours from ${selections.opening_hours.source}: ${formattedHours.length} entries`);
+        }
+      }
+    }
+
+    // Process single-source fields (platform URLs)
+    // These come directly from platformUrls
+    const urlFields = [
+      { key: 'website_url', dataKey: 'websiteUrl' },
+      { key: 'ubereats_url', dataKey: 'ubereatsUrl' },
+      { key: 'doordash_url', dataKey: 'doordashUrl' },
+      { key: 'instagram_url', dataKey: 'instagramUrl' },
+      { key: 'facebook_url', dataKey: 'facebookUrl' },
+      { key: 'meandyou_url', dataKey: 'meandyouUrl' },
+      { key: 'mobi2go_url', dataKey: 'mobi2goUrl' },
+      { key: 'delivereasy_url', dataKey: 'delivereasyUrl' },
+      { key: 'nextorder_url', dataKey: 'nextorderUrl' },
+      { key: 'foodhub_url', dataKey: 'foodhubUrl' },
+      { key: 'ordermeal_url', dataKey: 'ordermealUrl' }
+    ];
+
+    for (const { key, dataKey } of urlFields) {
+      if (selections[key]?.save && platformUrls?.[dataKey]) {
+        updateData[key] = platformUrls[dataKey];
+        console.log(`[API] Saving ${key}: ${platformUrls[dataKey]}`);
+      }
+    }
+
+    if (Object.keys(updateData).length > 0) {
+      await db.updateRestaurantWorkflow(restaurantId, updateData);
+      console.log('[API] Saved Google search data:', Object.keys(updateData));
+
+      return res.json({
+        success: true,
+        fieldsUpdated: Object.keys(updateData)
+      });
+    } else {
+      console.log('[API] No fields selected for update');
+      return res.json({
+        success: true,
+        fieldsUpdated: []
+      });
+    }
+
+  } catch (error) {
+    console.error('[API] Google search save error:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to save search data'
     });
   }
 });
