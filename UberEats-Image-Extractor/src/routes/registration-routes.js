@@ -1324,6 +1324,7 @@ router.post('/configure-website', requireRegistrationWebsiteSettings, async (req
         secondary_color,
         theme,
         logo_nobg_url,
+        logo_favicon_url,
         instagram_url,
         facebook_url,
         address,
@@ -1428,7 +1429,33 @@ router.post('/configure-website', requireRegistrationWebsiteSettings, async (req
         command.push(`--logo="${restaurant.logo_nobg_url}"`);
       }
     }
-    
+
+    // Add favicon if available (separate from logo)
+    if (restaurant.logo_favicon_url) {
+      // Check if it's a base64 data URL
+      if (restaurant.logo_favicon_url.startsWith('data:image')) {
+        // Convert base64 to PNG file
+        const faviconPath = await convertBase64ToPng(restaurant.logo_favicon_url);
+        if (faviconPath) {
+          command.push(`--favicon="${faviconPath}"`);
+          tempFiles.push(faviconPath); // Track for cleanup
+          console.log('[Website Config] Using dedicated favicon:', faviconPath);
+        }
+      } else if (restaurant.logo_favicon_url.startsWith('http')) {
+        // Download favicon to temp location
+        const faviconPath = await downloadLogoIfNeeded(restaurant.logo_favicon_url);
+        if (faviconPath) {
+          command.push(`--favicon="${faviconPath}"`);
+          tempFiles.push(faviconPath); // Track for cleanup
+          console.log('[Website Config] Using dedicated favicon:', faviconPath);
+        }
+      } else {
+        // Local path
+        command.push(`--favicon="${restaurant.logo_favicon_url}"`);
+        console.log('[Website Config] Using dedicated favicon:', restaurant.logo_favicon_url);
+      }
+    }
+
     if (restaurant.address) {
       command.push(`--address="${restaurant.address.replace(/"/g, '\\"')}"`);
     }

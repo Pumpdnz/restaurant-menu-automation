@@ -89,6 +89,7 @@ const headPath = getArg('head');
 const bodyPath = getArg('body');
 const restaurantName = getArg('name');
 const logoPath = getArg('logo');
+const faviconPath = getArg('favicon'); // Separate favicon path (falls back to logo if not provided)
 const instagramUrl = getArg('instagram');
 const facebookUrl = getArg('facebook');
 const cuisine = getArg('cuisine');
@@ -982,33 +983,35 @@ async function editWebsiteSettingsLight() {
       console.log('\n📋 STEP 11: Skipping logo upload (no logo provided)');
     }
     
-    // STEP 12: Upload Favicon (use same logo)
-    if (logoPath) {
+    // STEP 12: Upload Favicon (use favicon if provided, otherwise fall back to logo)
+    const faviconToUpload = faviconPath || logoPath;
+    if (faviconToUpload) {
       console.log('\n🔖 STEP 12: Uploading Favicon');
-      
+      console.log(`  Using ${faviconPath ? 'dedicated favicon' : 'logo as favicon'}: ${faviconToUpload}`);
+
       const faviconSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div:nth-child(15)';
-      
+
       try {
         await page.locator(faviconSelector).scrollIntoViewIfNeeded();
         await page.waitForTimeout(500);
         console.log('  ✓ Scrolled to Favicon section');
-        
+
         await page.click(faviconSelector);
         await page.waitForTimeout(1000);
         console.log('  ✓ Expanded Favicon dropdown');
-        
+
         // Click Upload button
         const uploadFaviconSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div > div > div > div > button:nth-child(1)';
         await page.click(uploadFaviconSelector);
         console.log('  ✓ Clicked Upload Favicon button');
         await page.waitForTimeout(2000);
-        
-        // Handle Uploadcare widget (same as logo)
-        const logoFilePath = path.resolve(logoPath);
-        
+
+        // Handle Uploadcare widget
+        const faviconFilePath = path.resolve(faviconToUpload);
+
         // Set up file chooser handler
         page.once('filechooser', async (fileChooser) => {
-          await fileChooser.setFiles(logoFilePath);
+          await fileChooser.setFiles(faviconFilePath);
           console.log('  ✓ Favicon selected via fileChooser');
         });
         

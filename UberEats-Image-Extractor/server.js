@@ -550,7 +550,8 @@ const corsOptions = {
   optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions));
-app.use(express.json());
+app.use(express.json({ limit: '50mb' })); // Increased limit for base64 images
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static(path.join(__dirname, 'dist')));
 
 // Add organization middleware for all API routes
@@ -2553,14 +2554,18 @@ app.post('/api/menus/:id/upload-images', async (req, res) => {
     
     // Get images that need to be uploaded
     const imagesToUpload = await db.getMenuImagesForUpload(id);
-    
+
     if (imagesToUpload.length === 0) {
+      // Get actual CDN stats to show how many are already uploaded
+      const cdnStats = await db.getMenuCDNStats(id);
       return res.json({
         success: true,
-        message: 'No images to upload. All images are already uploaded to CDN or no images exist.',
+        message: cdnStats?.totalImages > 0
+          ? 'All images are already uploaded to CDN.'
+          : 'No images exist for this menu.',
         stats: {
-          totalImages: 0,
-          alreadyUploaded: 0
+          totalImages: cdnStats?.totalImages || 0,
+          alreadyUploaded: cdnStats?.uploadedImages || 0
         }
       });
     }
@@ -7281,14 +7286,41 @@ app.post('/api/website-extraction/branding', authMiddleware, requireFirecrawlBra
           sourceUrl
         );
 
-        // Process logo, skip favicon if Firecrawl provided one
-        const skipFavicon = !!brandingResult.images?.faviconUrl;
-        logoVersions = await logoService.processLogoVersions(logoBuffer, { skipFavicon });
+        // Always generate favicon from logo (don't skip)
+        logoVersions = await logoService.processLogoVersions(logoBuffer, { skipFavicon: false });
 
         console.log('[API] Logo processed into', Object.keys(logoVersions).length, 'versions');
       } catch (logoError) {
         console.error('[API] Failed to process logo:', logoError.message);
         // Continue without logo - colors and metadata still valuable
+      }
+    }
+
+    // Step 2b: If Firecrawl provided a separate favicon URL, download and convert to base64
+    // This overrides the logo-generated favicon with the actual favicon
+    if (brandingResult.images?.faviconUrl) {
+      try {
+        console.log('[API] Downloading favicon from Firecrawl URL:', brandingResult.images.faviconUrl);
+        const faviconBuffer = await logoService.downloadImageToBuffer(
+          brandingResult.images.faviconUrl,
+          sourceUrl
+        );
+
+        // Convert favicon to base64 PNG (resize to 32x32 for consistency)
+        const sharp = require('sharp');
+        const resizedFavicon = await sharp(faviconBuffer)
+          .resize(32, 32, {
+            fit: 'contain',
+            background: { r: 255, g: 255, b: 255, alpha: 0 }
+          })
+          .png()
+          .toBuffer();
+
+        logoVersions.favicon = `data:image/png;base64,${resizedFavicon.toString('base64')}`;
+        console.log('[API] Favicon converted to base64 from Firecrawl URL');
+      } catch (faviconError) {
+        console.error('[API] Failed to process Firecrawl favicon, using logo-generated one:', faviconError.message);
+        // Keep the logo-generated favicon if Firecrawl favicon fails
       }
     }
 
@@ -7304,7 +7336,8 @@ app.post('/api/website-extraction/branding', authMiddleware, requireFirecrawlBra
           metadata: brandingResult.metadata,
           images: {
             logo: brandingResult.images?.logoUrl,
-            favicon: brandingResult.images?.faviconUrl,
+            faviconUrl: brandingResult.images?.faviconUrl, // Original URL from Firecrawl
+            faviconBase64: logoVersions?.favicon, // Converted base64 version
             ogImage: brandingResult.images?.ogImageUrl
           },
           confidence: brandingResult.confidence,
@@ -7370,7 +7403,9 @@ app.post('/api/website-extraction/branding', authMiddleware, requireFirecrawlBra
         updateData.logo_thermal_adaptive_url = logoVersions.thermal_adaptive;
       }
       if (shouldUpdateVersion('logo_favicon_url')) {
-        const faviconValue = brandingResult.images?.faviconUrl || logoVersions?.favicon;
+        // Prefer base64 favicon (from logoVersions) over raw URL
+        // logoVersions.favicon is always base64 - either from logo processing or converted from Firecrawl URL
+        const faviconValue = logoVersions?.favicon;
         if (faviconValue) {
           updateData.logo_favicon_url = faviconValue;
         }
@@ -7425,7 +7460,8 @@ app.post('/api/website-extraction/branding', authMiddleware, requireFirecrawlBra
         metadata: brandingResult.metadata,
         images: {
           logo: brandingResult.images?.logoUrl,
-          favicon: brandingResult.images?.faviconUrl,
+          faviconUrl: brandingResult.images?.faviconUrl, // Original URL from Firecrawl
+          faviconBase64: logoVersions?.favicon, // Converted base64 version
           ogImage: brandingResult.images?.ogImageUrl
         },
         confidence: brandingResult.confidence,

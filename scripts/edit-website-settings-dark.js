@@ -88,6 +88,7 @@ const headPath = getArg('head');
 const bodyPath = getArg('body');
 const restaurantName = getArg('name');
 const logoPath = getArg('logo');
+const faviconPath = getArg('favicon'); // Separate favicon path (falls back to logo if not provided)
 const instagramUrl = getArg('instagram');
 const facebookUrl = getArg('facebook');
 const cuisine = getArg('cuisine');
@@ -902,48 +903,50 @@ async function editWebsiteSettingsDark() {
       console.log('\n📋 STEP 11: Skipping logo upload (no logo provided)');
     }
     
-    // STEP 12: Upload Favicon (use same logo)
-    if (logoPath) {
+    // STEP 12: Upload Favicon (use favicon if provided, otherwise fall back to logo)
+    const faviconToUpload = faviconPath || logoPath;
+    if (faviconToUpload) {
       console.log('\n🔖 STEP 12: Uploading Favicon');
-      
+      console.log(`  Using ${faviconPath ? 'dedicated favicon' : 'logo as favicon'}: ${faviconToUpload}`);
+
       const faviconSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div:nth-child(15)';
-      
+
       try {
         await page.locator(faviconSelector).scrollIntoViewIfNeeded();
         await page.waitForTimeout(500);
         console.log('  ✓ Scrolled to Favicon section');
-        
+
         await page.click(faviconSelector);
         await page.waitForTimeout(1000);
         console.log('  ✓ Expanded Favicon dropdown');
-        
+
         // Click Upload button
         const uploadFaviconSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div > div > div > div > button:nth-child(1)';
         await page.click(uploadFaviconSelector);
         console.log('  ✓ Clicked Upload Favicon button');
         await page.waitForTimeout(2000);
-        
-        // Handle Uploadcare widget (same as logo)
-        const logoFilePath = path.resolve(logoPath);
-        
+
+        // Handle Uploadcare widget
+        const faviconFilePath = path.resolve(faviconToUpload);
+
         // Set up file chooser handler
         page.once('filechooser', async (fileChooser) => {
-          await fileChooser.setFiles(logoFilePath);
+          await fileChooser.setFiles(faviconFilePath);
           console.log('  ✓ Favicon selected via fileChooser');
         });
-        
+
         // Click Choose File button
         const chooseFileButton = page.locator('button:has-text("Choose a local file")').first();
         if (await chooseFileButton.count() > 0) {
           await chooseFileButton.click();
           console.log('  ✓ Triggered file chooser');
           await page.waitForTimeout(8000);
-          
+
           // Wait for preview and confirm
           const previewImage = await page.locator('.uploadcare--preview__image, img[src*="ucarecdn.com"]').first();
           if (await previewImage.count() > 0) {
             console.log('  ✓ Upload successful, preview loaded');
-            
+
             const addButton = page.locator('.uploadcare--dialog button:has-text("Add")').first();
             if (await addButton.count() > 0) {
               await addButton.click();
@@ -952,18 +955,18 @@ async function editWebsiteSettingsDark() {
             }
           }
         }
-        
+
         // Save favicon
         const saveFaviconButton = page.locator('button:has-text("Save")').first();
         await saveFaviconButton.click();
         console.log('  ✓ Saved favicon configuration');
         await page.waitForTimeout(2000);
-        
+
       } catch (error) {
         console.error('  ❌ Failed to upload favicon:', error.message);
       }
     } else {
-      console.log('\n📋 STEP 12: Skipping favicon upload (no logo provided)');
+      console.log('\n📋 STEP 12: Skipping favicon upload (no favicon or logo provided)');
     }
     
     // STEP 13: Configure SEO Settings
