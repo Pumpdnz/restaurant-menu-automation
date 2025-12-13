@@ -89,6 +89,10 @@ const bodyPath = getArg('body');
 const restaurantName = getArg('name');
 const logoPath = getArg('logo');
 const faviconPath = getArg('favicon'); // Separate favicon path (falls back to logo if not provided)
+const headerEnabled = getArg('header-enabled') === 'true';
+const headerBgPath = getArg('header-bg');
+const headerLogoPath = getArg('header-logo');
+const itemLayout = getArg('item-layout') || 'list'; // 'list' or 'card'
 const instagramUrl = getArg('instagram');
 const facebookUrl = getArg('facebook');
 const cuisine = getArg('cuisine');
@@ -902,11 +906,170 @@ async function editWebsiteSettingsDark() {
     } else {
       console.log('\n📋 STEP 11: Skipping logo upload (no logo provided)');
     }
-    
-    // STEP 12: Upload Favicon (use favicon if provided, otherwise fall back to logo)
+
+    // STEP 12: Configure Header (if enabled)
+    if (headerEnabled) {
+      console.log('\n🖼️ STEP 12: Configuring Header Settings');
+
+      const headerSectionSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div:nth-child(7)';
+
+      try {
+        // A. Open Header settings section
+        await page.locator(headerSectionSelector).scrollIntoViewIfNeeded();
+        await page.waitForTimeout(500);
+        console.log('  ✓ Scrolled to Header section');
+
+        await page.click(headerSectionSelector);
+        await page.waitForTimeout(1000);
+        console.log('  ✓ Expanded Header dropdown');
+
+        // B. Click toggle to show the header
+        const headerToggleSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > label';
+        await page.click(headerToggleSelector);
+        await page.waitForTimeout(500);
+        console.log('  ✓ Enabled header display');
+
+        // C. Upload Header Background image (if provided)
+        if (headerBgPath) {
+          const uploadBgSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(3) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div.flex-line.centered > button:nth-child(1)';
+          await page.click(uploadBgSelector);
+          console.log('  ✓ Clicked Upload Header Background button');
+          await page.waitForTimeout(2000);
+
+          // Handle Uploadcare widget
+          const headerBgFilePath = path.resolve(headerBgPath);
+
+          page.once('filechooser', async (fileChooser) => {
+            await fileChooser.setFiles(headerBgFilePath);
+            console.log('  ✓ Header background selected via fileChooser');
+          });
+
+          const chooseFileBgButton = page.locator('button:has-text("Choose a local file")').first();
+          if (await chooseFileBgButton.count() > 0) {
+            await chooseFileBgButton.click();
+            console.log('  ✓ Triggered file chooser for header background');
+            await page.waitForTimeout(8000);
+
+            const previewImageBg = await page.locator('.uploadcare--preview__image, img[src*="ucarecdn.com"]').first();
+            if (await previewImageBg.count() > 0) {
+              console.log('  ✓ Header background upload successful, preview loaded');
+
+              const addButtonBg = page.locator('.uploadcare--dialog button:has-text("Add")').first();
+              if (await addButtonBg.count() > 0) {
+                await addButtonBg.click();
+                console.log('  ✓ Confirmed header background upload');
+                await page.waitForTimeout(2000);
+              }
+            }
+          }
+        }
+
+        // D. Set Header Title to single space (to hide it)
+        const headerTitleSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(5) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > input';
+        const headerTitleInput = page.locator(headerTitleSelector).first();
+        await headerTitleInput.click();
+        await headerTitleInput.clear();
+        await headerTitleInput.fill(' ');
+        console.log('  ✓ Set header title to space (hidden)');
+
+        // E. Upload Header Logo (if provided)
+        if (headerLogoPath) {
+          const uploadLogoSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(7) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > button';
+          await page.click(uploadLogoSelector);
+          console.log('  ✓ Clicked Upload Header Logo button');
+          await page.waitForTimeout(2000);
+
+          // Handle Uploadcare widget
+          const headerLogoFilePath = path.resolve(headerLogoPath);
+
+          page.once('filechooser', async (fileChooser) => {
+            await fileChooser.setFiles(headerLogoFilePath);
+            console.log('  ✓ Header logo selected via fileChooser');
+          });
+
+          const chooseFileLogoButton = page.locator('button:has-text("Choose a local file")').first();
+          if (await chooseFileLogoButton.count() > 0) {
+            await chooseFileLogoButton.click();
+            console.log('  ✓ Triggered file chooser for header logo');
+            await page.waitForTimeout(8000);
+
+            const previewImageLogo = await page.locator('.uploadcare--preview__image, img[src*="ucarecdn.com"]').first();
+            if (await previewImageLogo.count() > 0) {
+              console.log('  ✓ Header logo upload successful, preview loaded');
+
+              const addButtonLogo = page.locator('.uploadcare--dialog button:has-text("Add")').first();
+              if (await addButtonLogo.count() > 0) {
+                await addButtonLogo.click();
+                console.log('  ✓ Confirmed header logo upload');
+                await page.waitForTimeout(2000);
+              }
+            }
+          }
+        }
+
+        // F. Save header configuration
+        const saveHeaderSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > button';
+        const saveHeaderButton = page.locator(saveHeaderSelector).first();
+        await saveHeaderButton.click();
+        console.log('  ✓ Saved header configuration');
+        await page.waitForTimeout(2000);
+
+        await takeScreenshot(page, '12-header-configured');
+        console.log('  ✓ Header configuration complete');
+      } catch (error) {
+        console.error('  ❌ Failed to configure header:', error.message);
+      }
+    } else {
+      console.log('\n📋 STEP 12: Skipping header configuration (not enabled)');
+    }
+
+    // STEP 13: Configure Item Settings
+    console.log('\n📦 STEP 13: Configuring Item Settings');
+
+    const itemsSectionSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div:nth-child(9)';
+
+    try {
+      // A. Open Items settings section
+      await page.locator(itemsSectionSelector).scrollIntoViewIfNeeded();
+      await page.waitForTimeout(500);
+      console.log('  ✓ Scrolled to Items section');
+
+      await page.click(itemsSectionSelector);
+      await page.waitForTimeout(1000);
+      console.log('  ✓ Expanded Items dropdown');
+
+      // B. Configure Item Layout Style (if card layout selected)
+      if (itemLayout === 'card') {
+        const itemStyleCardSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > select';
+        await page.selectOption(itemStyleCardSelector, { index: 2 }); // Card is the 3rd option (index 2)
+        await page.waitForTimeout(500);
+        console.log('  ✓ Set item style to Card');
+      } else {
+        console.log('  ℹ️ Keeping default list layout');
+      }
+
+      // C. Configure Item Tag Position to Inner Bottom (always)
+      const itemTagPositionSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(2) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > select';
+      await page.selectOption(itemTagPositionSelector, { index: 1 }); // Inner Bottom is the 2nd option (index 1)
+      await page.waitForTimeout(500);
+      console.log('  ✓ Set item tag position to Inner Bottom');
+
+      // D. Save items configuration
+      const saveItemsSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > button';
+      const saveItemsButton = page.locator(saveItemsSelector).first();
+      await saveItemsButton.click();
+      console.log('  ✓ Saved items configuration');
+      await page.waitForTimeout(2000);
+
+      await takeScreenshot(page, '13-items-configured');
+    } catch (error) {
+      console.error('  ❌ Failed to configure items:', error.message);
+    }
+
+    // STEP 14: Upload Favicon (use favicon if provided, otherwise fall back to logo)
     const faviconToUpload = faviconPath || logoPath;
     if (faviconToUpload) {
-      console.log('\n🔖 STEP 12: Uploading Favicon');
+      console.log('\n🔖 STEP 14: Uploading Favicon');
       console.log(`  Using ${faviconPath ? 'dedicated favicon' : 'logo as favicon'}: ${faviconToUpload}`);
 
       const faviconSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div:nth-child(15)';
@@ -966,11 +1129,11 @@ async function editWebsiteSettingsDark() {
         console.error('  ❌ Failed to upload favicon:', error.message);
       }
     } else {
-      console.log('\n📋 STEP 12: Skipping favicon upload (no favicon or logo provided)');
+      console.log('\n📋 STEP 14: Skipping favicon upload (no favicon or logo provided)');
     }
     
-    // STEP 13: Configure SEO Settings
-    console.log('\n🔍 STEP 13: Configuring SEO Settings');
+    // STEP 15: Configure SEO Settings
+    console.log('\n🔍 STEP 15: Configuring SEO Settings');
     
     const seoSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div:nth-child(16)';
     
@@ -1020,9 +1183,9 @@ async function editWebsiteSettingsDark() {
       console.error('  ❌ Failed to configure SEO:', error.message);
     }
     
-    // STEP 14: Configure Social Media Links (if provided)
+    // STEP 16: Configure Social Media Links (if provided)
     if (instagramUrl || facebookUrl) {
-      console.log('\n📱 STEP 14: Configuring Social Media Links');
+      console.log('\n📱 STEP 16: Configuring Social Media Links');
       
       const socialSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div:nth-child(17)';
       
@@ -1072,11 +1235,11 @@ async function editWebsiteSettingsDark() {
         console.error('  ❌ Failed to configure social media:', error.message);
       }
     } else {
-      console.log('\n📋 STEP 14: Skipping social media (no URLs provided)');
+      console.log('\n📋 STEP 16: Skipping social media (no URLs provided)');
     }
     
-    // STEP 15: Scroll to Custom Code section and open it
-    console.log('\n📝 STEP 15: Opening Custom Code section');
+    // STEP 17: Scroll to Custom Code section and open it
+    console.log('\n📝 STEP 17: Opening Custom Code section');
     
     const customCodeSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div:nth-child(18)';
     
@@ -1098,8 +1261,8 @@ async function editWebsiteSettingsDark() {
       await page.waitForTimeout(1500);
     }
     
-    // STEP 16: Add Head Code
-    console.log('\n🔖 STEP 16: Adding Head Code Injection');
+    // STEP 18: Add Head Code
+    console.log('\n🔖 STEP 18: Adding Head Code Injection');
     
     try {
       const headerTextarea = page.locator('textarea').first();
@@ -1112,8 +1275,8 @@ async function editWebsiteSettingsDark() {
       console.error('  ❌ Failed to add head code:', error.message);
     }
     
-    // STEP 17: Add Body Code
-    console.log('\n🔖 STEP 17: Adding Body Code Injection');
+    // STEP 19: Add Body Code
+    console.log('\n🔖 STEP 19: Adding Body Code Injection');
     
     try {
       const footerTextarea = page.locator('textarea').nth(1);
@@ -1126,8 +1289,8 @@ async function editWebsiteSettingsDark() {
       console.error('  ❌ Failed to add body code:', error.message);
     }
     
-    // STEP 18: Save code injection changes
-    console.log('\n💾 STEP 18: Saving code injection changes');
+    // STEP 20: Save code injection changes
+    console.log('\n💾 STEP 20: Saving code injection changes');
     
     try {
       const saveButton = page.locator('button:has-text("Save"), button:has-text("Update")').first();
@@ -1161,8 +1324,8 @@ async function editWebsiteSettingsDark() {
       console.log('===RESULT_DATA_END===');
     }
     
-    // STEP 19: Wait for changes to save then view the store
-    console.log('\n👀 STEP 19: Viewing the store with applied changes');
+    // STEP 21: Wait for changes to save then view the store
+    console.log('\n👀 STEP 21: Viewing the store with applied changes');
     console.log('  ⏳ Waiting 8 seconds for changes to fully save...');
     await page.waitForTimeout(8000);
     

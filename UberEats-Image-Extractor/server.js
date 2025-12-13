@@ -84,6 +84,163 @@ const {
   cleanWebsiteUrl
 } = require('./src/services/lead-url-validation-service');
 
+// ============================================================================
+// GOOGLE BUSINESS SEARCH v3.0 - Schemas and Helpers
+// ============================================================================
+
+/**
+ * Build Google Business search URL for Knowledge Panel scraping
+ */
+function buildGoogleBusinessSearchUrl(restaurantName, city, country = 'New Zealand') {
+  const query = `${restaurantName} ${city} ${country}`.trim();
+  return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+}
+
+/**
+ * Google Business Profile extraction schema (Stage 2)
+ */
+const GOOGLE_BUSINESS_SCHEMA = {
+  type: "object",
+  properties: {
+    phone: {
+      type: "string",
+      description: "Business phone number in local format"
+    },
+    address: {
+      type: "string",
+      description: "Full business address from Google Business Profile"
+    },
+    openingHours: {
+      type: "array",
+      description: "Opening hours for each day of the week",
+      items: {
+        type: "object",
+        properties: {
+          day: { type: "string", description: "Day of the week (Monday, Tuesday, etc.)" },
+          open: { type: "string", description: "Opening time" },
+          close: { type: "string", description: "Closing time" },
+          period: { type: "string", description: "Optional: Lunch or Dinner for split hours" }
+        }
+      }
+    },
+    instagram_url: {
+      type: "string",
+      description: "Instagram profile URL from Knowledge Panel social links"
+    },
+    facebook_url: {
+      type: "string",
+      description: "Facebook page URL from Knowledge Panel social links"
+    }
+  }
+};
+
+/**
+ * Google Business Profile extraction prompt (Stage 2)
+ */
+const GOOGLE_BUSINESS_PROMPT = `Extract business information from this Google search results page.
+Focus on the Knowledge Panel / Business Profile on the right side of the page.
+
+Extract the following information:
+
+1. PHONE NUMBER
+   - Business phone in local format
+   - Include area code (e.g., +64 or 0X for NZ, +61 for AU)
+   - Return null if not visible
+
+2. ADDRESS
+   - Full business address as shown in the Knowledge Panel
+   - Include street, suburb, city, postcode if available
+   - Return null if not visible
+
+3. OPENING HOURS
+   - Extract hours for each day exactly as shown
+   - If continuous hours (e.g., "11am - 9pm"), return single entry per day
+   - If split hours shown (e.g., "11am-2pm" then "5pm-9pm"), create separate entries with period field
+   - Use "period" field ONLY for split hours (e.g., "Lunch", "Dinner")
+   - Do NOT include days marked as "Closed"
+   - Return empty array if hours not visible
+
+4. INSTAGRAM URL
+   - Look for Instagram link in Knowledge Panel social media section
+   - ONLY extract profile URLs like https://www.instagram.com/username/
+   - REJECT URLs containing /reel/, /p/, /stories/, /reels/, /tv/
+   - Return null if not found
+
+5. FACEBOOK URL
+   - Look for Facebook link in Knowledge Panel social media section
+   - ONLY extract page URLs like https://www.facebook.com/pagename/
+   - REJECT URLs containing /videos/, /groups/, /posts/, /events/, /photos/
+   - Return null if not found
+
+IMPORTANT: Only extract data visible on the page. Return null for missing fields.`;
+
+/**
+ * UberEats extraction schema (Stage 3)
+ * Always called when UberEats URL exists - provides additional source options + OG image
+ */
+const UBEREATS_EXTRACTION_SCHEMA = {
+  type: "object",
+  properties: {
+    address: {
+      type: "string",
+      description: "Full street address of the restaurant"
+    },
+    openingHours: {
+      type: "array",
+      description: "Opening hours for each day",
+      items: {
+        type: "object",
+        properties: {
+          day: { type: "string" },
+          open: { type: "string" },
+          close: { type: "string" }
+        }
+      }
+    }
+  }
+};
+
+/**
+ * UberEats extraction prompt (Stage 3)
+ */
+const UBEREATS_EXTRACTION_PROMPT = `Extract restaurant information from this UberEats store page.
+
+1. ADDRESS
+   - Full street address of the restaurant
+   - Usually shown near the restaurant name or in the info section
+   - Include full address with street number, street name, suburb, city
+
+2. OPENING HOURS
+   - Hours for each day the restaurant is open
+   - Extract exactly as displayed
+   - Skip days marked as closed
+
+IMPORTANT: Only extract data visible on the page.`;
+
+/**
+ * Convert OG image URL to base64 for storage
+ */
+async function processOgImageToBase64(ogImageUrl) {
+  if (!ogImageUrl) return null;
+
+  try {
+    console.log('[OG Image] Fetching image from:', ogImageUrl);
+    const response = await axios.get(ogImageUrl, {
+      responseType: 'arraybuffer',
+      timeout: 10000,
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PumpdBot/1.0)' }
+    });
+
+    const base64 = Buffer.from(response.data, 'binary').toString('base64');
+    const mimeType = response.headers['content-type'] || 'image/jpeg';
+    console.log('[OG Image] Converted to base64, size:', Math.round(base64.length / 1024), 'KB');
+    return `data:${mimeType};base64,${base64}`;
+  } catch (error) {
+    console.error('[OG Image] Failed to convert:', error.message);
+    return null;
+  }
+}
+
 // Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 3007;
@@ -5012,33 +5169,132 @@ app.patch('/api/restaurants/:id', authMiddleware, async (req, res) => {
 });
 
 /**
+ * Check if a string is an HTTP/HTTPS URL
+ */
+function isHttpUrl(str) {
+  if (!str || typeof str !== 'string') return false;
+  return str.startsWith('http://') || str.startsWith('https://');
+}
+
+/**
+ * Detect image type from URL extension or buffer magic bytes
+ */
+function detectImageType(url, buffer) {
+  // Try to detect from URL extension first
+  const urlLower = url.toLowerCase();
+  if (urlLower.includes('.png')) return 'png';
+  if (urlLower.includes('.gif')) return 'gif';
+  if (urlLower.includes('.webp')) return 'webp';
+  if (urlLower.includes('.svg')) return 'svg+xml';
+
+  // Check magic bytes
+  if (buffer && buffer.length >= 4) {
+    // PNG: 89 50 4E 47
+    if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
+      return 'png';
+    }
+    // GIF: 47 49 46 38
+    if (buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46) {
+      return 'gif';
+    }
+    // WEBP: 52 49 46 46 ... 57 45 42 50
+    if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46) {
+      return 'webp';
+    }
+  }
+
+  // Default to JPEG
+  return 'jpeg';
+}
+
+/**
+ * Convert an image URL to base64
+ * Uses the logo service for consistent image downloading
+ */
+async function convertImageUrlToBase64(imageUrl) {
+  try {
+    const logoService = require('./src/services/logo-extraction-service');
+
+    // Download the image with a timeout
+    const imageBuffer = await logoService.downloadImageToBuffer(imageUrl, imageUrl);
+
+    if (!imageBuffer) {
+      return null;
+    }
+
+    // Detect image type from buffer or URL
+    const imageType = detectImageType(imageUrl, imageBuffer);
+
+    // Convert to base64
+    const base64 = imageBuffer.toString('base64');
+    return `data:image/${imageType};base64,${base64}`;
+  } catch (error) {
+    console.error('[API] Failed to convert image URL to base64:', error.message);
+    return null;
+  }
+}
+
+/**
  * PATCH /api/restaurants/:id/workflow
  * Update restaurant workflow fields
+ * Auto-converts HTTP/HTTPS image URLs to base64 for cover image fields
  */
 app.patch('/api/restaurants/:id/workflow', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const workflowData = req.body;
-    
+    let workflowData = { ...req.body };
+
     if (!db.isDatabaseAvailable()) {
       return res.status(503).json({
         success: false,
         error: 'Database service unavailable'
       });
     }
-    
+
+    // Fields that should have URLs auto-converted to base64
+    const imageUrlFields = [
+      'website_og_image',
+      'ubereats_og_image',
+      'doordash_og_image',
+      'facebook_cover_image'
+    ];
+
+    // Process each image field - convert URLs to base64
+    const conversionResults = {};
+    for (const field of imageUrlFields) {
+      if (workflowData[field] && isHttpUrl(workflowData[field])) {
+        try {
+          console.log(`[API] Converting ${field} URL to base64:`, workflowData[field]);
+          const base64Image = await convertImageUrlToBase64(workflowData[field]);
+          if (base64Image) {
+            workflowData[field] = base64Image;
+            conversionResults[field] = 'success';
+            console.log(`[API] Successfully converted ${field} to base64`);
+          } else {
+            conversionResults[field] = 'failed';
+            console.warn(`[API] Failed to convert ${field}, keeping original URL`);
+          }
+        } catch (error) {
+          conversionResults[field] = 'failed';
+          console.error(`[API] Error converting ${field}:`, error.message);
+          // Keep the original URL if conversion fails
+        }
+      }
+    }
+
     const restaurant = await db.updateRestaurantWorkflow(id, workflowData);
-    
+
     if (!restaurant) {
       return res.status(404).json({
         success: false,
         error: 'Restaurant not found or update failed'
       });
     }
-    
+
     return res.json({
       success: true,
-      restaurant: restaurant
+      restaurant: restaurant,
+      imageConversions: Object.keys(conversionResults).length > 0 ? conversionResults : undefined
     });
   } catch (error) {
     console.error('[API] Error updating restaurant workflow:', error);
@@ -5124,44 +5380,6 @@ app.get('/api/restaurants/:id/details', authMiddleware, async (req, res) => {
 });
 
 /**
- * PATCH /api/restaurants/:id/workflow
- * Update restaurant workflow fields
- */
-app.patch('/api/restaurants/:id/workflow', authMiddleware, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const workflowData = req.body;
-    
-    if (!db.isDatabaseAvailable()) {
-      return res.status(503).json({
-        success: false,
-        error: 'Database service unavailable'
-      });
-    }
-    
-    const restaurant = await db.updateRestaurantWorkflow(id, workflowData);
-    
-    if (!restaurant) {
-      return res.status(404).json({
-        success: false,
-        error: 'Restaurant not found or update failed'
-      });
-    }
-    
-    return res.json({
-      success: true,
-      restaurant: restaurant
-    });
-  } catch (error) {
-    console.error('[API] Error updating restaurant workflow:', error);
-    return res.status(500).json({
-      success: false,
-      error: error.message || 'Failed to update restaurant workflow'
-    });
-  }
-});
-
-/**
  * POST /api/google-business-search
  * Search for business information using Firecrawl with platform URL discovery and JSON schema extraction
  * Protected by googleSearchExtraction feature flag
@@ -5236,11 +5454,29 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
       ordermealUrl: null
     };
 
+    // OPTIMIZATION: If confirmedUrls provided (Phase 2), skip the search entirely
+    // The search results were already returned in Phase 1, user has confirmed/edited them
+    if (confirmedUrls && !urlsOnly) {
+      console.log('[Google Business Search] Using confirmed URLs directly, skipping redundant search');
+      // Initialize foundUrls from confirmedUrls
+      foundUrls.websiteUrl = confirmedUrls.websiteUrl || null;
+      foundUrls.ubereatsUrl = confirmedUrls.ubereatsUrl || null;
+      foundUrls.doordashUrl = confirmedUrls.doordashUrl || null;
+      foundUrls.facebookUrl = confirmedUrls.facebookUrl || null;
+      foundUrls.instagramUrl = confirmedUrls.instagramUrl || null;
+      foundUrls.meandyouUrl = confirmedUrls.meandyouUrl || null;
+      foundUrls.mobi2goUrl = confirmedUrls.mobi2goUrl || null;
+      foundUrls.delivereasyUrl = confirmedUrls.delivereasyUrl || null;
+      foundUrls.nextorderUrl = confirmedUrls.nextorderUrl || null;
+      foundUrls.foodhubUrl = confirmedUrls.foodhubUrl || null;
+      foundUrls.ordermealUrl = confirmedUrls.ordermealUrl || null;
+    } else {
+    // Phase 1: Search for platform URLs
     console.log('[Google Business Search] Searching for platform URLs...');
-    
+
     // Combine into a single search query to avoid rate limits
     const combinedQuery = `${restaurantName} ${city} ${searchCountry} (website OR ubereats OR doordash OR delivereasy OR facebook OR instagram OR menu OR order online)`;
-    
+
     try {
       const searchResponse = await axios.post(
         `${FIRECRAWL_API_URL}/v2/search`,
@@ -5439,6 +5675,7 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
     }
 
     console.log('[Google Business Search] Found URLs (after validation):', foundUrls);
+    } // End of else block - search phase skipped when confirmedUrls provided
 
     // URLS ONLY MODE (Phase 1): Return URLs without content extraction
     // This allows users to confirm the website URL is correct before extraction
@@ -5477,18 +5714,10 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
       });
     }
 
-    // If confirmedUrls provided (Phase 2), use those instead of searched URLs
-    if (confirmedUrls) {
-      console.log('[Google Business Search] Using confirmed URLs for extraction:', confirmedUrls);
-      // Override found URLs with confirmed ones (user may have corrected the website URL)
-      if (confirmedUrls.websiteUrl !== undefined) foundUrls.websiteUrl = confirmedUrls.websiteUrl;
-      if (confirmedUrls.ubereatsUrl !== undefined) foundUrls.ubereatsUrl = confirmedUrls.ubereatsUrl;
-      if (confirmedUrls.doordashUrl !== undefined) foundUrls.doordashUrl = confirmedUrls.doordashUrl;
-      if (confirmedUrls.instagramUrl !== undefined) foundUrls.instagramUrl = confirmedUrls.instagramUrl;
-      if (confirmedUrls.facebookUrl !== undefined) foundUrls.facebookUrl = confirmedUrls.facebookUrl;
-    }
+    // ============================================================================
+    // V3.0 EXTRACTION FLOW - Google Business Profile PRIMARY, UberEats FALLBACK
+    // ============================================================================
 
-    // Step 4: Use platform-specific extraction based on URL type
     let extractedData = {
       restaurantName: restaurantName,
       openingHours: [],
@@ -5507,148 +5736,199 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
       ordermealUrl: foundUrls.ordermealUrl,
       imageUrls: [],
       cuisine: [],
-      extractionNotes: []
+      extractionNotes: [],
+      ubereatsOgImage: null  // NEW: OG image from UberEats
     };
 
-    // Helper function to get platform-specific extraction config
-    const getExtractionConfig = (url) => {
-      const urlLower = url.toLowerCase();
-      
-      if (urlLower.includes('ubereats.com')) {
-        return {
-          prompt: `Extract restaurant business information from this UberEats page. Look for:
-            1. Physical address (street address, not just area)
-            2. Phone number if available
-            3. Opening hours for each day exactly as shown on the page
-            Important: Extract hours exactly as displayed. Some restaurants have split hours (lunch and dinner). If the page shows continuous hours (e.g., "11am - 9pm"), return a single entry per day. Only create separate entries if there is an explicit gap/break shown on the page (e.g., "11am-2pm" then "5pm-9pm").`,
-          schema: {
-            type: 'object',
-            properties: {
-              address: { type: 'string' },
-              phone: { type: 'string' },
-              openingHours: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    day: { type: 'string', description: 'Day of the week (Monday, Tuesday, etc.)' },
-                    open: { type: 'string', description: 'Opening time' },
-                    close: { type: 'string', description: 'Closing time' },
-                    period: { type: 'string', description: 'Optional: Lunch or Dinner. Only use if there are multiple hours entires for this day' }
-                  }
-                }
-              }
-            }
-          },
-          waitFor: 3000
-        };
-      } else {
-        // Default for restaurant websites
-        return {
-          prompt: `Extract restaurant information for ${restaurantName}. Look for business hours, phone numbers, and physical address. For opening hours, handle day ranges like "Monday-Saturday" by listing each day separately.`,
-          schema: {
-            type: 'object',
-            properties: {
-              restaurantName: { type: 'string' },
-              address: { type: 'string' },
-              phone: { type: 'string' },
-              openingHours: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    day: { type: 'string' },
-                    open: { type: 'string' },
-                    close: { type: 'string' },
-                    closed: { type: 'boolean' }
-                  }
-                }
-              }
-            }
-          },
-          waitFor: 2000
-        };
-      }
-    };
-
-    // Create priority list of URLs to try
-    // UberEats is FIRST priority for address and hours (most reliable)
-    // Website is used for phone number and as fallback for all info if UberEats not available
-    const urlsToTry = [];
-
-    // First priority: UberEats for address and hours (most reliable for these)
-    if (foundUrls.ubereatsUrl) {
-      urlsToTry.push({ url: foundUrls.ubereatsUrl, extractPhone: false, extractAddress: true, extractHours: true });
-    }
-
-    // Second priority: website for phone (and fallback for address/hours if not from UberEats)
-    if (foundUrls.websiteUrl) {
-      urlsToTry.push({ url: foundUrls.websiteUrl, extractPhone: true, extractAddress: true, extractHours: true });
-    }
-
-    // DoorDash excluded from automatic extraction - only used when user specifically requests it
-
-    // Define what we're looking for
-    const extractionGoals = {
-      address: !extractedData.address,
-      phone: !extractedData.phone,
-      openingHours: extractedData.openingHours.length === 0
-    };
-
-    // Multi-source data collection for preview mode
-    // Stores extracted data from each source separately for user selection
+    // Multi-source data collection - stores data from each source with sourceUrl for verification
     const extractedBySource = {};
 
-    // Try each URL based on what data we still need
-    for (const urlConfig of urlsToTry) {
-      const urlToScrape = urlConfig.url;
-      const sourceName = getSourceName(urlToScrape);
+    // Helper function to process opening hours from raw extraction
+    const processOpeningHours = (rawHours) => {
+      if (!rawHours || !Array.isArray(rawHours)) return [];
 
-      // In preview mode, always try all sources to give user choice
-      // In non-preview mode, use existing "first found wins" logic
-      if (!previewOnly) {
-        // Check if we already have all the data we need
-        if (!extractionGoals.address && !extractionGoals.phone && !extractionGoals.openingHours) {
-          console.log('[Google Business Search] All required data found, skipping remaining URLs');
-          break;
-        }
+      const expandedHours = [];
+      const allDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-        // Skip this URL if we already have what it can provide
-        if (!urlConfig.extractPhone || !extractionGoals.phone) {
-          if (!urlConfig.extractAddress || !extractionGoals.address) {
-            if (!urlConfig.extractHours || !extractionGoals.openingHours) {
-              console.log('[Google Business Search] Skipping', urlToScrape, '- already have data it can provide');
-              continue;
+      for (const hours of rawHours) {
+        if (!hours.day || hours.day.toLowerCase().includes('menu')) continue;
+
+        const dayStr = hours.day.toLowerCase();
+
+        // Handle "Every day" or "Daily"
+        if (dayStr.includes('every day') || dayStr === 'daily' || dayStr === 'everyday') {
+          for (const day of allDays) {
+            expandedHours.push({
+              day: day,
+              hours: { open: hours.open || '', close: hours.close || '', period: hours.period || '' }
+            });
+          }
+        } else if (hours.day && hours.day.includes('-')) {
+          // Handle day ranges like "Monday-Saturday"
+          const [startDay, endDay] = hours.day.split('-').map(d => d.trim());
+          const startIdx = allDays.findIndex(d => d.toLowerCase().startsWith(startDay.toLowerCase().substring(0, 3)));
+          const endIdx = allDays.findIndex(d => d.toLowerCase().startsWith(endDay.toLowerCase().substring(0, 3)));
+
+          if (startIdx !== -1 && endIdx !== -1) {
+            for (let i = startIdx; i <= endIdx; i++) {
+              expandedHours.push({
+                day: allDays[i],
+                hours: { open: hours.open || '', close: hours.close || '', period: hours.period || '' }
+              });
             }
           }
+        } else if (allDays.includes(hours.day)) {
+          expandedHours.push({
+            day: hours.day,
+            hours: { open: hours.open || '', close: hours.close || '', period: hours.period || '' }
+          });
         }
-      } else {
-        console.log(`[Google Business Search] Preview mode - extracting from ${sourceName}`);
       }
-      
-      // Clean the URL - remove query parameters for delivery platforms
-      let cleanUrl = urlToScrape;
-      if (urlToScrape.includes('ubereats.com')) {
-        cleanUrl = urlToScrape.split('?')[0];
+      return expandedHours;
+    };
+
+    // Phone number cleaning function
+    const cleanAndValidateNZPhone = (phoneStr) => {
+      if (!phoneStr || phoneStr === 'N/A' || phoneStr === 'null') return null;
+      let cleaned = phoneStr.replace(/[^\d+]/g, '');
+      if (cleaned.length < 9 || cleaned.length > 15) return null;
+
+      const validPatterns = [
+        /^\+64[2-9]\d{7,9}$/,
+        /^0[3-9]\d{7}$/,
+        /^02[0-9]\d{7,8}$/,
+        /^0800\d{6,7}$/,
+        /^0508\d{6}$/,
+        /^\+61[2-9]\d{8}$/  // AU support
+      ];
+
+      const isValid = validPatterns.some(pattern => pattern.test(cleaned));
+      if (!isValid) return null;
+
+      if (!cleaned.startsWith('+64') && !cleaned.startsWith('+61') && cleaned.startsWith('0')) {
+        cleaned = '+64' + cleaned.substring(1);
       }
-      
-      console.log('[Google Business Search] Scraping detailed info from:', cleanUrl);
-      
+      return cleaned;
+    };
+
+    // ============================================================================
+    // STAGE 2: Google Business Profile Extraction (PRIMARY SOURCE)
+    // ============================================================================
+
+    const googleSearchUrl = buildGoogleBusinessSearchUrl(restaurantName, city, searchCountry);
+    console.log('[Google Business Search v3.0] STAGE 2: Extracting from Google Business Profile');
+    console.log('[Google Business Search v3.0] Google search URL:', googleSearchUrl);
+
+    try {
+      const googleResponse = await axios.post(
+        `${FIRECRAWL_API_URL}/v2/scrape`,
+        {
+          url: googleSearchUrl,
+          formats: [{
+            type: 'json',
+            prompt: GOOGLE_BUSINESS_PROMPT,
+            schema: GOOGLE_BUSINESS_SCHEMA
+          }],
+          onlyMainContent: true,
+          waitFor: 3000
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${FIRECRAWL_API_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (googleResponse.data?.data?.json) {
+        const googleData = googleResponse.data.data.json;
+        console.log('[Google Business Search v3.0] Google extraction result:', googleData);
+
+        const googleSourceData = {
+          sourceUrl: googleSearchUrl,  // NEW: Include source URL for verification
+          address: null,
+          phone: null,
+          openingHours: [],
+          instagramUrl: null,
+          facebookUrl: null
+        };
+
+        // Process address
+        if (googleData.address && googleData.address !== 'null' && googleData.address !== '' && !/^\d+$/.test(googleData.address)) {
+          googleSourceData.address = googleData.address;
+          if (!previewOnly) extractedData.address = googleData.address;
+        }
+
+        // Process phone
+        const cleanedPhone = cleanAndValidateNZPhone(googleData.phone);
+        if (cleanedPhone) {
+          googleSourceData.phone = cleanedPhone;
+          if (!previewOnly) extractedData.phone = cleanedPhone;
+        }
+
+        // Process opening hours
+        const processedHours = processOpeningHours(googleData.openingHours);
+        if (processedHours.length > 0) {
+          googleSourceData.openingHours = processedHours;
+          if (!previewOnly) extractedData.openingHours = processedHours;
+        }
+
+        // Process social links from Google Knowledge Panel
+        if (googleData.instagram_url) {
+          const cleanedInstagram = cleanInstagramUrl(googleData.instagram_url);
+          if (cleanedInstagram) {
+            googleSourceData.instagramUrl = cleanedInstagram;
+            // Update foundUrls if not already set (Google Knowledge Panel is authoritative)
+            if (!foundUrls.instagramUrl) foundUrls.instagramUrl = cleanedInstagram;
+          }
+        }
+        if (googleData.facebook_url) {
+          const cleanedFacebook = cleanFacebookUrl(googleData.facebook_url);
+          if (cleanedFacebook) {
+            googleSourceData.facebookUrl = cleanedFacebook;
+            if (!foundUrls.facebookUrl) foundUrls.facebookUrl = cleanedFacebook;
+          }
+        }
+
+        // Store Google data in multi-source collection
+        if (googleSourceData.address || googleSourceData.phone || googleSourceData.openingHours.length > 0) {
+          extractedBySource.google = googleSourceData;
+          console.log('[Google Business Search v3.0] Stored Google data:', {
+            hasAddress: !!googleSourceData.address,
+            hasPhone: !!googleSourceData.phone,
+            hoursCount: googleSourceData.openingHours.length,
+            hasInstagram: !!googleSourceData.instagramUrl,
+            hasFacebook: !!googleSourceData.facebookUrl
+          });
+        }
+      }
+    } catch (googleError) {
+      console.error('[Google Business Search v3.0] Google extraction error:', googleError.message);
+      extractedData.extractionNotes.push('Google Business Profile extraction failed');
+    }
+
+    // ============================================================================
+    // STAGE 3: UberEats Extraction (ALWAYS when URL exists)
+    // Provides additional source options for user selection + OG image
+    // Single API request extracts address, hours, AND OG image together
+    // ============================================================================
+
+    if (foundUrls.ubereatsUrl) {
+      console.log('[Google Business Search v3.0] STAGE 3: UberEats extraction');
+      const cleanUberEatsUrl = foundUrls.ubereatsUrl.split('?')[0];
+
       try {
-        const extractionConfig = getExtractionConfig(cleanUrl);
-        
-        // Use platform-specific extraction
-        const scrapeResponse = await axios.post(
+        const uberResponse = await axios.post(
           `${FIRECRAWL_API_URL}/v2/scrape`,
           {
-            url: cleanUrl,
+            url: cleanUberEatsUrl,
             formats: [{
               type: 'json',
-              prompt: extractionConfig.prompt,
-              schema: extractionConfig.schema
+              prompt: UBEREATS_EXTRACTION_PROMPT,
+              schema: UBEREATS_EXTRACTION_SCHEMA
             }],
-            onlyMainContent: true,
-            waitFor: extractionConfig.waitFor
+            onlyMainContent: false,  // Need full page to get og:image meta tag
+            waitFor: 3000
           },
           {
             headers: {
@@ -5658,237 +5938,194 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
           }
         );
 
-        if (scrapeResponse.data?.data?.json) {
-          const jsonData = scrapeResponse.data.data.json;
-          console.log('[Google Business Search] JSON extraction result from', sourceName, ':', jsonData);
+        const uberData = uberResponse.data?.data?.json;
+        const uberMetadata = uberResponse.data?.data?.metadata;
 
-          // Check if we got valid data (not 'null' strings or empty data)
-          const hasValidData = (
-            (jsonData.address && jsonData.address !== 'null' && jsonData.address !== '') ||
-            (jsonData.phone && jsonData.phone !== 'null' && jsonData.phone !== '') ||
-            (jsonData.openingHours && jsonData.openingHours.length > 0)
-          );
+        if (uberData) {
+          console.log('[Google Business Search v3.0] UberEats extraction result:', uberData);
 
-          if (!hasValidData) {
-            console.log('[Google Business Search] No valid data found from:', urlToScrape, '- trying next URL');
-            continue; // Try next URL
+          const uberSourceData = {
+            sourceUrl: cleanUberEatsUrl,
+            address: null,
+            phone: null,  // UberEats never has phone
+            openingHours: [],
+            ogImage: null
+          };
+
+          // Process address
+          if (uberData.address && uberData.address !== 'null' && uberData.address !== '' && !/^\d+$/.test(uberData.address)) {
+            uberSourceData.address = uberData.address;
+            if (!previewOnly && !extractedData.address) extractedData.address = uberData.address;
           }
 
-          // Initialize source data object for multi-source collection
-          const sourceData = {
+          // Process opening hours
+          const processedUberHours = processOpeningHours(uberData.openingHours);
+          if (processedUberHours.length > 0) {
+            uberSourceData.openingHours = processedUberHours;
+            if (!previewOnly && extractedData.openingHours.length === 0) {
+              extractedData.openingHours = processedUberHours;
+            }
+          }
+
+          // Process OG image - use metadata (full quality) instead of LLM extraction (compressed)
+          // Firecrawl's metadata contains the actual og:image from the page head
+          const ogImageUrl = uberMetadata?.ogImage || uberMetadata?.['og:image'];
+          if (ogImageUrl && ogImageUrl.startsWith('http')) {
+            uberSourceData.ogImage = ogImageUrl;
+            extractedData.ubereatsOgImage = ogImageUrl;
+            console.log('[Google Business Search v3.0] Using OG image from metadata:', ogImageUrl);
+          }
+
+          // Store UberEats data in multi-source collection
+          extractedBySource.ubereats = uberSourceData;
+          console.log('[Google Business Search v3.0] Stored UberEats data:', {
+            hasAddress: !!uberSourceData.address,
+            hoursCount: uberSourceData.openingHours.length,
+            hasOgImage: !!uberSourceData.ogImage
+          });
+        }
+
+      } catch (uberError) {
+        console.error('[Google Business Search v3.0] UberEats extraction error:', uberError.message);
+        extractedData.extractionNotes.push('UberEats extraction failed');
+      }
+    }
+
+    // Legacy compatibility: Also try website extraction if no data found
+    // This maintains backwards compatibility with v2.1 behavior
+    if (!extractedBySource.google && !extractedBySource.ubereats && foundUrls.websiteUrl) {
+      console.log('[Google Business Search v3.0] Falling back to website extraction (legacy)');
+
+      try {
+        const websiteResponse = await axios.post(
+          `${FIRECRAWL_API_URL}/v2/scrape`,
+          {
+            url: foundUrls.websiteUrl,
+            formats: [{
+              type: 'json',
+              prompt: `Extract restaurant information for ${restaurantName}. Look for business hours, phone numbers, and physical address.`,
+              schema: {
+                type: 'object',
+                properties: {
+                  address: { type: 'string' },
+                  phone: { type: 'string' },
+                  openingHours: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        day: { type: 'string' },
+                        open: { type: 'string' },
+                        close: { type: 'string' }
+                      }
+                    }
+                  }
+                }
+              }
+            }],
+            onlyMainContent: true,
+            waitFor: 2000
+          },
+          {
+            headers: {
+              'Authorization': `Bearer ${FIRECRAWL_API_KEY}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        if (websiteResponse.data?.data?.json) {
+          const websiteData = websiteResponse.data.data.json;
+          console.log('[Google Business Search v3.0] Website fallback result:', websiteData);
+
+          const websiteSourceData = {
+            sourceUrl: foundUrls.websiteUrl,
             address: null,
             phone: null,
             openingHours: []
           };
 
-          // Process opening hours - handle split hours and expand day ranges
-          if (jsonData.openingHours && Array.isArray(jsonData.openingHours)) {
-            const expandedHours = [];
-            const allDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+          if (websiteData.address && websiteData.address !== 'null' && !/^\d+$/.test(websiteData.address)) {
+            websiteSourceData.address = websiteData.address;
+            if (!previewOnly && !extractedData.address) extractedData.address = websiteData.address;
+          }
 
-            for (const hours of jsonData.openingHours) {
-              // Skip invalid entries
-              if (!hours.day || hours.day.toLowerCase().includes('menu') || hours.day.toLowerCase().includes('dinner menu')) {
-                continue;
-              }
+          const cleanedWebsitePhone = cleanAndValidateNZPhone(websiteData.phone);
+          if (cleanedWebsitePhone) {
+            websiteSourceData.phone = cleanedWebsitePhone;
+            if (!previewOnly && !extractedData.phone) extractedData.phone = cleanedWebsitePhone;
+          }
 
-              // Handle "Every day" or "Daily"
-              const dayStr = hours.day.toLowerCase();
-              if (dayStr.includes('every day') || dayStr === 'daily' || dayStr === 'everyday' || dayStr === 'every day') {
-                console.log('[Google Business Search] Expanding "Every day" hours:', hours);
-                // Expand to all days
-                for (const day of allDays) {
-                  expandedHours.push({
-                    day: day,
-                    hours: {
-                      open: hours.open || '',
-                      close: hours.close || '',
-                      period: hours.period || ''
-                    }
-                  });
-                }
-              } else if (hours.day && hours.day.includes('-')) {
-                // Handle day ranges like "Monday-Saturday"
-                const [startDay, endDay] = hours.day.split('-').map(d => d.trim());
-                const startIdx = allDays.findIndex(d => d.toLowerCase().startsWith(startDay.toLowerCase().substring(0, 3)));
-                const endIdx = allDays.findIndex(d => d.toLowerCase().startsWith(endDay.toLowerCase().substring(0, 3)));
-
-                if (startIdx !== -1 && endIdx !== -1) {
-                  for (let i = startIdx; i <= endIdx; i++) {
-                    expandedHours.push({
-                      day: allDays[i],
-                      hours: {
-                        open: hours.open || '',
-                        close: hours.close || '',
-                        period: hours.period || ''
-                      }
-                    });
-                  }
-                }
-              } else if (allDays.includes(hours.day)) {
-                // Single day - only if it's a valid day name
-                expandedHours.push({
-                  day: hours.day,
-                  hours: {
-                    open: hours.open || '',
-                    close: hours.close || '',
-                    period: hours.period || ''
-                  }
-                });
-              }
-            }
-
-            // Store in source data for multi-source collection
-            sourceData.openingHours = expandedHours;
-
-            // Also update extractedData for non-preview mode (existing behavior)
-            if (!previewOnly && expandedHours.length > 0) {
-              extractedData.openingHours = expandedHours;
+          const processedWebsiteHours = processOpeningHours(websiteData.openingHours);
+          if (processedWebsiteHours.length > 0) {
+            websiteSourceData.openingHours = processedWebsiteHours;
+            if (!previewOnly && extractedData.openingHours.length === 0) {
+              extractedData.openingHours = processedWebsiteHours;
             }
           }
 
-          // Phone number cleaning function
-          const cleanAndValidateNZPhone = (phoneStr) => {
-            let cleaned = phoneStr.replace(/[^\d+]/g, '');
-            if (cleaned.length < 9 || cleaned.length > 15) return null;
-
-            const validPatterns = [
-              /^\+64[2-9]\d{7,9}$/,
-              /^0[3-9]\d{7}$/,
-              /^02[0-9]\d{7,8}$/,
-              /^0800\d{6,7}$/,
-              /^0508\d{6}$/
-            ];
-
-            const isValid = validPatterns.some(pattern => pattern.test(cleaned));
-            if (!isValid) return null;
-
-            if (!cleaned.startsWith('+64') && cleaned.startsWith('0')) {
-              cleaned = '+64' + cleaned.substring(1);
-            }
-
-            return cleaned;
-          };
-
-          // Process phone number with cleaning
-          if (jsonData.phone && jsonData.phone !== 'N/A' && jsonData.phone !== 'null') {
-            const cleanedPhone = cleanAndValidateNZPhone(jsonData.phone);
-            if (cleanedPhone) {
-              // Store in source data for multi-source collection
-              sourceData.phone = cleanedPhone;
-
-              // Also update extractedData for non-preview mode (existing behavior)
-              if (!previewOnly && urlConfig.extractPhone) {
-                extractedData.phone = cleanedPhone;
-              }
-            }
-          }
-
-          // Process address (check it's not 'null' string)
-          if (jsonData.address && jsonData.address !== 'null' && jsonData.address !== '' && jsonData.address !== 'N/A') {
-            // Don't accept numbers-only addresses (like "35341547" from DoorDash)
-            if (!/^\d+$/.test(jsonData.address)) {
-              // Store in source data for multi-source collection
-              sourceData.address = jsonData.address;
-
-              // Also update extractedData for non-preview mode (existing behavior)
-              if (!previewOnly && urlConfig.extractAddress && extractionGoals.address) {
-                extractedData.address = jsonData.address;
-                extractionGoals.address = false;
-              }
-            }
-          }
-
-          // Store this source's data in the multi-source collection
-          if (sourceData.address || sourceData.phone || sourceData.openingHours.length > 0) {
-            extractedBySource[sourceName] = sourceData;
-            console.log(`[Google Business Search] Stored data from ${sourceName}:`, {
-              hasAddress: !!sourceData.address,
-              hasPhone: !!sourceData.phone,
-              hoursCount: sourceData.openingHours.length
-            });
-          }
-
-          // Update extraction goals (for non-preview mode)
-          if (!previewOnly) {
-            if (extractedData.openingHours.length > 0) {
-              extractionGoals.openingHours = false;
-            }
-            if (extractedData.phone) {
-              extractionGoals.phone = false;
-            }
-
-            // Continue to next URL if we still need data and this source didn't have everything
-            const stillNeedData = extractionGoals.address || extractionGoals.phone || extractionGoals.openingHours;
-            if (!stillNeedData) {
-              console.log('[Google Business Search] All required data extracted successfully');
-              break;
-            } else {
-              console.log('[Google Business Search] Still missing:', Object.keys(extractionGoals).filter(k => extractionGoals[k]));
-              // Continue to next URL
-            }
+          if (websiteSourceData.address || websiteSourceData.phone || websiteSourceData.openingHours.length > 0) {
+            extractedBySource.website = websiteSourceData;
           }
         }
-      } catch (scrapeError) {
-        console.error('[Google Business Search] Scrape error for', urlToScrape, ':', scrapeError.message);
-        // Continue to next URL
+      } catch (websiteError) {
+        console.error('[Google Business Search v3.0] Website fallback error:', websiteError.message);
       }
     }
-    
-    // Add note if we tried multiple URLs
-    if (urlsToTry.length > 1 && extractedData.openingHours.length === 0 && !extractedData.address && !extractedData.phone) {
-      extractedData.extractionNotes.push('Tried multiple sources but could not extract business details');
-    }
+
+    // ============================================================================
+    // HOURS FORMATTING - Convert to 24-hour format and handle midnight crossing
+    // ============================================================================
 
     // Format opening hours with 24-hour format and handle complex schedules
     const formattedHours = [];
-    
+
     // Group hours by day to handle multiple slots (lunch/dinner)
     const hoursByDay = {};
     extractedData.openingHours.forEach(hours => {
       if (!hours.day || !hours.hours?.open || !hours.hours?.close) return;
-      
+
       const day = hours.day;
       if (!hoursByDay[day]) {
         hoursByDay[day] = [];
       }
-      
+
       // Convert to 24-hour format
       const open24 = convertTo24Hour(hours.hours.open);
       const close24 = convertTo24Hour(hours.hours.close);
-      
+
       if (!open24 || !close24) return;
-      
+
       hoursByDay[day].push({
         open: open24,
         close: close24,
         period: hours.hours.period || ''
       });
     });
-    
+
     // Process each day's hours
     Object.entries(hoursByDay).forEach(([day, slots]) => {
       slots.forEach(slot => {
         const openTime = parseTime(slot.open);
         const closeTime = parseTime(slot.close);
-        
+
         // Check for midnight crossing
         if (closeTime < openTime && closeTime !== 0) {
           // Split into two entries for midnight crossing
           formattedHours.push({
             day: day,
-            hours: { 
-              open: slot.open, 
+            hours: {
+              open: slot.open,
               close: "23:59",
               ...(slot.period && { period: slot.period })
             }
           });
-          
+
           const nextDay = getNextDay(day);
           formattedHours.push({
             day: nextDay,
-            hours: { 
-              open: "00:00", 
+            hours: {
+              open: "00:00",
               close: slot.close,
               ...(slot.period && { period: slot.period })
             }
@@ -5897,8 +6134,8 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
           // Normal hours (no midnight crossing)
           formattedHours.push({
             day: day,
-            hours: { 
-              open: slot.open, 
+            hours: {
+              open: slot.open,
               close: slot.close,
               ...(slot.period && { period: slot.period })
             }
@@ -5908,7 +6145,7 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
     });
 
     // Add extraction notes
-    if (formattedHours.length === 0) {
+    if (formattedHours.length === 0 && extractedData.openingHours.length === 0) {
       extractedData.extractionNotes.push('Opening hours not found');
     }
     if (!extractedData.address) {
@@ -5921,20 +6158,12 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
     // Helper function to clean platform URLs
     const cleanPlatformUrl = (url, platform) => {
       if (!url) return null;
-      
-      // Remove tracking parameters from UberEats URLs
-      if (platform === 'ubereats' && url.includes('?')) {
+      if ((platform === 'ubereats' || platform === 'doordash') && url.includes('?')) {
         return url.split('?')[0];
       }
-      
-      // Remove tracking parameters from DoorDash URLs  
-      if (platform === 'doordash' && url.includes('?')) {
-        return url.split('?')[0];
-      }
-      
       return url;
     };
-    
+
     // Clean the extracted URLs
     if (extractedData.ubereatsUrl) {
       extractedData.ubereatsUrl = cleanPlatformUrl(extractedData.ubereatsUrl, 'ubereats');
@@ -5979,7 +6208,12 @@ app.post('/api/google-business-search', authMiddleware, requireGoogleSearch, asy
             ordermealUrl: foundUrls.ordermealUrl
           },
           // Multi-source extracted data (address, phone, hours from each source)
+          // Each source includes sourceUrl for verification links
           extractedBySource,
+          // v3.0: UberEats OG image for restaurant thumbnail/branding
+          ubereatsOgImage: extractedData.ubereatsOgImage,
+          // v3.0: Google search URL for verification
+          googleSearchUrl: googleSearchUrl,
           // Metadata
           sourcesScraped: Object.keys(extractedBySource),
           extractionNotes: extractedData.extractionNotes
@@ -6228,6 +6462,21 @@ app.post('/api/google-business-search/save', authMiddleware, async (req, res) =>
       if (selections[key]?.save && platformUrls?.[dataKey]) {
         updateData[key] = platformUrls[dataKey];
         console.log(`[API] Saving ${key}: ${platformUrls[dataKey]}`);
+      }
+    }
+
+    // v3.0: Process UberEats OG image if selected
+    // The ubereatsOgImage is passed directly in the request body (URL or base64)
+    if (selections.ubereats_og_image?.save && req.body.ubereatsOgImage) {
+      // Convert URL to base64 if it's a URL (not already base64)
+      let ogImageData = req.body.ubereatsOgImage;
+      if (ogImageData && !ogImageData.startsWith('data:')) {
+        console.log('[API] Converting UberEats OG image URL to base64...');
+        ogImageData = await processOgImageToBase64(ogImageData);
+      }
+      if (ogImageData) {
+        updateData.ubereats_og_image = ogImageData;
+        console.log('[API] Saving ubereats_og_image (base64, size:', Math.round(ogImageData.length / 1024), 'KB)');
       }
     }
 
@@ -7324,6 +7573,28 @@ app.post('/api/website-extraction/branding', authMiddleware, requireFirecrawlBra
       }
     }
 
+    // Step 2c: If Firecrawl provided an OG image URL, download and convert to base64
+    // This allows the image to be used for header backgrounds without CORS issues
+    if (brandingResult.images?.ogImageUrl) {
+      try {
+        console.log('[API] Downloading OG image from Firecrawl URL:', brandingResult.images.ogImageUrl);
+        const ogImageBuffer = await logoService.downloadImageToBuffer(
+          brandingResult.images.ogImageUrl,
+          sourceUrl
+        );
+
+        // Convert to base64 (keep original size for header background)
+        const ogImageBase64 = `data:image/jpeg;base64,${ogImageBuffer.toString('base64')}`;
+
+        // Store in brandingResult for later use
+        brandingResult.images.ogImageBase64 = ogImageBase64;
+        console.log('[API] OG Image converted to base64');
+      } catch (ogError) {
+        console.error('[API] Failed to convert OG image:', ogError.message);
+        // Keep the URL version as fallback
+      }
+    }
+
     // If preview only, return extracted data without saving to database
     if (previewOnly) {
       console.log('[API] Preview mode - returning extracted data without saving');
@@ -7338,7 +7609,8 @@ app.post('/api/website-extraction/branding', authMiddleware, requireFirecrawlBra
             logo: brandingResult.images?.logoUrl,
             faviconUrl: brandingResult.images?.faviconUrl, // Original URL from Firecrawl
             faviconBase64: logoVersions?.favicon, // Converted base64 version
-            ogImage: brandingResult.images?.ogImageUrl
+            ogImageUrl: brandingResult.images?.ogImageUrl, // Original URL from Firecrawl
+            ogImageBase64: brandingResult.images?.ogImageBase64 // Converted base64 version
           },
           confidence: brandingResult.confidence,
           logoReasoning: brandingResult.logoReasoning,
@@ -7412,8 +7684,12 @@ app.post('/api/website-extraction/branding', authMiddleware, requireFirecrawlBra
       }
 
       // Header fields (OG data) - only update if selected
-      if (shouldUpdateHeader('website_og_image') && brandingResult.images?.ogImageUrl) {
-        updateData.website_og_image = brandingResult.images.ogImageUrl;
+      if (shouldUpdateHeader('website_og_image')) {
+        // Prefer base64 over URL for consistency with other image fields
+        const ogImageValue = brandingResult.images?.ogImageBase64 || brandingResult.images?.ogImageUrl;
+        if (ogImageValue) {
+          updateData.website_og_image = ogImageValue;
+        }
       }
       if (shouldUpdateHeader('website_og_title') && brandingResult.metadata?.ogTitle) {
         updateData.website_og_title = brandingResult.metadata.ogTitle;
@@ -7462,7 +7738,8 @@ app.post('/api/website-extraction/branding', authMiddleware, requireFirecrawlBra
           logo: brandingResult.images?.logoUrl,
           faviconUrl: brandingResult.images?.faviconUrl, // Original URL from Firecrawl
           faviconBase64: logoVersions?.favicon, // Converted base64 version
-          ogImage: brandingResult.images?.ogImageUrl
+          ogImageUrl: brandingResult.images?.ogImageUrl, // Original URL from Firecrawl
+          ogImageBase64: brandingResult.images?.ogImageBase64 // Converted base64 version
         },
         confidence: brandingResult.confidence,
         logoReasoning: brandingResult.logoReasoning,
@@ -7570,8 +7847,12 @@ app.post('/api/website-extraction/branding/save', authMiddleware, async (req, re
     }
 
     // Header fields (OG data) - only update if selected
-    if (shouldUpdateHeader('website_og_image') && brandingData.images?.ogImage) {
-      updateData.website_og_image = brandingData.images.ogImage;
+    if (shouldUpdateHeader('website_og_image')) {
+      // Prefer base64 over URL for consistency with other image fields
+      const ogImageValue = brandingData.images?.ogImageBase64 || brandingData.images?.ogImage;
+      if (ogImageValue) {
+        updateData.website_og_image = ogImageValue;
+      }
     }
     if (shouldUpdateHeader('website_og_title') && brandingData.metadata?.ogTitle) {
       updateData.website_og_title = brandingData.metadata.ogTitle;

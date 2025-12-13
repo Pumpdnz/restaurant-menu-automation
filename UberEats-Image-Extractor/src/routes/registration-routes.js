@@ -1325,6 +1325,10 @@ router.post('/configure-website', requireRegistrationWebsiteSettings, async (req
         theme,
         logo_nobg_url,
         logo_favicon_url,
+        website_og_image,
+        ubereats_og_image,
+        doordash_og_image,
+        facebook_cover_image,
         instagram_url,
         facebook_url,
         address,
@@ -1475,7 +1479,61 @@ router.post('/configure-website', requireRegistrationWebsiteSettings, async (req
     if (restaurant.cuisine && restaurant.cuisine.length > 0) {
       command.push(`--cuisine="${restaurant.cuisine.join(', ')}"`);
     }
-    
+
+    // Handle header configuration
+    const { headerConfig, itemsConfig } = req.body;
+
+    if (headerConfig?.enabled) {
+      command.push('--header-enabled=true');
+
+      // Get selected background source
+      const bgSource = headerConfig.backgroundSource;
+      const bgImage = restaurant[bgSource];
+
+      if (bgImage) {
+        if (bgImage.startsWith('data:image')) {
+          const bgPath = await convertBase64ToPng(bgImage);
+          if (bgPath) {
+            command.push(`--header-bg="${bgPath}"`);
+            tempFiles.push(bgPath);
+            console.log('[Website Config] Header background ready:', bgPath);
+          }
+        } else if (bgImage.startsWith('http')) {
+          const bgPath = await downloadLogoIfNeeded(bgImage);
+          if (bgPath) {
+            command.push(`--header-bg="${bgPath}"`);
+            tempFiles.push(bgPath);
+            console.log('[Website Config] Header background downloaded:', bgPath);
+          }
+        }
+      }
+
+      // Process header logo (resized no-bg logo to max 200x200)
+      if (restaurant.logo_nobg_url) {
+        if (restaurant.logo_nobg_url.startsWith('data:image')) {
+          const headerLogoPath = await resizeBase64ImageToFile(restaurant.logo_nobg_url, 200, 200);
+          if (headerLogoPath) {
+            command.push(`--header-logo="${headerLogoPath}"`);
+            tempFiles.push(headerLogoPath);
+            console.log('[Website Config] Header logo resized and ready:', headerLogoPath);
+          }
+        } else if (restaurant.logo_nobg_url.startsWith('http')) {
+          // Download first, then would need to resize - for now just download
+          const downloadedLogo = await downloadLogoIfNeeded(restaurant.logo_nobg_url);
+          if (downloadedLogo) {
+            command.push(`--header-logo="${downloadedLogo}"`);
+            tempFiles.push(downloadedLogo);
+            console.log('[Website Config] Header logo downloaded:', downloadedLogo);
+          }
+        }
+      }
+    }
+
+    // Handle items configuration
+    const itemLayout = itemsConfig?.layout || 'list';
+    command.push(`--item-layout="${itemLayout}"`);
+    console.log('[Website Config] Item layout:', itemLayout);
+
     // Add location if we have address (extract city/area from address)
     if (restaurant.address) {
       // Try to extract location from address (simple approach)
@@ -1713,6 +1771,51 @@ async function downloadLogoIfNeeded(logoUrl) {
       resolve('');
     });
   });
+}
+
+/**
+ * Resizes a base64 image to fit within max dimensions while maintaining aspect ratio
+ * @param {string} base64Image - Base64 data URL
+ * @param {number} maxWidth - Maximum width in pixels
+ * @param {number} maxHeight - Maximum height in pixels
+ * @returns {Promise<string|null>} - Path to resized temp file, or null on failure
+ */
+async function resizeBase64ImageToFile(base64Image, maxWidth, maxHeight) {
+  try {
+    const sharp = require('sharp');
+    const fs = require('fs').promises;
+    const os = require('os');
+
+    // Extract base64 data
+    const matches = base64Image.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) {
+      console.error('[Website Config] Invalid base64 image format for resizing');
+      return null;
+    }
+
+    const base64Data = matches[2];
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    // Resize with sharp - maintains aspect ratio, fits within bounds
+    const resized = await sharp(buffer)
+      .resize(maxWidth, maxHeight, {
+        fit: 'inside',
+        withoutEnlargement: true
+      })
+      .png()
+      .toBuffer();
+
+    // Write to temp file
+    const tempDir = os.tmpdir();
+    const tempFile = path.join(tempDir, `header-logo-${Date.now()}.png`);
+    await fs.writeFile(tempFile, resized);
+
+    console.log(`[Website Config] Resized image to max ${maxWidth}x${maxHeight}: ${tempFile}`);
+    return tempFile;
+  } catch (error) {
+    console.error('[Website Config] Failed to resize image:', error.message);
+    return null;
+  }
 }
 
 /**
