@@ -4,12 +4,13 @@ import {
   Plus,
   Search,
   Filter,
-  Loader2,
   Users,
+  RefreshCw,
 } from 'lucide-react';
 import {
   useLeadScrapeJobs,
   usePendingLeads,
+  usePendingLeadsFilterOptions,
 } from '../hooks/useLeadScrape';
 import { ScrapeJobProgressCard } from '../components/leads/ScrapeJobProgressCard';
 import { CreateLeadScrapeJob } from '../components/leads/CreateLeadScrapeJob';
@@ -99,6 +100,8 @@ export default function LeadScrapes() {
   const [pendingFilters, setPendingFilters] = useState({
     search: '',
     platform: [] as string[],
+    city: [] as string[],
+    cuisine: [] as string[],
   });
 
   // Modal state
@@ -118,10 +121,17 @@ export default function LeadScrapes() {
   const pendingQueryFilters = useMemo(() => ({
     search: pendingFilters.search || undefined,
     platform: pendingFilters.platform.length > 0 ? pendingFilters.platform.join(',') : undefined,
+    city: pendingFilters.city.length > 0 ? pendingFilters.city[0] : undefined, // Single select for city
+    cuisine: pendingFilters.cuisine.length > 0 ? pendingFilters.cuisine[0] : undefined, // Single select for cuisine
   }), [pendingFilters]);
 
   const { data: pendingData, isLoading: pendingLoading, refetch: refetchPending } = usePendingLeads(pendingQueryFilters);
   const pendingLeads = pendingData?.leads || [];
+
+  // Fetch filter options for pending leads
+  const { data: filterOptionsData } = usePendingLeadsFilterOptions();
+  const cityOptions = (filterOptionsData?.cities || []).map(city => ({ label: city, value: city }));
+  const cuisineOptions = (filterOptionsData?.cuisines || []).map(cuisine => ({ label: cuisine.charAt(0).toUpperCase() + cuisine.slice(1), value: cuisine }));
 
   // Tab change handler
   const handleTabChange = (value: string) => {
@@ -141,33 +151,36 @@ export default function LeadScrapes() {
     setPendingFilters({
       search: '',
       platform: [],
+      city: [],
+      cuisine: [],
     });
   };
 
   const hasJobFilters = jobFilters.search !== '' || jobFilters.status.length > 0 || jobFilters.platform.length > 0;
-  const hasPendingFilters = pendingFilters.search !== '' || pendingFilters.platform.length > 0;
+  const hasPendingFilters = pendingFilters.search !== '' || pendingFilters.platform.length > 0 || pendingFilters.city.length > 0 || pendingFilters.cuisine.length > 0;
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">Lead Scraping</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Extract and enrich restaurant leads from delivery platforms
-          </p>
+    <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col -mt-6 -mb-6">
+      {/* Sticky Header + Tabs */}
+      <div className="sticky -top-6 z-40 bg-white/80 backdrop-blur-sm -mx-6 px-6 pt-6 pb-4 border border-white/20 shadow-lg space-y-4 rounded-b-[16px]">
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold">Lead Scraping</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Extract and enrich restaurant leads from delivery platforms
+            </p>
+          </div>
+          <Button
+            onClick={() => setCreateJobOpen(true)}
+            className="bg-gradient-to-r from-brand-blue to-brand-green"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            New Lead Scrape
+          </Button>
         </div>
-        <Button
-          onClick={() => setCreateJobOpen(true)}
-          className="bg-gradient-to-r from-brand-blue to-brand-green"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          New Lead Scrape
-        </Button>
-      </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={handleTabChange}>
+        {/* TabsList */}
         <TabsList size="full">
           <TabsTrigger size="full" variant="blue" value="jobs">Scrape Jobs</TabsTrigger>
           <TabsTrigger size="full" variant="blue" value="pending">
@@ -179,9 +192,12 @@ export default function LeadScrapes() {
             )}
           </TabsTrigger>
         </TabsList>
+      </div>
 
+      {/* Scrollable Content */}
+      <div className="pt-6 space-y-6">
         {/* SCRAPE JOBS TAB */}
-        <TabsContent value="jobs" className="space-y-6">
+        <TabsContent value="jobs" className="space-y-6 mt-0">
           {/* Filters Card */}
           <div className="bg-card border rounded-lg p-4">
             <div className="flex items-center justify-between mb-4">
@@ -290,18 +306,40 @@ export default function LeadScrapes() {
                 <Filter className="h-4 w-4" />
                 <h3 className="font-medium">Filters</h3>
               </div>
-              {hasPendingFilters && (
+              <div className="flex items-center gap-2">
+                {hasPendingFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleResetPendingFilters}
+                  >
+                    Clear All
+                  </Button>
+                )}
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  onClick={handleResetPendingFilters}
+                  onClick={() => refetchPending()}
+                  disabled={pendingLoading}
                 >
-                  Clear All
+                  <RefreshCw className={`h-4 w-4 mr-1 ${pendingLoading ? 'animate-spin' : ''}`} />
+                  Refresh
                 </Button>
-              )}
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {/* Search Input */}
+              <div className="relative lg:col-span-2">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search restaurants..."
+                  value={pendingFilters.search}
+                  onChange={(e) => setPendingFilters({ ...pendingFilters, search: e.target.value })}
+                  className="pl-10"
+                />
+              </div>
+
               {/* Platform Filter */}
               <MultiSelect
                 options={[
@@ -311,6 +349,22 @@ export default function LeadScrapes() {
                 selected={pendingFilters.platform}
                 onChange={(selected) => setPendingFilters({ ...pendingFilters, platform: selected })}
                 placeholder="Platform"
+              />
+
+              {/* City Filter */}
+              <MultiSelect
+                options={cityOptions}
+                selected={pendingFilters.city}
+                onChange={(selected) => setPendingFilters({ ...pendingFilters, city: selected })}
+                placeholder="City"
+              />
+
+              {/* Cuisine Filter */}
+              <MultiSelect
+                options={cuisineOptions}
+                selected={pendingFilters.cuisine}
+                onChange={(selected) => setPendingFilters({ ...pendingFilters, cuisine: selected })}
+                placeholder="Cuisine"
               />
             </div>
           </div>
@@ -322,7 +376,7 @@ export default function LeadScrapes() {
             onRefresh={refetchPending}
           />
         </TabsContent>
-      </Tabs>
+      </div>
 
       {/* Create Lead Scrape Job Dialog */}
       <CreateLeadScrapeJob
@@ -332,6 +386,6 @@ export default function LeadScrapes() {
           refetchJobs();
         }}
       />
-    </div>
+    </Tabs>
   );
 }

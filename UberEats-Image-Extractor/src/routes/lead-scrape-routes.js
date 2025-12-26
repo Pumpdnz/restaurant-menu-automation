@@ -406,9 +406,6 @@ router.post('/steps/:stepId/pass-leads', authMiddleware, async (req, res) => {
             case 4:
               processResult = await leadScrapeFirecrawlService.processStep4(result.job_id, result.passed_lead_ids);
               break;
-            case 5:
-              processResult = await leadScrapeFirecrawlService.processStep5(result.job_id, result.passed_lead_ids);
-              break;
             default:
               console.log(`[LeadScrapeRoutes] No processor for step ${result.next_step_number}`);
               return;
@@ -474,10 +471,10 @@ router.post('/steps/:stepId/retry', authMiddleware, async (req, res) => {
 router.post('/:jobId/extract/:stepNumber', authMiddleware, requireLeadScrapingEnrichment, async (req, res) => {
   try {
     const stepNumber = parseInt(req.params.stepNumber);
-    if (isNaN(stepNumber) || stepNumber < 1 || stepNumber > 5) {
+    if (isNaN(stepNumber) || stepNumber < 1 || stepNumber > 4) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid step number. Must be 1-5.'
+        error: 'Invalid step number. Must be 1-4.'
       });
     }
 
@@ -536,9 +533,6 @@ router.post('/:jobId/extract/:stepNumber', authMiddleware, requireLeadScrapingEn
           case 4:
             extractionResult = await leadScrapeFirecrawlService.processStep4(req.params.jobId, leadIds);
             break;
-          case 5:
-            extractionResult = await leadScrapeFirecrawlService.processStep5(req.params.jobId, leadIds);
-            break;
         }
         console.log(`[LeadScrapeRoutes] Step ${stepNumber} extraction completed:`, extractionResult);
       } catch (error) {
@@ -566,10 +560,10 @@ router.post('/:jobId/extract/:stepNumber', authMiddleware, requireLeadScrapingEn
 router.post('/:jobId/extract/:stepNumber/sync', authMiddleware, requireLeadScrapingEnrichment, async (req, res) => {
   try {
     const stepNumber = parseInt(req.params.stepNumber);
-    if (isNaN(stepNumber) || stepNumber < 1 || stepNumber > 5) {
+    if (isNaN(stepNumber) || stepNumber < 1 || stepNumber > 4) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid step number. Must be 1-5.'
+        error: 'Invalid step number. Must be 1-4.'
       });
     }
 
@@ -603,9 +597,6 @@ router.post('/:jobId/extract/:stepNumber/sync', authMiddleware, requireLeadScrap
       case 4:
         extractionResult = await leadScrapeFirecrawlService.processStep4(req.params.jobId, leadIds);
         break;
-      case 5:
-        extractionResult = await leadScrapeFirecrawlService.processStep5(req.params.jobId, leadIds);
-        break;
     }
 
     res.json({
@@ -635,10 +626,10 @@ router.post('/:jobId/validate-leads', authMiddleware, async (req, res) => {
   try {
     const { lead_ids, step_number } = req.body;
 
-    if (!step_number || step_number < 1 || step_number > 5) {
+    if (!step_number || step_number < 1 || step_number > 4) {
       return res.status(400).json({
         success: false,
-        error: 'step_number is required and must be 1-5'
+        error: 'step_number is required and must be 1-4'
       });
     }
 

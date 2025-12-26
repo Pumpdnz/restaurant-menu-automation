@@ -16,6 +16,7 @@
  *   --secondary          Secondary color hex code
  *   --name               Restaurant name
  *   --lightmode          Enable light mode (optional, dark mode by default)
+ *   --no-gradient        Disable Gradients and use primary color for price tags and welcome messages
  *   --keep-browser-open  Keep browser open after completion for manual adjustments
  */
 
@@ -55,6 +56,7 @@ const primaryColor = getArg('primary') || '#E6B800'; // Default to Noi's golden 
 const secondaryColor = getArg('secondary') || '#F2D966'; // Default to Noi's light golden
 const restaurantName = getArg('name') || 'Noi';
 const lightMode = args.includes('--lightmode');
+const noGradient = args.includes('--no-gradient');
 const keepBrowserOpen = args.includes('--keep-browser-open');
 
 // Login credentials
@@ -228,9 +230,83 @@ async function customizeOrderingPage() {
     await page.click('button:has-text("Components"), [id*="trigger-components"]');
     await page.waitForTimeout(2000);
     console.log('  ✓ Components tab opened\n');
+
+    // Step 13: Configure Service Choice Styles (Optional light mode)
+    if (lightMode) {
+      console.log('🌞 Step 13: Setting light mode service choice...');
+      // Scroll to find Service Choice Styles
+      await page.evaluate(() => {
+        const element = Array.from(document.querySelectorAll('div')).find(el => 
+          el.textContent?.includes('Service Choice Styles')
+        );
+        if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+      await page.waitForTimeout(1000);
     
-    // Step 13-14: Configure Nav Bar Text Effects
-    console.log('✨ Step 13-14: Configuring Nav Bar Text Effects...');
+      // Click Nav Bar Text Effects using the correct selector
+      const serviceChoiceStylesSelector = '[id*="content-components"] > div > div.space-y-6 > div:nth-child(5) > div.space-y-2 > div:nth-child(2)';
+      
+      try {
+        await page.click(serviceChoiceStylesSelector);
+        console.log('  ✓ Clicked Service Choice Styles using specific selector');
+      } catch {
+        // Fallback: look for the component by text
+        await page.evaluate(() => {
+          const components = Array.from(document.querySelectorAll('[class*="space-y-2"] > div'));
+          const serviceChoiceComponent = components.find(comp => 
+            comp.textContent?.includes('Service Choice Styles') &&
+            !comp.textContent?.includes('Menu Item')
+          );
+          if (serviceChoiceComponent) serviceChoiceComponent.click();
+        });
+        console.log('  ✓ Clicked Service Choice Styles using text search');
+      }
+      await page.waitForTimeout(1000);
+
+      // Select Comprehensive Service Choice
+      await page.click('#serviceChoiceStyles-service-comprehensive');
+      console.log('  ✓ Comprehensive Service Choice Selected');
+    }
+
+    // Step 14: Set price tag enhancements to single color background (Optional No Gradient mode)
+    if (noGradient) {
+      console.log('🌞 Step 14: Setting price tag enhancements to no gradient...');
+      // Scroll to find Price Tag Enhancements
+      await page.evaluate(() => {
+        const element = Array.from(document.querySelectorAll('div')).find(el => 
+          el.textContent?.includes('Price Tag Enhancements')
+        );
+        if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+      await page.waitForTimeout(1000);
+    
+      // Click Price Tag Enhancements using the correct selector
+      const priceTagEnhancementsSelector = '[id*="content-components"] > div > div.space-y-6 > div:nth-child(6) > div.space-y-2 > div:nth-child(1)';
+      
+      try {
+        await page.click(priceTagEnhancementsSelector);
+        console.log('  ✓ Clicked Price Tag Enhancements using specific selector');
+      } catch {
+        // Fallback: look for the component by text
+        await page.evaluate(() => {
+          const components = Array.from(document.querySelectorAll('[class*="space-y-2"] > div'));
+          const PriceTagEnhancementsComponent = components.find(comp => 
+            comp.textContent?.includes('Price Tag Enhancements') &&
+            !comp.textContent?.includes('Menu Item')
+          );
+          if (PriceTagEnhancementsComponent) PriceTagEnhancementsComponent.click();
+        });
+        console.log('  ✓ Clicked Price Tag Enhancements using text search');
+      }
+      await page.waitForTimeout(1000);
+
+      // Select Single Color Background Choice
+      await page.click('#priceTagEnhancements-price-tag-single-color');
+      console.log('  ✓ Single Color Background Choice Selected');
+    }    
+  
+    // Step 15: Configure Nav Bar Text Effects
+    console.log('✨ Step 15: Configuring Nav Bar Text Effects...');
     
     // Scroll to find Nav Bar Text Effects
     await page.evaluate(() => {
@@ -267,10 +343,24 @@ async function customizeOrderingPage() {
       await logoGradientCheckbox.click();
       console.log('  ✓ Logo Text Gradient deselected');
     }
+
+    // Deselect Logo Text Glow
+    const logoTextGlowCheckbox = page.locator('#navBarTextEffects-nav-logo-text-glow');
+    if (await logoTextGlowCheckbox.isChecked()) {
+      await logoTextGlowCheckbox.click();
+      console.log('  ✓ Logo Text Glow deselected');
+    }
+
+    // Deselect Logo Glow
+    const logoGlowCheckbox = page.locator('#navBarTextEffects-nav-logo-glow');
+    if (await logoGlowCheckbox.isChecked()) {
+      await logoGlowCheckbox.click();
+      console.log('  ✓ Logo Glow deselected');
+    }
     console.log('  ✓ Nav Bar Text Effects configured\n');
-    
-    // Step 15-17: Configure Welcome Messages
-    console.log('👋 Step 15-17: Configuring Welcome Messages...');
+
+    // Step 16-17: Configure Welcome Messages
+    console.log('👋 Step 16-17: Configuring Welcome Messages...');
     
     // Scroll to find Welcome Messages
     await page.evaluate(() => {
@@ -308,6 +398,25 @@ async function customizeOrderingPage() {
     await greetingCheckbox.click(); // Reselect
     await page.waitForTimeout(1000);
     console.log('  ✓ Welcome Messages expanded\n');
+
+    // Optionally set Welcome message to single colour background (Optional no gradient mode)
+    if (noGradient) {
+      console.log('🎨 Step 19: Removing gradient from Welcome Messages...');
+
+      try {
+        // Click the "Remove Gradient" button
+        const removeGradientButton = page.locator('button:has-text("Remove Gradient")').first();
+        if (await removeGradientButton.count() > 0) {
+          await removeGradientButton.click();
+          await page.waitForTimeout(500);
+          console.log('  ✓ Welcome Message Gradient Removed');
+        } else {
+          console.log('  ⚠️ Remove Gradient button not found');
+        }
+      } catch (error) {
+        console.error('  ❌ Failed to remove Welcome Message gradient:', error.message);
+      }
+    }
     
     // Step 18: Enter restaurant name
     console.log(`🏪 Step 18: Setting restaurant name to "${restaurantName}"...`);
@@ -337,7 +446,8 @@ async function customizeOrderingPage() {
       throw error;
     }
     console.log(`  ✓ Restaurant name configuration complete\n`);
-    
+    await page.waitForTimeout(500);
+
     // Create output directory for code injections
     const outputDir = path.join(__dirname, '..', 'generated-code', sanitize(restaurantName));
     fs.mkdirSync(outputDir, { recursive: true });

@@ -471,7 +471,7 @@ export default function LeadScrapeDetail() {
         <CardHeader>
           <CardTitle className="text-lg">Extraction Steps</CardTitle>
           <CardDescription>
-            Step {job.current_step || 0} of {job.total_steps || 5}
+            Step {job.current_step || 0} of {job.total_steps || 4}
             {job.steps && ` • ${job.steps.filter((s: any) => s.status === 'completed').length} completed`}
           </CardDescription>
         </CardHeader>

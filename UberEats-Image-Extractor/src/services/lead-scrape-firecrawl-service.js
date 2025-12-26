@@ -8,6 +8,7 @@ const { getSupabaseClient } = require('./database-service');
 const rateLimiter = require('./rate-limiter-service');
 const { cleanInstagramUrl, cleanFacebookUrl, cleanReviewCount, cleanWebsiteUrl } = require('./lead-url-validation-service');
 const { UsageTrackingService } = require('./usage-tracking-service');
+const { downloadImageToBuffer } = require('./logo-extraction-service');
 
 // Environment configuration
 const FIRECRAWL_API_KEY = process.env.FIRECRAWL_API_KEY || '';
@@ -35,7 +36,7 @@ const EXCLUDED_CHAIN_PATTERNS = [
   /\bkfc\b/i,
   /kentucky\s*fried\s*chicken/i,
   /\bsubway\b/i,
-  /bowl'?d\b/i,
+  /bowl['']?d\b/i,
   /pita\s*pit/i,
   /burger\s*fuel/i,
   /carl'?s?\s*jr\.?/i,
@@ -79,6 +80,11 @@ const EXCLUDED_CHAIN_PATTERNS = [
   /la\s*porchetta/i,
   /\bbp2go\b/i,
   /\bbp\s*2\s*go\b/i,
+  // Additional chains (added 2025-12-22)
+  /\bcalimero\b/i,
+  /\blj['']?s\b/i,
+  /texas\s*chicken/i,
+  /burger\s*wisconsin/i,
 ];
 
 /**
@@ -89,6 +95,71 @@ const EXCLUDED_CHAIN_PATTERNS = [
 function isExcludedChain(restaurantName) {
   if (!restaurantName) return false;
   return EXCLUDED_CHAIN_PATTERNS.some(pattern => pattern.test(restaurantName));
+}
+
+/**
+ * Clean address by removing trailing ", {region} {postcode}" pattern
+ * Handles: ", APAC 1234", ", NI 1045", ", SI 9016", ", Canterbury 8014", ", Wellington 6161"
+ * @param {string} address - Raw address from UberEats extraction
+ * @returns {string|null} Cleaned address
+ */
+function cleanAddress(address) {
+  if (!address) return null;
+  // Remove trailing ", {region/code} {postcode}" - matches comma, word(s), and 4-digit postcode
+  return address.replace(/,\s*[A-Za-z]+\s+\d{4}\s*$/i, '').trim() || null;
+}
+
+/**
+ * Check for global duplicates across all leads in the database by store_link (UberEats URL)
+ * Filters by organisation_id to allow duplicate leads across different organisations
+ * @param {Array} restaurants - Array of restaurant objects with store_link
+ * @param {string} orgId - Organisation ID to check duplicates within
+ * @returns {Promise<{unique: Array, duplicateCount: number}>} - Unique restaurants and count of duplicates found
+ */
+async function filterGlobalDuplicates(restaurants, orgId) {
+  if (!restaurants || restaurants.length === 0) {
+    return { unique: [], duplicateCount: 0 };
+  }
+
+  if (!orgId) {
+    console.warn('[LeadScrapeFirecrawl] filterGlobalDuplicates called without orgId, skipping duplicate check');
+    return { unique: restaurants, duplicateCount: 0 };
+  }
+
+  const client = getSupabaseClient();
+  const storeLinks = restaurants.map(r => r.store_link).filter(Boolean);
+
+  if (storeLinks.length === 0) {
+    return { unique: restaurants, duplicateCount: 0 };
+  }
+
+  try {
+    // Query existing leads with matching store_links within the same organisation
+    const { data: existingLeads, error } = await client
+      .from('leads')
+      .select('store_link')
+      .eq('organisation_id', orgId)
+      .in('store_link', storeLinks);
+
+    if (error) {
+      console.error('[LeadScrapeFirecrawl] Error checking global duplicates:', error);
+      // On error, return all restaurants (fail open)
+      return { unique: restaurants, duplicateCount: 0 };
+    }
+
+    // Create a Set of existing store_links for O(1) lookup
+    const existingStoreLinks = new Set(existingLeads?.map(l => l.store_link) || []);
+
+    // Filter out restaurants that already exist in the database
+    const unique = restaurants.filter(r => !existingStoreLinks.has(r.store_link));
+    const duplicateCount = restaurants.length - unique.length;
+
+    return { unique, duplicateCount };
+  } catch (error) {
+    console.error('[LeadScrapeFirecrawl] Error in filterGlobalDuplicates:', error);
+    // On error, return all restaurants (fail open)
+    return { unique: restaurants, duplicateCount: 0 };
+  }
 }
 
 /**
@@ -398,51 +469,6 @@ const EXCLUDED_ORDERING_DOMAINS = [
 ];
 
 // ============================================================================
-// STEP 5: CONTACT ENRICHMENT - Owner/Manager details
-// ============================================================================
-
-const STEP_5_SCHEMA = {
-  type: "object",
-  properties: {
-    contact_name: {
-      type: "string",
-      description: "Name of the contact person (owner/manager)"
-    },
-    contact_email: {
-      type: "string",
-      description: "Email address for the contact"
-    },
-    contact_phone: {
-      type: "string",
-      description: "Phone number for the contact"
-    },
-    contact_role: {
-      type: "string",
-      description: "Role/position of the contact"
-    }
-  }
-};
-
-const STEP_5_PROMPT = `Find contact person details for this restaurant business.
-
-Look for:
-1. Owner/Manager name
-2. Direct email address (not generic info@ addresses if possible)
-3. Direct phone number for the contact person
-4. Their role/title
-
-Check:
-- About page
-- Contact page
-- Team/Staff page
-- Facebook About section
-
-Prioritize:
-- Owner names
-- Manager names
-- Decision-maker roles`;
-
-// ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
@@ -460,7 +486,8 @@ async function firecrawlRequest(url, prompt, schema, options = {}, trackingInfo 
     timeout = 120000,
     waitFor = 4000,
     maxRetries = 3,
-    retryDelay = 5000
+    retryDelay = 5000,
+    includeMetadata = false  // When true, returns { json, metadata } instead of just json
   } = options;
 
   // Firecrawl v2 API format - json extraction goes in formats array as an object
@@ -475,7 +502,8 @@ async function firecrawlRequest(url, prompt, schema, options = {}, trackingInfo 
     ],
     waitFor,
     onlyMainContent: options.onlyMainContent !== false,
-    removeBase64Images: true
+    removeBase64Images: true,
+    maxAge: 0  // Disable caching to ensure fresh metadata with high-res og:image
   };
 
   const axiosInstance = axios.create({
@@ -512,7 +540,17 @@ async function firecrawlRequest(url, prompt, schema, options = {}, trackingInfo 
       }
 
       // v2 API returns json data in data.json
-      return response.data.data?.json || response.data.data || {};
+      const jsonData = response.data.data?.json || response.data.data || {};
+
+      // Return with metadata if requested
+      if (includeMetadata) {
+        return {
+          json: jsonData,
+          metadata: response.data.data?.metadata || {}
+        };
+      }
+
+      return jsonData;
     } catch (error) {
       lastError = error;
       console.error(`[LeadScrapeFirecrawl] Attempt ${attempt + 1} failed:`, error.message);
@@ -703,20 +741,29 @@ async function processStep1(jobId, job) {
       console.log(`[LeadScrapeFirecrawl] Excluded ${excludedCount} non-ICP chains`);
     }
 
-    // Deduplicate by store_link
+    // Deduplicate by store_link (within this job)
     const uniqueRestaurants = [...new Map(
       icpRestaurants.map(r => [r.store_link, r])
     ).values()];
 
-    // Apply leads_limit
-    const limitedRestaurants = uniqueRestaurants.slice(0, job.leads_limit);
+    // Deduplicate globally against all existing leads in the same organisation
+    const { unique: globallyUniqueRestaurants, duplicateCount: globalDuplicateCount } =
+      await filterGlobalDuplicates(uniqueRestaurants, job.organisation_id);
 
-    console.log(`[LeadScrapeFirecrawl] Creating ${limitedRestaurants.length} leads (limit: ${job.leads_limit}, excluded: ${excludedCount})`);
+    if (globalDuplicateCount > 0) {
+      console.log(`[LeadScrapeFirecrawl] Excluded ${globalDuplicateCount} global duplicates (already exist in leads table)`);
+    }
+
+    // Apply leads_limit
+    const limitedRestaurants = globallyUniqueRestaurants.slice(0, job.leads_limit);
+
+    console.log(`[LeadScrapeFirecrawl] Creating ${limitedRestaurants.length} leads (limit: ${job.leads_limit}, excluded chains: ${excludedCount}, global duplicates: ${globalDuplicateCount})`);
 
     // Create lead records - keep at step 1 with 'processed' status
     // User must manually select and pass leads to step 2
     const leadsToCreate = limitedRestaurants.map(r => ({
       lead_scrape_job_id: jobId,
+      organisation_id: job.organisation_id,
       restaurant_name: r.restaurant_name,
       store_link: r.store_link,
       platform: job.platform,
@@ -761,6 +808,7 @@ async function processStep1(jobId, job) {
       leads_created: createdLeads.length,
       raw_count: restaurants.length,
       excluded_count: excludedCount,
+      global_duplicate_count: globalDuplicateCount,
       leads: createdLeads
     };
   } catch (error) {
@@ -846,13 +894,31 @@ async function processStep2(jobId, leadIds = null) {
               .update({ step_progression_status: 'processing' })
               .eq('id', lead.id);
 
-            const result = await firecrawlRequest(
+            const response = await firecrawlRequest(
               lead.store_link,
               STEP_2_PROMPT,
               STEP_2_SCHEMA,
-              { timeout: 120000, waitFor: 5000 },
+              { timeout: 120000, waitFor: 3000, includeMetadata: true },
               { organisationId, jobId, stepNumber: 2, leadId: lead.id }
             );
+
+            // Extract json and metadata from response
+            const result = response.json;
+            const metadata = response.metadata;
+
+            // Get og:image from metadata (high-res version)
+            let ogImageBase64 = null;
+            const ogImageUrl = metadata.ogImage || metadata['og:image'];
+            if (ogImageUrl) {
+              try {
+                console.log('[LeadScrapeFirecrawl] Downloading og:image from metadata:', ogImageUrl);
+                const ogImageBuffer = await downloadImageToBuffer(ogImageUrl, lead.store_link);
+                ogImageBase64 = `data:image/jpeg;base64,${ogImageBuffer.toString('base64')}`;
+                console.log('[LeadScrapeFirecrawl] OG Image converted to base64');
+              } catch (ogError) {
+                console.error('[LeadScrapeFirecrawl] Failed to convert og:image:', ogError.message);
+              }
+            }
 
             // Update lead with extracted data
             await client
@@ -860,9 +926,10 @@ async function processStep2(jobId, leadIds = null) {
               .update({
                 ubereats_number_of_reviews: result.number_of_reviews || null,
                 ubereats_average_review_rating: result.average_review_rating || null,
-                ubereats_address: result.address || null,
+                ubereats_address: cleanAddress(result.address),
                 ubereats_cuisine: result.cuisine || [],
                 ubereats_price_rating: result.price_rating || null,
+                ubereats_og_image: ogImageBase64,
                 step_progression_status: 'processed',
                 updated_at: new Date().toISOString()
               })
@@ -1326,177 +1393,6 @@ async function processStep4(jobId, leadIds = null) {
   }
 }
 
-/**
- * Process Step 5: Contact Enrichment
- */
-async function processStep5(jobId, leadIds = null) {
-  const client = getSupabaseClient();
-  console.log(`[LeadScrapeFirecrawl] Starting Step 5 for job ${jobId}`);
-
-  try {
-    // Get job for organisation_id (needed for usage tracking)
-    const { data: job } = await client
-      .from('lead_scrape_jobs')
-      .select('organisation_id')
-      .eq('id', jobId)
-      .single();
-    const organisationId = job?.organisation_id;
-
-    let query = client
-      .from('leads')
-      .select('*')
-      .eq('lead_scrape_job_id', jobId)
-      .eq('current_step', 5)
-      .eq('step_progression_status', 'available');
-
-    if (leadIds && leadIds.length > 0) {
-      query = query.in('id', leadIds);
-    }
-
-    const { data: leads, error: leadsError } = await query;
-    if (leadsError) throw leadsError;
-
-    if (!leads || leads.length === 0) {
-      return { success: true, processed: 0, failed: 0 };
-    }
-
-    console.log(`[LeadScrapeFirecrawl] Processing ${leads.length} leads in Step 5`);
-
-    let processed = 0;
-    let failed = 0;
-
-    for (let i = 0; i < leads.length; i += FIRECRAWL_CONCURRENCY_LIMIT) {
-      const batch = leads.slice(i, i + FIRECRAWL_CONCURRENCY_LIMIT);
-
-      const batchResults = await Promise.allSettled(
-        batch.map(async (lead) => {
-          try {
-            await client
-              .from('leads')
-              .update({ step_progression_status: 'processing' })
-              .eq('id', lead.id);
-
-            let contactData = {};
-
-            // Try website first if available
-            if (lead.website_url) {
-              try {
-                const websiteResult = await firecrawlRequest(
-                  lead.website_url,
-                  STEP_5_PROMPT,
-                  STEP_5_SCHEMA,
-                  { timeout: 120000, waitFor: 3000 },
-                  { organisationId, jobId, stepNumber: 5, leadId: lead.id }
-                );
-                contactData = { ...contactData, ...websiteResult };
-              } catch (e) {
-                // Continue if website fails
-              }
-            }
-
-            // Try Facebook if available and no contact found
-            if (lead.facebook_url && !contactData.contact_name) {
-              try {
-                const fbResult = await firecrawlRequest(
-                  lead.facebook_url,
-                  `Extract owner/manager contact information from this Facebook page. Look in the About section.`,
-                  STEP_5_SCHEMA,
-                  { timeout: 120000, waitFor: 1000 },
-                  { organisationId, jobId, stepNumber: 5, leadId: lead.id }
-                );
-                contactData = { ...contactData, ...fbResult };
-              } catch (e) {
-                // Continue if Facebook fails
-              }
-            }
-
-            await client
-              .from('leads')
-              .update({
-                contact_name: contactData.contact_name || null,
-                contact_email: contactData.contact_email || null,
-                contact_phone: contactData.contact_phone || null,
-                contact_role: contactData.contact_role || null,
-                step_progression_status: 'processed',
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', lead.id);
-
-            return { success: true, lead_id: lead.id };
-          } catch (error) {
-            await client
-              .from('leads')
-              .update({
-                step_progression_status: 'failed',
-                validation_errors: [error.message],
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', lead.id);
-
-            return { success: false, lead_id: lead.id, error: error.message };
-          }
-        })
-      );
-
-      batchResults.forEach(result => {
-        if (result.status === 'fulfilled' && result.value.success) {
-          processed++;
-        } else {
-          failed++;
-        }
-      });
-
-      if (i + FIRECRAWL_CONCURRENCY_LIMIT < leads.length) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    }
-
-    // Count actual unique processed leads at this step (prevents double-counting on retry)
-    const { count: totalProcessed } = await client
-      .from('leads')
-      .select('*', { count: 'exact', head: true })
-      .eq('lead_scrape_job_id', jobId)
-      .eq('current_step', 5)
-      .in('step_progression_status', ['processed', 'passed', 'failed']);
-
-    // Count successfully processed leads (not failed)
-    const { count: totalSuccessful } = await client
-      .from('leads')
-      .select('*', { count: 'exact', head: true })
-      .eq('lead_scrape_job_id', jobId)
-      .eq('current_step', 5)
-      .eq('step_progression_status', 'processed');
-
-    // Count actual failed leads at this step
-    const { count: totalFailed } = await client
-      .from('leads')
-      .select('*', { count: 'exact', head: true })
-      .eq('lead_scrape_job_id', jobId)
-      .eq('current_step', 5)
-      .eq('step_progression_status', 'failed');
-
-    // Update step stats with actual counts - Step 5 is the last step, leads don't get passed anywhere
-    // Set leads_passed = successfully processed since this is the final destination
-    await client
-      .from('lead_scrape_job_steps')
-      .update({
-        leads_processed: totalProcessed || 0,
-        leads_passed: totalSuccessful || 0, // For last step, passed = successfully processed
-        leads_failed: totalFailed || 0,
-        status: failed === leads.length ? 'failed' : 'completed',
-        completed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .eq('job_id', jobId)
-      .eq('step_number', 5);
-
-    return { success: true, processed, failed };
-  } catch (error) {
-    console.error(`[LeadScrapeFirecrawl] Step 5 error:`, error);
-    throw error;
-  }
-}
-
 // ============================================================================
 // VALIDATION & DEDUPLICATION
 // ============================================================================
@@ -1527,12 +1423,6 @@ const VALIDATION_RULES = {
     validators: {
       instagram_url: (val) => !val || val.includes('instagram.com'),
       facebook_url: (val) => !val || val.includes('facebook.com')
-    }
-  },
-  step_5: {
-    required: [],
-    validators: {
-      contact_email: (val) => !val || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)
     }
   }
 };
@@ -1646,7 +1536,6 @@ module.exports = {
   processStep2,
   processStep3,
   processStep4,
-  processStep5,
 
   // Validation
   validateLeadForStep,
@@ -1662,6 +1551,5 @@ module.exports = {
   STEP_1_SCHEMA,
   STEP_2_SCHEMA,
   STEP_3_SCHEMA,
-  STEP_4_SCHEMA,
-  STEP_5_SCHEMA
+  STEP_4_SCHEMA
 };

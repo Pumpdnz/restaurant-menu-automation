@@ -68,12 +68,21 @@ async function getOnboardingIdByEmail(email) {
   }
 
   try {
-    console.log('[Onboarding Service] Looking up onboarding record for:', email);
+    // Normalize email to lowercase for case-insensitive lookup
+    // This ensures "John@Example.com" matches "john@example.com" in the database
+    const normalizedEmail = email?.trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      console.warn('[Onboarding Service] Invalid email provided:', email);
+      return null;
+    }
+
+    console.log('[Onboarding Service] Looking up onboarding record for:', normalizedEmail, '(original:', email, ')');
 
     // First get the onboarding_id using RPC
     const { data, error } = await onboardingSupabase
       .rpc('get_onboarding_id_by_email', {
-        user_email: email
+        user_email: normalizedEmail
       });
 
     if (error) {
@@ -82,7 +91,7 @@ async function getOnboardingIdByEmail(email) {
     }
 
     if (!data || data.length === 0) {
-      console.log('[Onboarding Service] No onboarding record found for:', email);
+      console.log('[Onboarding Service] No onboarding record found for:', normalizedEmail);
       return null;
     }
 

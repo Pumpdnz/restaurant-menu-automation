@@ -5,7 +5,13 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Label } from '../ui/label';
 import { Checkbox } from '../ui/checkbox';
-import { Trash2, Plus, GripVertical, X, Copy } from 'lucide-react';
+import { Trash2, Plus, ChevronDown, X, Copy } from 'lucide-react';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '../ui/collapsible';
+import { cn } from '../../lib/utils';
 import {
   Select,
   SelectContent,
@@ -134,17 +140,28 @@ export default function OptionSetEditor({
             const isExpanded = expandedSets.has(setIndex);
             
             return (
-              <div key={setIndex} className="border rounded-lg p-3 bg-gray-50">
+              <Collapsible
+                key={setIndex}
+                open={isExpanded}
+                onOpenChange={() => toggleExpanded(setIndex)}
+                className="border rounded-lg p-3 bg-gray-50"
+              >
                 {/* Option Set Header */}
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <button
-                        onClick={() => toggleExpanded(setIndex)}
-                        className="text-gray-400 hover:text-gray-600"
-                      >
-                        <GripVertical className="h-4 w-4" />
-                      </button>
+                      <CollapsibleTrigger asChild>
+                        <button
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          <ChevronDown
+                            className={cn(
+                              "h-4 w-4 transition-transform duration-200",
+                              !isExpanded && "-rotate-90"
+                            )}
+                          />
+                        </button>
+                      </CollapsibleTrigger>
                       <Input
                         value={optionSet.name}
                         onChange={(e) => handleOptionSetChange(setIndex, 'name', e.target.value)}
@@ -157,60 +174,127 @@ export default function OptionSetEditor({
                         </Badge>
                       )}
                     </div>
-                    
-                    {isExpanded && (
-                      <>
-                        <Textarea
-                          value={optionSet.description || ''}
-                          onChange={(e) => handleOptionSetChange(setIndex, 'description', e.target.value)}
-                          placeholder="Description (optional)"
-                          rows={2}
-                          className="mt-2 text-sm"
-                        />
-                        
-                        {/* Selection Rules */}
-                        <div className="mt-3 flex gap-3 items-center">
-                          <div className="flex items-center gap-2">
-                            <Label className="text-xs">Min</Label>
-                            <Input
-                              type="number"
-                              min="0"
-                              value={optionSet.minSelections}
-                              onChange={(e) => handleOptionSetChange(setIndex, 'minSelections', parseInt(e.target.value) || 0)}
-                              className="w-16"
-                            />
-                          </div>
-                          
-                          <div className="flex items-center gap-2">
-                            <Label className="text-xs">Max</Label>
-                            <Input
-                              type="number"
-                              min="1"
-                              value={optionSet.maxSelections || ''}
-                              onChange={(e) => handleOptionSetChange(setIndex, 'maxSelections', e.target.value ? parseInt(e.target.value) : null)}
-                              placeholder="∞"
-                              className="w-16"
-                            />
-                          </div>
-                          
-                          <div className="flex items-center gap-2">
-                            <Checkbox
-                              id={`required-${setIndex}`}
-                              checked={optionSet.required}
-                              onCheckedChange={(checked) => handleOptionSetChange(setIndex, 'required', checked)}
-                            />
-                            <Label
-                              htmlFor={`required-${setIndex}`}
-                              className="text-xs cursor-pointer"
-                            >
-                              Required
-                            </Label>
-                          </div>
+
+                    <CollapsibleContent className="data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden">
+                      <Textarea
+                        value={optionSet.description || ''}
+                        onChange={(e) => handleOptionSetChange(setIndex, 'description', e.target.value)}
+                        placeholder="Description (optional)"
+                        rows={2}
+                        className="mt-2 text-sm"
+                      />
+
+                      {/* Selection Rules */}
+                      <div className="mt-3 flex gap-3 items-center">
+                        <div className="flex items-center gap-2">
+                          <Label className="text-xs">Min</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={optionSet.minSelections}
+                            onChange={(e) => handleOptionSetChange(setIndex, 'minSelections', parseInt(e.target.value) || 0)}
+                            className="w-16"
+                          />
                         </div>
-                      </>
-                    )}
+
+                        <div className="flex items-center gap-2">
+                          <Label className="text-xs">Max</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={optionSet.maxSelections || ''}
+                            onChange={(e) => handleOptionSetChange(setIndex, 'maxSelections', e.target.value ? parseInt(e.target.value) : null)}
+                            placeholder="∞"
+                            className="w-16"
+                          />
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id={`required-${setIndex}`}
+                            checked={optionSet.required}
+                            onCheckedChange={(checked) => handleOptionSetChange(setIndex, 'required', checked)}
+                          />
+                          <Label
+                            htmlFor={`required-${setIndex}`}
+                            className="text-xs cursor-pointer"
+                          >
+                            Required
+                          </Label>
+                        </div>
+                      </div>
+
+                      {/* Options List */}
+                      <div className="mt-3 space-y-2">
+                        <div className="flex items-center justify-between mb-2">
+                          <Label className="text-xs text-gray-600">Options</Label>
+                          <Button
+                            onClick={() => addOption(setIndex)}
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            Add Option
+                          </Button>
+                        </div>
+
+                        {optionSet.options.length === 0 ? (
+                          <p className="text-xs text-gray-500 italic">No options defined</p>
+                        ) : (
+                          <div className="space-y-1">
+                            {optionSet.options.map((option, optionIndex) => (
+                              <div
+                                key={optionIndex}
+                                className="flex items-center gap-2 p-2 bg-white rounded border border-gray-200"
+                              >
+                                <Checkbox
+                                  checked={option.isDefault}
+                                  onCheckedChange={(checked) =>
+                                    handleOptionChange(setIndex, optionIndex, 'isDefault', checked)
+                                  }
+                                  title="Set as default"
+                                />
+
+                                <Input
+                                  value={option.name}
+                                  onChange={(e) =>
+                                    handleOptionChange(setIndex, optionIndex, 'name', e.target.value)
+                                  }
+                                  placeholder="Option name"
+                                  className="flex-1"
+                                />
+
+                                <div className="flex items-center gap-1">
+                                  <span className="text-gray-500 text-sm">$</span>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={option.priceChange || ''}
+                                    onChange={(e) =>
+                                      handleOptionChange(setIndex, optionIndex, 'priceChange', parseFloat(e.target.value) || 0)
+                                    }
+                                    placeholder="0.00"
+                                    className="w-20"
+                                  />
+                                </div>
+
+                                <Button
+                                  onClick={() => removeOption(setIndex, optionIndex)}
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </CollapsibleContent>
                   </div>
-                  
+
                   <div className="flex gap-1">
                     <Button
                       onClick={() => duplicateOptionSet(setIndex)}
@@ -233,80 +317,10 @@ export default function OptionSetEditor({
                   </div>
                 </div>
 
-                {/* Options List */}
-                {isExpanded && (
-                  <div className="mt-3 space-y-2">
-                    <div className="flex items-center justify-between mb-2">
-                      <Label className="text-xs text-gray-600">Options</Label>
-                      <Button
-                        onClick={() => addOption(setIndex)}
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-xs"
-                      >
-                        <Plus className="h-3 w-3 mr-1" />
-                        Add Option
-                      </Button>
-                    </div>
-                    
-                    {optionSet.options.length === 0 ? (
-                      <p className="text-xs text-gray-500 italic">No options defined</p>
-                    ) : (
-                      <div className="space-y-1">
-                        {optionSet.options.map((option, optionIndex) => (
-                          <div
-                            key={optionIndex}
-                            className="flex items-center gap-2 p-2 bg-white rounded border border-gray-200"
-                          >
-                            <Checkbox
-                              checked={option.isDefault}
-                              onCheckedChange={(checked) => 
-                                handleOptionChange(setIndex, optionIndex, 'isDefault', checked)
-                              }
-                              title="Set as default"
-                            />
-                            
-                            <Input
-                              value={option.name}
-                              onChange={(e) => 
-                                handleOptionChange(setIndex, optionIndex, 'name', e.target.value)
-                              }
-                              placeholder="Option name"
-                              className="flex-1"
-                            />
-                            
-                            <div className="flex items-center gap-1">
-                              <span className="text-gray-500 text-sm">$</span>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                value={option.priceChange || ''}
-                                onChange={(e) => 
-                                  handleOptionChange(setIndex, optionIndex, 'priceChange', parseFloat(e.target.value) || 0)
-                                }
-                                placeholder="0.00"
-                                className="w-20"
-                              />
-                            </div>
-                            
-                            <Button
-                              onClick={() => removeOption(setIndex, optionIndex)}
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-                
+                {/* Collapsed summary */}
                 {!isExpanded && (
                   <p className="text-xs text-gray-500 mt-1">
-                    {optionSet.options.length} option{optionSet.options.length !== 1 ? 's' : ''} • 
+                    {optionSet.options.length} option{optionSet.options.length !== 1 ? 's' : ''} •
                     Select {optionSet.minSelections === optionSet.maxSelections
                       ? optionSet.minSelections
                       : optionSet.maxSelections === null
@@ -314,7 +328,7 @@ export default function OptionSetEditor({
                       : `${optionSet.minSelections}-${optionSet.maxSelections}`}
                   </p>
                 )}
-              </div>
+              </Collapsible>
             );
           })}
         </div>

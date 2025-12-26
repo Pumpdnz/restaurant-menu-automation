@@ -1,9 +1,14 @@
-import { ChevronUp, ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
+import { ChevronUp, ChevronDown, Trash2 } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card } from '../ui/card';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '../ui/collapsible';
 import {
   Select,
   SelectContent,
@@ -14,6 +19,7 @@ import {
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { VariableSelector } from '../ui/variable-selector';
+import { cn } from '../../lib/utils';
 import api from '../../services/api';
 
 export interface StepFormData {
@@ -214,69 +220,70 @@ export function SequenceStepBuilder({
 
   return (
     <Card className="p-4">
-      <div className="flex items-start gap-4">
-        {/* Move Up/Down Buttons */}
-        <div className="flex flex-col gap-1 mt-1">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => onMoveUp(index)}
-            disabled={!canMoveUp}
-            className="h-6 w-6 p-0"
-            title="Move step up"
-          >
-            <ChevronUp className="h-4 w-4" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => onMoveDown(index)}
-            disabled={!canMoveDown}
-            className="h-6 w-6 p-0"
-            title="Move step down"
-          >
-            <ChevronDown className="h-4 w-4" />
-          </Button>
-        </div>
-
-        {/* Step Number */}
-        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-primary font-semibold mt-1 flex-shrink-0">
-          {index + 1}
-        </div>
-
-        {/* Collapsed/Expanded Content */}
-        {isCollapsed ? (
-          // Collapsed View - Just show step name
-          <div className="flex-1 flex items-center gap-3">
-            <button
+      <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
+        <div className="flex items-start gap-4">
+          {/* Move Up/Down Buttons */}
+          <div className="flex flex-col gap-1 mt-1">
+            <Button
               type="button"
-              onClick={() => setIsCollapsed(false)}
-              className="flex items-center gap-2 text-left hover:text-primary transition-colors flex-1"
+              variant="ghost"
+              size="sm"
+              onClick={() => onMoveUp(index)}
+              disabled={!canMoveUp}
+              className="h-6 w-6 p-0"
+              title="Move step up"
             >
-              <ChevronRight className="h-4 w-4 flex-shrink-0" />
-              <span className="font-medium">{step.name || 'Untitled Step'}</span>
-              <span className="text-xs text-muted-foreground ml-2">
-                ({step.type} • {step.priority} priority • {step.delay_value} {step.delay_unit})
-              </span>
-            </button>
-          </div>
-        ) : (
-          // Expanded View - Show all form fields
-          <>
-            {/* Collapse Button */}
-            <button
+              <ChevronUp className="h-4 w-4" />
+            </Button>
+            <Button
               type="button"
-              onClick={() => setIsCollapsed(true)}
-              className="mt-1 hover:text-primary transition-colors flex-shrink-0"
-              title="Collapse step"
+              variant="ghost"
+              size="sm"
+              onClick={() => onMoveDown(index)}
+              disabled={!canMoveDown}
+              className="h-6 w-6 p-0"
+              title="Move step down"
             >
               <ChevronDown className="h-4 w-4" />
-            </button>
+            </Button>
+          </div>
 
-            {/* Form Fields */}
-            <div className="flex-1 space-y-3">
+          {/* Step Number */}
+          <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-primary font-semibold mt-1 flex-shrink-0">
+            {index + 1}
+          </div>
+
+          {/* Collapse/Expand Toggle */}
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="mt-1 hover:text-primary transition-colors flex-shrink-0"
+              title={isCollapsed ? "Expand step" : "Collapse step"}
+            >
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 transition-transform duration-200",
+                  isCollapsed && "-rotate-90"
+                )}
+              />
+            </button>
+          </CollapsibleTrigger>
+
+          {/* Collapsed Summary - visible when collapsed */}
+          {isCollapsed && (
+            <CollapsibleTrigger asChild>
+              <div className="flex-1 flex items-center gap-3 cursor-pointer hover:text-primary transition-colors">
+                <span className="font-medium">{step.name || 'Untitled Step'}</span>
+                <span className="text-xs text-muted-foreground ml-2">
+                  ({step.type} • {step.priority} priority • {step.delay_value} {step.delay_unit})
+                </span>
+              </div>
+            </CollapsibleTrigger>
+          )}
+
+          {/* Expanded Form Fields */}
+          <CollapsibleContent className="flex-1 data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden">
+            <div className="space-y-3">
           {/* Step Name */}
           <div>
             <Label htmlFor={`step-name-${index}`} className="text-xs">
@@ -521,27 +528,27 @@ export function SequenceStepBuilder({
             />
           </div>
 
-          {/* Available Variables Reference */}
-          <div className="border-t pt-3 mt-3">
-            <VariableSelector onVariableSelect={handleInsertVariable} />
-          </div>
-        </div>
-          </>
-        )}
+              {/* Available Variables Reference */}
+              <div className="border-t pt-3 mt-3">
+                <VariableSelector onVariableSelect={handleInsertVariable} />
+              </div>
+            </div>
+          </CollapsibleContent>
 
-        {/* Delete Button */}
-        {canRemove && (
-          <Button
-            type="button"
-            variant="destructive"
-            size="sm"
-            onClick={() => onRemove(index)}
-            className="mt-1 flex-shrink-0"
-          >
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
-        )}
-      </div>
+          {/* Delete Button */}
+          {canRemove && (
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={() => onRemove(index)}
+              className="mt-1 flex-shrink-0"
+            >
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          )}
+        </div>
+      </Collapsible>
     </Card>
   );
 }

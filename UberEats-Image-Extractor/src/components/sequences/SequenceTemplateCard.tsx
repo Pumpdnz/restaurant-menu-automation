@@ -1,14 +1,20 @@
 import { useState } from 'react';
-import { MoreVertical, Copy, Trash2, Eye, EyeOff, ChevronDown, ChevronRight, Edit } from 'lucide-react';
+import { MoreVertical, Copy, Trash2, Eye, EyeOff, ChevronDown, Edit } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '../ui/collapsible';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
+import { cn } from '../../lib/utils';
 import { SequenceTemplate } from '../../hooks/useSequences';
 import {
   AlertDialog,
@@ -59,50 +65,50 @@ export function SequenceTemplateCard({
 
   return (
     <>
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-lg font-semibold">{template.name}</h3>
-                <Badge variant={template.is_active ? 'default' : 'secondary'}>
-                  {template.is_active ? 'Active' : 'Inactive'}
-                </Badge>
-              </div>
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <span>{template.sequence_steps.length} steps</span>
-                <span>•</span>
-                <span>Used {template.usage_count} times</span>
-                {template.tags && template.tags.length > 0 && (
-                  <>
-                    <span>•</span>
-                    <div className="flex gap-1">
-                      {template.tags.map((tag) => (
-                        <Badge key={tag} variant="outline" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  </>
+      <Collapsible open={expanded} onOpenChange={setExpanded}>
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-lg font-semibold">{template.name}</h3>
+                  <Badge variant={template.is_active ? 'default' : 'secondary'}>
+                    {template.is_active ? 'Active' : 'Inactive'}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <span>{template.sequence_steps.length} steps</span>
+                  <span>•</span>
+                  <span>Used {template.usage_count} times</span>
+                  {template.tags && template.tags.length > 0 && (
+                    <>
+                      <span>•</span>
+                      <div className="flex gap-1">
+                        {template.tags.map((tag) => (
+                          <Badge key={tag} variant="outline" className="text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+                {template.description && (
+                  <p className="text-sm text-muted-foreground mt-2">{template.description}</p>
                 )}
               </div>
-              {template.description && (
-                <p className="text-sm text-muted-foreground mt-2">{template.description}</p>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setExpanded(!expanded)}
-              >
-                {expanded ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-              </Button>
-              <DropdownMenu>
+              <div className="flex items-center gap-2">
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <ChevronDown
+                      className={cn(
+                        "h-4 w-4 transition-transform duration-200",
+                        !expanded && "-rotate-90"
+                      )}
+                    />
+                  </Button>
+                </CollapsibleTrigger>
+                <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm">
                     <MoreVertical className="h-4 w-4" />
@@ -143,7 +149,7 @@ export function SequenceTemplateCard({
           </div>
         </CardHeader>
 
-        {expanded && (
+        <CollapsibleContent className="data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden">
           <CardContent>
             <div className="border-t pt-4">
               <h4 className="text-sm font-medium mb-3">Sequence Steps</h4>
@@ -185,8 +191,9 @@ export function SequenceTemplateCard({
               </div>
             </div>
           </CardContent>
-        )}
-      </Card>
+        </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

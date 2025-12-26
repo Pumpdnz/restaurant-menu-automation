@@ -26,6 +26,10 @@ import {
   SelectValue,
 } from '../ui/select';
 import {
+  Collapsible,
+  CollapsibleContent,
+} from '../ui/collapsible';
+import {
   ExternalLink,
   Star,
   MapPin,
@@ -810,14 +814,16 @@ export function ScrapeJobStepDetailModal({
                           </div>
                         </TableCell>
                       </TableRow>
-                      {/* Expanded details row */}
-                      {expandedLeadIds.has(lead.id) && (
-                        <TableRow className="hover:bg-transparent">
+                      {/* Expanded details row with animation */}
+                      <Collapsible open={expandedLeadIds.has(lead.id)} asChild>
+                        <TableRow className="hover:bg-transparent border-0">
                           <TableCell colSpan={8} className="p-0">
-                            <LeadDetailsPanel lead={lead} />
+                            <CollapsibleContent className="data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden">
+                              <LeadDetailsPanel lead={lead} />
+                            </CollapsibleContent>
                           </TableCell>
                         </TableRow>
-                      )}
+                      </Collapsible>
                     </React.Fragment>
                     );
                   })}

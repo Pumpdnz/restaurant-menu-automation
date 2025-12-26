@@ -261,25 +261,29 @@ export default function Extractions() {
   }
 
   return (
-    <div>
-      <div className="sm:flex sm:items-center">
-        <div className="sm:flex-auto">
-          <h1 className="text-2xl font-bold text-foreground">Extractions</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            View and manage menu extraction jobs
-          </p>
-        </div>
-        <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
-          <Button
-            onClick={() => navigate('/extractions/new')}
-            className="bg-gradient-to-r from-brand-blue to-brand-green hover:opacity-90"
-          >
-            New Extraction
-          </Button>
+    <div className="flex flex-col -mt-6 -mb-6">
+      {/* Sticky Header */}
+      <div className="sticky -top-6 z-40 bg-white/80 backdrop-blur-sm -mx-6 px-6 pt-6 pb-4 border border-white/20 shadow-lg rounded-b-[16px]">
+        <div className="sm:flex sm:items-center">
+          <div className="sm:flex-auto">
+            <h1 className="text-2xl font-bold text-foreground">Extractions</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              View and manage menu extraction jobs
+            </p>
+          </div>
+          <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
+            <Button
+              onClick={() => navigate('/extractions/new')}
+              className="bg-gradient-to-r from-brand-blue to-brand-green hover:opacity-90"
+            >
+              New Extraction
+            </Button>
+          </div>
         </div>
       </div>
 
-      <div className="mt-8">
+      {/* Scrollable Content */}
+      <div className="pt-6">
         <div className="rounded-lg border bg-card overflow-hidden">
           <div className="overflow-x-auto">
             <Table>

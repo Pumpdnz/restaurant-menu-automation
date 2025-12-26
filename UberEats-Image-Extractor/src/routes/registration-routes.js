@@ -975,6 +975,270 @@ router.post('/upload-csv-menu', requireRegistrationMenuUpload, upload.single('cs
 });
 
 /**
+ * Direct menu import - generates CSV internally and imports without file upload
+ * This streamlines the process by checking CDN status and generating CSV on the backend
+ */
+router.post('/import-menu-direct', requireRegistrationMenuUpload, async (req, res) => {
+  const { restaurantId, menuId } = req.body;
+  const organisationId = req.user?.organisationId;
+
+  console.log('[Direct Import] Request received:', { restaurantId, menuId, organisationId });
+
+  if (!organisationId) {
+    return res.status(401).json({ success: false, error: 'Organisation context required' });
+  }
+
+  if (!restaurantId || !menuId) {
+    return res.status(400).json({ success: false, error: 'restaurantId and menuId are required' });
+  }
+
+  let tempFilePath = null;
+
+  try {
+    const { supabase } = require('../services/database-service');
+    const db = require('../services/database-service');
+
+    // Get restaurant details
+    const { data: restaurant, error: restaurantError } = await supabase
+      .from('restaurants')
+      .select('name')
+      .eq('id', restaurantId)
+      .eq('organisation_id', organisationId)
+      .single();
+
+    if (restaurantError || !restaurant) {
+      throw new Error('Restaurant not found');
+    }
+
+    console.log('[Direct Import] Restaurant found:', restaurant.name);
+
+    // Get account credentials through pumpd_restaurants relationship
+    const { data: pumpdRestaurant, error: pumpdRestError } = await supabase
+      .from('pumpd_restaurants')
+      .select('*, pumpd_accounts(email, user_password_hint)')
+      .eq('restaurant_id', restaurantId)
+      .eq('organisation_id', organisationId)
+      .single();
+
+    const account = pumpdRestaurant?.pumpd_accounts || null;
+
+    // Fallback to direct account lookup for backward compatibility
+    let finalAccount = account;
+    if (!finalAccount && !pumpdRestError) {
+      const { data: directAccount } = await supabase
+        .from('pumpd_accounts')
+        .select('email, user_password_hint')
+        .eq('restaurant_id', restaurantId)
+        .eq('organisation_id', organisationId)
+        .single();
+      finalAccount = directAccount;
+    }
+
+    if (!finalAccount?.email || !finalAccount?.user_password_hint) {
+      throw new Error('Restaurant account credentials not found. Please ensure registration is complete.');
+    }
+
+    console.log('[Direct Import] Account found:', finalAccount.email);
+
+    // Generate CSV content internally
+    console.log('[Direct Import] Generating CSV for menu:', menuId);
+    const csvContent = await generateMenuCSVContent(db, menuId);
+
+    // Write to temp file
+    const tempDir = '/tmp/csv-uploads';
+    await fs.mkdir(tempDir, { recursive: true });
+    tempFilePath = path.join(tempDir, `direct-import-${Date.now()}-${restaurantId}.csv`);
+    await fs.writeFile(tempFilePath, csvContent);
+
+    console.log('[Direct Import] CSV written to:', tempFilePath);
+
+    // Get script config
+    const scriptConfig = await OrganizationSettingsService.getScriptConfig(organisationId);
+    console.log('[Direct Import] Script config loaded:', {
+      adminUrl: scriptConfig.adminUrl
+    });
+
+    // Execute import script
+    const scriptPath = path.join(__dirname, '../../../scripts/restaurant-registration/import-csv-menu.js');
+    const command = [
+      'node', scriptPath,
+      `--email="${finalAccount.email}"`,
+      `--password="${finalAccount.user_password_hint}"`,
+      `--name="${restaurant.name}"`,
+      `--csvFile="${tempFilePath}"`,
+      `--admin-url="${scriptConfig.adminUrl}"`
+    ].join(' ');
+
+    console.log('[Direct Import] Executing script...');
+    const { stdout, stderr } = await execAsync(command, {
+      env: { ...process.env, DEBUG_MODE: 'false', HEADLESS: 'false' },
+      timeout: 120000 // 2 minute timeout
+    });
+
+    console.log('[Direct Import] Script output:', stdout);
+    if (stderr) console.error('[Direct Import] Script stderr:', stderr);
+
+    const success = stdout.includes('CSV import completed successfully') ||
+                   stdout.includes('✅') ||
+                   stdout.includes('Successfully imported') ||
+                   stdout.includes('Import completed');
+
+    if (success) {
+      await supabase
+        .from('restaurants')
+        .update({ onboarding_status: 'menu_imported' })
+        .eq('id', restaurantId)
+        .eq('organisation_id', organisationId);
+
+      UsageTrackingService.trackRegistrationStep(organisationId, 'menu_upload', {
+        restaurant_id: restaurantId,
+        menu_id: menuId,
+        method: 'direct_import'
+      }).catch(err => console.error('[UsageTracking] Failed:', err));
+    }
+
+    res.json({
+      success,
+      message: success ? 'Menu imported successfully' : 'Import completed with warnings',
+      details: stdout.substring(stdout.lastIndexOf('\n', stdout.length - 2) + 1)
+    });
+
+  } catch (error) {
+    console.error('[Direct Import] Error:', error);
+
+    const isTimeout = error.code === 'ETIMEDOUT' || error.message.includes('timeout');
+
+    res.status(500).json({
+      success: false,
+      error: isTimeout ?
+        'Import timed out. Please try again.' :
+        error.message
+    });
+  } finally {
+    // Cleanup temp file
+    if (tempFilePath) {
+      try {
+        await fs.unlink(tempFilePath);
+        console.log('[Direct Import] Temp file cleaned up');
+      } catch (err) {
+        console.error('[Direct Import] Failed to cleanup temp file:', err);
+      }
+    }
+  }
+});
+
+/**
+ * Helper function to generate CSV content with CDN information
+ * Extracted from server.js csv-with-cdn endpoint logic
+ */
+async function generateMenuCSVContent(db, menuId) {
+  const menu = await db.getMenuWithItems(menuId);
+
+  if (!menu) throw new Error('Menu not found');
+
+  // Field cleaning logic
+  const UNWANTED_PHRASES = ['Plus small', 'Thumb up outline', 'No. 1 most liked', 'No. 2 most liked', 'No. 3 most liked'];
+  const REGEX_PATTERNS = [/\d+%/g, /\(\d+\)/g];
+
+  function cleanField(value) {
+    if (!value || typeof value !== 'string') return value || '';
+    let cleaned = value;
+    UNWANTED_PHRASES.forEach(phrase => { cleaned = cleaned.replace(new RegExp(phrase, 'g'), ''); });
+    REGEX_PATTERNS.forEach(pattern => { cleaned = cleaned.replace(pattern, ''); });
+    cleaned = cleaned.replace(/\r?\n/g, ' ');
+    cleaned = cleaned.replace(/;\s*;/g, ';').replace(/,\s*,/g, ',');
+    cleaned = cleaned.replace(/\s+/g, ' ').replace(/^\s*[;,]\s*/, '').replace(/\s*[;,]\s*$/, '');
+    return cleaned.trim();
+  }
+
+  function escapeCSVField(field) {
+    if (field === null || field === undefined) return '';
+    const str = String(field);
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  }
+
+  function formatPrice(price) {
+    if (typeof price === 'string') {
+      price = price.replace(/[$€£¥\s]/g, '');
+      price = parseFloat(price);
+    }
+    if (isNaN(price)) {
+      return '0.00';
+    }
+    return price.toFixed(2);
+  }
+
+  const headers = [
+    'menuID', 'menuName', 'menuDisplayName', 'menuDescription',
+    'categoryID', 'categoryName', 'categoryDisplayName', 'categoryDescription',
+    'dishID', 'dishName', 'dishPrice', 'dishType', 'dishDescription',
+    'displayName', 'printName', 'tags',
+    'isCDNImage', 'imageCDNID', 'imageCDNFilename', 'imageExternalURL'
+  ];
+
+  const rows = [];
+
+  if (menu.categories) {
+    menu.categories.forEach(category => {
+      if (category.menu_items) {
+        category.menu_items.forEach(item => {
+          let isCDNImage = 'FALSE', imageCDNID = '', imageCDNFilename = '';
+
+          if (item.item_images?.length > 0) {
+            const primaryImage = item.item_images.find(img => img.type === 'primary') || item.item_images[0];
+            if (primaryImage?.cdn_uploaded && primaryImage?.cdn_id) {
+              isCDNImage = 'TRUE';
+              imageCDNID = primaryImage.cdn_id;
+              imageCDNFilename = primaryImage.cdn_filename || '';
+            }
+          }
+
+          // Process tags
+          let tagsString = '';
+          if (item.tags) {
+            if (Array.isArray(item.tags)) {
+              tagsString = item.tags.join(', ');
+            } else {
+              tagsString = String(item.tags);
+            }
+            tagsString = cleanField(tagsString);
+          }
+
+          rows.push([
+            '', // menuID
+            escapeCSVField('Menu'), // menuName
+            '', // menuDisplayName
+            '', // menuDescription
+            '', // categoryID
+            escapeCSVField(cleanField(category.name || 'Uncategorized')), // categoryName
+            '', // categoryDisplayName
+            '', // categoryDescription
+            '', // dishID
+            escapeCSVField(cleanField(item.name || '')), // dishName
+            formatPrice(item.price || 0), // dishPrice
+            escapeCSVField(item.item_type || 'standard'), // dishType
+            escapeCSVField(cleanField(item.description || '')), // dishDescription
+            '', // displayName
+            '', // printName
+            escapeCSVField(tagsString), // tags
+            isCDNImage, // isCDNImage
+            imageCDNID, // imageCDNID
+            imageCDNFilename, // imageCDNFilename
+            '' // imageExternalURL
+          ].join(','));
+        });
+      }
+    });
+  }
+
+  console.log(`[Direct Import] Generated CSV with ${rows.length} items`);
+  return [headers.join(','), ...rows].join('\n');
+}
+
+/**
  * Validate that file paths exist and are readable
  */
 router.post('/validate-files', async (req, res) => {
@@ -1085,10 +1349,10 @@ router.post('/validate-files', async (req, res) => {
  * Uses ordering-page-customization.js script to generate head/body HTML files
  */
 router.post('/generate-code-injections', requireRegistrationCodeInjection, async (req, res) => {
-  const { restaurantId } = req.body;
+  const { restaurantId, noGradient } = req.body;
   const organisationId = req.user?.organisationId;
-  
-  console.log('[Code Generation] Request received:', { restaurantId, organisationId });
+
+  console.log('[Code Generation] Request received:', { restaurantId, organisationId, noGradient });
   
   if (!organisationId) {
     return res.status(401).json({ 
@@ -1144,6 +1408,10 @@ router.post('/generate-code-injections', requireRegistrationCodeInjection, async
         command += ' --lightmode';
       }
 
+      if (noGradient) {
+        command += ' --no-gradient';
+      }
+
       console.log('[Code Generation] Executing script (production):', command);
 
       const { stdout, stderr } = await execAsync(command, {
@@ -1179,6 +1447,10 @@ router.post('/generate-code-injections', requireRegistrationCodeInjection, async
 
       if (restaurant.theme === 'light') {
         args.push('--lightmode');
+      }
+
+      if (noGradient) {
+        args.push('--no-gradient');
       }
 
       console.log('[Code Generation] Spawning script (development):', args.join(' '));
@@ -1322,6 +1594,9 @@ router.post('/configure-website', requireRegistrationWebsiteSettings, async (req
         name,
         primary_color,
         secondary_color,
+        tertiary_color,
+        accent_color,
+        background_color,
         theme,
         logo_nobg_url,
         logo_favicon_url,
@@ -1345,6 +1620,27 @@ router.post('/configure-website', requireRegistrationWebsiteSettings, async (req
     
     console.log('[Website Config] Restaurant found:', restaurant.name);
     console.log('[Website Config] Theme:', restaurant.theme || 'dark');
+
+    // Helper function to resolve color value from source name or hex code
+    const resolveColorValue = (colorSource) => {
+      const colorMap = {
+        'white': '#FFFFFF',
+        'black': '#000000',
+        'primary': restaurant.primary_color,
+        'secondary': restaurant.secondary_color,
+        'tertiary': restaurant.tertiary_color,
+        'accent': restaurant.accent_color,
+        'background': restaurant.background_color
+      };
+
+      // If it's a hex color, return as-is
+      if (colorSource?.startsWith('#')) {
+        return colorSource;
+      }
+
+      // Otherwise look up from map, with fallback to white (for dark theme default)
+      return colorMap[colorSource] || '#FFFFFF';
+    };
 
     // Get account credentials through pumpd_restaurants relationship
     const { data: pumpdRestaurant, error: pumpdRestError } = await supabase
@@ -1410,27 +1706,89 @@ router.post('/configure-website', requireRegistrationWebsiteSettings, async (req
     if (restaurant.secondary_color) {
       command.push(`--secondary="${restaurant.secondary_color}"`);
     }
-    
+
+    // Helper to resolve color from config value
+    const resolveColor = (colorValue) => {
+      if (!colorValue) return null;
+      if (colorValue === 'primary') return restaurant.primary_color;
+      if (colorValue === 'secondary') return restaurant.secondary_color;
+      if (colorValue === 'black') return '#000000';
+      if (colorValue === 'white') return '#FFFFFF';
+      if (colorValue.startsWith('#')) return colorValue;
+      return null;
+    };
+
+    // Helper to get logo buffer from base64 or URL
+    const getLogoBuffer = async (logoUrl) => {
+      if (logoUrl.startsWith('data:image')) {
+        const base64Data = logoUrl.split(',')[1];
+        return Buffer.from(base64Data, 'base64');
+      } else if (logoUrl.startsWith('http')) {
+        const axios = require('axios');
+        const response = await axios.get(logoUrl, { responseType: 'arraybuffer' });
+        return Buffer.from(response.data);
+      }
+      return null;
+    };
+
+    // Get tint configs from request (now with darkColor and lightColor)
+    const { navLogoTintConfig, headerLogoTintConfig } = req.body;
+
+    // Resolve nav logo colors
+    const navDarkColor = resolveColor(navLogoTintConfig?.darkColor);
+    const navLightColor = resolveColor(navLogoTintConfig?.lightColor);
+
+    // Resolve header logo colors
+    const headerDarkColor = resolveColor(headerLogoTintConfig?.darkColor);
+    const headerLightColor = resolveColor(headerLogoTintConfig?.lightColor);
+
     // Add optional fields if available
+    // Process nav bar logo with optional tinting and resizing (max 150x80 for nav bar fit)
+    const NAV_LOGO_MAX_WIDTH = 150;
+    const NAV_LOGO_MAX_HEIGHT = 80;
+
     if (restaurant.logo_nobg_url) {
-      // Check if it's a base64 data URL
-      if (restaurant.logo_nobg_url.startsWith('data:image')) {
-        // Convert base64 to PNG file
-        const logoPath = await convertBase64ToPng(restaurant.logo_nobg_url);
-        if (logoPath) {
+      try {
+        let navLogoBuffer = await getLogoBuffer(restaurant.logo_nobg_url);
+
+        if (navLogoBuffer) {
+          // Apply dual-color tint if configured
+          if (navDarkColor || navLightColor) {
+            navLogoBuffer = await colorizeLogoToColor(navLogoBuffer, navDarkColor, navLightColor);
+            console.log(`[Website Config] Nav logo tinted - dark:${navDarkColor || 'keep'}, light:${navLightColor || 'keep'}`);
+          }
+
+          // Resize the buffer
+          const sharp = require('sharp');
+          const fs = require('fs').promises;
+          const os = require('os');
+
+          const resized = await sharp(navLogoBuffer)
+            .resize(NAV_LOGO_MAX_WIDTH, NAV_LOGO_MAX_HEIGHT, {
+              fit: 'inside',
+              withoutEnlargement: true
+            })
+            .png()
+            .toBuffer();
+
+          const tempDir = os.tmpdir();
+          const logoPath = path.join(tempDir, `nav-logo-${Date.now()}.png`);
+          await fs.writeFile(logoPath, resized);
+
           command.push(`--logo="${logoPath}"`);
-          tempFiles.push(logoPath); // Track for cleanup
+          tempFiles.push(logoPath);
+          console.log('[Website Config] Nav bar logo processed:', logoPath);
         }
-      } else if (restaurant.logo_nobg_url.startsWith('http')) {
-        // Download logo to temp location
-        const logoPath = await downloadLogoIfNeeded(restaurant.logo_nobg_url);
-        if (logoPath) {
-          command.push(`--logo="${logoPath}"`);
-          tempFiles.push(logoPath); // Track for cleanup
+      } catch (navLogoError) {
+        console.error('[Website Config] Failed to process nav logo:', navLogoError.message);
+        // Fallback to original if processing fails
+        if (restaurant.logo_nobg_url.startsWith('http')) {
+          const downloadedLogo = await downloadLogoIfNeeded(restaurant.logo_nobg_url);
+          if (downloadedLogo) {
+            command.push(`--logo="${downloadedLogo}"`);
+            tempFiles.push(downloadedLogo);
+          }
         }
-      } else {
-        // Local path
-        command.push(`--logo="${restaurant.logo_nobg_url}"`);
       }
     }
 
@@ -1481,7 +1839,7 @@ router.post('/configure-website', requireRegistrationWebsiteSettings, async (req
     }
 
     // Handle header configuration
-    const { headerConfig, itemsConfig } = req.body;
+    const { headerConfig, itemsConfig, textColorConfig, logoColorConfig } = req.body;
 
     if (headerConfig?.enabled) {
       command.push('--header-enabled=true');
@@ -1491,39 +1849,79 @@ router.post('/configure-website', requireRegistrationWebsiteSettings, async (req
       const bgImage = restaurant[bgSource];
 
       if (bgImage) {
+        let bgPath = null;
+
         if (bgImage.startsWith('data:image')) {
-          const bgPath = await convertBase64ToPng(bgImage);
-          if (bgPath) {
-            command.push(`--header-bg="${bgPath}"`);
-            tempFiles.push(bgPath);
-            console.log('[Website Config] Header background ready:', bgPath);
+          // Convert base64 to buffer first, then process for size limits
+          const matches = bgImage.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
+          if (matches && matches.length === 3) {
+            const buffer = Buffer.from(matches[2], 'base64');
+            bgPath = await processHeaderBackgroundImage(buffer);
           }
         } else if (bgImage.startsWith('http')) {
-          const bgPath = await downloadLogoIfNeeded(bgImage);
-          if (bgPath) {
-            command.push(`--header-bg="${bgPath}"`);
-            tempFiles.push(bgPath);
-            console.log('[Website Config] Header background downloaded:', bgPath);
+          // Download first, then process for size limits
+          const downloadedPath = await downloadLogoIfNeeded(bgImage);
+          if (downloadedPath) {
+            bgPath = await processHeaderBackgroundImage(downloadedPath);
+            // Clean up downloaded file if processing created a new one
+            if (bgPath && bgPath !== downloadedPath) {
+              try { await fs.unlink(downloadedPath); } catch {}
+            }
           }
+        }
+
+        if (bgPath) {
+          command.push(`--header-bg="${bgPath}"`);
+          tempFiles.push(bgPath);
+          console.log('[Website Config] Header background ready:', bgPath);
         }
       }
 
-      // Process header logo (resized no-bg logo to max 200x200)
+      // Process header logo with optional tinting (resized no-bg logo to max 200x200)
+      const HEADER_LOGO_MAX_WIDTH = 300;
+      const HEADER_LOGO_MAX_HEIGHT = 300;
+
       if (restaurant.logo_nobg_url) {
-        if (restaurant.logo_nobg_url.startsWith('data:image')) {
-          const headerLogoPath = await resizeBase64ImageToFile(restaurant.logo_nobg_url, 200, 200);
-          if (headerLogoPath) {
+        try {
+          let headerLogoBuffer = await getLogoBuffer(restaurant.logo_nobg_url);
+
+          if (headerLogoBuffer) {
+            // Apply dual-color tint if configured
+            if (headerDarkColor || headerLightColor) {
+              headerLogoBuffer = await colorizeLogoToColor(headerLogoBuffer, headerDarkColor, headerLightColor);
+              console.log(`[Website Config] Header logo tinted - dark:${headerDarkColor || 'keep'}, light:${headerLightColor || 'keep'}`);
+            }
+
+            // Resize the buffer
+            const sharp = require('sharp');
+            const fs = require('fs').promises;
+            const os = require('os');
+
+            const resized = await sharp(headerLogoBuffer)
+              .resize(HEADER_LOGO_MAX_WIDTH, HEADER_LOGO_MAX_HEIGHT, {
+                fit: 'inside',
+                withoutEnlargement: true
+              })
+              .png()
+              .toBuffer();
+
+            const tempDir = os.tmpdir();
+            const headerLogoPath = path.join(tempDir, `header-logo-${Date.now()}.png`);
+            await fs.writeFile(headerLogoPath, resized);
+
             command.push(`--header-logo="${headerLogoPath}"`);
             tempFiles.push(headerLogoPath);
-            console.log('[Website Config] Header logo resized and ready:', headerLogoPath);
+            console.log('[Website Config] Header logo processed:', headerLogoPath);
           }
-        } else if (restaurant.logo_nobg_url.startsWith('http')) {
-          // Download first, then would need to resize - for now just download
-          const downloadedLogo = await downloadLogoIfNeeded(restaurant.logo_nobg_url);
-          if (downloadedLogo) {
-            command.push(`--header-logo="${downloadedLogo}"`);
-            tempFiles.push(downloadedLogo);
-            console.log('[Website Config] Header logo downloaded:', downloadedLogo);
+        } catch (headerLogoError) {
+          console.error('[Website Config] Failed to process header logo:', headerLogoError.message);
+          // Fallback to original if processing fails
+          if (restaurant.logo_nobg_url.startsWith('http')) {
+            const downloadedLogo = await downloadLogoIfNeeded(restaurant.logo_nobg_url);
+            if (downloadedLogo) {
+              command.push(`--header-logo="${downloadedLogo}"`);
+              tempFiles.push(downloadedLogo);
+            }
           }
         }
       }
@@ -1533,6 +1931,19 @@ router.post('/configure-website', requireRegistrationWebsiteSettings, async (req
     const itemLayout = itemsConfig?.layout || 'list';
     command.push(`--item-layout="${itemLayout}"`);
     console.log('[Website Config] Item layout:', itemLayout);
+
+    // Handle text color configuration
+    if (textColorConfig?.navText) {
+      const navTextColor = resolveColorValue(textColorConfig.navText);
+      command.push(`--nav-text-color="${navTextColor}"`);
+      console.log('[Website Config] Nav text color:', navTextColor);
+    }
+
+    if (textColorConfig?.boxText) {
+      const boxTextColor = resolveColorValue(textColorConfig.boxText);
+      command.push(`--box-text-color="${boxTextColor}"`);
+      console.log('[Website Config] Box text color:', boxTextColor);
+    }
 
     // Add location if we have address (extract city/area from address)
     if (restaurant.address) {
@@ -1816,6 +2227,190 @@ async function resizeBase64ImageToFile(base64Image, maxWidth, maxHeight) {
     console.error('[Website Config] Failed to resize image:', error.message);
     return null;
   }
+}
+
+/**
+ * Resizes an image file to fit within max dimensions while maintaining aspect ratio
+ * @param {string} inputFilePath - Path to the image file
+ * @param {number} maxWidth - Maximum width in pixels
+ * @param {number} maxHeight - Maximum height in pixels
+ * @returns {Promise<string|null>} - Path to resized temp file, or null on failure
+ */
+async function resizeFileToFile(inputFilePath, maxWidth, maxHeight) {
+  try {
+    const sharp = require('sharp');
+    const fsPromises = require('fs').promises;
+    const os = require('os');
+
+    // Read the input file
+    const inputBuffer = await fsPromises.readFile(inputFilePath);
+
+    // Resize with sharp - maintains aspect ratio, fits within bounds
+    const resized = await sharp(inputBuffer)
+      .resize(maxWidth, maxHeight, {
+        fit: 'inside',
+        withoutEnlargement: true
+      })
+      .png()
+      .toBuffer();
+
+    // Write to temp file
+    const tempDir = os.tmpdir();
+    const tempFile = path.join(tempDir, `nav-logo-${Date.now()}.png`);
+    await fsPromises.writeFile(tempFile, resized);
+
+    console.log(`[Website Config] Resized file to max ${maxWidth}x${maxHeight}: ${tempFile}`);
+    return tempFile;
+  } catch (error) {
+    console.error('[Website Config] Failed to resize file:', error.message);
+    return null;
+  }
+}
+
+/**
+ * Process header background image to ensure it's under 1MB
+ * Resizes to max dimensions and iteratively reduces quality if needed
+ * @param {Buffer|string} input - Image buffer or file path
+ * @param {number} maxWidth - Maximum width (default 1920)
+ * @param {number} maxHeight - Maximum height (default 1080)
+ * @param {number} maxSizeBytes - Maximum file size in bytes (default 1MB)
+ * @returns {Promise<string|null>} - Path to processed temp file
+ */
+async function processHeaderBackgroundImage(input, maxWidth = 1920, maxHeight = 1080, maxSizeBytes = 1048576) {
+  const sharp = require('sharp');
+  const fsPromises = require('fs').promises;
+  const os = require('os');
+
+  try {
+    // Get input as buffer
+    let inputBuffer;
+    if (Buffer.isBuffer(input)) {
+      inputBuffer = input;
+    } else if (typeof input === 'string') {
+      inputBuffer = await fsPromises.readFile(input);
+    } else {
+      console.error('[Website Config] Invalid input type for header background');
+      return null;
+    }
+
+    // Initial resize
+    let image = sharp(inputBuffer);
+    const metadata = await image.metadata();
+
+    // Resize if too large
+    if (metadata.width > maxWidth || metadata.height > maxHeight) {
+      image = image.resize(maxWidth, maxHeight, {
+        fit: 'inside',
+        withoutEnlargement: true
+      });
+    }
+
+    // Start with quality 85, reduce until under size limit or quality 50
+    let quality = 85;
+    let outputBuffer;
+
+    while (quality >= 50) {
+      outputBuffer = await image
+        .jpeg({ quality, progressive: true, mozjpeg: true })
+        .toBuffer();
+
+      if (outputBuffer.length <= maxSizeBytes) {
+        break;
+      }
+
+      console.log(`[Website Config] Header BG size ${(outputBuffer.length / 1024 / 1024).toFixed(2)}MB > 1MB, reducing quality to ${quality - 10}`);
+      quality -= 10;
+    }
+
+    // Write to temp file
+    const tempDir = os.tmpdir();
+    const tempFile = path.join(tempDir, `header-bg-${Date.now()}.jpg`);
+    await fsPromises.writeFile(tempFile, outputBuffer);
+
+    const finalSize = outputBuffer.length / 1024;
+    console.log(`[Website Config] Header background processed: ${finalSize.toFixed(0)}KB (quality: ${quality})`);
+
+    return tempFile;
+  } catch (error) {
+    console.error('[Website Config] Failed to process header background:', error.message);
+    return null;
+  }
+}
+
+/**
+ * Colorizes a logo image with separate colors for dark and light pixels
+ * Uses luminance to determine if a pixel is "dark" or "light" and maps accordingly
+ * @param {Buffer} imageBuffer - The original image buffer
+ * @param {string|null} darkColor - Hex color for dark pixels (null = keep original)
+ * @param {string|null} lightColor - Hex color for light pixels (null = keep original)
+ * @returns {Promise<Buffer>} - Colorized image buffer
+ */
+async function colorizeLogoToColor(imageBuffer, darkColor, lightColor) {
+  const sharp = require('sharp');
+
+  // Parse colors
+  const parseHex = (hex) => {
+    if (!hex) return null;
+    const h = hex.replace('#', '');
+    return {
+      r: parseInt(h.substring(0, 2), 16),
+      g: parseInt(h.substring(2, 4), 16),
+      b: parseInt(h.substring(4, 6), 16)
+    };
+  };
+
+  const dark = parseHex(darkColor);
+  const light = parseHex(lightColor);
+
+  // If neither color is set, return original
+  if (!dark && !light) {
+    return imageBuffer;
+  }
+
+  // Get raw pixel data at original resolution
+  const { data, info } = await sharp(imageBuffer)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  // Luminance threshold (0.5 = middle gray)
+  const THRESHOLD = 0.5;
+
+  // Process pixels
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    const a = data[i + 3];
+
+    if (a > 0) {
+      // Calculate luminance (0 = black, 1 = white)
+      const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+      if (luminance < THRESHOLD) {
+        // Dark pixel
+        if (dark) {
+          data[i] = dark.r;
+          data[i + 1] = dark.g;
+          data[i + 2] = dark.b;
+        }
+      } else {
+        // Light pixel
+        if (light) {
+          data[i] = light.r;
+          data[i + 1] = light.g;
+          data[i + 2] = light.b;
+        }
+      }
+    }
+  }
+
+  // Convert back to PNG - use compression level 0 for no quality loss
+  return sharp(data, {
+    raw: { width: info.width, height: info.height, channels: 4 }
+  })
+    .png({ compressionLevel: 0 })
+    .toBuffer();
 }
 
 /**
@@ -2471,7 +3066,7 @@ router.post('/add-option-sets', requireRegistrationOptionSets, async (req, res) 
 
     const { stdout, stderr } = await execAsync(command, {
       env: { ...process.env, DEBUG_MODE: 'false' },
-      timeout: 300000 // 5 minute timeout
+      timeout: 1200000 // 20 minute timeout
     });
 
     // Clean up temp file
@@ -2759,7 +3354,11 @@ router.post('/update-onboarding-record', requireRegistrationOnboardingSync, asyn
         metadata,
         contact_name,
         contact_phone,
-        organisation_name
+        organisation_name,
+        nzbn,
+        company_name,
+        full_legal_name,
+        gst_number
       `)
       .eq('id', restaurantId)
       .eq('organisation_id', organisationId)
@@ -2798,32 +3397,94 @@ router.post('/update-onboarding-record', requireRegistrationOnboardingSync, asyn
     // Format operating hours
     const formattedHours = onboardingService.formatOperatingHours(restaurant.opening_hours);
     
-    // Prepare update data with proper field mappings:
-    // 1. organisation_name: restaurants.organisation_name -> user_onboarding.organisation_name
-    // 2. restaurant_id: pumpd_restaurants.pumpd_restaurant_id -> user_onboarding.restaurant_id
-    // 3. contact_person: restaurants.contact_name -> user_onboarding.contact_person
-    // 4. director_mobile_number: restaurants.contact_phone -> user_onboarding.director_mobile_number
-    const updateData = {
-      restaurant_name: restaurant.name,
-      organisation_name: restaurant.organisation_name || '', // Map from restaurants.organisation_name
-      restaurant_id: pumpdRestaurant?.pumpd_restaurant_id || null, // Map from pumpd_restaurants.pumpd_restaurant_id
-      address: restaurant.address || additionalData.address || '',
-      email: restaurant.email || userEmail,
-      phone: restaurant.phone || additionalData.phone || '',
-      contact_person: updates.contactPerson || restaurant.contact_name || contactPerson || additionalData.contactPerson || '', // Map from updates or restaurants.contact_name
-      director_mobile_number: restaurant.contact_phone || '', // Map from restaurants.contact_phone
-      venue_operating_hours: formattedHours || additionalData.operatingHours || 'Hours not set',
-      primary_color: restaurant.primary_color || '#3f92ff',
-      secondary_color: restaurant.secondary_color || null,
-      facebook_url: restaurant.facebook_url || null,
-      instagram_url: restaurant.instagram_url || null,
-      stripe_connect_link: restaurant.stripe_connect_url || null,
-      logo_url: restaurant.hosted_logo_url || null,
-      ...additionalData
-    };
-    
-    console.log('[Onboarding] Updating record with data');
-    
+    // Prepare update data with proper field mappings
+    // IMPORTANT: Only include fields that have actual values to avoid overwriting existing data
+    const updateData = {};
+
+    // Core fields - always include if we have them
+    if (restaurant.name) {
+      updateData.restaurant_name = restaurant.name;
+      updateData.trading_name = restaurant.name;
+    }
+    if (restaurant.email || userEmail) {
+      updateData.email = restaurant.email || userEmail;
+    }
+
+    // Optional fields - only include if we have values (don't send null/empty)
+    if (restaurant.organisation_name) {
+      updateData.organisation_name = restaurant.organisation_name;
+    }
+    if (pumpdRestaurant?.pumpd_restaurant_id) {
+      updateData.restaurant_id = pumpdRestaurant.pumpd_restaurant_id;
+    }
+    if (restaurant.address || additionalData.address) {
+      updateData.address = restaurant.address || additionalData.address;
+    }
+    if (restaurant.phone || additionalData.phone) {
+      updateData.phone = restaurant.phone || additionalData.phone;
+    }
+
+    // Contact fields
+    const contactPersonValue = updates.contactPerson || restaurant.contact_name || contactPerson || additionalData.contactPerson;
+    if (contactPersonValue) {
+      updateData.contact_person = contactPersonValue;
+    }
+    if (restaurant.contact_phone) {
+      updateData.director_mobile_number = restaurant.contact_phone;
+    }
+    if (restaurant.full_legal_name) {
+      updateData.director_name = restaurant.full_legal_name;
+    }
+
+    // Operating hours
+    if (formattedHours || additionalData.operatingHours) {
+      updateData.venue_operating_hours = formattedHours || additionalData.operatingHours;
+    }
+
+    // Branding
+    if (restaurant.primary_color) {
+      updateData.primary_color = restaurant.primary_color;
+    }
+    if (restaurant.secondary_color) {
+      updateData.secondary_color = restaurant.secondary_color;
+    }
+
+    // Social/URLs
+    if (restaurant.facebook_url) {
+      updateData.facebook_url = restaurant.facebook_url;
+    }
+    if (restaurant.instagram_url) {
+      updateData.instagram_url = restaurant.instagram_url;
+    }
+    if (restaurant.stripe_connect_url) {
+      updateData.stripe_connect_link = restaurant.stripe_connect_url;
+    }
+    if (restaurant.hosted_logo_url) {
+      updateData.logo_url = restaurant.hosted_logo_url;
+    }
+
+    // Companies Office fields - only include if we have values
+    if (restaurant.nzbn) {
+      updateData.nzbn = restaurant.nzbn;
+    }
+    if (restaurant.company_name) {
+      updateData.company_name = restaurant.company_name;
+    }
+    if (restaurant.gst_number) {
+      updateData.gst_number = restaurant.gst_number;
+    }
+
+    // Merge any additional data (but filter out null/empty values)
+    if (additionalData) {
+      for (const [key, value] of Object.entries(additionalData)) {
+        if (value !== null && value !== undefined && value !== '') {
+          updateData[key] = value;
+        }
+      }
+    }
+
+    console.log('[Onboarding] Fields being updated:', Object.keys(updateData));
+
     // Update record
     const updated = await onboardingService.updateOnboardingRecord(
       onboarding.onboarding_id, 
@@ -3716,6 +4377,124 @@ router.get('/setup-status/:restaurantId', async (req, res) => {
     });
   } catch (error) {
     console.error('[Setup Status] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ============================================================================
+// SINGLE RESTAURANT ASYNC YOLO MODE
+// ============================================================================
+
+/**
+ * Start async YOLO mode execution for a single restaurant
+ * Returns immediately with job ID for polling
+ *
+ * This enables the RestaurantDetail.tsx YoloModeDialog to start execution
+ * that survives dialog close and page navigation.
+ */
+router.post('/execute-single-restaurant', async (req, res) => {
+  const { restaurantId, formData } = req.body;
+  const organisationId = req.user?.organisationId;
+  const authToken = req.headers.authorization?.replace('Bearer ', '');
+
+  console.log('[Single Restaurant YOLO] Execution request:', {
+    restaurantId,
+    organisationId,
+    hasFormData: !!formData
+  });
+
+  if (!organisationId) {
+    return res.status(401).json({
+      success: false,
+      error: 'Organisation context required'
+    });
+  }
+
+  if (!restaurantId) {
+    return res.status(400).json({
+      success: false,
+      error: 'Restaurant ID is required'
+    });
+  }
+
+  if (!formData) {
+    return res.status(400).json({
+      success: false,
+      error: 'Form data is required'
+    });
+  }
+
+  try {
+    const registrationBatchService = require('../services/registration-batch-service');
+
+    // Build auth context for server-to-server API calls
+    const authContext = {
+      token: authToken,
+      organisationId: organisationId
+    };
+
+    // Start async execution (returns immediately)
+    const { jobId } = await registrationBatchService.executeYoloModeForSingleRestaurant(
+      restaurantId,
+      formData,
+      organisationId,
+      authContext
+    );
+
+    console.log('[Single Restaurant YOLO] Execution started, job ID:', jobId);
+
+    res.json({
+      success: true,
+      jobId,
+      message: 'YOLO mode execution started'
+    });
+
+  } catch (error) {
+    console.error('[Single Restaurant YOLO] Error starting execution:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Get YOLO mode execution progress for a single restaurant
+ * Used by frontend polling to check status and display progress
+ */
+router.get('/single-restaurant-progress/:restaurantId', async (req, res) => {
+  const { restaurantId } = req.params;
+  const organisationId = req.user?.organisationId;
+
+  if (!organisationId) {
+    return res.status(401).json({
+      success: false,
+      error: 'Organisation context required'
+    });
+  }
+
+  try {
+    const registrationBatchService = require('../services/registration-batch-service');
+
+    const progress = await registrationBatchService.getSingleRestaurantYoloProgress(
+      restaurantId,
+      organisationId
+    );
+
+    if (!progress) {
+      return res.json({
+        status: 'not_started',
+        message: 'No YOLO mode execution found for this restaurant'
+      });
+    }
+
+    res.json(progress);
+
+  } catch (error) {
+    console.error('[Single Restaurant YOLO] Error getting progress:', error);
     res.status(500).json({
       success: false,
       error: error.message

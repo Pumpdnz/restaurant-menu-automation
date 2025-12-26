@@ -349,62 +349,66 @@ export default function Sequences() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">Sequences</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage sequence instances and templates
-          </p>
+    <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col -mt-6 -mb-6">
+      {/* Sticky Header + Tabs */}
+      <div className="sticky -top-6 z-40 bg-white/80 backdrop-blur-sm -mx-6 px-6 pt-6 pb-4 border border-white/20 shadow-lg space-y-4 rounded-b-[16px]">
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold">Sequences</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Manage sequence instances and templates
+            </p>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="bg-gradient-to-r from-brand-blue to-brand-green">
+                <Plus className="h-4 w-4 mr-2" />
+                New Sequence
+                <ChevronDown className="h-4 w-4 ml-2" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleNewSequenceClick('single')}>
+                <div className="flex flex-col">
+                  <span className="font-medium">Single Restaurant</span>
+                  <span className="text-xs text-muted-foreground">
+                    Start a sequence for one restaurant
+                  </span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleNewSequenceClick('bulk')}>
+                <div className="flex flex-col">
+                  <span className="font-medium">Multiple Restaurants (Bulk)</span>
+                  <span className="text-xs text-muted-foreground">
+                    Start the same sequence for multiple restaurants
+                  </span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setCreateTemplateModalOpen(true)}>
+                <div className="flex flex-col">
+                  <span className="font-medium">New Sequence Template</span>
+                  <span className="text-xs text-muted-foreground">
+                    Create a reusable sequence workflow
+                  </span>
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button className="bg-gradient-to-r from-brand-blue to-brand-green">
-              <Plus className="h-4 w-4 mr-2" />
-              New Sequence
-              <ChevronDown className="h-4 w-4 ml-2" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleNewSequenceClick('single')}>
-              <div className="flex flex-col">
-                <span className="font-medium">Single Restaurant</span>
-                <span className="text-xs text-muted-foreground">
-                  Start a sequence for one restaurant
-                </span>
-              </div>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleNewSequenceClick('bulk')}>
-              <div className="flex flex-col">
-                <span className="font-medium">Multiple Restaurants (Bulk)</span>
-                <span className="text-xs text-muted-foreground">
-                  Start the same sequence for multiple restaurants
-                </span>
-              </div>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setCreateTemplateModalOpen(true)}>
-              <div className="flex flex-col">
-                <span className="font-medium">New Sequence Template</span>
-                <span className="text-xs text-muted-foreground">
-                  Create a reusable sequence workflow
-                </span>
-              </div>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={handleTabChange}>
+        {/* TabsList */}
         <TabsList size="full">
           <TabsTrigger size="full" variant="blue" value="instances">Instances</TabsTrigger>
           <TabsTrigger size="full" variant="blue" value="templates">Sequence Templates</TabsTrigger>
           <TabsTrigger size="full" variant="blue" value="message-templates">Message Templates</TabsTrigger>
         </TabsList>
+      </div>
 
+      {/* Scrollable Content */}
+      <div className="pt-6 space-y-6">
         {/* INSTANCES TAB */}
-        <TabsContent value="instances" className="space-y-6">
+        <TabsContent value="instances" className="space-y-6 mt-0">
           {/* Filters Card */}
           <div className="bg-card border rounded-lg p-4">
             <div className="flex items-center justify-between mb-4">
@@ -534,20 +538,7 @@ export default function Sequences() {
         </TabsContent>
 
         {/* TEMPLATES TAB */}
-        <TabsContent value="templates" className="space-y-6">
-          {/* Header with Create Button */}
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="text-sm text-muted-foreground">
-                Create and manage reusable task sequence workflows
-              </p>
-            </div>
-            <Button onClick={() => setCreateTemplateModalOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Template
-            </Button>
-          </div>
-
+        <TabsContent value="templates" className="space-y-6 mt-0">
           {/* Filters */}
           <div className="flex gap-4">
             <div className="relative flex-1 max-w-sm">
@@ -608,40 +599,36 @@ export default function Sequences() {
         </TabsContent>
 
         {/* MESSAGE TEMPLATES TAB */}
-        <TabsContent value="message-templates" className="space-y-6">
-          {/* Header with Create Button */}
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="text-sm text-muted-foreground">
-                Create and manage reusable message templates for tasks and sequences
-              </p>
-            </div>
-            <Button onClick={() => setCreateMessageTemplateModalOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Message Template
-            </Button>
-          </div>
-
+        <TabsContent value="message-templates" className="space-y-6 mt-0">
           {/* Filters */}
           <div className="bg-card border rounded-lg p-4">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <Filter className="h-4 w-4 text-muted-foreground" />
                 <h3 className="font-medium">Filters</h3>
               </div>
-              {(messageTemplateFilterType !== 'all' || messageTemplateFilterActive !== 'all') && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setMessageTemplateFilterType('all');
-                    setMessageTemplateFilterActive('all');
-                  }}
-                >
-                  <FileText className="h-4 w-4 mr-1" />
-                  Clear All
-                </Button>
-              )}
+              <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+                {(messageTemplateFilterType !== 'all' || messageTemplateFilterActive !== 'all') && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setMessageTemplateFilterType('all');
+                      setMessageTemplateFilterActive('all');
+                    }}
+                  >
+                    <FileText className="h-4 w-4 mr-1" />
+                    Clear All
+                  </Button>
+                )}
+                {/* Create Button */}
+                <div className="flex justify-end">
+                  <Button onClick={() => setCreateMessageTemplateModalOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Message Template
+                  </Button>
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -733,8 +720,8 @@ export default function Sequences() {
                           {template.type === 'text' && <MessageSquare className="h-4 w-4" />}
                           <Badge variant="outline" className={
                             template.type === 'email' ? 'bg-blue-100 text-blue-800 border-blue-200' :
-                            template.type === 'social_message' ? 'bg-purple-100 text-purple-800 border-purple-200' :
-                            template.type === 'text' ? 'bg-green-100 text-green-800 border-green-200' : ''
+                              template.type === 'social_message' ? 'bg-purple-100 text-purple-800 border-purple-200' :
+                                template.type === 'text' ? 'bg-green-100 text-green-800 border-green-200' : ''
                           }>
                             {template.type.replace(/_/g, ' ')}
                           </Badge>
@@ -817,7 +804,7 @@ export default function Sequences() {
             </Table>
           </div>
         </TabsContent>
-      </Tabs>
+      </div>
 
       {/* Modals */}
       <SelectRestaurantForSequenceModal
@@ -922,6 +909,6 @@ export default function Sequences() {
           }}
         />
       )}
-    </div>
+    </Tabs>
   );
 }

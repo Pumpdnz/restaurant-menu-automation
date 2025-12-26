@@ -479,6 +479,20 @@ export function usePendingLeads(filters: PendingLeadsFilters = {}) {
 }
 
 /**
+ * Hook to fetch filter options for pending leads (unique cities and cuisines from jobs)
+ */
+export function usePendingLeadsFilterOptions() {
+  return useQuery<{ success: boolean; cities: string[]; cuisines: string[] }>({
+    queryKey: ['pending-leads-filter-options'],
+    queryFn: async () => {
+      const response = await api.get('/leads/pending/filter-options');
+      return response.data;
+    },
+    staleTime: 30000, // Cache for 30 seconds
+  });
+}
+
+/**
  * Hook to fetch a single lead
  */
 export function useLead(leadId: string, options?: any) {
@@ -519,14 +533,36 @@ export function useUpdateLead() {
 }
 
 /**
+ * Parameters for converting leads to restaurants
+ */
+export interface ConvertLeadsParams {
+  leadIds: string[];
+  createRegistrationBatch?: boolean;
+  batchName?: string;
+  sourceLeadScrapeJobId?: string;
+}
+
+/**
  * Hook to convert leads to restaurants
  */
 export function useConvertLeadsToRestaurants() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (leadIds: string[]) => {
-      const response = await api.post('/leads/convert', { lead_ids: leadIds });
+    mutationFn: async (params: ConvertLeadsParams | string[]) => {
+      // Support both old (string[]) and new (ConvertLeadsParams) signatures
+      const isLegacy = Array.isArray(params);
+      const leadIds = isLegacy ? params : params.leadIds;
+      const createRegistrationBatch = isLegacy ? false : params.createRegistrationBatch;
+      const batchName = isLegacy ? undefined : params.batchName;
+      const sourceLeadScrapeJobId = isLegacy ? undefined : params.sourceLeadScrapeJobId;
+
+      const response = await api.post('/leads/convert', {
+        lead_ids: leadIds,
+        create_registration_batch: createRegistrationBatch,
+        batch_name: batchName,
+        source_lead_scrape_job_id: sourceLeadScrapeJobId,
+      });
       return response.data;
     },
     onSuccess: (data) => {

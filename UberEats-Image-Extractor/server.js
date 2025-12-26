@@ -2811,6 +2811,43 @@ app.post('/api/menus/:id/upload-images', async (req, res) => {
 });
 
 /**
+ * GET /api/menus/:id/cdn-stats
+ * Get CDN upload statistics for a menu
+ */
+app.get('/api/menus/:id/cdn-stats', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+
+    const stats = await db.getMenuCDNStats(id);
+
+    if (!stats) {
+      return res.status(404).json({
+        success: false,
+        error: 'Menu not found or no images'
+      });
+    }
+
+    res.json({
+      success: true,
+      stats
+    });
+  } catch (error) {
+    console.error('[API] Error getting CDN stats:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
  * Helper function to process synchronous upload
  */
 async function processSyncUpload(batchId, menuId, images, restaurantName) {
@@ -6703,7 +6740,7 @@ app.post('/api/platform-details-extraction', authMiddleware, requirePlatformDeta
     
     // Validate platform capabilities
     const platformCapabilities = {
-      'ubereats': ['address', 'hours'],
+      'ubereats': ['address', 'hours', 'og_image'],
       'doordash': ['hours'], // DoorDash can only reliably extract hours
       'website': ['address', 'hours', 'phone'],
       'facebook': [],
@@ -6754,7 +6791,7 @@ app.post('/api/platform-details-extraction', authMiddleware, requirePlatformDeta
     // Build extraction prompt with platform-specific instructions
     let prompt = `Extract the following information for ${restaurantName || 'this restaurant'}: `;
     const requestedInfo = [];
-    
+
     if (extractFields.includes('address')) {
       requestedInfo.push('physical address (street address, not just area)');
     }
@@ -6813,18 +6850,32 @@ app.post('/api/platform-details-extraction', authMiddleware, requirePlatformDeta
           }
         }
       );
-      
+
       const extractedData = scrapeResponse.data?.data?.formats?.json || scrapeResponse.data?.data?.json || {};
-      
+      const metadata = scrapeResponse.data?.data?.metadata || {};
+
+      // DEBUG: Log full response to verify metadata structure matches Firecrawl Dashboard
+      console.log('[Platform Details Extraction] Full Firecrawl response data:', JSON.stringify(scrapeResponse.data?.data, null, 2));
+      console.log('[Platform Details Extraction] Metadata ogImage:', metadata.ogImage || metadata['og:image']);
       console.log('[Platform Details Extraction] Raw extracted data:', extractedData);
-      
+
+      // For UberEats og_image: Extract from metadata instead of LLM extraction
+      if (extractFields.includes('og_image') && platform === 'ubereats') {
+        const ogImageUrl = metadata.ogImage || metadata['og:image'];
+        if (ogImageUrl && ogImageUrl !== 'null' && ogImageUrl !== '') {
+          console.log('[Platform Details Extraction] Using og:image from metadata:', ogImageUrl);
+          extractedData.og_image = ogImageUrl;
+        }
+      }
+
       // Check if we got valid data (not 'null' strings or empty data)
       const hasValidData = (
         (extractedData.address && extractedData.address !== 'null' && extractedData.address !== '') ||
         (extractedData.phone && extractedData.phone !== 'null' && extractedData.phone !== '') ||
-        (extractedData.openingHours && extractedData.openingHours.length > 0)
+        (extractedData.openingHours && extractedData.openingHours.length > 0) ||
+        (extractedData.og_image && extractedData.og_image !== 'null' && extractedData.og_image !== '')
       );
-      
+
       if (!hasValidData) {
         console.log('[Platform Details Extraction] No valid data extracted from:', url);
         return res.json({
@@ -6842,10 +6893,12 @@ app.post('/api/platform-details-extraction', authMiddleware, requirePlatformDeta
       };
       
       // Process address (check it's not 'null' string or numbers-only)
-      if (extractFields.includes('address') && extractedData.address && 
-          extractedData.address !== 'null' && extractedData.address !== '' && 
+      if (extractFields.includes('address') && extractedData.address &&
+          extractedData.address !== 'null' && extractedData.address !== '' &&
           extractedData.address !== 'N/A' && !/^\d+$/.test(extractedData.address)) {
-        result.extracted.address = extractedData.address;
+        // Clean address: remove trailing ", {region} {postcode}" pattern (e.g., ", Canterbury 8014", ", NI 1045")
+        const cleanedAddress = extractedData.address.replace(/,\s*[A-Za-z]+\s+\d{4}\s*$/i, '').trim();
+        result.extracted.address = cleanedAddress || extractedData.address;
       }
       
       // Process phone number with cleaning for NZ numbers
@@ -6990,7 +7043,24 @@ app.post('/api/platform-details-extraction', authMiddleware, requirePlatformDeta
         
         result.extracted.hours = formattedHours;
       }
-      
+
+      // Process og_image - download and convert to base64
+      if (extractFields.includes('og_image') && extractedData.og_image &&
+          extractedData.og_image !== 'null' && extractedData.og_image !== '') {
+        try {
+          console.log('[Platform Details Extraction] Downloading og:image:', extractedData.og_image);
+          const logoService = require('./src/services/logo-extraction-service');
+          const ogImageBuffer = await logoService.downloadImageToBuffer(extractedData.og_image, url);
+          const ogImageBase64 = `data:image/jpeg;base64,${ogImageBuffer.toString('base64')}`;
+          result.extracted.og_image = ogImageBase64;
+          console.log('[Platform Details Extraction] OG Image converted to base64');
+        } catch (ogError) {
+          console.error('[Platform Details Extraction] Failed to convert og:image:', ogError.message);
+          // Keep the URL version as fallback
+          result.extracted.og_image = extractedData.og_image;
+        }
+      }
+
       // Update restaurant if ID provided
       if (restaurantId && db.isDatabaseAvailable()) {
         const updateData = {};
@@ -6999,6 +7069,9 @@ app.post('/api/platform-details-extraction', authMiddleware, requirePlatformDeta
         if (result.extracted.phone) updateData.phone = result.extracted.phone;
         if (result.extracted.hours && result.extracted.hours.length > 0) {
           updateData.opening_hours = result.extracted.hours;
+        }
+        if (result.extracted.og_image && platform === 'ubereats') {
+          updateData.ubereats_og_image = result.extracted.og_image;
         }
 
         if (Object.keys(updateData).length > 0) {
@@ -8472,6 +8545,25 @@ app.use('/api/city-codes', authMiddleware, requireLeadScraping, cityCodesRoutes)
 // Import and use organization settings routes (admin only, no feature flag required)
 const organizationSettingsRoutes = require('./src/routes/organization-settings-routes');
 app.use('/api/organization/settings', authMiddleware, organizationSettingsRoutes);
+
+/**
+ * === CONTACT DETAILS EXTRACTION ROUTES ===
+ */
+// Import and use companies office routes (with auth + feature flag middleware)
+const { requireContactDetailsExtraction } = require('./middleware/feature-flags');
+const companiesOfficeRoutes = require('./src/routes/companies-office-routes');
+app.use('/api/companies-office', authMiddleware, requireContactDetailsExtraction, companiesOfficeRoutes);
+
+// Import and use email/phone extraction routes
+const emailPhoneRoutes = require('./src/routes/email-phone-routes');
+app.use('/api/contact-extraction', authMiddleware, requireContactDetailsExtraction, emailPhoneRoutes);
+
+/**
+ * === REGISTRATION BATCH ROUTES ===
+ */
+// Import and use registration batch routes (for Phase 2 batch orchestration)
+const registrationBatchRoutes = require('./src/routes/registration-batch-routes');
+app.use('/api/registration-batches', authMiddleware, registrationBatchRoutes);
 
 /**
  * Serve static files and handle SPA routes

@@ -6,7 +6,7 @@ import {
   Download,
   Menu,
   BarChart,
-  History,
+  Zap,
   Settings,
   Shield,
   Video,
@@ -43,11 +43,13 @@ const NavigationItems = ({ collapsed }) => {
       if (current === undefined || current === null) return false;
       current = current[part];
     }
+    // If flag doesn't exist, return false
+    if (current === undefined || current === null) return false;
     // Handle both { enabled: true } format and direct boolean
-    if (typeof current === 'object' && current !== null) {
-      return current.enabled !== false;
+    if (typeof current === 'object') {
+      return current.enabled === true;
     }
-    return current !== false;
+    return current === true;
   };
 
   const navigationItems = useMemo(() => {
@@ -67,6 +69,10 @@ const NavigationItems = ({ collapsed }) => {
       items.push({ href: '/leads', label: 'Lead Scraping', icon: Users });
     }
 
+    if (isFeatureEnabled('registrationBatches')) {
+    items.push({ href: '/registration-batches', label: 'Automation', icon: Zap });
+    }
+    
     items.push({ href: '/extractions', label: 'Extractions', icon: Download });
     items.push({ href: '/menus', label: 'Menus', icon: Menu });
 
@@ -75,8 +81,11 @@ const NavigationItems = ({ collapsed }) => {
       items.push({ href: '/social-media', label: 'Social Media', icon: Video });
     }
 
-    items.push({ href: '/analytics', label: 'Analytics', icon: BarChart });
-    items.push({ href: '/history', label: 'History', icon: History });
+    // Analytics - conditionally show based on feature flag
+    if (isFeatureEnabled('analytics')) {
+      items.push({ href: '/analytics', label: 'Analytics', icon: BarChart });
+    }
+
     items.push({ href: '/settings', label: 'Settings', icon: Settings });
 
     // Add Super Admin link if user is super admin

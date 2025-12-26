@@ -55,6 +55,11 @@ const UsageEventType = {
   // Branding Extraction Events
   FIRECRAWL_BRANDING_EXTRACTION: 'firecrawl_branding_extraction',
 
+  // Contact Details Extraction Events
+  COMPANIES_OFFICE_SEARCH: 'companies_office_search',
+  COMPANIES_OFFICE_DETAIL: 'companies_office_detail',
+  EMAIL_PHONE_EXTRACTION: 'email_phone_extraction',
+
   // Registration Events (tracking for future billing)
   REGISTRATION_USER_ACCOUNT: 'registration_user_account',
   REGISTRATION_RESTAURANT: 'registration_restaurant',
@@ -89,6 +94,10 @@ const DEFAULT_BILLING_RATES = {
   [UsageEventType.LEAD_SCRAPE_API_CALL]: 0.05,
   [UsageEventType.LEAD_CONVERTED_TO_RESTAURANT]: 0.25,
   [UsageEventType.FIRECRAWL_BRANDING_EXTRACTION]: 0.20,
+  // Contact Details Extraction
+  [UsageEventType.COMPANIES_OFFICE_SEARCH]: 0.10,
+  [UsageEventType.COMPANIES_OFFICE_DETAIL]: 0.05,
+  [UsageEventType.EMAIL_PHONE_EXTRACTION]: 0.05,
   // Registration events - no charge for now
   [UsageEventType.REGISTRATION_USER_ACCOUNT]: 0.00,
   [UsageEventType.REGISTRATION_RESTAURANT]: 0.00,
@@ -304,6 +313,27 @@ class UsageTrackingService {
    */
   static async trackBrandingExtraction(organisationId, metadata = {}) {
     await this.trackEvent(organisationId, UsageEventType.FIRECRAWL_BRANDING_EXTRACTION, 1, metadata);
+  }
+
+  /**
+   * Track contact details extraction
+   * @param {string} organisationId - Organization UUID
+   * @param {string} extractionType - 'companies_office_search', 'companies_office_detail', or 'email_phone'
+   * @param {object} metadata - Should include restaurant_id, and optionally company_number, source_url
+   */
+  static async trackContactExtraction(organisationId, extractionType, metadata = {}) {
+    const eventTypeMap = {
+      'companies_office_search': UsageEventType.COMPANIES_OFFICE_SEARCH,
+      'companies_office_detail': UsageEventType.COMPANIES_OFFICE_DETAIL,
+      'email_phone': UsageEventType.EMAIL_PHONE_EXTRACTION
+    };
+
+    const eventType = eventTypeMap[extractionType];
+    if (eventType) {
+      await this.trackEvent(organisationId, eventType, 1, metadata);
+    } else {
+      console.warn(`[UsageTracking] Unknown contact extraction type: ${extractionType}`);
+    }
   }
 
   /**

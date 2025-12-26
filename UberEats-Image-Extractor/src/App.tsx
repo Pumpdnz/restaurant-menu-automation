@@ -22,14 +22,13 @@ import Menus from './pages/Menus';
 import MenuDetail from './pages/MenuDetail';
 import MenuMerge from './pages/MenuMerge';
 import Analytics from './pages/Analytics';
-import History from './pages/History';
 import Settings from './pages/Settings';
 import Tasks from './pages/Tasks';
-import MessageTemplates from './pages/MessageTemplates';
-import TaskTemplates from './pages/TaskTemplates';
 import Sequences from './pages/Sequences';
 import LeadScrapes from './pages/LeadScrapes';
 import LeadScrapeDetail from './pages/LeadScrapeDetail';
+import RegistrationBatches from './pages/RegistrationBatches';
+import RegistrationBatchDetail from './pages/RegistrationBatchDetail';
 
 // Super Admin Pages
 import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
@@ -198,8 +197,23 @@ function AppContent() {
               <LeadScrapeDetail />
             </FeatureProtectedRoute>
           } />
-          <Route path="analytics" element={<Analytics />} />
-          <Route path="history" element={<History />} />
+
+          {/* Registration Batches - Feature Protected */}
+          <Route path="registration-batches" element={
+            <FeatureProtectedRoute featurePath="registrationBatches" featureName="Registration Batches">
+              <RegistrationBatches />
+            </FeatureProtectedRoute>
+          } />
+          <Route path="registration-batches/:id" element={
+            <FeatureProtectedRoute featurePath="registrationBatches" featureName="Registration Batches">
+              <RegistrationBatchDetail />
+            </FeatureProtectedRoute>
+          } />
+          <Route path="analytics" element={
+            <FeatureProtectedRoute featurePath="analytics" featureName="Analytics">
+              <Analytics />
+            </FeatureProtectedRoute>
+          } />
           <Route path="settings" element={<Settings />} />
 
           {/* Social Media Routes - Feature Protected */}

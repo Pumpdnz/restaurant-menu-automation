@@ -357,21 +357,6 @@ export default function OptionSetsManagement({ menuId, orgId }) {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Option Sets Management</h3>
-          <p className="text-sm text-gray-500">
-            Manage reusable option sets that can be shared across menu items
-          </p>
-        </div>
-        <Button
-          onClick={handleCreateNew}
-          disabled={isCreating}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Create Option Set
-        </Button>
-      </div>
 
       {/* Filters */}
       <div className="flex gap-3">
@@ -398,24 +383,21 @@ export default function OptionSetsManagement({ menuId, orgId }) {
             </SelectContent>
           </Select>
         )}
+        <div className="flex items-center justify-between">
+          <Button
+            onClick={handleCreateNew}
+            disabled={isCreating}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create Option Set
+          </Button>
+        </div>
       </div>
 
       {/* Stats and Controls */}
       <div className="flex justify-between items-center">
-        <div className="flex gap-4 text-sm text-gray-500">
-          <span>{filteredSets.length} option set{filteredSets.length !== 1 ? 's' : ''}</span>
-          {filteredSets.length > 0 && (
-            <>
-              <span>•</span>
-              <span>
-                {filteredSets.reduce((acc, os) => acc + (os.usageCount || 0), 0)} total usage
-                {filteredSets.reduce((acc, os) => acc + (os.usageCount || 0), 0) !== 1 ? 's' : ''}
-              </span>
-            </>
-          )}
-        </div>
-        
-        {filteredSets.length > 0 && (
+                
+      {filteredSets.length > 0 && (
           <Button
             onClick={() => {
               const allExpanded = filteredSets.every(os => expandedSets.has(os.id));
@@ -441,6 +423,18 @@ export default function OptionSetsManagement({ menuId, orgId }) {
             )}
           </Button>
         )}
+        <div className="flex gap-4 text-sm text-gray-500">
+          <span>{filteredSets.length} option set{filteredSets.length !== 1 ? 's' : ''}</span>
+          {filteredSets.length > 0 && (
+            <>
+              <span>•</span>
+              <span>
+                {filteredSets.reduce((acc, os) => acc + (os.usageCount || 0), 0)} total usage
+                {filteredSets.reduce((acc, os) => acc + (os.usageCount || 0), 0) !== 1 ? 's' : ''}
+              </span>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Option Sets List */}

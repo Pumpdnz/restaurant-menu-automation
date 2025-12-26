@@ -16,6 +16,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '../ui/collapsible';
 import { cn } from '../../lib/utils';
 import {
   CheckCircle2,
@@ -26,7 +31,6 @@ import {
   MessageSquare,
   ClipboardList,
   Edit,
-  ChevronUp,
   ChevronDown,
   Clock,
   Workflow,
@@ -391,122 +395,130 @@ export function SequenceTaskList({
   };
 
   return (
-    <div className="space-y-2">
-      <div
-        className="flex items-center justify-between cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
-        onClick={onToggleExpand}
-      >
-        <p className="text-sm font-medium">Tasks ({tasks.length})</p>
-        {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-      </div>
+    <Collapsible open={isExpanded} onOpenChange={onToggleExpand}>
+      <div className="space-y-2">
+        <CollapsibleTrigger asChild>
+          <div
+            className="flex items-center justify-between cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
+          >
+            <p className="text-sm font-medium">Tasks ({tasks.length})</p>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 transition-transform duration-200",
+                !isExpanded && "-rotate-90"
+              )}
+            />
+          </div>
+        </CollapsibleTrigger>
 
-      {isExpanded && tasks.length > 0 && (
-        <div className="rounded-lg border bg-card overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-12"></TableHead>
-                <TableHead>Task</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Priority</TableHead>
-                <TableHead className="w-48">Due Date / Delay</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tasks.map((task) => (
-                <TableRow key={task.id}>
-                  <TableCell>{getStatusIcon(task)}</TableCell>
-                  <TableCell>
-                    <div
-                      className="font-medium text-sm cursor-pointer hover:text-brand-blue transition-colors"
-                      onClick={() => onViewDetails?.(task.id)}
-                    >
-                      {task.name}
-                    </div>
-                    {task.description && (
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {task.description}
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <TaskTypeQuickView
-                      task={task}
-                      onTaskCompleted={onRefresh}
-                      onFollowUpRequested={(taskId) => onTaskClick?.(taskId)}
-                      onStartSequenceRequested={(restaurant) => onStartSequence?.(restaurant)}
-                    >
-                      <div className="flex items-center gap-1 cursor-pointer hover:bg-muted/50 rounded px-2 py-1 -mx-2 -my-1">
-                        {getTypeIcon(task.type)}
-                        <span className="text-xs capitalize">
-                          {task.type.replace(/_/g, ' ')}
-                        </span>
-                      </div>
-                    </TaskTypeQuickView>
-                  </TableCell>
-                  <TableCell>{getPriorityDropdown(task)}</TableCell>
-                  <TableCell>{getDueDateOrDelayInput(task)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {/* Quick Complete Dropdown - only for active tasks */}
-                      {task.status === 'active' && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
+        <CollapsibleContent className="data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden">
+          {tasks.length > 0 ? (
+            <div className="rounded-lg border bg-card overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12"></TableHead>
+                    <TableHead>Task</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Priority</TableHead>
+                    <TableHead className="w-48">Due Date / Delay</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {tasks.map((task) => (
+                    <TableRow key={task.id}>
+                      <TableCell>{getStatusIcon(task)}</TableCell>
+                      <TableCell>
+                        <div
+                          className="font-medium text-sm cursor-pointer hover:text-brand-blue transition-colors"
+                          onClick={() => onViewDetails?.(task.id)}
+                        >
+                          {task.name}
+                        </div>
+                        {task.description && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {task.description}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <TaskTypeQuickView
+                          task={task}
+                          onTaskCompleted={onRefresh}
+                          onFollowUpRequested={(taskId) => onTaskClick?.(taskId)}
+                          onStartSequenceRequested={(restaurant) => onStartSequence?.(restaurant)}
+                        >
+                          <div className="flex items-center gap-1 cursor-pointer hover:bg-muted/50 rounded px-2 py-1 -mx-2 -my-1">
+                            {getTypeIcon(task.type)}
+                            <span className="text-xs capitalize">
+                              {task.type.replace(/_/g, ' ')}
+                            </span>
+                          </div>
+                        </TaskTypeQuickView>
+                      </TableCell>
+                      <TableCell>{getPriorityDropdown(task)}</TableCell>
+                      <TableCell>{getDueDateOrDelayInput(task)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {/* Quick Complete Dropdown - only for active tasks */}
+                          {task.status === 'active' && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  title="Mark as complete"
+                                  className="flex items-center gap-1"
+                                >
+                                  <CheckCircle2 className="h-4 w-4" />
+                                  <ChevronDown className="h-3 w-3" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleCompleteTask(task.id)}>
+                                  <CheckCircle2 className="h-4 w-4 text-brand-green mr-2" />
+                                  Mark as Complete
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleCompleteAndFollowUp(task.id)}>
+                                  <CheckCircle2 className="h-4 w-4 text-brand-green mr-2" />
+                                  Complete & Set Follow-up
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleCompleteAndStartSequence(task)}
+                                  disabled={!task?.restaurants}
+                                >
+                                  <Workflow className="h-4 w-4 text-brand-green mr-2" />
+                                  Complete & Start Sequence
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+
+                          {onEditTask && (
                             <Button
                               size="sm"
                               variant="ghost"
-                              title="Mark as complete"
-                              className="flex items-center gap-1"
+                              onClick={() => onEditTask(task.id)}
+                              title="Edit task"
                             >
-                              <CheckCircle2 className="h-4 w-4" />
-                              <ChevronDown className="h-3 w-3" />
+                              <Edit className="h-4 w-4" />
                             </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleCompleteTask(task.id)}>
-                              <CheckCircle2 className="h-4 w-4 text-brand-green mr-2" />
-                              Mark as Complete
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleCompleteAndFollowUp(task.id)}>
-                              <CheckCircle2 className="h-4 w-4 text-brand-green mr-2" />
-                              Complete & Set Follow-up
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleCompleteAndStartSequence(task)}
-                              disabled={!task?.restaurants}
-                            >
-                              <Workflow className="h-4 w-4 text-brand-green mr-2" />
-                              Complete & Start Sequence
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-
-                      {onEditTask && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => onEditTask(task.id)}
-                          title="Edit task"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-
-      {isExpanded && tasks.length === 0 && (
-        <div className="p-4 text-center text-sm text-muted-foreground border rounded-lg bg-muted/30">
-          No tasks in this sequence
-        </div>
-      )}
-    </div>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="p-4 text-center text-sm text-muted-foreground border rounded-lg bg-muted/30">
+              No tasks in this sequence
+            </div>
+          )}
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
   );
 }

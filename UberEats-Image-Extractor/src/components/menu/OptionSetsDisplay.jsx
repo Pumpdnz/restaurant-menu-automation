@@ -1,12 +1,18 @@
 import React, { useState } from 'react';
 import { Badge } from '../ui/badge';
-import { Info, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { Info, Check, ChevronDown } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '../ui/tooltip';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '../ui/collapsible';
+import { cn } from '../../lib/utils';
 
 export default function OptionSetsDisplay({ optionSets = [] }) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -41,77 +47,96 @@ export default function OptionSetsDisplay({ optionSets = [] }) {
   };
 
   return (
-    <div className="mt-4 border-t pt-4">
-      <button
-        onClick={toggleExpanded}
-        className="flex items-center gap-2 w-full text-left hover:bg-gray-50 p-2 rounded-lg transition-colors group"
-      >
-        <div className="flex items-center gap-2 flex-1">
-          {isExpanded ? (
-            <ChevronDown className="h-4 w-4 text-gray-500 group-hover:text-gray-700" />
-          ) : (
-            <ChevronUp className="h-4 w-4 text-gray-500 group-hover:text-gray-700 rotate-180" />
-          )}
-          <h6 className="text-sm font-medium text-gray-700">Customization Options</h6>
-          <Badge variant="secondary" className="text-xs">
-            {optionSets.length} {optionSets.length === 1 ? 'Set' : 'Sets'}
-          </Badge>
-        </div>
-        <span className="text-xs text-gray-500 group-hover:text-gray-700">
-          {isExpanded ? 'Click to collapse' : 'Click to expand'}
-        </span>
-      </button>
+    <Collapsible open={isExpanded} onOpenChange={setIsExpanded} className="mt-4 border-t pt-4">
+      <CollapsibleTrigger asChild>
+        <button
+          className="flex items-center gap-2 w-full text-left hover:bg-gray-50 p-2 rounded-lg transition-colors group"
+        >
+          <div className="flex items-center gap-2 flex-1">
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 text-gray-500 group-hover:text-gray-700 transition-transform duration-200",
+                !isExpanded && "-rotate-90"
+              )}
+            />
+            <h6 className="text-sm font-medium text-gray-700">Customization Options</h6>
+            <Badge variant="secondary" className="text-xs">
+              {optionSets.length} {optionSets.length === 1 ? 'Set' : 'Sets'}
+            </Badge>
+          </div>
+          <span className="text-xs text-gray-500 group-hover:text-gray-700">
+            {isExpanded ? 'Click to collapse' : 'Click to expand'}
+          </span>
+        </button>
+      </CollapsibleTrigger>
 
-      {isExpanded && (
+      <CollapsibleContent className="data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden">
         <div className="space-y-2 mt-3">
           {optionSets.map((optionSet, index) => {
             const isSetExpanded = expandedSets.has(index);
-            
+
             return (
-              <div key={index} className="bg-gray-50 rounded-lg overflow-hidden">
-                <button
-                  onClick={(e) => toggleSetExpanded(index, e)}
-                  className="w-full p-3 hover:bg-gray-100 transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 text-left">
-                      <div className="flex items-center gap-2">
-                        <h6 className="text-sm font-medium text-gray-900">
-                          {optionSet.name}
-                        </h6>
-                        {optionSet.isShared && (
-                          <Badge variant="outline" className="text-xs">
-                            Shared
-                          </Badge>
+              <Collapsible
+                key={index}
+                open={isSetExpanded}
+                onOpenChange={() => {
+                  setExpandedSets(prev => {
+                    const newSet = new Set(prev);
+                    if (newSet.has(index)) {
+                      newSet.delete(index);
+                    } else {
+                      newSet.add(index);
+                    }
+                    return newSet;
+                  });
+                }}
+                className="bg-gray-50 rounded-lg overflow-hidden"
+              >
+                <CollapsibleTrigger asChild>
+                  <button
+                    className="w-full p-3 hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 text-left">
+                        <div className="flex items-center gap-2">
+                          <h6 className="text-sm font-medium text-gray-900">
+                            {optionSet.name}
+                          </h6>
+                          {optionSet.isShared && (
+                            <Badge variant="outline" className="text-xs">
+                              Shared
+                            </Badge>
+                          )}
+                        </div>
+                        {!isSetExpanded && optionSet.description && (
+                          <p className="text-xs text-gray-600 mt-1 truncate">{optionSet.description}</p>
                         )}
                       </div>
-                      {!isSetExpanded && optionSet.description && (
-                        <p className="text-xs text-gray-600 mt-1 truncate">{optionSet.description}</p>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs whitespace-nowrap">
+                          {optionSet.minSelections === optionSet.maxSelections
+                            ? `Select ${optionSet.minSelections}`
+                            : optionSet.maxSelections === null
+                            ? `Select ${optionSet.minSelections}+`
+                            : `Select ${optionSet.minSelections}-${optionSet.maxSelections}`}
+                        </Badge>
+                        <ChevronDown
+                          className={cn(
+                            "h-4 w-4 text-gray-500 transition-transform duration-200",
+                            isSetExpanded && "rotate-180"
+                          )}
+                        />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-xs whitespace-nowrap">
-                        {optionSet.minSelections === optionSet.maxSelections
-                          ? `Select ${optionSet.minSelections}`
-                          : optionSet.maxSelections === null
-                          ? `Select ${optionSet.minSelections}+`
-                          : `Select ${optionSet.minSelections}-${optionSet.maxSelections}`}
-                      </Badge>
-                      {isSetExpanded ? (
-                        <ChevronUp className="h-4 w-4 text-gray-500" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4 text-gray-500" />
-                      )}
-                    </div>
-                  </div>
-                </button>
+                  </button>
+                </CollapsibleTrigger>
 
-                {isSetExpanded && (
+                <CollapsibleContent className="data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden">
                   <div className="px-3 pb-3 space-y-2">
                     {optionSet.description && (
                       <p className="text-xs text-gray-600">{optionSet.description}</p>
                     )}
-                    
+
                     <div className="space-y-1">
                       {optionSet.options && optionSet.options.map((option, optionIndex) => (
                         <div
@@ -156,12 +181,12 @@ export default function OptionSetsDisplay({ optionSets = [] }) {
                       </div>
                     )}
                   </div>
-                )}
-              </div>
+                </CollapsibleContent>
+              </Collapsible>
             );
           })}
         </div>
-      )}
-    </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }

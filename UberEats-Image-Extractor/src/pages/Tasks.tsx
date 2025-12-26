@@ -799,11 +799,11 @@ export default function Tasks() {
           <CheckCircle2 className="h-3 w-3" />
           {task.completed_at
             ? new Date(task.completed_at).toLocaleDateString('en-NZ', {
-                day: 'numeric',
-                month: 'short',
-                hour: '2-digit',
-                minute: '2-digit'
-              })
+              day: 'numeric',
+              month: 'short',
+              hour: '2-digit',
+              minute: '2-digit'
+            })
             : 'Completed'}
         </div>
       );
@@ -833,25 +833,25 @@ export default function Tasks() {
       {
         value: 'pending',
         label: 'Pending',
-        icon: <Circle className="h-4 w-4 stroke-gray-700"/>,
+        icon: <Circle className="h-4 w-4 stroke-gray-700" />,
         description: 'Waiting on dependencies'
       },
       {
         value: 'active',
         label: 'Active',
-        icon: <Circle className="h-4 w-4 stroke-brand-blue"/>,
+        icon: <Circle className="h-4 w-4 stroke-brand-blue" />,
         description: 'Currently working on'
       },
       {
         value: 'completed',
         label: 'Completed',
-        icon: <CheckCircle2 className="h-4 w-4 stroke-brand-green"/>,
+        icon: <CheckCircle2 className="h-4 w-4 stroke-brand-green" />,
         description: 'Task finished'
       },
       {
         value: 'cancelled',
         label: 'Cancelled',
-        icon: <XCircle className="h-4 w-4 stroke-brand-red"/>,
+        icon: <XCircle className="h-4 w-4 stroke-brand-red" />,
         description: 'Task cancelled'
       }
     ];
@@ -897,568 +897,559 @@ export default function Tasks() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Tasks</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {filteredTasks.length} {hasActiveFilters() ? 'filtered ' : ''}task{filteredTasks.length !== 1 ? 's' : ''}
-            {tasks.length !== filteredTasks.length && ` of ${tasks.length} total`}
-          </p>
+    <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col -mt-6 -mb-6">
+      {/* Sticky Header + Tabs */}
+      <div className="sticky -top-6 z-40 bg-white/80 backdrop-blur-sm -mx-6 px-6 pt-6 pb-4 border border-white/20 shadow-lg space-y-4 rounded-b-[16px]">
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Tasks</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              {filteredTasks.length} {hasActiveFilters() ? 'filtered ' : ''}task{filteredTasks.length !== 1 ? 's' : ''}
+              {tasks.length !== filteredTasks.length && ` of ${tasks.length} total`}
+            </p>
+          </div>
+          <Button
+            onClick={() => setModals({ ...modals, create: true })}
+            className="bg-gradient-to-r from-brand-blue to-brand-green"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            New Task
+          </Button>
         </div>
-        <Button
-          onClick={() => setModals({ ...modals, create: true })}
-          className="bg-gradient-to-r from-brand-blue to-brand-green"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          New Task
-        </Button>
-      </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={handleTabChange}>
+        {/* TabsList */}
         <TabsList size="full">
           <TabsTrigger size="full" variant="blue" value="tasks">Tasks</TabsTrigger>
           <TabsTrigger size="full" variant="blue" value="templates">Task Templates</TabsTrigger>
         </TabsList>
+      </div>
 
+      {/* Scrollable Content */}
+      <div className="pt-6 space-y-6">
         {/* TASKS TAB */}
-        <TabsContent value="tasks" className="space-y-6">
-      {/* Task Filters */}
-      <div className="bg-card border rounded-lg p-4">
-        <div className="flex items-center justify-between mb-4">
-          <button
-            onClick={() => setShowTaskFilters(!showTaskFilters)}
-            className="flex items-center gap-2 hover:text-brand-blue transition-colors"
-          >
-            <Filter className="h-4 w-4" />
-            <h3 className="font-medium">Task Filters</h3>
-            <ChevronDown className={cn("h-4 w-4 transition-transform", !showTaskFilters && "-rotate-90")} />
-          </button>
-          {(hasTaskFilters() || !isTaskFiltersAtDefault()) && (
-            <div className="flex gap-2">
-              {hasTaskFilters() && (
-                <Button variant="ghost" size="sm" onClick={clearAllTaskFilters}>
-                  <X className="h-4 w-4 mr-1" />
-                  Clear All
-                </Button>
+        <TabsContent value="tasks" className="space-y-6 mt-0">
+          {/* Task Filters */}
+          <div className="bg-card border rounded-lg p-4">
+            <div className="flex items-center justify-between mb-4">
+              <button
+                onClick={() => setShowTaskFilters(!showTaskFilters)}
+                className="flex items-center gap-2 hover:text-brand-blue transition-colors"
+              >
+                <Filter className="h-4 w-4" />
+                <h3 className="font-medium">Task Filters</h3>
+                <ChevronDown className={cn("h-4 w-4 transition-transform", !showTaskFilters && "-rotate-90")} />
+              </button>
+              {(hasTaskFilters() || !isTaskFiltersAtDefault()) && (
+                <div className="flex gap-2">
+                  {hasTaskFilters() && (
+                    <Button variant="ghost" size="sm" onClick={clearAllTaskFilters}>
+                      <X className="h-4 w-4 mr-1" />
+                      Clear All
+                    </Button>
+                  )}
+                  {!isTaskFiltersAtDefault() && (
+                    <Button variant="ghost" size="sm" onClick={clearTaskFilters}>
+                      <X className="h-4 w-4 mr-1" />
+                      Reset to Default
+                    </Button>
+                  )}
+                </div>
               )}
-              {!isTaskFiltersAtDefault() && (
-                <Button variant="ghost" size="sm" onClick={clearTaskFilters}>
-                  <X className="h-4 w-4 mr-1" />
-                  Reset to Default
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {showTaskFilters && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Search */}
-            <div>
-              <label className="text-sm font-medium mb-1 block">Search</label>
-              <Input
-                ref={searchInputRef}
-                placeholder="Task, restaurant, contact..."
-                value={filters.search}
-                onChange={(e) => updateFilter('search', e.target.value)}
-              />
             </div>
 
-            {/* Status Filter */}
-            <div>
-              <label className="text-sm font-medium mb-1 block">Status</label>
-              <MultiSelect
-                options={[
-                  { label: 'Pending', value: 'pending' },
-                  { label: 'Active', value: 'active' },
-                  { label: 'Completed', value: 'completed' },
-                  { label: 'Cancelled', value: 'cancelled' }
-                ]}
-                selected={filters.status}
-                onChange={(v) => updateFilter('status', v)}
-                placeholder="All Statuses"
-              />
-            </div>
-
-            {/* Type Filter */}
-            <div>
-              <label className="text-sm font-medium mb-1 block">Type</label>
-              <MultiSelect
-                options={[
-                  { label: 'Internal Activity', value: 'internal_activity' },
-                  { label: 'Email', value: 'email' },
-                  { label: 'Call', value: 'call' },
-                  { label: 'Social Message', value: 'social_message' },
-                  { label: 'Text', value: 'text' }
-                ]}
-                selected={filters.type}
-                onChange={(v) => updateFilter('type', v)}
-                placeholder="All Types"
-              />
-            </div>
-
-            {/* Priority Filter */}
-            <div>
-              <label className="text-sm font-medium mb-1 block">Priority</label>
-              <MultiSelect
-                options={[
-                  { label: 'Low', value: 'low' },
-                  { label: 'Medium', value: 'medium' },
-                  { label: 'High', value: 'high' }
-                ]}
-                selected={filters.priority}
-                onChange={(v) => updateFilter('priority', v)}
-                placeholder="All Priorities"
-              />
-            </div>
-
-          {/* Due Date Filter */}
-          <div className="md:col-span-2">
-            <label className="text-sm font-medium mb-1 block">Due Date</label>
-            <div className="space-y-2">
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <MultiSelect
-                    options={[
-                      { label: 'Overdue', value: 'overdue' },
-                      { label: 'Today', value: 'today' },
-                      { label: 'This Week', value: 'week' },
-                      { label: 'This Month', value: 'month' },
-                      { label: 'No Due Date', value: 'no_date' }
-                    ]}
-                    selected={dueDateFilter.types}
-                    onChange={(v) => setDueDateFilter(prev => ({ ...prev, types: v }))}
-                    placeholder="All Dates"
+            {showTaskFilters && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Search */}
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Search</label>
+                  <Input
+                    ref={searchInputRef}
+                    placeholder="Task, restaurant, contact..."
+                    value={filters.search}
+                    onChange={(e) => updateFilter('search', e.target.value)}
                   />
                 </div>
 
-                {/* Custom Date Range Button */}
-                <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className={cn(
-                        "whitespace-nowrap",
-                        dueDateFilter.customDates?.from && "border-brand-blue text-brand-blue"
-                      )}
-                    >
-                      <Calendar className="h-4 w-4 mr-1" />
-                      Custom
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start" sideOffset={5}>
-                    <div className="p-4">
-                      <CalendarComponent
-                        mode="range"
-                        defaultMonth={tempDateRange?.from}
-                        selected={tempDateRange}
-                        onSelect={setTempDateRange}
-                        numberOfMonths={2}
-                      />
-                      <div className="flex justify-end mt-4 gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setTempDateRange(dueDateFilter.customDates);
-                            setIsDatePickerOpen(false);
-                          }}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            if (tempDateRange?.from && tempDateRange?.to) {
+                {/* Status Filter */}
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Status</label>
+                  <MultiSelect
+                    options={[
+                      { label: 'Pending', value: 'pending' },
+                      { label: 'Active', value: 'active' },
+                      { label: 'Completed', value: 'completed' },
+                      { label: 'Cancelled', value: 'cancelled' }
+                    ]}
+                    selected={filters.status}
+                    onChange={(v) => updateFilter('status', v)}
+                    placeholder="All Statuses"
+                  />
+                </div>
+
+                {/* Type Filter */}
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Type</label>
+                  <MultiSelect
+                    options={[
+                      { label: 'Internal Activity', value: 'internal_activity' },
+                      { label: 'Email', value: 'email' },
+                      { label: 'Call', value: 'call' },
+                      { label: 'Social Message', value: 'social_message' },
+                      { label: 'Text', value: 'text' }
+                    ]}
+                    selected={filters.type}
+                    onChange={(v) => updateFilter('type', v)}
+                    placeholder="All Types"
+                  />
+                </div>
+
+                {/* Priority Filter */}
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Priority</label>
+                  <MultiSelect
+                    options={[
+                      { label: 'Low', value: 'low' },
+                      { label: 'Medium', value: 'medium' },
+                      { label: 'High', value: 'high' }
+                    ]}
+                    selected={filters.priority}
+                    onChange={(v) => updateFilter('priority', v)}
+                    placeholder="All Priorities"
+                  />
+                </div>
+
+                {/* Due Date Filter */}
+                <div className="md:col-span-2">
+                  <label className="text-sm font-medium mb-1 block">Due Date</label>
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <MultiSelect
+                          options={[
+                            { label: 'Overdue', value: 'overdue' },
+                            { label: 'Today', value: 'today' },
+                            { label: 'This Week', value: 'week' },
+                            { label: 'This Month', value: 'month' },
+                            { label: 'No Due Date', value: 'no_date' }
+                          ]}
+                          selected={dueDateFilter.types}
+                          onChange={(v) => setDueDateFilter(prev => ({ ...prev, types: v }))}
+                          placeholder="All Dates"
+                        />
+                      </div>
+
+                      {/* Custom Date Range Button */}
+                      <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className={cn(
+                              "whitespace-nowrap",
+                              dueDateFilter.customDates?.from && "border-brand-blue text-brand-blue"
+                            )}
+                          >
+                            <Calendar className="h-4 w-4 mr-1" />
+                            Custom
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start" sideOffset={5}>
+                          <div className="p-4">
+                            <CalendarComponent
+                              mode="range"
+                              defaultMonth={tempDateRange?.from}
+                              selected={tempDateRange}
+                              onSelect={setTempDateRange}
+                              numberOfMonths={2}
+                            />
+                            <div className="flex justify-end mt-4 gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setTempDateRange(dueDateFilter.customDates);
+                                  setIsDatePickerOpen(false);
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  if (tempDateRange?.from && tempDateRange?.to) {
+                                    setDueDateFilter(prev => ({
+                                      ...prev,
+                                      customDates: tempDateRange
+                                    }));
+                                    setIsDatePickerOpen(false);
+                                  }
+                                }}
+                                disabled={!tempDateRange?.from || !tempDateRange?.to}
+                              >
+                                Select
+                              </Button>
+                            </div>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+
+                    {/* Display selected custom dates as badge */}
+                    {dueDateFilter.customDates?.from && dueDateFilter.customDates?.to && (
+                      <div className="flex flex-wrap gap-1">
+                        <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                          <span className="font-medium">Range:</span>
+                          {format(dueDateFilter.customDates.from, 'dd/MM/yyyy')} - {format(dueDateFilter.customDates.to, 'dd/MM/yyyy')}
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
                               setDueDateFilter(prev => ({
                                 ...prev,
-                                customDates: tempDateRange
+                                customDates: undefined
                               }));
-                              setIsDatePickerOpen(false);
-                            }
-                          }}
-                          disabled={!tempDateRange?.from || !tempDateRange?.to}
-                        >
-                          Select
-                        </Button>
+                              setTempDateRange(undefined);
+                            }}
+                            className="ml-1 hover:bg-destructive/20 rounded-full p-0.5"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
                       </div>
-                    </div>
-                  </PopoverContent>
-                </Popover>
+                    )}
+                  </div>
+                </div>
               </div>
+            )}
+          </div>
 
-              {/* Display selected custom dates as badge */}
-              {dueDateFilter.customDates?.from && dueDateFilter.customDates?.to && (
-                <div className="flex flex-wrap gap-1">
-                  <Badge variant="secondary" className="text-xs flex items-center gap-1">
-                    <span className="font-medium">Range:</span>
-                    {format(dueDateFilter.customDates.from, 'dd/MM/yyyy')} - {format(dueDateFilter.customDates.to, 'dd/MM/yyyy')}
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setDueDateFilter(prev => ({
-                          ...prev,
-                          customDates: undefined
-                        }));
-                        setTempDateRange(undefined);
-                      }}
-                      className="ml-1 hover:bg-destructive/20 rounded-full p-0.5"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
+          {/* Restaurant Filters */}
+          <div className="bg-card border rounded-lg p-4">
+            <div className="flex items-center justify-between mb-4">
+              <button
+                onClick={() => setShowRestaurantFilters(!showRestaurantFilters)}
+                className="flex items-center gap-2 hover:text-brand-blue transition-colors"
+              >
+                <Filter className="h-4 w-4" />
+                <h3 className="font-medium">Restaurant Filters</h3>
+                <ChevronDown className={cn("h-4 w-4 transition-transform", !showRestaurantFilters && "-rotate-90")} />
+              </button>
+              {(hasRestaurantFilters() || !isRestaurantFiltersAtDefault()) && (
+                <div className="flex gap-2">
+                  {hasRestaurantFilters() && (
+                    <Button variant="ghost" size="sm" onClick={clearAllRestaurantFilters}>
+                      <X className="h-4 w-4 mr-1" />
+                      Clear All
+                    </Button>
+                  )}
+                  {!isRestaurantFiltersAtDefault() && (
+                    <Button variant="ghost" size="sm" onClick={clearRestaurantFilters}>
+                      <X className="h-4 w-4 mr-1" />
+                      Reset to Default
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
-          </div>
-        </div>
-        )}
-      </div>
 
-      {/* Restaurant Filters */}
-      <div className="bg-card border rounded-lg p-4">
-        <div className="flex items-center justify-between mb-4">
-          <button
-            onClick={() => setShowRestaurantFilters(!showRestaurantFilters)}
-            className="flex items-center gap-2 hover:text-brand-blue transition-colors"
-          >
-            <Filter className="h-4 w-4" />
-            <h3 className="font-medium">Restaurant Filters</h3>
-            <ChevronDown className={cn("h-4 w-4 transition-transform", !showRestaurantFilters && "-rotate-90")} />
-          </button>
-          {(hasRestaurantFilters() || !isRestaurantFiltersAtDefault()) && (
-            <div className="flex gap-2">
-              {hasRestaurantFilters() && (
-                <Button variant="ghost" size="sm" onClick={clearAllRestaurantFilters}>
-                  <X className="h-4 w-4 mr-1" />
-                  Clear All
-                </Button>
-              )}
-              {!isRestaurantFiltersAtDefault() && (
-                <Button variant="ghost" size="sm" onClick={clearRestaurantFilters}>
-                  <X className="h-4 w-4 mr-1" />
-                  Reset to Default
-                </Button>
-              )}
+            {showRestaurantFilters && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Lead Type */}
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Lead Type</label>
+                  <MultiSelect
+                    options={[
+                      { label: 'Inbound', value: 'inbound' },
+                      { label: 'Outbound', value: 'outbound' }
+                    ]}
+                    selected={restaurantFilters.lead_type}
+                    onChange={(v) => updateRestaurantFilter('lead_type', v)}
+                    placeholder="All Types"
+                  />
+                </div>
+
+                {/* Lead Category */}
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Lead Category</label>
+                  <MultiSelect
+                    options={[
+                      { label: 'Paid Ads', value: 'paid_ads' },
+                      { label: 'Organic Content', value: 'organic_content' },
+                      { label: 'Warm Outreach', value: 'warm_outreach' },
+                      { label: 'Cold Outreach', value: 'cold_outreach' }
+                    ]}
+                    selected={restaurantFilters.lead_category}
+                    onChange={(v) => updateRestaurantFilter('lead_category', v)}
+                    placeholder="All Categories"
+                  />
+                </div>
+
+                {/* Lead Warmth */}
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Lead Warmth</label>
+                  <MultiSelect
+                    options={[
+                      { label: 'Frozen', value: 'frozen' },
+                      { label: 'Cold', value: 'cold' },
+                      { label: 'Warm', value: 'warm' },
+                      { label: 'Hot', value: 'hot' }
+                    ]}
+                    selected={restaurantFilters.lead_warmth}
+                    onChange={(v) => updateRestaurantFilter('lead_warmth', v)}
+                    placeholder="All Warmth"
+                  />
+                </div>
+
+                {/* Lead Stage */}
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Lead Stage</label>
+                  <MultiSelect
+                    options={[
+                      { label: 'Uncontacted', value: 'uncontacted' },
+                      { label: 'Reached Out', value: 'reached_out' },
+                      { label: 'In Talks', value: 'in_talks' },
+                      { label: 'Demo Booked', value: 'demo_booked' },
+                      { label: 'Rebook Demo', value: 'rebook_demo' },
+                      { label: 'Demo Completed', value: 'demo_completed' },
+                      { label: 'Contract Sent', value: 'contract_sent' },
+                      { label: 'Closed Won', value: 'closed_won' },
+                      { label: 'Closed Lost', value: 'closed_lost' },
+                      { label: 'Reengaging', value: 'reengaging' }
+                    ]}
+                    selected={restaurantFilters.lead_stage}
+                    onChange={(v) => updateRestaurantFilter('lead_stage', v)}
+                    placeholder="All Stages"
+                  />
+                </div>
+
+                {/* Lead Status */}
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Lead Status</label>
+                  <MultiSelect
+                    options={[
+                      { label: 'Active', value: 'active' },
+                      { label: 'Inactive', value: 'inactive' },
+                      { label: 'Ghosted', value: 'ghosted' },
+                      { label: 'Reengaging', value: 'reengaging' },
+                      { label: 'Closed', value: 'closed' }
+                    ]}
+                    selected={restaurantFilters.lead_status}
+                    onChange={(v) => updateRestaurantFilter('lead_status', v)}
+                    placeholder="All Status"
+                  />
+                </div>
+
+                {/* Demo Store Built */}
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Demo Store</label>
+                  <Select value={restaurantFilters.demo_store_built} onValueChange={(v) => updateRestaurantFilter('demo_store_built', v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="true">Built</SelectItem>
+                      <SelectItem value="false">Not Built</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* ICP Rating */}
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Min ICP Rating</label>
+                  <Select value={restaurantFilters.icp_rating_min || 'all'} onValueChange={(v) => updateRestaurantFilter('icp_rating_min', v === 'all' ? '' : v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Any rating" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Any rating</SelectItem>
+                      <SelectItem value="5">5+ Stars</SelectItem>
+                      <SelectItem value="6">6+ Stars</SelectItem>
+                      <SelectItem value="7">7+ Stars</SelectItem>
+                      <SelectItem value="8">8+ Stars</SelectItem>
+                      <SelectItem value="9">9+ Stars</SelectItem>
+                      <SelectItem value="10">10 Stars</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
+              {error}
             </div>
           )}
-        </div>
 
-        {showRestaurantFilters && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Lead Type */}
-            <div>
-              <label className="text-sm font-medium mb-1 block">Lead Type</label>
-              <MultiSelect
-                options={[
-                  { label: 'Inbound', value: 'inbound' },
-                  { label: 'Outbound', value: 'outbound' }
-                ]}
-                selected={restaurantFilters.lead_type}
-                onChange={(v) => updateRestaurantFilter('lead_type', v)}
-                placeholder="All Types"
-              />
-            </div>
-
-            {/* Lead Category */}
-            <div>
-              <label className="text-sm font-medium mb-1 block">Lead Category</label>
-              <MultiSelect
-                options={[
-                  { label: 'Paid Ads', value: 'paid_ads' },
-                  { label: 'Organic Content', value: 'organic_content' },
-                  { label: 'Warm Outreach', value: 'warm_outreach' },
-                  { label: 'Cold Outreach', value: 'cold_outreach' }
-                ]}
-                selected={restaurantFilters.lead_category}
-                onChange={(v) => updateRestaurantFilter('lead_category', v)}
-                placeholder="All Categories"
-              />
-            </div>
-
-            {/* Lead Warmth */}
-            <div>
-              <label className="text-sm font-medium mb-1 block">Lead Warmth</label>
-              <MultiSelect
-                options={[
-                  { label: 'Frozen', value: 'frozen' },
-                  { label: 'Cold', value: 'cold' },
-                  { label: 'Warm', value: 'warm' },
-                  { label: 'Hot', value: 'hot' }
-                ]}
-                selected={restaurantFilters.lead_warmth}
-                onChange={(v) => updateRestaurantFilter('lead_warmth', v)}
-                placeholder="All Warmth"
-              />
-            </div>
-
-            {/* Lead Stage */}
-            <div>
-              <label className="text-sm font-medium mb-1 block">Lead Stage</label>
-              <MultiSelect
-                options={[
-                  { label: 'Uncontacted', value: 'uncontacted' },
-                  { label: 'Reached Out', value: 'reached_out' },
-                  { label: 'In Talks', value: 'in_talks' },
-                  { label: 'Demo Booked', value: 'demo_booked' },
-                  { label: 'Rebook Demo', value: 'rebook_demo' },
-                  { label: 'Demo Completed', value: 'demo_completed' },
-                  { label: 'Contract Sent', value: 'contract_sent' },
-                  { label: 'Closed Won', value: 'closed_won' },
-                  { label: 'Closed Lost', value: 'closed_lost' },
-                  { label: 'Reengaging', value: 'reengaging' }
-                ]}
-                selected={restaurantFilters.lead_stage}
-                onChange={(v) => updateRestaurantFilter('lead_stage', v)}
-                placeholder="All Stages"
-              />
-            </div>
-
-            {/* Lead Status */}
-            <div>
-              <label className="text-sm font-medium mb-1 block">Lead Status</label>
-              <MultiSelect
-                options={[
-                  { label: 'Active', value: 'active' },
-                  { label: 'Inactive', value: 'inactive' },
-                  { label: 'Ghosted', value: 'ghosted' },
-                  { label: 'Reengaging', value: 'reengaging' },
-                  { label: 'Closed', value: 'closed' }
-                ]}
-                selected={restaurantFilters.lead_status}
-                onChange={(v) => updateRestaurantFilter('lead_status', v)}
-                placeholder="All Status"
-              />
-            </div>
-
-            {/* Demo Store Built */}
-            <div>
-              <label className="text-sm font-medium mb-1 block">Demo Store</label>
-              <Select value={restaurantFilters.demo_store_built} onValueChange={(v) => updateRestaurantFilter('demo_store_built', v)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="true">Built</SelectItem>
-                  <SelectItem value="false">Not Built</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* ICP Rating */}
-            <div>
-              <label className="text-sm font-medium mb-1 block">Min ICP Rating</label>
-              <Select value={restaurantFilters.icp_rating_min || 'all'} onValueChange={(v) => updateRestaurantFilter('icp_rating_min', v === 'all' ? '' : v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Any rating" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Any rating</SelectItem>
-                  <SelectItem value="5">5+ Stars</SelectItem>
-                  <SelectItem value="6">6+ Stars</SelectItem>
-                  <SelectItem value="7">7+ Stars</SelectItem>
-                  <SelectItem value="8">8+ Stars</SelectItem>
-                  <SelectItem value="9">9+ Stars</SelectItem>
-                  <SelectItem value="10">10 Stars</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Error Message */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
-          {error}
-        </div>
-      )}
-
-      {/* Tasks Table */}
-      <div className="rounded-lg border bg-card overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12"></TableHead>
-              <TableHead>Task</TableHead>
-              <TableHead>Restaurant</TableHead>
-              <TableHead>
-                <button
-                  onClick={() => handleSort('type')}
-                  className="flex items-center gap-1 hover:text-brand-blue transition-colors"
-                >
-                  Type
-                  {getSortIcon('type')}
-                </button>
-              </TableHead>
-              <TableHead>
-                <button
-                  onClick={() => handleSort('priority')}
-                  className="flex items-center gap-1 hover:text-brand-blue transition-colors"
-                >
-                  Priority
-                  {getSortIcon('priority')}
-                </button>
-              </TableHead>
-              <TableHead>
-                <button
-                  onClick={() => handleSort('due_date')}
-                  className="flex items-center gap-1 hover:text-brand-blue transition-colors"
-                >
-                  Due Date
-                  {getSortIcon('due_date')}
-                </button>
-              </TableHead>
-              <TableHead>Assigned To</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredTasks.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                  {hasActiveFilters()
-                    ? "No tasks match your filters. Try adjusting your criteria."
-                    : "No tasks found. Create your first task to get started."}
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredTasks.map((task: any) => (
-                <TableRow key={task.id} className={['completed', 'cancelled', 'pending'].includes(task.status) ? 'opacity-60' : ''}>
-                  <TableCell>
-                    {getInteractiveStatusIcon(task)}
-                  </TableCell>
-                  <TableCell>
-                    <div
-                      className="font-medium cursor-pointer hover:text-brand-blue"
-                      onClick={() => setModals({ ...modals, detail: task.id })}
+          {/* Tasks Table */}
+          <div className="rounded-lg border bg-card overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12"></TableHead>
+                  <TableHead>Task</TableHead>
+                  <TableHead>Restaurant</TableHead>
+                  <TableHead>
+                    <button
+                      onClick={() => handleSort('type')}
+                      className="flex items-center gap-1 hover:text-brand-blue transition-colors"
                     >
-                      {task.name}
-                    </div>
-                    {task.description && (
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {task.description}
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {task.restaurants ? (
-                      <Link
-                        to={`/restaurants/${task.restaurant_id}`}
-                        className="text-sm hover:text-brand-blue"
-                      >
-                        {task.restaurants.name}
-                      </Link>
-                    ) : '-'}
-                  </TableCell>
-                  <TableCell>
-                    <TaskTypeQuickView
-                      task={task}
-                      onTaskCompleted={fetchTasks}
-                      onFollowUpRequested={(taskId) => setModals({ ...modals, followUp: taskId })}
-                      onStartSequenceRequested={(restaurant) => {
-                        setSequenceRestaurant(restaurant);
-                        setModals({ ...modals, startSequence: true });
-                      }}
+                      Type
+                      {getSortIcon('type')}
+                    </button>
+                  </TableHead>
+                  <TableHead>
+                    <button
+                      onClick={() => handleSort('priority')}
+                      className="flex items-center gap-1 hover:text-brand-blue transition-colors"
                     >
-                      <div className="flex items-center gap-1 cursor-pointer hover:bg-muted/50 rounded px-2 py-1 -mx-2 -my-1 transition-colors">
-                        {getTypeIcon(task.type)}
-                        <span className="text-sm capitalize">
-                          {task.type.replace(/_/g, ' ')}
-                        </span>
-                      </div>
-                    </TaskTypeQuickView>
-                  </TableCell>
-                  <TableCell>
-                    {getPriorityDropdown(task)}
-                  </TableCell>
-                  <TableCell>
-                    {getDueDateInput(task)}
-                  </TableCell>
-                  <TableCell>
-                    {task.assigned_to ? (
-                      <div className="text-sm">{task.assigned_to.full_name || task.assigned_to.email}</div>
-                    ) : '-'}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {task.status === 'active' && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-green-600 hover:text-green-700 flex items-center gap-0.5 px-2"
-                            >
-                              <CheckCircle2 className="h-4 w-4" />
-                              <ChevronDown className="h-3 w-3" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleCompleteTask(task.id)}>
-                              <CheckCircle2 className="h-4 w-4 mr-2" />
-                              Mark as Complete
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleCompleteWithFollowUp(task.id)}>
-                              <CheckCircle2 className="h-4 w-4 mr-2" />
-                              Complete & Set Follow-up
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleCompleteWithStartSequence(task)}
-                              disabled={!task?.restaurants}
-                            >
-                              <Workflow className="h-4 w-4 mr-2" />
-                              Complete & Start Sequence
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setModals({ ...modals, edit: task.id })}
-                        title="Edit task"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setModals({ ...modals, duplicate: task.id })}
-                        title="Duplicate task"
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+                      Priority
+                      {getSortIcon('priority')}
+                    </button>
+                  </TableHead>
+                  <TableHead>
+                    <button
+                      onClick={() => handleSort('due_date')}
+                      className="flex items-center gap-1 hover:text-brand-blue transition-colors"
+                    >
+                      Due Date
+                      {getSortIcon('due_date')}
+                    </button>
+                  </TableHead>
+                  <TableHead>Assigned To</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              </TableHeader>
+              <TableBody>
+                {filteredTasks.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      {hasActiveFilters()
+                        ? "No tasks match your filters. Try adjusting your criteria."
+                        : "No tasks found. Create your first task to get started."}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredTasks.map((task: any) => (
+                    <TableRow key={task.id} className={['completed', 'cancelled', 'pending'].includes(task.status) ? 'opacity-60' : ''}>
+                      <TableCell>
+                        {getInteractiveStatusIcon(task)}
+                      </TableCell>
+                      <TableCell>
+                        <div
+                          className="font-medium cursor-pointer hover:text-brand-blue"
+                          onClick={() => setModals({ ...modals, detail: task.id })}
+                        >
+                          {task.name}
+                        </div>
+                        {task.description && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {task.description}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {task.restaurants ? (
+                          <Link
+                            to={`/restaurants/${task.restaurant_id}`}
+                            className="text-sm hover:text-brand-blue"
+                          >
+                            {task.restaurants.name}
+                          </Link>
+                        ) : '-'}
+                      </TableCell>
+                      <TableCell>
+                        <TaskTypeQuickView
+                          task={task}
+                          onTaskCompleted={fetchTasks}
+                          onFollowUpRequested={(taskId) => setModals({ ...modals, followUp: taskId })}
+                          onStartSequenceRequested={(restaurant) => {
+                            setSequenceRestaurant(restaurant);
+                            setModals({ ...modals, startSequence: true });
+                          }}
+                        >
+                          <div className="flex items-center gap-1 cursor-pointer hover:bg-muted/50 rounded px-2 py-1 -mx-2 -my-1 transition-colors">
+                            {getTypeIcon(task.type)}
+                            <span className="text-sm capitalize">
+                              {task.type.replace(/_/g, ' ')}
+                            </span>
+                          </div>
+                        </TaskTypeQuickView>
+                      </TableCell>
+                      <TableCell>
+                        {getPriorityDropdown(task)}
+                      </TableCell>
+                      <TableCell>
+                        {getDueDateInput(task)}
+                      </TableCell>
+                      <TableCell>
+                        {task.assigned_to ? (
+                          <div className="text-sm">{task.assigned_to.full_name || task.assigned_to.email}</div>
+                        ) : '-'}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {task.status === 'active' && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-green-600 hover:text-green-700 flex items-center gap-0.5 px-2"
+                                >
+                                  <CheckCircle2 className="h-4 w-4" />
+                                  <ChevronDown className="h-3 w-3" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleCompleteTask(task.id)}>
+                                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                                  Mark as Complete
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleCompleteWithFollowUp(task.id)}>
+                                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                                  Complete & Set Follow-up
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleCompleteWithStartSequence(task)}
+                                  disabled={!task?.restaurants}
+                                >
+                                  <Workflow className="h-4 w-4 mr-2" />
+                                  Complete & Start Sequence
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setModals({ ...modals, edit: task.id })}
+                            title="Edit task"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setModals({ ...modals, duplicate: task.id })}
+                            title="Duplicate task"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </TabsContent>
 
         {/* TASK TEMPLATES TAB */}
-        <TabsContent value="templates" className="space-y-6">
-          {/* Header with Create Button */}
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="text-sm text-muted-foreground">
-                Create and manage reusable task templates with default messages and priorities
-              </p>
-            </div>
-            <Button onClick={() => setTaskTemplateModals({ ...taskTemplateModals, create: true })}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Task Template
-            </Button>
-          </div>
-
+        <TabsContent value="templates" className="space-y-6 mt-0">
           {/* Filters */}
           <div className="bg-card border rounded-lg p-4">
             <div className="flex items-center justify-between mb-4">
@@ -1466,19 +1457,28 @@ export default function Tasks() {
                 <Filter className="h-4 w-4 text-muted-foreground" />
                 <h3 className="font-medium">Filters</h3>
               </div>
-              {(taskTemplateFilterType !== 'all' || taskTemplateFilterActive !== 'all') && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setTaskTemplateFilterType('all');
-                    setTaskTemplateFilterActive('all');
-                  }}
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Clear All
-                </Button>
-              )}
+              <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+                {(taskTemplateFilterType !== 'all' || taskTemplateFilterActive !== 'all') && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setTaskTemplateFilterType('all');
+                      setTaskTemplateFilterActive('all');
+                    }}
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Clear All
+                  </Button>
+                )}
+                {/* Create Button */}
+                <div className="flex justify-end">
+                  <Button onClick={() => setTaskTemplateModals({ ...taskTemplateModals, create: true })}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Task Template
+                  </Button>
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1652,7 +1652,7 @@ export default function Tasks() {
             </Table>
           </div>
         </TabsContent>
-      </Tabs>
+      </div>
 
       {/* Modals */}
       {modals.create && (
@@ -1750,6 +1750,6 @@ export default function Tasks() {
           }}
         />
       )}
-    </div>
+    </Tabs>
   );
 }

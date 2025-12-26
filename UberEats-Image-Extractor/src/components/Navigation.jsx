@@ -19,12 +19,12 @@ const NavigationWrapper = ({ children }) => {
     <SidebarProvider defaultOpen={true}>
       <div className="flex w-full min-h-screen">
         <NavigationSidebar />
-        <SidebarInset className="px-6 py-6 w-full overflow-x-hidden">
+        <SidebarInset className="w-full overflow-hidden">
           {/* Mobile navigation trigger */}
           <div className="md:hidden absolute top-4 left-4 z-50">
-            <SidebarTrigger />
+            <SidebarTrigger/>
           </div>
-          <div className="w-full overflow-x-auto scrollbar-hide">
+          <div className="h-full max-h-screen overflow-y-auto overflow-x-hidden px-6 pt-6 pb-6 scrollbar-hide">
             {children}
           </div>
         </SidebarInset>

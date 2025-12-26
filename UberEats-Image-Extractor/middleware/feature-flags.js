@@ -278,6 +278,14 @@ const requireBrandingExtraction = checkFeatureFlag('brandingExtraction');
 const requireFirecrawlBranding = checkFeatureFlag('brandingExtraction.firecrawlBranding');
 
 // ============================================
+// NEW: CONTACT DETAILS EXTRACTION
+// ============================================
+
+const requireContactDetailsExtraction = checkFeatureFlag('contactDetailsExtraction');
+const requireCompaniesOfficeExtraction = checkFeatureFlag('contactDetailsExtraction.companiesOffice');
+const requireEmailPhoneExtraction = checkFeatureFlag('contactDetailsExtraction.emailPhoneExtraction');
+
+// ============================================
 // NEW: REGISTRATION FEATURES (parent and individual steps)
 // ============================================
 
@@ -331,6 +339,11 @@ module.exports = {
   // NEW: Branding Extraction
   requireBrandingExtraction,
   requireFirecrawlBranding,
+
+  // NEW: Contact Details Extraction
+  requireContactDetailsExtraction,
+  requireCompaniesOfficeExtraction,
+  requireEmailPhoneExtraction,
 
   // NEW: Registration Features (parent and individual steps)
   requireRegistration,

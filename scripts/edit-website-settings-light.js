@@ -94,6 +94,8 @@ const headerEnabled = getArg('header-enabled') === 'true';
 const headerBgPath = getArg('header-bg');
 const headerLogoPath = getArg('header-logo');
 const itemLayout = getArg('item-layout') || 'list'; // 'list' or 'card'
+const navTextColorArg = getArg('nav-text-color'); // Configurable Nav Bar text color
+const boxTextColorArg = getArg('box-text-color'); // Configurable Box & Popup text color
 const instagramUrl = getArg('instagram');
 const facebookUrl = getArg('facebook');
 const cuisine = getArg('cuisine');
@@ -614,7 +616,7 @@ async function editWebsiteSettingsLight() {
         name: 'Box & Popup Text',
         pickerSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(6) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj',
         inputSelector: '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(6) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input',
-        value: secondaryColor || primaryColor  // Use secondary if available, else primary
+        value: boxTextColorArg || secondaryColor || primaryColor  // Use configured color, or secondary if available, else primary
       },
       {
         name: 'Box & Popup Background',
@@ -836,7 +838,7 @@ async function editWebsiteSettingsLight() {
       try {
         await page.click(navTextPickerSelector);
         await page.waitForTimeout(500);
-        const navTextColor = secondaryColor || primaryColor;  // Use secondary if available, else primary
+        const navTextColor = navTextColorArg || secondaryColor || primaryColor;  // Use configured color, or secondary if available, else primary
         await page.fill(navTextInputSelector, navTextColor);
         console.log(`  ✓ Set Nav Bar Text to ${navTextColor}`);
         await page.keyboard.press('Escape');
@@ -982,6 +984,39 @@ async function editWebsiteSettingsLight() {
         await takeScreenshot(page, '11-logo-saved');
       } catch (error) {
         console.error('  ❌ Failed to upload logo:', error.message);
+      }
+    } else if (navTextColorArg) {
+      // No logo, but nav text color is configured - need to open Top Nav Bar section
+      console.log('\n🖼️ STEP 11: Configuring Nav Bar Text (no logo)');
+
+      const topNavSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div:nth-child(5)';
+
+      try {
+        await page.locator(topNavSelector).scrollIntoViewIfNeeded();
+        await page.waitForTimeout(500);
+        await page.click(topNavSelector);
+        await page.waitForTimeout(1000);
+        console.log('  ✓ Expanded Top Nav Bar dropdown');
+
+        // Set Nav Bar Text Color
+        const navTextPickerSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj.grid-2.sm.sm-gap.max300 > div:nth-child(2) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj > div';
+        const navTextInputSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj.grid-2.sm.sm-gap.max300 > div:nth-child(2) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input';
+
+        await page.click(navTextPickerSelector);
+        await page.waitForTimeout(500);
+        const navTextColor = navTextColorArg || secondaryColor || primaryColor;
+        await page.fill(navTextInputSelector, navTextColor);
+        console.log(`  ✓ Set Nav Bar Text to ${navTextColor}`);
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(500);
+
+        // Save changes
+        const saveNavSelector = '#scroll-root > div > div > div > div > div > div.section__SettingsSectionWrapper-VLcLJ.gVhfCf > div > div.block__Block-ljvlRq.epsQby > div.block__Content-bopatn.lbcjnQ > form > div > button';
+        await page.click(saveNavSelector);
+        console.log('  ✓ Saved nav bar configuration');
+        await page.waitForTimeout(2000);
+      } catch (error) {
+        console.log('  ⚠️ Failed to set nav bar text color:', error.message);
       }
     } else {
       console.log('\n📋 STEP 11: Skipping logo upload (no logo provided)');

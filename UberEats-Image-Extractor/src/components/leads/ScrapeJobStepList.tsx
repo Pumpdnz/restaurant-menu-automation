@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { formatDistanceToNow, format } from 'date-fns';
 import {
   ChevronDown,
-  ChevronRight,
   Loader2,
   Clock,
   CheckCircle2,
@@ -14,6 +13,7 @@ import {
   Users,
 } from 'lucide-react';
 import { Button } from '../ui/button';
+import { cn } from '../../lib/utils';
 import { Badge } from '../ui/badge';
 import {
   Table,
@@ -283,11 +283,12 @@ export function ScrapeJobStepList({
         <CollapsibleTrigger asChild>
           <div className="flex items-center justify-between p-3 cursor-pointer hover:bg-muted/50 transition-colors">
             <div className="flex items-center gap-2">
-              {isExpanded ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
-              )}
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 transition-transform duration-200",
+                  !isExpanded && "-rotate-90"
+                )}
+              />
               <span className="text-sm font-medium">
                 Extraction Steps ({steps.filter(s => s.status === 'completed').length}/{steps.length})
               </span>
@@ -303,7 +304,7 @@ export function ScrapeJobStepList({
           </div>
         </CollapsibleTrigger>
 
-        <CollapsibleContent>
+        <CollapsibleContent className="data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden">
           <div className="border-t">
             <Table>
               <TableHeader>

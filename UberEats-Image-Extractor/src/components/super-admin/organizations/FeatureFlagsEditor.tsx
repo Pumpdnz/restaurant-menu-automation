@@ -3,7 +3,13 @@ import { Label } from '../../ui/label';
 import { Input } from '../../ui/input';
 import { Switch } from '../../ui/switch';
 import { Card } from '../../ui/card';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '../../ui/collapsible';
+import { cn } from '../../../lib/utils';
+import { ChevronDown } from 'lucide-react';
 
 interface FeatureFlag {
   enabled: boolean;
@@ -40,6 +46,8 @@ const FEATURE_LABELS: Record<string, string> = {
   tasksAndSequences: 'Tasks & Sequences',
   socialMedia: 'Social Media',
   leadScraping: 'Lead Scraping',
+  analytics: 'Analytics',
+  registrationBatches: 'Registration Batches',
   brandingExtraction: 'Branding Extraction',
   registration: 'Registration Features',
   integrations: 'API Integrations',
@@ -67,7 +75,12 @@ const FEATURE_LABELS: Record<string, string> = {
   leadConversion: 'Lead Conversion',
 
   // Branding sub-features
-  firecrawlBranding: 'Firecrawl Branding Format'
+  firecrawlBranding: 'Firecrawl Branding Format',
+
+  // Contact Details Extraction
+  contactDetailsExtraction: 'Contact Details Extraction',
+  companiesOffice: 'Companies Office Lookup',
+  emailPhoneExtraction: 'Email/Phone Extraction'
 };
 
 const FEATURE_DESCRIPTIONS: Record<string, string> = {
@@ -87,6 +100,8 @@ const FEATURE_DESCRIPTIONS: Record<string, string> = {
   tasksAndSequences: 'Sales tasks and sequence management (UI only)',
   socialMedia: 'Social media content generation',
   leadScraping: 'Lead discovery and enrichment from platforms',
+  analytics: 'View extraction and menu analytics dashboard',
+  registrationBatches: 'Batch registration processing for multiple restaurants (internal testing)',
   brandingExtraction: 'Brand colors and logo extraction using Firecrawl',
   registration: 'Restaurant registration automation on Pumpd',
   integrations: 'Third-party API integrations and custom credentials',
@@ -114,7 +129,12 @@ const FEATURE_DESCRIPTIONS: Record<string, string> = {
   leadConversion: 'Convert leads to restaurant records',
 
   // Branding sub-features
-  firecrawlBranding: 'Use Firecrawl branding format for extraction'
+  firecrawlBranding: 'Use Firecrawl branding format for extraction',
+
+  // Contact Details Extraction
+  contactDetailsExtraction: 'Extract business and contact details from Companies Office and websites',
+  companiesOffice: 'Search NZ Companies Office for business owner, NZBN, and company details',
+  emailPhoneExtraction: 'Extract email and phone from restaurant website and social media'
 };
 
 // Helper to check if a value is a simple feature flag (has enabled and optionally ratePerItem)
@@ -270,56 +290,67 @@ export function FeatureFlagsEditor({ featureFlags, onChange, disabled }: Feature
     const hasNested = Object.keys(nestedFeatures).length > 0;
 
     return (
-      <div key={feature} className="space-y-2">
-        <Card className="p-4">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center space-x-2">
-                {hasNested && (
-                  <button
-                    type="button"
-                    onClick={() => toggleExpanded(feature)}
-                    className="p-1 hover:bg-gray-100 rounded"
-                  >
-                    {isExpanded ? (
-                      <ChevronDown className="h-4 w-4 text-gray-500" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 text-gray-500" />
-                    )}
-                  </button>
-                )}
-                <Switch
-                  checked={config.enabled}
-                  onCheckedChange={() => handleToggle(feature)}
-                  disabled={disabled}
-                />
-                <Label className="font-medium">
-                  {FEATURE_LABELS[feature] || feature}
-                </Label>
-                {hasNested && (
-                  <span className="text-xs text-gray-400 ml-2">
-                    ({Object.keys(nestedFeatures).length} sub-features)
-                  </span>
+      <Collapsible
+        key={feature}
+        open={isExpanded && config.enabled}
+        onOpenChange={() => config.enabled && toggleExpanded(feature)}
+      >
+        <div className="space-y-2">
+          <Card className="p-4">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center space-x-2">
+                  {hasNested && (
+                    <CollapsibleTrigger asChild>
+                      <button
+                        type="button"
+                        className="p-1 hover:bg-gray-100 rounded disabled:opacity-50"
+                        disabled={!config.enabled}
+                      >
+                        <ChevronDown
+                          className={cn(
+                            "h-4 w-4 text-gray-500 transition-transform duration-200",
+                            (!isExpanded || !config.enabled) && "-rotate-90"
+                          )}
+                        />
+                      </button>
+                    </CollapsibleTrigger>
+                  )}
+                  <Switch
+                    checked={config.enabled}
+                    onCheckedChange={() => handleToggle(feature)}
+                    disabled={disabled}
+                  />
+                  <Label className="font-medium">
+                    {FEATURE_LABELS[feature] || feature}
+                  </Label>
+                  {hasNested && (
+                    <span className="text-xs text-gray-400 ml-2">
+                      ({Object.keys(nestedFeatures).length} sub-features)
+                    </span>
+                  )}
+                </div>
+                {FEATURE_DESCRIPTIONS[feature] && (
+                  <p className="text-sm text-gray-500 mt-1 ml-9">
+                    {FEATURE_DESCRIPTIONS[feature]}
+                  </p>
                 )}
               </div>
-              {FEATURE_DESCRIPTIONS[feature] && (
-                <p className="text-sm text-gray-500 mt-1 ml-9">
-                  {FEATURE_DESCRIPTIONS[feature]}
-                </p>
-              )}
             </div>
-          </div>
-        </Card>
+          </Card>
 
-        {/* Nested features */}
-        {hasNested && isExpanded && config.enabled && (
-          <div className="space-y-2">
-            {Object.entries(nestedFeatures).map(([nestedKey, nestedConfig]) =>
-              renderFeatureCard(nestedKey, nestedConfig, feature, true)
-            )}
-          </div>
-        )}
-      </div>
+          {/* Nested features with animation */}
+          {hasNested && (
+            <CollapsibleContent className="data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden">
+              <div className="space-y-2">
+                {Object.entries(nestedFeatures).map(([nestedKey, nestedConfig]) =>
+                  renderFeatureCard(nestedKey, nestedConfig, feature, true)
+                )}
+              </div>
+            </CollapsibleContent>
+          )}
+        </div>
+      </Collapsible>
     );
   };
 

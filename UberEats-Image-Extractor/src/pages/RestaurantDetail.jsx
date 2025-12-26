@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from '../hooks/use-toast';
 import {
@@ -46,7 +46,9 @@ import {
   Plus,
   Workflow,
   Tag,
-  Settings2
+  Settings2,
+  Image as ImageIcon,
+  Sparkles
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -88,6 +90,11 @@ import { RestaurantTasksList } from '../components/tasks/RestaurantTasksList';
 import { CreateTaskModal } from '../components/tasks/CreateTaskModal';
 import { TaskDetailModal } from '../components/tasks/TaskDetailModal';
 import { useAuth } from '../context/AuthContext';
+import { CompaniesOfficeDialog } from '../components/dialogs/CompaniesOfficeDialog';
+import { EmailPhoneExtractionDialog } from '../components/dialogs/EmailPhoneExtractionDialog';
+import { PersonalContactDialog } from '../components/dialogs/PersonalContactDialog';
+import { OpeningHoursEditor } from '../components/OpeningHoursEditor';
+import { YoloModeDialog } from '../components/registration/YoloModeDialog';
 
 export default function RestaurantDetail() {
   const { id } = useParams();
@@ -100,6 +107,7 @@ export default function RestaurantDetail() {
   const [success, setSuccess] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editedData, setEditedData] = useState({});
+  const [cuisineInputValue, setCuisineInputValue] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
   const [searchingGoogle, setSearchingGoogle] = useState(false);
 
@@ -116,7 +124,7 @@ export default function RestaurantDetail() {
   // For multi-source fields: { save: boolean, source: string | null }
   // For single-source fields: { save: boolean }
   const [googleSearchSelections, setGoogleSearchSelections] = useState({
-    // Multi-source fields (can come from UberEats, Website, etc.)
+    // Multi-source fields (can come from Google, UberEats, Website, etc.)
     address: { save: true, source: null },
     phone: { save: true, source: null },
     opening_hours: { save: true, source: null },
@@ -131,8 +139,20 @@ export default function RestaurantDetail() {
     delivereasy_url: { save: true },
     nextorder_url: { save: true },
     foodhub_url: { save: true },
-    ordermeal_url: { save: true }
+    ordermeal_url: { save: true },
+    // v3.0: UberEats OG image for restaurant thumbnail/branding
+    ubereats_og_image: { save: true }
   });
+
+  // Companies Office dialog state
+  const [companiesOfficeDialogOpen, setCompaniesOfficeDialogOpen] = useState(false);
+
+  // Email/Phone extraction dialog state
+  const [emailPhoneDialogOpen, setEmailPhoneDialogOpen] = useState(false);
+  const [emailPhoneFieldType, setEmailPhoneFieldType] = useState('restaurant'); // 'restaurant' | 'contact'
+
+  // Personal contact details dialog state
+  const [personalContactDialogOpen, setPersonalContactDialogOpen] = useState(false);
 
   const [extractingLogo, setExtractingLogo] = useState(false);
   const [logoDialogOpen, setLogoDialogOpen] = useState(false);
@@ -264,6 +284,10 @@ export default function RestaurantDetail() {
   const [isAddingOptionSets, setIsAddingOptionSets] = useState(false);
   const [optionSetsStatus, setOptionSetsStatus] = useState(null);
 
+  // Streamlined Menu Import states
+  const [selectedMenuForImport, setSelectedMenuForImport] = useState('');
+  const [importPhase, setImportPhase] = useState(null); // 'checking' | 'uploading' | 'importing'
+
   // Website Customization states
   const [isGenerating, setIsGenerating] = useState(false);
   const [isConfiguring, setIsConfiguring] = useState(false);
@@ -307,6 +331,35 @@ export default function RestaurantDetail() {
   const [uberIntegrationStatus, setUberIntegrationStatus] = useState(null);
   const [receiptLogoVersion, setReceiptLogoVersion] = useState('logo_thermal_url');
 
+  // Header configuration state
+  const [headerEnabled, setHeaderEnabled] = useState(false);
+  const [headerBgSource, setHeaderBgSource] = useState('website_og_image');
+
+  // Items configuration state
+  const [itemLayout, setItemLayout] = useState('list'); // 'list' or 'card'
+
+  // Text color configuration state (defaults to white for dark theme compatibility)
+  const [navTextColorSource, setNavTextColorSource] = useState('white');
+  const [navTextCustomColor, setNavTextCustomColor] = useState('');
+  const [boxTextColorSource, setBoxTextColorSource] = useState('white');
+  const [boxTextCustomColor, setBoxTextCustomColor] = useState('');
+
+  // Logo colorization state (separate for nav and header, with dark/light pixel targeting)
+  const [navLogoDarkTint, setNavLogoDarkTint] = useState('none');
+  const [navLogoDarkCustomColor, setNavLogoDarkCustomColor] = useState('');
+  const [navLogoLightTint, setNavLogoLightTint] = useState('none');
+  const [navLogoLightCustomColor, setNavLogoLightCustomColor] = useState('');
+  const [headerLogoDarkTint, setHeaderLogoDarkTint] = useState('none');
+  const [headerLogoDarkCustomColor, setHeaderLogoDarkCustomColor] = useState('');
+  const [headerLogoLightTint, setHeaderLogoLightTint] = useState('none');
+  const [headerLogoLightCustomColor, setHeaderLogoLightCustomColor] = useState('');
+
+  // Code injection generation options
+  const [noGradient, setNoGradient] = useState(false); // Disable gradients for solid colors
+
+  // Yolo Mode state
+  const [yoloModeOpen, setYoloModeOpen] = useState(false);
+
   // Setup completion tracking
   const [setupCompletionStatus, setSetupCompletionStatus] = useState({
     system_settings: false,
@@ -317,13 +370,23 @@ export default function RestaurantDetail() {
 
   const isNewRestaurant = id === 'new';
 
+  // Available header backgrounds (computed from restaurant data)
+  const availableHeaderBgs = useMemo(() => {
+    return {
+      website_og_image: { label: 'Website OG Image', value: restaurant?.website_og_image || null },
+      ubereats_og_image: { label: 'UberEats Image', value: restaurant?.ubereats_og_image || null },
+      doordash_og_image: { label: 'DoorDash Image', value: restaurant?.doordash_og_image || null },
+      facebook_cover_image: { label: 'Facebook Cover', value: restaurant?.facebook_cover_image || null },
+    };
+  }, [restaurant]);
+
   // Platform capabilities configuration
   const PLATFORM_CAPABILITIES = {
     ubereats: {
       canExtractMenu: true,
       canExtractDetails: true,
-      detailFields: ['address', 'hours'],
-      fieldLabels: { address: 'Physical Address', hours: 'Opening Hours' }
+      detailFields: ['address', 'hours', 'og_image'],
+      fieldLabels: { address: 'Physical Address', hours: 'Opening Hours', og_image: 'OG Image' }
     },
     doordash: {
       canExtractMenu: true,
@@ -391,11 +454,12 @@ export default function RestaurantDetail() {
   useEffect(() => {
     if (restaurant && !isNewRestaurant) {
       // Auto-populate from contact_name and contact_email if available
+      // Fall back to email field if contact_email is not set
       if (restaurant.contact_name) {
         setOnboardingUserName(restaurant.contact_name);
       }
-      if (restaurant.contact_email) {
-        setOnboardingUserEmail(restaurant.contact_email);
+      if (restaurant.contact_email || restaurant.email) {
+        setOnboardingUserEmail(restaurant.contact_email || restaurant.email);
       }
       // Auto-populate Stripe Connect URL if available
       if (restaurant.stripe_connect_url) {
@@ -403,6 +467,15 @@ export default function RestaurantDetail() {
       }
     }
   }, [restaurant, isNewRestaurant]);
+
+  // Set text color defaults based on restaurant theme
+  useEffect(() => {
+    if (restaurant?.theme === 'light') {
+      setNavTextColorSource('secondary');
+      setBoxTextColorSource('secondary');
+    }
+    // Dark theme keeps the default 'white' values set in useState
+  }, [restaurant?.theme]);
 
   // Fetch feature flag for branding extraction on mount
   useEffect(() => {
@@ -477,6 +550,15 @@ export default function RestaurantDetail() {
       fetchRestaurantDetails();
     }
   }, [id]);
+
+  // Sync cuisine input when entering edit mode
+  useEffect(() => {
+    if (isEditing && editedData.cuisine) {
+      setCuisineInputValue(editedData.cuisine.join(', '));
+    } else if (isEditing) {
+      setCuisineInputValue('');
+    }
+  }, [isEditing, editedData.cuisine]);
 
   const fetchRestaurantDetails = async () => {
     try {
@@ -641,6 +723,16 @@ export default function RestaurantDetail() {
       toast({
         title: "Error",
         description: "Please enter email and password",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate phone number is present (required by CloudWaitress)
+    if (!restaurant.phone) {
+      toast({
+        title: "Error",
+        description: "Restaurant phone number is required for account registration. Please add a phone number first.",
         variant: "destructive"
       });
       return;
@@ -948,7 +1040,8 @@ export default function RestaurantDetail() {
 
     try {
       const response = await railwayApi.post('/api/registration/generate-code-injections', {
-        restaurantId: id
+        restaurantId: id,
+        noGradient: noGradient
       });
 
       if (response.data.success) {
@@ -1090,7 +1183,26 @@ export default function RestaurantDetail() {
     try {
       const response = await railwayApi.post('/api/registration/configure-website', {
         restaurantId: id,
-        filePaths: generatedFilePaths
+        filePaths: generatedFilePaths,
+        headerConfig: headerEnabled ? {
+          enabled: true,
+          backgroundSource: headerBgSource
+        } : { enabled: false },
+        itemsConfig: {
+          layout: itemLayout
+        },
+        textColorConfig: {
+          navText: navTextColorSource === 'custom' ? navTextCustomColor : navTextColorSource,
+          boxText: boxTextColorSource === 'custom' ? boxTextCustomColor : boxTextColorSource
+        },
+        navLogoTintConfig: (navLogoDarkTint !== 'none' || navLogoLightTint !== 'none') ? {
+          darkColor: navLogoDarkTint === 'none' ? null : (navLogoDarkTint === 'custom' ? navLogoDarkCustomColor : navLogoDarkTint),
+          lightColor: navLogoLightTint === 'none' ? null : (navLogoLightTint === 'custom' ? navLogoLightCustomColor : navLogoLightTint)
+        } : null,
+        headerLogoTintConfig: (headerLogoDarkTint !== 'none' || headerLogoLightTint !== 'none') ? {
+          darkColor: headerLogoDarkTint === 'none' ? null : (headerLogoDarkTint === 'custom' ? headerLogoDarkCustomColor : headerLogoDarkTint),
+          lightColor: headerLogoLightTint === 'none' ? null : (headerLogoLightTint === 'custom' ? headerLogoLightCustomColor : headerLogoLightTint)
+        } : null
       });
 
       setCustomizationStatus({
@@ -1520,6 +1632,7 @@ export default function RestaurantDetail() {
         response = await api.post('/restaurants', dataToSave);
         const newRestaurantId = response.data.restaurant.id;
         setSuccess('Restaurant created successfully');
+        setIsEditing(false);
         // Navigate to the new restaurant's detail page
         setTimeout(() => {
           navigate(`/restaurants/${newRestaurantId}`);
@@ -1572,54 +1685,6 @@ export default function RestaurantDetail() {
     return `${hours.toString().padStart(2, '0')}:${minutes.padStart(2, '0')}`;
   };
 
-  const convertTo12Hour = (time24h) => {
-    if (!time24h) return '';
-
-    // Already in 12-hour format
-    if (time24h.match(/AM|PM/i)) {
-      return time24h;
-    }
-
-    const [hours24, minutes = '00'] = time24h.split(':');
-    let hours = parseInt(hours24);
-    const period = hours >= 12 ? 'PM' : 'AM';
-
-    if (hours > 12) {
-      hours -= 12;
-    } else if (hours === 0) {
-      hours = 12;
-    }
-
-    return `${hours}:${minutes.padStart(2, '0')} ${period}`;
-  };
-
-  const normalizeOpeningHours = (hours) => {
-    if (!hours) return hours;
-
-    if (Array.isArray(hours)) {
-      return hours.map(slot => ({
-        ...slot,
-        hours: {
-          open: convertTo24Hour(slot.hours.open),
-          close: convertTo24Hour(slot.hours.close)
-        }
-      }));
-    } else if (typeof hours === 'object') {
-      const normalized = {};
-      Object.keys(hours).forEach(day => {
-        if (hours[day]) {
-          normalized[day] = {
-            open: convertTo24Hour(hours[day].open),
-            close: convertTo24Hour(hours[day].close)
-          };
-        }
-      });
-      return normalized;
-    }
-
-    return hours;
-  };
-
   const handleCancel = () => {
     if (isNewRestaurant) {
       navigate('/restaurants');
@@ -1635,6 +1700,23 @@ export default function RestaurantDetail() {
       ...prev,
       [field]: value
     }));
+
+    // Auto-update text colors when theme changes
+    if (field === 'theme') {
+      if (value === 'dark') {
+        // Dark theme: use white text
+        setNavTextColorSource('white');
+        setNavTextCustomColor('');
+        setBoxTextColorSource('white');
+        setBoxTextCustomColor('');
+      } else if (value === 'light') {
+        // Light theme: use secondary color (or black as fallback)
+        setNavTextColorSource('secondary');
+        setNavTextCustomColor('');
+        setBoxTextColorSource('secondary');
+        setBoxTextCustomColor('');
+      }
+    }
   };
 
   // Direct status update without entering edit mode
@@ -1713,8 +1795,8 @@ export default function RestaurantDetail() {
 
   // Set smart defaults for multi-source selection
   // - Uncheck fields that already have values
-  // - Auto-select the "best" source (UberEats for hours, Website for phone)
-  const setGoogleSearchSmartDefaults = (extractedBySource, platformUrls) => {
+  // - Auto-select the "best" source (Google for all, UberEats as fallback)
+  const setGoogleSearchSmartDefaults = (extractedBySource, platformUrls, ubereatsOgImage = null) => {
     const sources = Object.keys(extractedBySource || {});
 
     // Helper to find first source that has a value for a field
@@ -1727,14 +1809,14 @@ export default function RestaurantDetail() {
       return null;
     };
 
-    // Smart source selection:
-    // - Address: prefer UberEats, fallback to website
-    // - Phone: website only (UberEats never has phone)
-    // - Hours: prefer UberEats (most accurate)
+    // v3.0 Smart source selection:
+    // - Google Business Profile is now PRIMARY source for all fields
+    // - UberEats is FALLBACK when Google doesn't have data
+    // - Phone: Google is primary (has verified business phone), website as fallback
     const preferredSources = {
-      address: ['ubereats', 'website', 'doordash'],
-      phone: ['website'],  // UberEats never has phone numbers
-      openingHours: ['ubereats', 'website']
+      address: ['google', 'ubereats', 'website', 'doordash'],
+      phone: ['google', 'website'],  // UberEats never has phone numbers
+      openingHours: ['google', 'ubereats', 'website']
     };
 
     const selectBestSource = (field) => {
@@ -1747,7 +1829,7 @@ export default function RestaurantDetail() {
     };
 
     setGoogleSearchSelections({
-      // Multi-source fields
+      // Multi-source fields (v3.0: Google is now the primary source)
       address: {
         save: !restaurant?.address && !!findSourceWithValue('address'),
         source: selectBestSource('address')
@@ -1771,7 +1853,9 @@ export default function RestaurantDetail() {
       delivereasy_url: { save: !restaurant?.delivereasy_url && !!platformUrls?.delivereasyUrl },
       nextorder_url: { save: !restaurant?.nextorder_url && !!platformUrls?.nextorderUrl },
       foodhub_url: { save: !restaurant?.foodhub_url && !!platformUrls?.foodhubUrl },
-      ordermeal_url: { save: !restaurant?.ordermeal_url && !!platformUrls?.ordermealUrl }
+      ordermeal_url: { save: !restaurant?.ordermeal_url && !!platformUrls?.ordermealUrl },
+      // v3.0: UberEats OG image
+      ubereats_og_image: { save: !restaurant?.ubereats_og_image && !!ubereatsOgImage }
     });
   };
 
@@ -1783,8 +1867,9 @@ export default function RestaurantDetail() {
       if (selectAll) {
         // Auto-select all available data using best sources
         const sources = Object.keys(data.extractedBySource || {});
-        // For phone, only use 'website' source (UberEats never has phone)
-        const phoneSource = sources.includes('website') && data.extractedBySource?.website?.phone ? 'website' : null;
+        // v3.0: Google is now primary source for phone (UberEats never has phone)
+        const phoneSource = sources.includes('google') && data.extractedBySource?.google?.phone ? 'google' :
+                           sources.includes('website') && data.extractedBySource?.website?.phone ? 'website' : null;
         selections = {
           address: { save: true, source: sources[0] },
           phone: { save: !!phoneSource, source: phoneSource },
@@ -1799,7 +1884,9 @@ export default function RestaurantDetail() {
           delivereasy_url: { save: !!data.platformUrls?.delivereasyUrl },
           nextorder_url: { save: !!data.platformUrls?.nextorderUrl },
           foodhub_url: { save: !!data.platformUrls?.foodhubUrl },
-          ordermeal_url: { save: !!data.platformUrls?.ordermealUrl }
+          ordermeal_url: { save: !!data.platformUrls?.ordermealUrl },
+          // v3.0: UberEats OG image
+          ubereats_og_image: { save: !!data.ubereatsOgImage }
         };
       } else {
         selections = googleSearchSelections;
@@ -1809,7 +1896,9 @@ export default function RestaurantDetail() {
         restaurantId: id,
         selections,
         extractedBySource: data.extractedBySource,
-        platformUrls: data.platformUrls
+        platformUrls: data.platformUrls,
+        // v3.0: Pass UberEats OG image URL for conversion to base64 on save
+        ubereatsOgImage: data.ubereatsOgImage
       });
 
       if (response.data.success) {
@@ -1943,7 +2032,7 @@ export default function RestaurantDetail() {
         if (hasExistingGoogleSearchValues() || hasMultipleSources) {
           // Store data and show confirmation dialog with source selection
           setPendingGoogleSearchData(data);
-          setGoogleSearchSmartDefaults(data.extractedBySource, data.platformUrls);
+          setGoogleSearchSmartDefaults(data.extractedBySource, data.platformUrls, data.ubereatsOgImage);
           setGoogleSearchConfirmDialogOpen(true);
         } else {
           // No existing values and single source - apply everything directly
@@ -1958,40 +2047,6 @@ export default function RestaurantDetail() {
     } finally {
       setSearchingGoogle(false);
       setPendingGoogleSearchUrls(null);
-    }
-  };
-
-  const handleOpeningHoursChange = (day, field, value, index = null) => {
-    const currentHours = editedData.opening_hours || {};
-
-    // Handle array format (multiple time slots per day)
-    if (Array.isArray(currentHours)) {
-      const updatedHours = [...currentHours];
-      if (index !== null) {
-        // Update specific slot
-        const slotIndex = updatedHours.findIndex((slot, i) =>
-          slot.day === day && i === index
-        );
-        if (slotIndex !== -1) {
-          updatedHours[slotIndex].hours[field] = value;
-        }
-      }
-      setEditedData(prev => ({
-        ...prev,
-        opening_hours: updatedHours
-      }));
-    } else {
-      // Handle object format (single time slot per day)
-      setEditedData(prev => ({
-        ...prev,
-        opening_hours: {
-          ...currentHours,
-          [day]: {
-            ...currentHours[day],
-            [field]: value
-          }
-        }
-      }));
     }
   };
 
@@ -2821,6 +2876,7 @@ export default function RestaurantDetail() {
         if (extracted.address) extractedItems.push('address');
         if (extracted.phone) extractedItems.push('phone');
         if (extracted.hours && extracted.hours.length > 0) extractedItems.push('opening hours');
+        if (extracted.og_image) extractedItems.push('OG image');
 
         successMessage += extractedItems.join(', ');
 
@@ -2849,296 +2905,6 @@ export default function RestaurantDetail() {
     } finally {
       setExtractingDetails(false);
     }
-  };
-
-  const addOpeningHoursSlot = (day) => {
-    const currentHours = editedData.opening_hours;
-
-    // If no hours exist yet, create object format by default
-    if (!currentHours || (typeof currentHours === 'object' && Object.keys(currentHours).length === 0)) {
-      setEditedData(prev => ({
-        ...prev,
-        opening_hours: {
-          [day]: { open: '09:00', close: '17:00' }
-        }
-      }));
-      return;
-    }
-
-    if (!Array.isArray(currentHours)) {
-      // Object format - check if we need to convert to array (for multiple slots)
-      if (currentHours[day]) {
-        // Day already has hours, convert to array format for multiple slots
-        const arrayFormat = [];
-        Object.keys(currentHours).forEach(d => {
-          if (currentHours[d]) {
-            arrayFormat.push({
-              day: d,
-              hours: currentHours[d]
-            });
-          }
-        });
-        // Add the new slot for this day
-        arrayFormat.push({
-          day: day,
-          hours: { open: '09:00', close: '17:00' }
-        });
-        setEditedData(prev => ({
-          ...prev,
-          opening_hours: arrayFormat
-        }));
-      } else {
-        // Just add to object format
-        setEditedData(prev => ({
-          ...prev,
-          opening_hours: {
-            ...currentHours,
-            [day]: { open: '09:00', close: '17:00' }
-          }
-        }));
-      }
-    } else {
-      // Array format - just add new slot
-      setEditedData(prev => ({
-        ...prev,
-        opening_hours: [...currentHours, {
-          day: day,
-          hours: { open: '09:00', close: '17:00' }
-        }]
-      }));
-    }
-  };
-
-  const removeOpeningHoursSlot = (day, index) => {
-    const currentHours = editedData.opening_hours || [];
-    if (Array.isArray(currentHours)) {
-      const updatedHours = currentHours.filter((slot, i) =>
-        !(slot.day === day && i === index)
-      );
-      setEditedData(prev => ({
-        ...prev,
-        opening_hours: updatedHours
-      }));
-    }
-  };
-
-  const deleteOpeningHours = (day) => {
-    const currentHours = editedData.opening_hours || {};
-
-    if (Array.isArray(currentHours)) {
-      // Remove all slots for this day from array format
-      const updatedHours = currentHours.filter(slot => slot.day !== day);
-      setEditedData(prev => ({
-        ...prev,
-        opening_hours: updatedHours
-      }));
-    } else {
-      // Remove the day from object format
-      const updatedHours = { ...currentHours };
-      delete updatedHours[day];
-      setEditedData(prev => ({
-        ...prev,
-        opening_hours: updatedHours
-      }));
-    }
-  };
-
-  const renderOpeningHours = () => {
-    const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    const hours = isEditing ? editedData.opening_hours : restaurant?.opening_hours;
-
-    if (!hours) {
-      return daysOfWeek.map(day => (
-        <div key={day} className="flex items-center justify-between">
-          <span className="text-sm font-medium w-24">{day}</span>
-          {isEditing ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => addOpeningHoursSlot(day)}
-            >
-              Add Hours
-            </Button>
-          ) : (
-            <span className="text-sm text-gray-500">Closed</span>
-          )}
-        </div>
-      ));
-    }
-
-    // Handle array format (multiple time slots per day)
-    if (Array.isArray(hours)) {
-      const groupedHours = {};
-      hours.forEach((slot, index) => {
-        if (!groupedHours[slot.day]) {
-          groupedHours[slot.day] = [];
-        }
-        groupedHours[slot.day].push({ ...slot.hours, index });
-      });
-
-      return daysOfWeek.map(day => {
-        const daySlots = groupedHours[day] || [];
-
-        return (
-          <div key={day} className="space-y-2 mb-3">
-            <div className="flex items-start gap-4">
-              <span className="text-sm font-medium w-24 pt-2">{day}</span>
-              <div className="flex-1 space-y-2">
-                {daySlots.length === 0 ? (
-                  isEditing ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addOpeningHoursSlot(day)}
-                      className="mt-1"
-                    >
-                      Add Hours
-                    </Button>
-                  ) : (
-                    <span className="text-sm text-gray-500 inline-block pt-2">Closed</span>
-                  )
-                ) : (
-                  daySlots.map((slot, slotIndex) => (
-                    <div key={slotIndex} className="flex items-center gap-2">
-                      {isEditing ? (
-                        <>
-                          <Input
-                            type="time"
-                            value={slot.open || ''}
-                            onChange={(e) => handleOpeningHoursChange(day, 'open', e.target.value, slot.index)}
-                            className="w-32"
-                          />
-                          <span className="text-gray-500">-</span>
-                          <Input
-                            type="time"
-                            value={slot.close || ''}
-                            onChange={(e) => handleOpeningHoursChange(day, 'close', e.target.value, slot.index)}
-                            className="w-32"
-                          />
-                          {daySlots.length > 1 && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => removeOpeningHoursSlot(day, slot.index)}
-                              className="h-8 w-8 flex-shrink-0"
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </>
-                      ) : (
-                        <span className="text-sm">
-                          {convertTo12Hour(slot.open)} - {convertTo12Hour(slot.close)}
-                        </span>
-                      )}
-                    </div>
-                  ))
-                )}
-                {isEditing && daySlots.length > 0 && (
-                  <div className="flex gap-2">
-                    {daySlots.length < 2 && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => addOpeningHoursSlot(day)}
-                      >
-                        Add Time Slot
-                      </Button>
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => deleteOpeningHours(day)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      Delete All Hours
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      });
-    }
-
-    // Handle object format (single time slot per day)
-    return daysOfWeek.map(day => (
-      <div key={day} className="space-y-2 mb-3">
-        <div className="flex items-start gap-4">
-          <span className="text-sm font-medium w-24 pt-2">{day}</span>
-          <div className="flex-1 space-y-2">
-            {!hours[day] ? (
-              isEditing ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addOpeningHoursSlot(day)}
-                  className="mt-1"
-                >
-                  Add Hours
-                </Button>
-              ) : (
-                <span className="text-sm text-gray-500 inline-block pt-2">Closed</span>
-              )
-            ) : (
-              <>
-                <div className="flex items-center gap-2">
-                  {isEditing ? (
-                    <>
-                      <Input
-                        type="time"
-                        value={hours[day]?.open || ''}
-                        onChange={(e) => handleOpeningHoursChange(day, 'open', e.target.value)}
-                        className="w-32"
-                      />
-                      <span className="text-gray-500">-</span>
-                      <Input
-                        type="time"
-                        value={hours[day]?.close || ''}
-                        onChange={(e) => handleOpeningHoursChange(day, 'close', e.target.value)}
-                        className="w-32"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => deleteOpeningHours(day)}
-                        className="h-8 w-8 flex-shrink-0"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </>
-                  ) : (
-                    <span className="text-sm">
-                      {convertTo12Hour(hours[day].open)} - {convertTo12Hour(hours[day].close)}
-                    </span>
-                  )}
-                </div>
-                {isEditing && (
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addOpeningHoursSlot(day)}
-                    >
-                      Add Time Slot
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => deleteOpeningHours(day)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      Delete All Hours
-                    </Button>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-    ));
   };
 
   const getStatusBadge = (status) => {
@@ -3312,6 +3078,113 @@ export default function RestaurantDetail() {
     }
   };
 
+  // Wait for CDN upload batch completion with promise-based polling
+  // Takes an existing batchId to poll - does NOT start a new upload
+  const waitForBatchCompletion = async (batchId, maxWaitTime = 300000) => {
+    const pollInterval = 2000;
+    const startTime = Date.now();
+
+    return new Promise((resolve, reject) => {
+      const poll = async () => {
+        if (Date.now() - startTime > maxWaitTime) {
+          reject(new Error('CDN upload timeout - please try again'));
+          return;
+        }
+
+        try {
+          const progressResponse = await api.get(`/upload-batches/${batchId}`);
+          const batch = progressResponse.data.batch;
+
+          if (batch.status === 'processing') {
+            const uploaded = batch.progress?.uploaded || batch.uploaded_count || 0;
+            const total = batch.progress?.total || batch.total_images || 0;
+            toast({ title: "Uploading images...", description: `${uploaded}/${total} complete` });
+            setTimeout(poll, pollInterval);
+          } else if (batch.status === 'completed') {
+            resolve({ successful: batch.uploaded_count, total: batch.total_images });
+          } else if (batch.status === 'failed') {
+            reject(new Error('CDN upload failed'));
+          }
+        } catch (error) {
+          reject(new Error(`Upload status check failed: ${error.message}`));
+        }
+      };
+
+      poll();
+    });
+  };
+
+  // Streamlined menu import - uploads images to CDN if needed, then imports
+  const handleStreamlinedMenuImport = async () => {
+    if (!selectedMenuForImport) {
+      toast({ title: "Error", description: "Please select a menu", variant: "destructive" });
+      return;
+    }
+
+    if (registrationStatus?.account?.registration_status !== 'completed' ||
+        registrationStatus?.restaurant?.registration_status !== 'completed') {
+      toast({ title: "Error", description: "Registration must be completed first", variant: "destructive" });
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadStatus(null);
+    setUploadError(null);
+
+    try {
+      // Phase 1: Upload images to CDN (backend handles "already uploaded" case gracefully)
+      setImportPhase('uploading');
+      toast({ title: "Checking images...", description: "Uploading to CDN if needed" });
+
+      const uploadResponse = await api.post(`/menus/${selectedMenuForImport}/upload-images`);
+
+      // Handle the response based on mode
+      if (uploadResponse.data.batchId && uploadResponse.data.mode === 'asynchronous') {
+        // Async upload in progress - wait for it to complete
+        toast({
+          title: "Uploading images to CDN...",
+          description: `${uploadResponse.data.totalImages} images being uploaded`
+        });
+        await waitForBatchCompletion(uploadResponse.data.batchId);
+        toast({ title: "Images uploaded!", description: "Proceeding with import..." });
+      } else if (uploadResponse.data.mode === 'synchronous') {
+        // Small batch completed synchronously
+        toast({ title: "Images uploaded!", description: "Proceeding with import..." });
+      } else if (uploadResponse.data.stats?.alreadyUploaded > 0) {
+        // All images already uploaded
+        toast({ title: "Images ready", description: "All images already on CDN" });
+      }
+      // If no batchId and no stats, there are no images - just continue to import
+
+      // Phase 2: Import menu
+      setImportPhase('importing');
+      toast({ title: "Importing menu...", description: "This may take a minute" });
+
+      const response = await railwayApi.post('/api/registration/import-menu-direct', {
+        restaurantId: id,
+        menuId: selectedMenuForImport
+      });
+
+      if (response.data.success) {
+        setUploadStatus('success');
+        setSelectedMenuForImport('');
+        toast({ title: "Success!", description: "Menu imported successfully" });
+        fetchRestaurantDetails();
+      } else {
+        throw new Error(response.data.error || 'Import failed');
+      }
+
+    } catch (error) {
+      console.error('Streamlined import error:', error);
+      setUploadStatus('error');
+      setUploadError(error.message);
+      toast({ title: "Import Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setIsUploading(false);
+      setImportPhase(null);
+    }
+  };
+
   // Reusable component for platform URL fields
   const PlatformUrlField = ({ platform, platformName, urlValue, fieldName, placeholder }) => {
     const capabilities = PLATFORM_CAPABILITIES[platform];
@@ -3412,13 +3285,14 @@ export default function RestaurantDetail() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="space-y-2">
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col -mt-6 -mb-6">
+      {/* Sticky Header + Tabs */}
+      <div className="sticky -top-6 z-40 bg-white/80 backdrop-blur-sm -mx-6 px-6 pt-6 pb-4 border border-brand-grey/20 shadow-md space-y-4 rounded-b-[16px]">
+        {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4 min-w-0">
             <Button
-              variant="ghost"
+              variant="outline"
               size="icon"
               onClick={() => navigate('/restaurants')}
             >
@@ -3614,35 +3488,36 @@ export default function RestaurantDetail() {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Success/Error Messages */}
-      {success && (
-        <Alert className="bg-green-50 border-green-200">
-          <CheckCircle className="h-4 w-4 text-green-600" />
-          <AlertDescription className="text-green-800">{success}</AlertDescription>
-        </Alert>
-      )}
-
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {/* Main Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        {/* TabsList */}
         <TabsList size="full">
-          <TabsTrigger value="overview" size="full">Overview</TabsTrigger>
+          <TabsTrigger value="overview" size="full" variant="blue">Overview</TabsTrigger>
           {isFeatureEnabled('tasksAndSequences') && (
-            <TabsTrigger value="tasks-sequences" size="full">Tasks and Sequences</TabsTrigger>
+            <TabsTrigger value="tasks-sequences" size="full" variant="blue">Tasks and Sequences</TabsTrigger>
           )}
-          <TabsTrigger value="platforms" size="full">Gathering Info</TabsTrigger>
+          <TabsTrigger value="platforms" size="full" variant="blue">Gathering Info</TabsTrigger>
           {isFeatureEnabled('registration') && (
-            <TabsTrigger value="registration" size="full">Registration</TabsTrigger>
+            <TabsTrigger value="registration" size="full" variant="blue">Registration</TabsTrigger>
           )}
         </TabsList>
+      </div>
+
+      {/* Scrollable Content */}
+      <div className="pt-6 space-y-6">
+        {/* Success/Error Messages */}
+        {success && (
+          <Alert className="bg-green-50 border-green-200">
+            <CheckCircle className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-800">{success}</AlertDescription>
+          </Alert>
+        )}
+
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-4">
@@ -3703,7 +3578,23 @@ export default function RestaurantDetail() {
                 </div>
 
                 <div>
-                  <Label>Restaurant Phone</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Restaurant Phone</Label>
+                    {isFeatureEnabled('contactDetailsExtraction.emailPhoneExtraction') && !isEditing && !restaurant?.phone && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => {
+                          setEmailPhoneFieldType('restaurant');
+                          setEmailPhoneDialogOpen(true);
+                        }}
+                      >
+                        <Search className="h-3 w-3 mr-1" />
+                        Find
+                      </Button>
+                    )}
+                  </div>
                   {isEditing ? (
                     <Input
                       value={editedData.phone || ''}
@@ -3715,7 +3606,23 @@ export default function RestaurantDetail() {
                 </div>
 
                 <div>
-                  <Label>Restaurant Email</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Restaurant Email</Label>
+                    {isFeatureEnabled('contactDetailsExtraction.emailPhoneExtraction') && !isEditing && !restaurant?.email && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => {
+                          setEmailPhoneFieldType('restaurant');
+                          setEmailPhoneDialogOpen(true);
+                        }}
+                      >
+                        <Search className="h-3 w-3 mr-1" />
+                        Find
+                      </Button>
+                    )}
+                  </div>
                   {isEditing ? (
                     <Input
                       type="email"
@@ -3726,13 +3633,96 @@ export default function RestaurantDetail() {
                     <p className="text-sm mt-1">{restaurant?.email || '-'}</p>
                   )}
                 </div>
+
+                {/* Business Registration Fields (from Companies Office) */}
+                {isFeatureEnabled('contactDetailsExtraction.companiesOffice') && (
+                  <div className="pt-4 border-t space-y-4">
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Business Registration</Label>
+
+                    <div>
+                      <Label className="text-xs">Company Name</Label>
+                      {isEditing ? (
+                        <Input
+                          value={editedData.company_name || ''}
+                          onChange={(e) => handleFieldChange('company_name', e.target.value)}
+                        />
+                      ) : (
+                        <p className="text-sm mt-1">{restaurant?.company_name || '-'}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Company Number</Label>
+                      {isEditing ? (
+                        <Input
+                          value={editedData.company_number || ''}
+                          onChange={(e) => handleFieldChange('company_number', e.target.value)}
+                          className="font-mono"
+                        />
+                      ) : (
+                        <p className="text-sm mt-1 font-mono">{restaurant?.company_number || '-'}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">NZBN</Label>
+                      {isEditing ? (
+                        <Input
+                          value={editedData.nzbn || ''}
+                          onChange={(e) => handleFieldChange('nzbn', e.target.value)}
+                          className="font-mono"
+                        />
+                      ) : (
+                        <p className="text-sm mt-1 font-mono">{restaurant?.nzbn || '-'}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">GST Number</Label>
+                      {isEditing ? (
+                        <Input
+                          value={editedData.gst_number || ''}
+                          onChange={(e) => handleFieldChange('gst_number', e.target.value)}
+                          className="font-mono"
+                        />
+                      ) : (
+                        <p className="text-sm mt-1 font-mono">{restaurant?.gst_number || '-'}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
             {/* Contact & Lead Information */}
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle>Contact & Lead Info</CardTitle>
+                {!isEditing && (
+                  <div className="flex gap-2">
+                    {isFeatureEnabled('contactDetailsExtraction.companiesOffice') && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCompaniesOfficeDialogOpen(true)}
+                      >
+                        <Building2 className="h-4 w-4 mr-2" />
+                        Get Contacts
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const query = encodeURIComponent(`What is the name of the registered company that runs ${restaurant?.name || ''} ${restaurant?.city || ''}?`);
+                        window.open(`https://www.google.com/search?udm=50&q=${query}`, '_blank');
+                      }}
+                    >
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      AI Search
+                    </Button>
+                  </div>
+                )}
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
@@ -3748,27 +3738,140 @@ export default function RestaurantDetail() {
                 </div>
 
                 <div>
-                  <Label>Contact Email</Label>
+                  <Label>Full Legal Name</Label>
                   {isEditing ? (
                     <Input
-                      type="email"
-                      value={editedData.contact_email || ''}
-                      onChange={(e) => handleFieldChange('contact_email', e.target.value)}
+                      value={editedData.full_legal_name || ''}
+                      onChange={(e) => handleFieldChange('full_legal_name', e.target.value)}
                     />
                   ) : (
-                    <p className="text-sm mt-1">{restaurant?.contact_email || '-'}</p>
+                    <p className="text-sm mt-1">{restaurant?.full_legal_name || '-'}</p>
                   )}
                 </div>
 
-                <div>
-                  <Label>Contact Phone</Label>
-                  {isEditing ? (
-                    <Input
-                      value={editedData.contact_phone || ''}
-                      onChange={(e) => handleFieldChange('contact_phone', e.target.value)}
-                    />
-                  ) : (
-                    <p className="text-sm mt-1">{restaurant?.contact_phone || '-'}</p>
+                {/* Personal Contact Info & Social Links */}
+                <div className="pt-4 border-t space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Personal Contact Info</Label>
+                    {isFeatureEnabled('tasksAndSequences') && !isEditing && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => setPersonalContactDialogOpen(true)}
+                      >
+                        <Search className="h-3 w-3 mr-1" />
+                        Find Contacts
+                      </Button>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label>Contact Email</Label>
+                    {isEditing ? (
+                      <Input
+                        type="email"
+                        value={editedData.contact_email || ''}
+                        onChange={(e) => handleFieldChange('contact_email', e.target.value)}
+                      />
+                    ) : (
+                      <p className="text-sm mt-1">{restaurant?.contact_email || '-'}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label>Contact Phone</Label>
+                    {isEditing ? (
+                      <Input
+                        value={editedData.contact_phone || ''}
+                        onChange={(e) => handleFieldChange('contact_phone', e.target.value)}
+                      />
+                    ) : (
+                      <p className="text-sm mt-1">{restaurant?.contact_phone || '-'}</p>
+                    )}
+                  </div>
+
+                  {/* Social Links - Only visible with tasksAndSequences feature */}
+                  {isFeatureEnabled('tasksAndSequences') && (
+                    <>
+                      <div>
+                        <Label className="flex items-center gap-1">
+                          <Instagram className="h-3 w-3" />
+                          Contact Instagram
+                        </Label>
+                        {isEditing ? (
+                          <Input
+                            value={editedData.contact_instagram || ''}
+                            onChange={(e) => handleFieldChange('contact_instagram', e.target.value)}
+                            placeholder="https://instagram.com/username"
+                          />
+                        ) : restaurant?.contact_instagram ? (
+                          <a
+                            href={restaurant.contact_instagram}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm mt-1 text-blue-600 hover:underline flex items-center gap-1"
+                          >
+                            {restaurant.contact_instagram}
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        ) : (
+                          <p className="text-sm mt-1 text-muted-foreground">-</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <Label className="flex items-center gap-1">
+                          <Facebook className="h-3 w-3" />
+                          Contact Facebook
+                        </Label>
+                        {isEditing ? (
+                          <Input
+                            value={editedData.contact_facebook || ''}
+                            onChange={(e) => handleFieldChange('contact_facebook', e.target.value)}
+                            placeholder="https://facebook.com/username"
+                          />
+                        ) : restaurant?.contact_facebook ? (
+                          <a
+                            href={restaurant.contact_facebook}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm mt-1 text-blue-600 hover:underline flex items-center gap-1"
+                          >
+                            {restaurant.contact_facebook}
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        ) : (
+                          <p className="text-sm mt-1 text-muted-foreground">-</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <Label className="flex items-center gap-1">
+                          <Link2 className="h-3 w-3" />
+                          Contact LinkedIn
+                        </Label>
+                        {isEditing ? (
+                          <Input
+                            value={editedData.contact_linkedin || ''}
+                            onChange={(e) => handleFieldChange('contact_linkedin', e.target.value)}
+                            placeholder="https://linkedin.com/in/username"
+                          />
+                        ) : restaurant?.contact_linkedin ? (
+                          <a
+                            href={restaurant.contact_linkedin}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm mt-1 text-blue-600 hover:underline flex items-center gap-1"
+                          >
+                            {restaurant.contact_linkedin}
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        ) : (
+                          <p className="text-sm mt-1 text-muted-foreground">-</p>
+                        )}
+                      </div>
+                    </>
                   )}
                 </div>
 
@@ -3794,15 +3897,6 @@ export default function RestaurantDetail() {
                     <p className="text-sm mt-1">{restaurant?.weekly_sales_range || '-'}</p>
                   )}
                 </div>
-
-                <div>
-                  <Label>Lead Created</Label>
-                  <p className="text-sm mt-1">
-                    {restaurant?.lead_created_at
-                      ? new Date(restaurant.lead_created_at).toLocaleString()
-                      : '-'}
-                  </p>
-                </div>
               </CardContent>
             </Card>
           </div>
@@ -3811,10 +3905,10 @@ export default function RestaurantDetail() {
           {isFeatureEnabled('tasksAndSequences') && (
             <Card>
               <CardHeader>
-                <CardTitle>Sales Information</CardTitle>
+                <CardTitle>Sales Cycle Information</CardTitle>
                 <CardDescription>Lead tracking, categorization, and sales pipeline management</CardDescription>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 md:grid-cols-2 md:grid-cols-3 gap-4">
+              <CardContent className="grid xs:grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {/* Lead Type */}
                 <div>
                   <Label>Lead Type</Label>
@@ -4106,7 +4200,7 @@ export default function RestaurantDetail() {
                 </div>
 
                 {/* Qualification Data Section */}
-                <div className="col-span-2 border-t pt-6 mt-6">
+                <div className="col-span-full border-t pt-6 mt-6">
                   <h3 className="text-lg font-semibold mb-4">Demo Qualification Data</h3>
 
                   {isEditing ? (
@@ -4130,7 +4224,7 @@ export default function RestaurantDetail() {
               <CardHeader>
                 <CardTitle>Platform URLs</CardTitle>
                 <CardDescription>
-                  <p>Online Ordering, Social Media & Website URLs</p>
+                  Online Ordering, Social Media & Website URLs
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -4232,9 +4326,11 @@ export default function RestaurantDetail() {
                 <CardTitle>Opening Hours</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {renderOpeningHours()}
-                </div>
+                <OpeningHoursEditor
+                  value={isEditing ? editedData.opening_hours : restaurant?.opening_hours}
+                  onChange={(hours) => handleFieldChange('opening_hours', hours)}
+                  isEditing={isEditing}
+                />
 
                 {isEditing && (
                   <div className="mt-4">
@@ -4374,6 +4470,17 @@ export default function RestaurantDetail() {
                 {/* Branding Extraction Controls - inline with header */}
                 {!isNewRestaurant && useFirecrawlBranding && isFeatureEnabled('brandingExtraction.firecrawlBranding') && (
                   <div className="flex gap-2 items-center">
+                    {/* Open URL in new tab button */}
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      disabled={!brandingSourceUrl}
+                      onClick={() => window.open(brandingSourceUrl, '_blank', 'noopener,noreferrer')}
+                      title="Open URL in new tab"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
                     <Select
                       value={brandingSourceUrl}
                       onValueChange={setBrandingSourceUrl}
@@ -4439,6 +4546,28 @@ export default function RestaurantDetail() {
                     <Badge variant="outline" className="mt-1">
                       {restaurant?.theme || 'light'}
                     </Badge>
+                  )}
+                </div>
+
+                <div>
+                  <Label>Cuisine</Label>
+                  {isEditing ? (
+                    <Input
+                      value={cuisineInputValue}
+                      onChange={(e) => setCuisineInputValue(e.target.value)}
+                      onBlur={() => handleFieldChange('cuisine', cuisineInputValue.split(',').map(c => c.trim()).filter(c => c))}
+                      placeholder="e.g., Italian, Pizza, Pasta"
+                    />
+                  ) : (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {restaurant?.cuisine?.length > 0 ? (
+                        restaurant.cuisine.map((c, i) => (
+                          <Badge key={i} variant="secondary">{c}</Badge>
+                        ))
+                      ) : (
+                        <span className="text-sm text-muted-foreground">-</span>
+                      )}
+                    </div>
                   )}
                 </div>
 
@@ -5154,6 +5283,34 @@ export default function RestaurantDetail() {
         {/* Registration Tab */}
         {isFeatureEnabled('registration') && (
           <TabsContent value="registration" className="space-y-4">
+            {/* Yolo Mode Card - Complete Setup with One Click */}
+            <Card className="border-2 border-primary/20 bg-primary/5">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Workflow className="h-5 w-5 text-primary" />
+                    <CardTitle>Complete Setup</CardTitle>
+                  </div>
+                  <Badge variant="outline" className="text-primary border-primary">
+                    Yolo Mode
+                  </Badge>
+                </div>
+                <CardDescription>
+                  Review all settings and execute the full restaurant setup workflow with one click
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  onClick={() => setYoloModeOpen(true)}
+                  className="w-full"
+                  size="lg"
+                >
+                  <Workflow className="h-4 w-4 mr-2" />
+                  Open Complete Setup
+                </Button>
+              </CardContent>
+            </Card>
+
             {/* Registration Status Card */}
             {(isFeatureEnabled('registration.userAccountRegistration') || isFeatureEnabled('registration.restaurantRegistration')) && (
               <Card>
@@ -5575,10 +5732,71 @@ export default function RestaurantDetail() {
                     </div>
                   </div>
 
-                  {/* File Upload Section */}
+                  {/* Streamlined Menu Import Section */}
+                  {registrationStatus?.account?.registration_status === 'completed' &&
+                    registrationStatus?.restaurant?.registration_status === 'completed' && (
+                    <div className="space-y-3 mb-6">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <FileSpreadsheet className="h-4 w-4" />
+                        Quick Menu Import
+                      </div>
+
+                      <Select
+                        value={selectedMenuForImport}
+                        onValueChange={setSelectedMenuForImport}
+                        disabled={isUploading}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select a menu to import..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {restaurant?.menus && restaurant.menus.length > 0 ? (
+                            restaurant.menus.map((menu) => (
+                              <SelectItem key={menu.id} value={menu.id}>
+                                Version {menu.version} - {menu.platforms?.name || 'Unknown'}
+                                {menu.is_active && ' (Active)'}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="none" disabled>
+                              No menus available
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+
+                      <Button
+                        onClick={handleStreamlinedMenuImport}
+                        disabled={!selectedMenuForImport || isUploading}
+                        className="w-full"
+                      >
+                        {isUploading ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            {importPhase === 'checking' && 'Checking...'}
+                            {importPhase === 'uploading' && 'Uploading Images...'}
+                            {importPhase === 'importing' && 'Importing Menu...'}
+                            {!importPhase && 'Processing...'}
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4 mr-2" />
+                            Import Selected Menu
+                          </>
+                        )}
+                      </Button>
+
+                      <p className="text-xs text-muted-foreground">
+                        Automatically uploads images to CDN if needed, then imports the menu.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Manual CSV Upload Section (Fallback) */}
                   {registrationStatus?.account?.registration_status === 'completed' &&
                     registrationStatus?.restaurant?.registration_status === 'completed' ? (
-                    <div className="space-y-4">
+                    <div className="space-y-4 border-t pt-4">
+                      <p className="text-sm text-muted-foreground">Or upload CSV manually:</p>
                       <div className="space-y-2">
                         <Label htmlFor="csv-file-input">Select CSV File</Label>
                         <div className="flex gap-2">
@@ -5876,8 +6094,9 @@ export default function RestaurantDetail() {
                       <Label>Cuisine</Label>
                       {isEditing ? (
                         <Input
-                          value={editedData.cuisine?.join(', ') || ''}
-                          onChange={(e) => handleFieldChange('cuisine', e.target.value.split(',').map(c => c.trim()))}
+                          value={cuisineInputValue}
+                          onChange={(e) => setCuisineInputValue(e.target.value)}
+                          onBlur={() => handleFieldChange('cuisine', cuisineInputValue.split(',').map(c => c.trim()).filter(c => c))}
                           placeholder="e.g., Italian, Pizza, Pasta"
                         />
                       ) : (
@@ -6091,6 +6310,25 @@ export default function RestaurantDetail() {
                       {/* Mode-specific UI */}
                       {customizationMode === 'generate' ? (
                         <>
+                          {/* Code Injection Options */}
+                          <div className="space-y-3 border rounded-md p-3 bg-muted/30">
+                            <Label className="text-sm font-medium">Generation Options</Label>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id="no-gradient"
+                                checked={noGradient}
+                                onCheckedChange={setNoGradient}
+                                disabled={isGenerating}
+                              />
+                              <Label htmlFor="no-gradient" className="text-sm font-normal cursor-pointer">
+                                Disable gradients (use solid colors)
+                              </Label>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Uses primary color only for price tags and welcome messages instead of gradient effects.
+                            </p>
+                          </div>
+
                           {/* Generate Code Injections Button */}
                           {isFeatureEnabled('registration.codeInjection') && (
                             <div className="space-y-2">
@@ -6185,6 +6423,517 @@ export default function RestaurantDetail() {
                             )}
                           </div>
                         </>
+                      )}
+
+                      {/* Header Configuration */}
+                      {isFeatureEnabled('registration.websiteSettings') && (
+                        <div className="space-y-3 border-t pt-4">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="header-enabled"
+                              checked={headerEnabled}
+                              onCheckedChange={setHeaderEnabled}
+                            />
+                            <Label htmlFor="header-enabled" className="text-sm font-medium">
+                              Enable Header Configuration
+                            </Label>
+                          </div>
+
+                          {headerEnabled && (
+                            <div className="ml-6 space-y-3">
+                              <Label className="text-sm">Header Background Image:</Label>
+                              <Select value={headerBgSource} onValueChange={setHeaderBgSource}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select header background" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Object.entries(availableHeaderBgs).map(([key, { label, value }]) => (
+                                    <SelectItem key={key} value={key} disabled={!value}>
+                                      <div className="flex items-center gap-2">
+                                        <span>{label}</span>
+                                        {value ? (
+                                          <Badge variant="outline" className="text-xs">Available</Badge>
+                                        ) : (
+                                          <Badge variant="secondary" className="text-xs">Not Found</Badge>
+                                        )}
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+
+                              {/* Preview selected background */}
+                              {headerBgSource && availableHeaderBgs[headerBgSource]?.value && (
+                                <div className="mt-2">
+                                  <img
+                                    src={availableHeaderBgs[headerBgSource].value}
+                                    alt="Header background preview"
+                                    className="max-h-24 rounded border"
+                                  />
+                                </div>
+                              )}
+
+                              {/* Header logo preview */}
+                              {restaurant?.logo_nobg_url && (
+                                <div className="mt-2">
+                                  <Label className="text-xs text-muted-foreground">
+                                    Header Logo (auto-resized to max 200x200):
+                                  </Label>
+                                  <img
+                                    src={restaurant.logo_nobg_url}
+                                    alt="Header logo preview"
+                                    className="h-12 w-12 object-contain border rounded p-1 mt-1"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Items Configuration */}
+                      {isFeatureEnabled('registration.websiteSettings') && (
+                        <div className="space-y-3 border-t pt-4">
+                          <Label className="text-sm font-medium">Item Layout Style:</Label>
+                          <Select value={itemLayout} onValueChange={setItemLayout}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select item layout" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="list">List (Default)</SelectItem>
+                              <SelectItem value="card">Card</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground">
+                            {itemLayout === 'card'
+                              ? 'Card layout with Inner Bottom tag position'
+                              : 'List layout with Inner Bottom tag position'}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Color & Logo Configuration */}
+                      {isFeatureEnabled('registration.websiteSettings') && (
+                        <div className="space-y-3 border rounded-md p-3 bg-muted/30">
+                          <Label className="text-sm font-medium">Color & Logo Configuration</Label>
+
+                          {/* Text Colors Row */}
+                          <div className="grid grid-cols-2 gap-3">
+                            {/* Nav Bar Text Color */}
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Nav Text</Label>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button variant="outline" className="w-full h-8 justify-start gap-2 px-2">
+                                    <div
+                                      className="w-4 h-4 rounded border border-gray-300 flex-shrink-0"
+                                      style={{
+                                        backgroundColor: navTextColorSource === 'custom' ? navTextCustomColor :
+                                          navTextColorSource === 'white' ? '#FFFFFF' :
+                                          navTextColorSource === 'black' ? '#000000' :
+                                          navTextColorSource === 'primary' ? restaurant?.primary_color :
+                                          navTextColorSource === 'secondary' ? restaurant?.secondary_color :
+                                          navTextColorSource === 'tertiary' ? restaurant?.tertiary_color :
+                                          navTextColorSource === 'accent' ? restaurant?.accent_color :
+                                          navTextColorSource === 'background' ? restaurant?.background_color : '#FFFFFF'
+                                      }}
+                                    />
+                                    <span className="text-xs truncate">
+                                      {navTextColorSource === 'custom' ? navTextCustomColor : navTextColorSource}
+                                    </span>
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-48 p-2">
+                                  <div className="space-y-2">
+                                    <Input
+                                      type="color"
+                                      value={navTextColorSource === 'custom' ? navTextCustomColor : '#FFFFFF'}
+                                      onChange={(e) => {
+                                        setNavTextColorSource('custom');
+                                        setNavTextCustomColor(e.target.value);
+                                      }}
+                                      className="w-full h-8 p-0 border-0"
+                                    />
+                                    <Input
+                                      type="text"
+                                      value={navTextColorSource === 'custom' ? navTextCustomColor : ''}
+                                      onChange={(e) => {
+                                        setNavTextColorSource('custom');
+                                        setNavTextCustomColor(e.target.value);
+                                      }}
+                                      placeholder="#FFFFFF"
+                                      className="h-7 text-xs font-mono"
+                                    />
+                                    <div className="grid grid-cols-4 gap-1">
+                                      {[
+                                        { key: 'white', color: '#FFFFFF', label: 'W' },
+                                        { key: 'black', color: '#000000', label: 'B' },
+                                        { key: 'primary', color: restaurant?.primary_color, label: 'P' },
+                                        { key: 'secondary', color: restaurant?.secondary_color, label: 'S' },
+                                      ].map((preset) => (
+                                        <Button
+                                          key={preset.key}
+                                          variant={navTextColorSource === preset.key ? "default" : "outline"}
+                                          size="sm"
+                                          onClick={() => {
+                                            setNavTextColorSource(preset.key);
+                                            setNavTextCustomColor('');
+                                          }}
+                                          className="h-7 w-full p-0"
+                                          title={preset.key}
+                                        >
+                                          <div
+                                            className="w-4 h-4 rounded border border-gray-300"
+                                            style={{ backgroundColor: preset.color }}
+                                          />
+                                        </Button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            </div>
+
+                            {/* Box & Popup Text Color */}
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Box Text</Label>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button variant="outline" className="w-full h-8 justify-start gap-2 px-2">
+                                    <div
+                                      className="w-4 h-4 rounded border border-gray-300 flex-shrink-0"
+                                      style={{
+                                        backgroundColor: boxTextColorSource === 'custom' ? boxTextCustomColor :
+                                          boxTextColorSource === 'white' ? '#FFFFFF' :
+                                          boxTextColorSource === 'black' ? '#000000' :
+                                          boxTextColorSource === 'primary' ? restaurant?.primary_color :
+                                          boxTextColorSource === 'secondary' ? restaurant?.secondary_color :
+                                          boxTextColorSource === 'tertiary' ? restaurant?.tertiary_color :
+                                          boxTextColorSource === 'accent' ? restaurant?.accent_color :
+                                          boxTextColorSource === 'background' ? restaurant?.background_color : '#FFFFFF'
+                                      }}
+                                    />
+                                    <span className="text-xs truncate">
+                                      {boxTextColorSource === 'custom' ? boxTextCustomColor : boxTextColorSource}
+                                    </span>
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-48 p-2">
+                                  <div className="space-y-2">
+                                    <Input
+                                      type="color"
+                                      value={boxTextColorSource === 'custom' ? boxTextCustomColor : '#FFFFFF'}
+                                      onChange={(e) => {
+                                        setBoxTextColorSource('custom');
+                                        setBoxTextCustomColor(e.target.value);
+                                      }}
+                                      className="w-full h-8 p-0 border-0"
+                                    />
+                                    <Input
+                                      type="text"
+                                      value={boxTextColorSource === 'custom' ? boxTextCustomColor : ''}
+                                      onChange={(e) => {
+                                        setBoxTextColorSource('custom');
+                                        setBoxTextCustomColor(e.target.value);
+                                      }}
+                                      placeholder="#FFFFFF"
+                                      className="h-7 text-xs font-mono"
+                                    />
+                                    <div className="grid grid-cols-4 gap-1">
+                                      {[
+                                        { key: 'white', color: '#FFFFFF', label: 'W' },
+                                        { key: 'black', color: '#000000', label: 'B' },
+                                        { key: 'primary', color: restaurant?.primary_color, label: 'P' },
+                                        { key: 'secondary', color: restaurant?.secondary_color, label: 'S' },
+                                      ].map((preset) => (
+                                        <Button
+                                          key={preset.key}
+                                          variant={boxTextColorSource === preset.key ? "default" : "outline"}
+                                          size="sm"
+                                          onClick={() => {
+                                            setBoxTextColorSource(preset.key);
+                                            setBoxTextCustomColor('');
+                                          }}
+                                          className="h-7 w-full p-0"
+                                          title={preset.key}
+                                        >
+                                          <div
+                                            className="w-4 h-4 rounded border border-gray-300"
+                                            style={{ backgroundColor: preset.color }}
+                                          />
+                                        </Button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            </div>
+                          </div>
+
+                          {/* Logo Tints - Nav Bar */}
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">Nav Logo Tint (Dark → Light pixels)</Label>
+                            <div className="grid grid-cols-2 gap-2">
+                              {/* Nav Dark Pixels */}
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button variant="outline" className="w-full h-8 justify-start gap-2 px-2">
+                                    <div
+                                      className="w-4 h-4 rounded border border-gray-300 flex-shrink-0"
+                                      style={{
+                                        backgroundColor: navLogoDarkTint === 'none' ? '#000000' :
+                                          navLogoDarkTint === 'custom' ? navLogoDarkCustomColor :
+                                          navLogoDarkTint === 'white' ? '#FFFFFF' :
+                                          navLogoDarkTint === 'black' ? '#000000' :
+                                          navLogoDarkTint === 'primary' ? restaurant?.primary_color :
+                                          navLogoDarkTint === 'secondary' ? restaurant?.secondary_color : '#000000'
+                                      }}
+                                    />
+                                    <span className="text-xs truncate">
+                                      Dark → {navLogoDarkTint === 'none' ? 'keep' : navLogoDarkTint === 'custom' ? navLogoDarkCustomColor : navLogoDarkTint}
+                                    </span>
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-48 p-2">
+                                  <div className="space-y-2">
+                                    <p className="text-xs font-medium">Dark pixels become:</p>
+                                    <Input
+                                      type="color"
+                                      value={navLogoDarkTint === 'custom' ? navLogoDarkCustomColor : '#000000'}
+                                      onChange={(e) => {
+                                        setNavLogoDarkTint('custom');
+                                        setNavLogoDarkCustomColor(e.target.value);
+                                      }}
+                                      className="w-full h-8 p-0 border-0"
+                                    />
+                                    <div className="grid grid-cols-5 gap-1">
+                                      {[
+                                        { key: 'none', color: '#000000', label: 'Off' },
+                                        { key: 'white', color: '#FFFFFF', label: 'W' },
+                                        { key: 'black', color: '#000000', label: 'B' },
+                                        { key: 'primary', color: restaurant?.primary_color, label: 'P' },
+                                        { key: 'secondary', color: restaurant?.secondary_color, label: 'S' },
+                                      ].map((preset) => (
+                                        <Button
+                                          key={preset.key}
+                                          variant={navLogoDarkTint === preset.key ? "default" : "outline"}
+                                          size="sm"
+                                          onClick={() => {
+                                            setNavLogoDarkTint(preset.key);
+                                            setNavLogoDarkCustomColor('');
+                                          }}
+                                          className="h-7 w-full p-0"
+                                          title={preset.key === 'none' ? 'Keep original' : preset.key}
+                                        >
+                                          {preset.key === 'none' ? (
+                                            <span className="text-[10px]">Off</span>
+                                          ) : (
+                                            <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: preset.color }} />
+                                          )}
+                                        </Button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+
+                              {/* Nav Light Pixels */}
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button variant="outline" className="w-full h-8 justify-start gap-2 px-2">
+                                    <div
+                                      className="w-4 h-4 rounded border border-gray-300 flex-shrink-0"
+                                      style={{
+                                        backgroundColor: navLogoLightTint === 'none' ? '#FFFFFF' :
+                                          navLogoLightTint === 'custom' ? navLogoLightCustomColor :
+                                          navLogoLightTint === 'white' ? '#FFFFFF' :
+                                          navLogoLightTint === 'black' ? '#000000' :
+                                          navLogoLightTint === 'primary' ? restaurant?.primary_color :
+                                          navLogoLightTint === 'secondary' ? restaurant?.secondary_color : '#FFFFFF'
+                                      }}
+                                    />
+                                    <span className="text-xs truncate">
+                                      Light → {navLogoLightTint === 'none' ? 'keep' : navLogoLightTint === 'custom' ? navLogoLightCustomColor : navLogoLightTint}
+                                    </span>
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-48 p-2">
+                                  <div className="space-y-2">
+                                    <p className="text-xs font-medium">Light pixels become:</p>
+                                    <Input
+                                      type="color"
+                                      value={navLogoLightTint === 'custom' ? navLogoLightCustomColor : '#FFFFFF'}
+                                      onChange={(e) => {
+                                        setNavLogoLightTint('custom');
+                                        setNavLogoLightCustomColor(e.target.value);
+                                      }}
+                                      className="w-full h-8 p-0 border-0"
+                                    />
+                                    <div className="grid grid-cols-5 gap-1">
+                                      {[
+                                        { key: 'none', color: '#FFFFFF', label: 'Off' },
+                                        { key: 'white', color: '#FFFFFF', label: 'W' },
+                                        { key: 'black', color: '#000000', label: 'B' },
+                                        { key: 'primary', color: restaurant?.primary_color, label: 'P' },
+                                        { key: 'secondary', color: restaurant?.secondary_color, label: 'S' },
+                                      ].map((preset) => (
+                                        <Button
+                                          key={preset.key}
+                                          variant={navLogoLightTint === preset.key ? "default" : "outline"}
+                                          size="sm"
+                                          onClick={() => {
+                                            setNavLogoLightTint(preset.key);
+                                            setNavLogoLightCustomColor('');
+                                          }}
+                                          className="h-7 w-full p-0"
+                                          title={preset.key === 'none' ? 'Keep original' : preset.key}
+                                        >
+                                          {preset.key === 'none' ? (
+                                            <span className="text-[10px]">Off</span>
+                                          ) : (
+                                            <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: preset.color }} />
+                                          )}
+                                        </Button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            </div>
+                          </div>
+
+                          {/* Logo Tints - Header */}
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">Header Logo Tint (Dark → Light pixels)</Label>
+                            <div className="grid grid-cols-2 gap-2">
+                              {/* Header Dark Pixels */}
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button variant="outline" className="w-full h-8 justify-start gap-2 px-2">
+                                    <div
+                                      className="w-4 h-4 rounded border border-gray-300 flex-shrink-0"
+                                      style={{
+                                        backgroundColor: headerLogoDarkTint === 'none' ? '#000000' :
+                                          headerLogoDarkTint === 'custom' ? headerLogoDarkCustomColor :
+                                          headerLogoDarkTint === 'white' ? '#FFFFFF' :
+                                          headerLogoDarkTint === 'black' ? '#000000' :
+                                          headerLogoDarkTint === 'primary' ? restaurant?.primary_color :
+                                          headerLogoDarkTint === 'secondary' ? restaurant?.secondary_color : '#000000'
+                                      }}
+                                    />
+                                    <span className="text-xs truncate">
+                                      Dark → {headerLogoDarkTint === 'none' ? 'keep' : headerLogoDarkTint === 'custom' ? headerLogoDarkCustomColor : headerLogoDarkTint}
+                                    </span>
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-48 p-2">
+                                  <div className="space-y-2">
+                                    <p className="text-xs font-medium">Dark pixels become:</p>
+                                    <Input
+                                      type="color"
+                                      value={headerLogoDarkTint === 'custom' ? headerLogoDarkCustomColor : '#000000'}
+                                      onChange={(e) => {
+                                        setHeaderLogoDarkTint('custom');
+                                        setHeaderLogoDarkCustomColor(e.target.value);
+                                      }}
+                                      className="w-full h-8 p-0 border-0"
+                                    />
+                                    <div className="grid grid-cols-5 gap-1">
+                                      {[
+                                        { key: 'none', color: '#000000', label: 'Off' },
+                                        { key: 'white', color: '#FFFFFF', label: 'W' },
+                                        { key: 'black', color: '#000000', label: 'B' },
+                                        { key: 'primary', color: restaurant?.primary_color, label: 'P' },
+                                        { key: 'secondary', color: restaurant?.secondary_color, label: 'S' },
+                                      ].map((preset) => (
+                                        <Button
+                                          key={preset.key}
+                                          variant={headerLogoDarkTint === preset.key ? "default" : "outline"}
+                                          size="sm"
+                                          onClick={() => {
+                                            setHeaderLogoDarkTint(preset.key);
+                                            setHeaderLogoDarkCustomColor('');
+                                          }}
+                                          className="h-7 w-full p-0"
+                                          title={preset.key === 'none' ? 'Keep original' : preset.key}
+                                        >
+                                          {preset.key === 'none' ? (
+                                            <span className="text-[10px]">Off</span>
+                                          ) : (
+                                            <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: preset.color }} />
+                                          )}
+                                        </Button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+
+                              {/* Header Light Pixels */}
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button variant="outline" className="w-full h-8 justify-start gap-2 px-2">
+                                    <div
+                                      className="w-4 h-4 rounded border border-gray-300 flex-shrink-0"
+                                      style={{
+                                        backgroundColor: headerLogoLightTint === 'none' ? '#FFFFFF' :
+                                          headerLogoLightTint === 'custom' ? headerLogoLightCustomColor :
+                                          headerLogoLightTint === 'white' ? '#FFFFFF' :
+                                          headerLogoLightTint === 'black' ? '#000000' :
+                                          headerLogoLightTint === 'primary' ? restaurant?.primary_color :
+                                          headerLogoLightTint === 'secondary' ? restaurant?.secondary_color : '#FFFFFF'
+                                      }}
+                                    />
+                                    <span className="text-xs truncate">
+                                      Light → {headerLogoLightTint === 'none' ? 'keep' : headerLogoLightTint === 'custom' ? headerLogoLightCustomColor : headerLogoLightTint}
+                                    </span>
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-48 p-2">
+                                  <div className="space-y-2">
+                                    <p className="text-xs font-medium">Light pixels become:</p>
+                                    <Input
+                                      type="color"
+                                      value={headerLogoLightTint === 'custom' ? headerLogoLightCustomColor : '#FFFFFF'}
+                                      onChange={(e) => {
+                                        setHeaderLogoLightTint('custom');
+                                        setHeaderLogoLightCustomColor(e.target.value);
+                                      }}
+                                      className="w-full h-8 p-0 border-0"
+                                    />
+                                    <div className="grid grid-cols-5 gap-1">
+                                      {[
+                                        { key: 'none', color: '#FFFFFF', label: 'Off' },
+                                        { key: 'white', color: '#FFFFFF', label: 'W' },
+                                        { key: 'black', color: '#000000', label: 'B' },
+                                        { key: 'primary', color: restaurant?.primary_color, label: 'P' },
+                                        { key: 'secondary', color: restaurant?.secondary_color, label: 'S' },
+                                      ].map((preset) => (
+                                        <Button
+                                          key={preset.key}
+                                          variant={headerLogoLightTint === preset.key ? "default" : "outline"}
+                                          size="sm"
+                                          onClick={() => {
+                                            setHeaderLogoLightTint(preset.key);
+                                            setHeaderLogoLightCustomColor('');
+                                          }}
+                                          className="h-7 w-full p-0"
+                                          title={preset.key === 'none' ? 'Keep original' : preset.key}
+                                        >
+                                          {preset.key === 'none' ? (
+                                            <span className="text-[10px]">Off</span>
+                                          ) : (
+                                            <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: preset.color }} />
+                                          )}
+                                        </Button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            </div>
+                          </div>
+                        </div>
                       )}
 
                       {/* Configure Website Settings Button (shown for both modes) */}
@@ -6915,7 +7664,7 @@ export default function RestaurantDetail() {
             )}
           </TabsContent>
         )}
-      </Tabs>
+      </div>
 
       {/* Logo Candidate Selection Dialog */}
       <Dialog open={logoDialogOpen} onOpenChange={setLogoDialogOpen}>
@@ -8328,7 +9077,7 @@ export default function RestaurantDetail() {
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
                     {detailsExtractionConfig.platform === 'ubereats' ?
-                      'UberEats can provide address and opening hours information.' :
+                      'UberEats can provide address, opening hours, and OG image information.' :
                       detailsExtractionConfig.platform === 'doordash' ?
                         'DoorDash can only provide opening hours information.' :
                         detailsExtractionConfig.platform === 'website' ?
@@ -8797,6 +9546,17 @@ export default function RestaurantDetail() {
                                   <Label htmlFor={`address-${source}`} className="flex-1 cursor-pointer text-sm break-words">
                                     <span className="font-medium capitalize">{source}:</span>{' '}
                                     <span className="text-muted-foreground">{data.address}</span>
+                                    {data.sourceUrl && (
+                                      <a
+                                        href={data.sourceUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="ml-2 text-blue-500 hover:text-blue-700"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <ExternalLink className="h-3 w-3 inline" />
+                                      </a>
+                                    )}
                                   </Label>
                                 </div>
                               )
@@ -8833,14 +9593,41 @@ export default function RestaurantDetail() {
                         </div>
                       )}
 
-                      {/* Source selection for phone - only website */}
-                      {pendingGoogleSearchData.extractedBySource?.website?.phone ? (
+                      {/* v3.0: Source selection for phone - Google is primary, website as fallback */}
+                      {Object.entries(pendingGoogleSearchData.extractedBySource || {}).some(([_, data]) => data?.phone) ? (
                         <div className="space-y-2">
-                          <Label className="text-xs text-muted-foreground">Source:</Label>
-                          <div className="flex items-center space-x-2 text-sm">
-                            <span className="font-medium">Website:</span>{' '}
-                            <span className="text-muted-foreground">{pendingGoogleSearchData.extractedBySource.website.phone}</span>
-                          </div>
+                          <Label className="text-xs text-muted-foreground">Select source:</Label>
+                          <RadioGroup
+                            value={googleSearchSelections.phone.source || ''}
+                            onValueChange={(value) => setGoogleSearchSelections(prev => ({
+                              ...prev,
+                              phone: { ...prev.phone, source: value }
+                            }))}
+                            className="space-y-2"
+                          >
+                            {Object.entries(pendingGoogleSearchData.extractedBySource || {}).map(([source, data]) => (
+                              data?.phone && (
+                                <div key={source} className="flex items-start space-x-2">
+                                  <RadioGroupItem value={source} id={`phone-${source}`} className="mt-0.5" />
+                                  <Label htmlFor={`phone-${source}`} className="flex-1 cursor-pointer text-sm break-words">
+                                    <span className="font-medium capitalize">{source}:</span>{' '}
+                                    <span className="text-muted-foreground">{data.phone}</span>
+                                    {data.sourceUrl && (
+                                      <a
+                                        href={data.sourceUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="ml-2 text-blue-500 hover:text-blue-700"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <ExternalLink className="h-3 w-3 inline" />
+                                      </a>
+                                    )}
+                                  </Label>
+                                </div>
+                              )
+                            ))}
+                          </RadioGroup>
                         </div>
                       ) : (
                         <p className="text-sm text-muted-foreground italic">No phone number found</p>
@@ -8902,6 +9689,17 @@ export default function RestaurantDetail() {
                                     <RadioGroupItem value={source} id={`hours-${source}`} />
                                     <Label htmlFor={`hours-${source}`} className="cursor-pointer text-sm font-medium capitalize">
                                       {source}
+                                      {data.sourceUrl && (
+                                        <a
+                                          href={data.sourceUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="ml-2 text-blue-500 hover:text-blue-700"
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          <ExternalLink className="h-3 w-3 inline" />
+                                        </a>
+                                      )}
                                     </Label>
                                   </div>
                                   <div className="ml-6 text-xs space-y-0.5 max-h-32 overflow-y-auto">
@@ -9027,6 +9825,63 @@ export default function RestaurantDetail() {
                   ))}
                 </div>
               </div>
+
+              {/* v3.0: UberEats OG Image Section */}
+              {pendingGoogleSearchData?.ubereatsOgImage && (
+                <div className="space-y-3 sm:space-y-4 border-t pt-4">
+                  <h4 className="font-medium">Restaurant Image</h4>
+                  <div className="border rounded-lg p-3 sm:p-4 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <Checkbox
+                        id="save-og-image"
+                        checked={googleSearchSelections.ubereats_og_image?.save || false}
+                        onCheckedChange={(checked) => setGoogleSearchSelections(prev => ({
+                          ...prev,
+                          ubereats_og_image: { save: !!checked }
+                        }))}
+                        className="mt-0.5"
+                      />
+                      <div className="flex-1 space-y-2 min-w-0">
+                        <Label htmlFor="save-og-image" className="flex items-center gap-2 cursor-pointer">
+                          <ImageIcon className="h-4 w-4 flex-shrink-0" />
+                          <span>UberEats Banner Image</span>
+                          {restaurant?.ubereats_og_image && (
+                            <Badge variant="outline" className="text-xs">Has existing</Badge>
+                          )}
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          This restaurant hero/banner image can be used for branding purposes.
+                        </p>
+                        <div className="relative w-full max-w-md aspect-video rounded-lg overflow-hidden border bg-muted">
+                          <img
+                            src={pendingGoogleSearchData.ubereatsOgImage}
+                            alt="Restaurant banner"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                          <div className="absolute inset-0 hidden items-center justify-center text-muted-foreground">
+                            Failed to load preview
+                          </div>
+                        </div>
+                        {pendingGoogleSearchData.extractedBySource?.ubereats?.sourceUrl && (
+                          <a
+                            href={pendingGoogleSearchData.extractedBySource.ubereats.sourceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700"
+                          >
+                            View on UberEats
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -9061,6 +9916,102 @@ export default function RestaurantDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+
+      {/* Companies Office Extraction Dialog */}
+      <CompaniesOfficeDialog
+        open={companiesOfficeDialogOpen}
+        onOpenChange={setCompaniesOfficeDialogOpen}
+        restaurant={restaurant}
+        onDataSaved={() => fetchRestaurantDetails()}
+      />
+
+      {/* Email/Phone Extraction Dialog */}
+      <EmailPhoneExtractionDialog
+        open={emailPhoneDialogOpen}
+        onOpenChange={setEmailPhoneDialogOpen}
+        restaurant={restaurant}
+        fieldType={emailPhoneFieldType}
+        onDataSaved={() => fetchRestaurantDetails()}
+      />
+
+      {/* Personal Contact Details Dialog */}
+      <PersonalContactDialog
+        open={personalContactDialogOpen}
+        onOpenChange={setPersonalContactDialogOpen}
+        restaurant={restaurant}
+        onDataSaved={() => fetchRestaurantDetails()}
+      />
+
+      {/* Yolo Mode Dialog - Complete Setup */}
+      <YoloModeDialog
+        open={yoloModeOpen}
+        onOpenChange={setYoloModeOpen}
+        restaurant={restaurant}
+        registrationStatus={registrationStatus}
+        onExecute={async (formData) => {
+          // Refresh data after execution completes
+          await fetchRestaurantDetails();
+          await fetchRegistrationStatus();
+          toast({
+            title: 'Setup Complete',
+            description: 'The restaurant setup workflow has completed.',
+          });
+        }}
+        onSave={async (formData) => {
+          try {
+            // Map form data to restaurant fields
+            const updateData = {
+              // Account/contact info
+              user_email: formData.account.email,
+              user_password_hint: formData.account.password,
+              phone: formData.account.phone,
+
+              // Restaurant info
+              name: formData.restaurant.name,
+              address: formData.restaurant.address,
+              city: formData.restaurant.city,
+              subdomain: formData.restaurant.subdomain,
+              opening_hours: formData.restaurant.opening_hours,
+
+              // Branding/theme
+              theme: formData.website.theme,
+              cuisine: formData.website.cuisines?.length > 0 ? formData.website.cuisines : undefined,
+              primary_color: formData.website.primaryColor,
+              secondary_color: formData.website.secondaryColor,
+
+              // Contact info for onboarding
+              contact_name: formData.onboarding.userName,
+              contact_email: formData.onboarding.userEmail,
+            };
+
+            // Only include non-empty values (but allow empty arrays and objects)
+            const filteredData = Object.fromEntries(
+              Object.entries(updateData).filter(([key, value]) => {
+                if (value === undefined || value === null) return false;
+                if (typeof value === 'string' && value === '') return false;
+                return true;
+              })
+            );
+
+            const response = await api.patch(`/restaurants/${id}/workflow`, filteredData);
+
+            if (response.data.success) {
+              setRestaurant(prev => ({ ...prev, ...filteredData }));
+              toast({
+                title: 'Settings Saved',
+                description: 'Your setup preferences have been saved to the restaurant record.',
+              });
+            }
+          } catch (error) {
+            console.error('Failed to save Yolo Mode settings:', error);
+            toast({
+              title: 'Save Failed',
+              description: error.response?.data?.message || 'Failed to save settings.',
+              variant: 'destructive',
+            });
+          }
+        }}
+      />
+    </Tabs>
   );
 }

@@ -11,6 +11,71 @@ import { FeatureFlagsEditor } from './FeatureFlagsEditor';
 import { supabase } from '../../../lib/supabase';
 import { useToast } from '../../ui/use-toast';
 
+// Default feature flags to ensure all configurable options appear in the editor
+const DEFAULT_FEATURE_FLAGS = {
+  // Original extraction features
+  standardExtraction: { enabled: true, ratePerItem: 0.10 },
+  premiumExtraction: { enabled: true, ratePerItem: 0.25 },
+  logoExtraction: { enabled: true, ratePerItem: 0.15 },
+  logoProcessing: { enabled: true, ratePerItem: 0.20 },
+  googleSearchExtraction: { enabled: true, ratePerItem: 0.05 },
+  platformDetailsExtraction: { enabled: true, ratePerItem: 0.05 },
+  csvDownload: { enabled: true, ratePerItem: 0.01 },
+  csvWithImagesDownload: { enabled: true, ratePerItem: 0.02 },
+  imageUploadToCDN: { enabled: true, ratePerItem: 0.001 },
+  imageZipDownload: { enabled: true, ratePerItem: 0.05 },
+
+  // Feature areas (UI only, no rate)
+  tasksAndSequences: { enabled: false, ratePerItem: 0 },
+  socialMedia: { enabled: false, ratePerItem: 0 },
+  analytics: { enabled: false, ratePerItem: 0 },
+  registrationBatches: { enabled: false, ratePerItem: 0 },
+
+  // Lead Scraping with sub-features
+  leadScraping: {
+    enabled: false,
+    scrapeJobs: { enabled: true, ratePerItem: 0.05 },
+    stepEnrichment: { enabled: true, ratePerItem: 0.02 },
+    leadConversion: { enabled: true, ratePerItem: 0.01 }
+  },
+
+  // Branding Extraction with sub-features
+  brandingExtraction: {
+    enabled: false,
+    firecrawlBranding: { enabled: true, ratePerItem: 0.10 }
+  },
+
+  // Registration with sub-features
+  registration: {
+    enabled: false,
+    userAccountRegistration: { enabled: true, ratePerItem: 0.05 },
+    restaurantRegistration: { enabled: true, ratePerItem: 0.10 },
+    menuUploading: { enabled: true, ratePerItem: 0.05 },
+    itemTagUploading: { enabled: true, ratePerItem: 0.02 },
+    optionSetUploading: { enabled: true, ratePerItem: 0.05 },
+    codeInjection: { enabled: true, ratePerItem: 0.02 },
+    websiteSettings: { enabled: true, ratePerItem: 0.05 },
+    stripePayments: { enabled: true, ratePerItem: 0.05 },
+    servicesConfiguration: { enabled: true, ratePerItem: 0.02 },
+    onboardingUserManagement: { enabled: true, ratePerItem: 0.02 },
+    onboardingSync: { enabled: true, ratePerItem: 0.02 },
+    finalisingSetup: { enabled: true, ratePerItem: 0.05 }
+  },
+
+  // Integrations with sub-features
+  integrations: {
+    enabled: false,
+    cloudwaitressIntegration: { enabled: true, ratePerItem: 0 }
+  },
+
+  // Contact Details Extraction with sub-features
+  contactDetailsExtraction: {
+    enabled: false,
+    companiesOffice: { enabled: true, ratePerItem: 0.10 },
+    emailPhoneExtraction: { enabled: true, ratePerItem: 0.05 }
+  }
+};
+
 interface OrganizationEditModalProps {
   open: boolean;
   onClose: () => void;
@@ -82,7 +147,17 @@ export function OrganizationEditModal({ open, onClose, onSuccess, organizationId
         .single();
 
       if (error) throw error;
-      setOrganization(data);
+
+      // Merge existing feature flags with defaults to ensure all options appear in the editor
+      const mergedFeatureFlags = {
+        ...DEFAULT_FEATURE_FLAGS,
+        ...data.feature_flags
+      };
+
+      setOrganization({
+        ...data,
+        feature_flags: mergedFeatureFlags
+      });
     } catch (err: any) {
       console.error('Error loading organization:', err);
       setError('Failed to load organization');

@@ -252,61 +252,64 @@ export default function Menus() {
   }
 
   return (
-    <div>
-      <div className="sm:flex sm:items-center">
-        <div className="sm:flex-auto">
-          <h1 className="text-2xl font-bold text-foreground">Menus</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {restaurantFilter 
-              ? `Showing menus for selected restaurant`
-              : 'Browse and manage all restaurant menus'}
-          </p>
-          {selectedMenus.size > 0 && (
-            <p className="mt-1 text-sm text-brand-blue font-medium">
-              {selectedMenus.size} menu{selectedMenus.size > 1 ? 's' : ''} selected
+    <div className="flex flex-col -mt-6 -mb-6">
+      {/* Sticky Header + Search */}
+      <div className="sticky -top-6 z-40 bg-white/80 backdrop-blur-sm -mx-6 px-6 pt-6 pb-4 border border-white/20 shadow-lg space-y-4 rounded-b-[16px]">
+        {/* Header */}
+        <div className="sm:flex sm:items-center">
+          <div className="sm:flex-auto">
+            <h1 className="text-2xl font-bold text-foreground">Menus</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {restaurantFilter
+                ? `Showing menus for selected restaurant`
+                : 'Browse and manage all restaurant menus'}
+              {restaurantNameFilter && ` • ${filteredMenus.length} of ${menus.length} menus`}
             </p>
-          )}
+            {selectedMenus.size > 0 && (
+              <p className="mt-1 text-sm text-brand-blue font-medium">
+                {selectedMenus.size} menu{selectedMenus.size > 1 ? 's' : ''} selected
+              </p>
+            )}
+          </div>
+          <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none space-x-2">
+            {selectedMenus.size > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => setIsMoveDialogOpen(true)}
+                className="border-brand-blue text-brand-blue hover:bg-brand-blue/10"
+              >
+                <MoveHorizontal className="h-4 w-4 mr-2" />
+                Move {selectedMenus.size} Menu{selectedMenus.size > 1 ? 's' : ''}
+              </Button>
+            )}
+            {selectedMenus.size >= 2 && (
+              <Button
+                variant="outline"
+                onClick={() => handleMergeMenus()}
+                className="border-purple-600 text-purple-600 hover:bg-purple-600/10"
+              >
+                <GitMerge className="h-4 w-4 mr-2" />
+                Merge {selectedMenus.size} Menus
+              </Button>
+            )}
+            {restaurantFilter && (
+              <Button
+                variant="outline"
+                onClick={() => navigate('/menus')}
+              >
+                Show All Menus
+              </Button>
+            )}
+            <Button
+              onClick={() => navigate('/extractions/new')}
+              className="bg-gradient-to-r from-brand-blue to-brand-green hover:opacity-90"
+            >
+              Extract New Menu
+            </Button>
+          </div>
         </div>
-        <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none space-x-2">
-          {selectedMenus.size > 0 && (
-            <Button
-              variant="outline"
-              onClick={() => setIsMoveDialogOpen(true)}
-              className="border-brand-blue text-brand-blue hover:bg-brand-blue/10"
-            >
-              <MoveHorizontal className="h-4 w-4 mr-2" />
-              Move {selectedMenus.size} Menu{selectedMenus.size > 1 ? 's' : ''}
-            </Button>
-          )}
-          {selectedMenus.size >= 2 && (
-            <Button
-              variant="outline"
-              onClick={() => handleMergeMenus()}
-              className="border-purple-600 text-purple-600 hover:bg-purple-600/10"
-            >
-              <GitMerge className="h-4 w-4 mr-2" />
-              Merge {selectedMenus.size} Menus
-            </Button>
-          )}
-          {restaurantFilter && (
-            <Button
-              variant="outline"
-              onClick={() => navigate('/menus')}
-            >
-              Show All Menus
-            </Button>
-          )}
-          <Button
-            onClick={() => navigate('/extractions/new')}
-            className="bg-gradient-to-r from-brand-blue to-brand-green hover:opacity-90"
-          >
-            Extract New Menu
-          </Button>
-        </div>
-      </div>
 
-      {/* Restaurant Name Filter */}
-      <div className="mt-4">
+        {/* Restaurant Name Filter (in sticky header) */}
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -325,14 +328,10 @@ export default function Menus() {
             </button>
           )}
         </div>
-        {restaurantNameFilter && (
-          <p className="mt-2 text-sm text-muted-foreground">
-            Showing {filteredMenus.length} of {menus.length} menus
-          </p>
-        )}
       </div>
 
-      <div className="mt-4">
+      {/* Scrollable Content */}
+      <div className="pt-6">
         <div className="rounded-lg border bg-card overflow-hidden">
           <div className="overflow-x-auto">
             <Table>

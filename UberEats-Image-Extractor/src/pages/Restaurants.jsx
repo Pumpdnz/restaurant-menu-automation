@@ -17,7 +17,8 @@ import {
   ArrowDown,
   Filter,
   X,
-  Star
+  Star,
+  ChevronDown
 } from 'lucide-react';
 import {
   Table,
@@ -52,6 +53,7 @@ import { TaskCell } from '../components/restaurants/TaskCell';
 import { LeadContactQuickView } from '../components/restaurants/LeadContactQuickView';
 import { CreateTaskModal } from '../components/tasks/CreateTaskModal';
 import { StartSequenceModal } from '../components/sequences/StartSequenceModal';
+import { Collapsible, CollapsibleContent } from '../components/ui/collapsible';
 
 export default function Restaurants() {
   const navigate = useNavigate();
@@ -669,73 +671,80 @@ export default function Restaurants() {
   }
 
   return (
-    <div>
-      {/* Header */}
-      <div className="sm:flex sm:items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Restaurants</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {filteredRestaurants.length} {hasActiveFilters() ? 'filtered ' : ''}
-            restaurant{filteredRestaurants.length !== 1 ? 's' : ''}
-            {restaurants.length !== filteredRestaurants.length && ` of ${restaurants.length} total`}
-          </p>
+    <div className="flex flex-col -mt-6 -mb-6">
+      {/* Sticky Header + Filters */}
+      <div className="sticky -top-6 z-40 bg-white/80 backdrop-blur-sm -mx-6 px-6 pt-6 pb-4 border border-white/20 shadow-lg space-y-4 rounded-b-[16px]">
+        {/* Header */}
+        <div className="sm:flex sm:items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Restaurants</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {filteredRestaurants.length} {hasActiveFilters() ? 'filtered ' : ''}
+              restaurant{filteredRestaurants.length !== 1 ? 's' : ''}
+              {restaurants.length !== filteredRestaurants.length && ` of ${restaurants.length} total`}
+            </p>
+          </div>
+          <div className="mt-4 sm:mt-0 flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowFilters(!showFilters)}
+              className={cn(
+                "relative",
+                hasActiveFilters() && "border-brand-blue text-brand-blue"
+              )}
+            >
+              <Filter className="h-4 w-4 mr-2" />
+              Filters
+              {getActiveFiltersCount() > 0 && (
+                <Badge
+                  variant="secondary"
+                  className="ml-2 bg-brand-blue text-white"
+                >
+                  {getActiveFiltersCount()}
+                </Badge>
+              )}
+              <ChevronDown className={cn(
+                "h-4 w-4 ml-2 transition-transform duration-200",
+                showFilters && "rotate-180"
+              )} />
+            </Button>
+            <Button
+              onClick={() => navigate('/restaurants/new')}
+              className="bg-gradient-to-r from-brand-blue to-brand-green hover:opacity-90"
+            >
+              Add Restaurant
+            </Button>
+          </div>
         </div>
-        <div className="mt-4 sm:mt-0 flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setShowFilters(!showFilters)}
-            className={cn(
-              "relative",
-              hasActiveFilters() && "border-brand-blue text-brand-blue"
-            )}
-          >
-            <Filter className="h-4 w-4 mr-2" />
-            Filters
-            {getActiveFiltersCount() > 0 && (
-              <Badge
-                variant="secondary"
-                className="ml-2 bg-brand-blue text-white"
-              >
-                {getActiveFiltersCount()}
-              </Badge>
-            )}
-          </Button>
-          <Button
-            onClick={() => navigate('/restaurants/new')}
-            className="bg-gradient-to-r from-brand-blue to-brand-green hover:opacity-90"
-          >
-            Add Restaurant
-          </Button>
-        </div>
-      </div>
 
-      {/* Filters Section */}
-      {showFilters && (
-        <div className="bg-card border rounded-lg p-4 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <h3 className="font-medium">Filter Restaurants</h3>
-            </div>
-            {(hasActiveFilters() || !isFiltersAtDefault()) && (
-              <div className="flex gap-2">
-                {hasActiveFilters() && (
-                  <Button variant="ghost" size="sm" onClick={clearAllFilters}>
-                    <X className="h-4 w-4 mr-1" />
-                    Clear All
-                  </Button>
-                )}
-                {!isFiltersAtDefault() && (
-                  <Button variant="ghost" size="sm" onClick={resetFilters}>
-                    <X className="h-4 w-4 mr-1" />
-                    Reset to Default
-                  </Button>
+        {/* Filters Section */}
+        <Collapsible open={showFilters} onOpenChange={setShowFilters}>
+          <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
+            <div className="bg-card/50 border rounded-lg p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="font-medium">Filter Restaurants</h3>
+                </div>
+                {(hasActiveFilters() || !isFiltersAtDefault()) && (
+                  <div className="flex gap-2">
+                    {hasActiveFilters() && (
+                      <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+                        <X className="h-4 w-4 mr-1" />
+                        Clear All
+                      </Button>
+                    )}
+                    {!isFiltersAtDefault() && (
+                      <Button variant="ghost" size="sm" onClick={resetFilters}>
+                        <X className="h-4 w-4 mr-1" />
+                        Reset to Default
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Search */}
             <div>
               <label className="text-sm font-medium mb-1 block">Search</label>
@@ -864,12 +873,16 @@ export default function Restaurants() {
                 </SelectContent>
               </Select>
             </div>
-          </div>
-        </div>
-      )}
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
 
-      {/* Table */}
-      <div className="rounded-lg border bg-card overflow-hidden">
+      {/* Scrollable Content */}
+      <div className="pt-6">
+        {/* Table */}
+        <div className="rounded-lg border bg-card overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -1127,6 +1140,7 @@ export default function Restaurants() {
             </div>
           </div>
         </div>
+      </div>
       </div>
 
       {/* Delete Confirmation Dialog */}

@@ -174,13 +174,7 @@ export default function TaskTemplates() {
             {templates.length} {hasActiveFilters() ? 'filtered ' : ''}templates
           </p>
         </div>
-        <Button
-          onClick={() => setModals({ ...modals, create: true })}
-          className="bg-gradient-to-r from-brand-blue to-brand-green"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          New Template
-        </Button>
+
       </div>
 
       {/* Filters */}
@@ -190,12 +184,22 @@ export default function TaskTemplates() {
             <Filter className="h-4 w-4 text-muted-foreground" />
             <h3 className="font-medium">Filters</h3>
           </div>
-          {hasActiveFilters() && (
-            <Button variant="ghost" size="sm" onClick={clearFilters}>
-              <X className="h-4 w-4 mr-1" />
-              Clear All
-            </Button>
-          )}
+          <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+            {hasActiveFilters() && (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <X className="h-4 w-4 mr-1" />
+                Clear All
+              </Button>
+            )}
+            <div className="flex justify-end">
+              <Button
+                onClick={() => setModals({ ...modals, create: true })}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                New Template
+              </Button>
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

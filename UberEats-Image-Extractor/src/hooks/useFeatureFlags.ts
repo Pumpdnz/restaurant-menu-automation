@@ -190,6 +190,8 @@ export const FEATURE_FLAG_PATHS = {
   // Other features
   SOCIAL_MEDIA: 'socialMedia',
   TASKS_AND_SEQUENCES: 'tasksAndSequences',
+  ANALYTICS: 'analytics',
+  REGISTRATION_BATCHES: 'registrationBatches',
 
   // Registration features
   REGISTRATION: 'registration',
@@ -205,6 +207,11 @@ export const FEATURE_FLAG_PATHS = {
   REGISTRATION_FINALISING: 'registration.finalisingSetup',
   REGISTRATION_ONBOARDING_SYNC: 'registration.onboardingSync',
   REGISTRATION_ONBOARDING_USER_MGMT: 'registration.onboardingUserManagement',
+
+  // Contact Details Extraction features
+  CONTACT_DETAILS_EXTRACTION: 'contactDetailsExtraction',
+  COMPANIES_OFFICE: 'contactDetailsExtraction.companiesOffice',
+  EMAIL_PHONE_EXTRACTION: 'contactDetailsExtraction.emailPhoneExtraction',
 } as const;
 
 export type FeatureFlagPath = typeof FEATURE_FLAG_PATHS[keyof typeof FEATURE_FLAG_PATHS];

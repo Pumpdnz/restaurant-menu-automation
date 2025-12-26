@@ -175,7 +175,7 @@ export function ScrapeJobProgressCard({
               </Badge>
             </CardTitle>
             <CardDescription className="mt-1">
-              {getTimeAgoText()} {job.current_step > 0 && `• Step ${job.current_step} of ${job.total_steps || 5}`}
+              {getTimeAgoText()} {job.current_step > 0 && `• Step ${job.current_step} of ${job.total_steps || 4}`}
             </CardDescription>
             {/* Platform Link */}
             <div className="text-sm text-muted-foreground mt-1">

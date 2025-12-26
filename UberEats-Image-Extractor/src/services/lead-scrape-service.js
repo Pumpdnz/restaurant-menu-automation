@@ -33,12 +33,6 @@ const UBEREATS_STEPS = [
     step_name: 'Ordering Platform Discovery',
     step_description: 'Discover online ordering platforms from website',
     step_type: 'action_required'
-  },
-  {
-    step_number: 5,
-    step_name: 'Contact Enrichment',
-    step_description: 'Find contact person information',
-    step_type: 'action_required'
   }
 ];
 
@@ -999,7 +993,6 @@ async function retryFailedLeads(stepId, leadIds, orgId) {
             2: firecrawlService.processStep2,
             3: firecrawlService.processStep3,
             4: firecrawlService.processStep4,
-            5: firecrawlService.processStep5,
           }[step.step_number];
 
           if (processFn) {
@@ -1057,7 +1050,7 @@ async function getPendingLeads(filters = {}, orgId) {
 
     let query = client
       .from('leads')
-      .select('*, lead_scrape_jobs!inner(name, platform)', { count: 'exact' })
+      .select('*, lead_scrape_jobs!inner(name, platform, city, cuisine)', { count: 'exact' })
       .in('lead_scrape_job_id', jobIds)
       .gte('current_step', maxSteps)
       .eq('step_progression_status', 'passed')
@@ -1073,12 +1066,14 @@ async function getPendingLeads(filters = {}, orgId) {
       query = query.eq('platform', filters.platform);
     }
 
+    // Filter by job's city (from the lead scrape job, not the lead itself)
     if (filters.city) {
-      query = query.eq('city', filters.city);
+      query = query.eq('lead_scrape_jobs.city', filters.city);
     }
 
+    // Filter by job's cuisine (from the lead scrape job, not the lead itself)
     if (filters.cuisine) {
-      query = query.contains('ubereats_cuisine', [filters.cuisine]);
+      query = query.eq('lead_scrape_jobs.cuisine', filters.cuisine);
     }
 
     // Pagination
@@ -1108,6 +1103,57 @@ async function getPendingLeads(filters = {}, orgId) {
     };
   } catch (error) {
     console.error('[LeadScrapeService] Error getting pending leads:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get filter options for pending leads (unique cities and cuisines from jobs that have pending leads)
+ * @param {string} orgId - Organization ID
+ * @returns {Promise<object>} Filter options { cities: string[], cuisines: string[] }
+ */
+async function getPendingLeadsFilterOptions(orgId) {
+  const client = getSupabaseClient();
+
+  try {
+    // Get jobs for this org with their total_steps
+    const { data: jobs, error: jobsError } = await client
+      .from('lead_scrape_jobs')
+      .select('id, total_steps, city, cuisine')
+      .eq('organisation_id', orgId);
+
+    if (jobsError) throw jobsError;
+
+    if (!jobs || jobs.length === 0) {
+      return { cities: [], cuisines: [] };
+    }
+
+    const jobIds = jobs.map(j => j.id);
+    const maxSteps = Math.max(...jobs.map(j => j.total_steps));
+
+    // Get job IDs that have pending leads
+    const { data: pendingLeadJobIds, error: pendingError } = await client
+      .from('leads')
+      .select('lead_scrape_job_id')
+      .in('lead_scrape_job_id', jobIds)
+      .gte('current_step', maxSteps)
+      .eq('step_progression_status', 'passed')
+      .is('converted_to_restaurant_id', null);
+
+    if (pendingError) throw pendingError;
+
+    // Get unique job IDs that have pending leads
+    const uniqueJobIds = [...new Set(pendingLeadJobIds?.map(l => l.lead_scrape_job_id) || [])];
+
+    // Filter jobs to only those with pending leads and extract unique cities/cuisines
+    const jobsWithPendingLeads = jobs.filter(j => uniqueJobIds.includes(j.id));
+
+    const cities = [...new Set(jobsWithPendingLeads.map(j => j.city).filter(Boolean))].sort();
+    const cuisines = [...new Set(jobsWithPendingLeads.map(j => j.cuisine).filter(Boolean))].sort();
+
+    return { cities, cuisines };
+  } catch (error) {
+    console.error('[LeadScrapeService] Error getting pending leads filter options:', error);
     throw error;
   }
 }
@@ -1211,14 +1257,178 @@ async function updateLead(leadId, updates, orgId) {
 }
 
 /**
+ * Map ordering platform name to the appropriate restaurant URL column
+ * @param {string} platformName - Name of the ordering platform
+ * @returns {string} Column name in restaurants table
+ */
+function getOrderingPlatformColumn(platformName) {
+  if (!platformName) return null;
+
+  const platformLower = platformName.toLowerCase();
+
+  if (platformLower.includes('me&u') || platformLower.includes('meandu') || platformLower.includes('mryum')) {
+    return 'meandyou_url';
+  }
+  if (platformLower.includes('mobi2go')) {
+    return 'mobi2go_url';
+  }
+  if (platformLower.includes('delivereasy')) {
+    return 'delivereasy_url';
+  }
+  if (platformLower.includes('nextorder')) {
+    return 'nextorder_url';
+  }
+  if (platformLower.includes('foodhub')) {
+    return 'foodhub_url';
+  }
+  if (platformLower.includes('ordermeal')) {
+    return 'ordermeal_url';
+  }
+
+  // For any other platform (Bite, Bopple, Bustle, GloriaFood, etc.)
+  return 'additional_ordering_platform_url';
+}
+
+/**
+ * Convert 12-hour time format to 24-hour format
+ * Handles formats: "5:00 PM", "5pm", "5:30pm", "17:00"
+ * @param {string} time12h - Time in 12-hour format (e.g., "5:00 PM", "5pm", "5:30pm")
+ * @returns {string} Time in 24-hour format (e.g., "17:00")
+ */
+function convertTo24Hour(time12h) {
+  if (!time12h) return null;
+
+  const timeStr = time12h.trim().toLowerCase();
+
+  // Already in 24-hour format (no am/pm)
+  if (!timeStr.includes('am') && !timeStr.includes('pm')) {
+    // Ensure proper format HH:MM
+    if (timeStr.includes(':')) {
+      const [h, m] = timeStr.split(':');
+      return `${h.padStart(2, '0')}:${m.padStart(2, '0')}`;
+    }
+    return `${timeStr.padStart(2, '0')}:00`;
+  }
+
+  // Extract am/pm modifier
+  const isPM = timeStr.includes('pm');
+  const isAM = timeStr.includes('am');
+
+  // Remove am/pm suffix to get just the time part
+  const timePart = timeStr.replace(/\s*(am|pm)\s*/gi, '').trim();
+
+  // Parse hours and minutes
+  let hours, minutes;
+  if (timePart.includes(':')) {
+    [hours, minutes] = timePart.split(':').map(s => parseInt(s, 10));
+  } else {
+    hours = parseInt(timePart, 10);
+    minutes = 0;
+  }
+
+  // Convert to 24-hour format
+  if (isPM && hours !== 12) {
+    hours += 12;
+  } else if (isAM && hours === 12) {
+    hours = 0;
+  }
+
+  return `${hours.toString().padStart(2, '0')}:${(minutes || 0).toString().padStart(2, '0')}`;
+}
+
+/**
+ * Convert lead opening hours format to restaurant format
+ * Lead format: [{ day, open, close, period }]
+ * Restaurant format: [{ day, hours: { open, close } }]
+ * @param {Array} leadHours - Opening hours from lead
+ * @returns {Array} Opening hours in restaurant format
+ */
+function convertOpeningHoursFormat(leadHours) {
+  if (!leadHours || !Array.isArray(leadHours) || leadHours.length === 0) {
+    return null;
+  }
+
+  // Check if already in restaurant format
+  if (leadHours[0]?.hours) {
+    return leadHours;
+  }
+
+  // Group by day and merge periods (take earliest open, latest close)
+  const dayMap = {};
+  const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+  for (const entry of leadHours) {
+    const day = entry.day;
+    const open24 = convertTo24Hour(entry.open);
+    const close24 = convertTo24Hour(entry.close);
+
+    if (!dayMap[day]) {
+      dayMap[day] = { open: open24, close: close24 };
+    } else {
+      // Merge: take earliest open and latest close
+      if (open24 < dayMap[day].open) {
+        dayMap[day].open = open24;
+      }
+      if (close24 > dayMap[day].close) {
+        dayMap[day].close = close24;
+      }
+    }
+  }
+
+  // Convert to array in day order
+  return dayOrder
+    .filter(day => dayMap[day])
+    .map(day => ({
+      day,
+      hours: {
+        open: dayMap[day].open,
+        close: dayMap[day].close
+      }
+    }));
+}
+
+/**
+ * Calculate ICP rating based on reviews
+ * Formula: ((ubereats_reviews * ubereats_rating) + (google_reviews * google_rating)) / 1000
+ * Max: 10, Rounded to 0dp
+ * @param {object} lead - Lead data
+ * @returns {number} ICP rating 0-10
+ */
+function calculateIcpRating(lead) {
+  // Parse review counts (may contain '+' like "500+")
+  const parseReviewCount = (val) => {
+    if (!val) return 0;
+    const num = parseInt(String(val).replace(/[^0-9]/g, ''), 10);
+    return isNaN(num) ? 0 : num;
+  };
+
+  const ubereatsReviews = parseReviewCount(lead.ubereats_number_of_reviews);
+  const ubereatsRating = parseFloat(lead.ubereats_average_review_rating) || 0;
+  const googleReviews = parseReviewCount(lead.google_number_of_reviews);
+  const googleRating = parseFloat(lead.google_average_review_rating) || 0;
+
+  const score = ((ubereatsReviews * ubereatsRating) + (googleReviews * googleRating)) / 1000;
+
+  return Math.min(10, Math.round(score));
+}
+
+/**
  * Convert leads to restaurants
  * @param {Array<string>} leadIds - Lead IDs to convert
  * @param {string} orgId - Organization ID
  * @param {string} userId - User ID performing conversion
+ * @param {object} options - Conversion options
+ * @param {string} options.address_source - Which address to use: 'ubereats', 'google', or 'auto' (default)
  * @returns {Promise<object>} Conversion results
  */
-async function convertLeadsToRestaurants(leadIds, orgId, userId) {
+async function convertLeadsToRestaurants(leadIds, orgId, userId, options = {}) {
   const client = getSupabaseClient();
+  const {
+    address_source = 'auto',
+    create_registration_batch = false,
+    batch_name = null,
+    source_lead_scrape_job_id = null
+  } = options;
 
   const converted = [];
   const failed = [];
@@ -1241,34 +1451,84 @@ async function convertLeadsToRestaurants(leadIds, orgId, userId) {
       const orgSuffix = orgId.substring(0, 8);
       const slug = `${baseSlug}-${orgSuffix}`;
 
-      // Create restaurant
+      // Determine address based on user selection
+      let address;
+      switch (address_source) {
+        case 'ubereats':
+          address = lead.ubereats_address;
+          break;
+        case 'google':
+          address = lead.google_address;
+          break;
+        case 'auto':
+        default:
+          address = lead.ubereats_address || lead.google_address;
+          break;
+      }
+
+      // Build ordering platform URL field
+      const platformColumn = getOrderingPlatformColumn(lead.ordering_platform_name);
+      const orderingPlatformFields = {};
+      if (platformColumn && lead.ordering_platform_url) {
+        orderingPlatformFields[platformColumn] = lead.ordering_platform_url;
+      }
+
+      // Calculate ICP rating
+      const icpRating = calculateIcpRating(lead);
+
+      // Create restaurant with all field mappings
       const { data: restaurant, error: restaurantError } = await client
         .from('restaurants')
         .insert({
+          // Basic info
           name: lead.restaurant_name,
           slug,
           organisation_id: orgId,
           phone: lead.phone,
           email: lead.email,
-          address: lead.ubereats_address || lead.google_address,
+          address,
           city: lead.city,
-          region: lead.region,
-          country: lead.country || 'nz',
+
+          // URLs
           website_url: lead.website_url,
           instagram_url: lead.instagram_url,
           facebook_url: lead.facebook_url,
-          google_maps_url: lead.google_maps_url,
+          ubereats_url: lead.store_link,
+          ...orderingPlatformFields,
+
+          // Contact info
           contact_name: lead.contact_name,
           contact_email: lead.contact_email,
           contact_phone: lead.contact_phone,
-          lead_status: 'new',
-          source: `lead_scrape_${lead.platform}`,
+          contact_role: lead.contact_role,
+
+          // Business details
+          cuisine: lead.ubereats_cuisine || [],
+          opening_hours: convertOpeningHoursFormat(lead.opening_hours),
+          opening_hours_text: lead.opening_hours_text,
+          website_type: lead.website_type,
+          online_ordering_platform: lead.ordering_platform_name,
+          ubereats_og_image: lead.ubereats_og_image,
+
+          // Sales pipeline fields (outbound cold lead defaults)
+          lead_type: 'outbound',
+          lead_category: 'cold_outreach',
+          lead_warmth: 'frozen',
+          lead_stage: 'uncontacted',
+          lead_status: 'inactive',
+          icp_rating: icpRating,
+
+          // Metadata
           metadata: {
             converted_from_lead: leadId,
+            source: `lead_scrape_${lead.platform}`,
             ubereats_reviews: lead.ubereats_number_of_reviews,
             ubereats_rating: lead.ubereats_average_review_rating,
             google_reviews: lead.google_number_of_reviews,
-            google_rating: lead.google_average_review_rating
+            google_rating: lead.google_average_review_rating,
+            google_maps_url: lead.google_maps_url,
+            region: lead.region,
+            country: lead.country
           }
         })
         .select()
@@ -1301,7 +1561,7 @@ async function convertLeadsToRestaurants(leadIds, orgId, userId) {
     }
   }
 
-  return {
+  const result = {
     converted,
     failed,
     summary: {
@@ -1310,6 +1570,38 @@ async function convertLeadsToRestaurants(leadIds, orgId, userId) {
       failed: failed.length
     }
   };
+
+  // Create registration batch if requested and we have converted restaurants
+  if (create_registration_batch && converted.length > 0) {
+    try {
+      const registrationBatchService = require('./registration-batch-service');
+
+      const restaurantIds = converted.map(c => c.restaurant_id);
+      const batchJobName = batch_name || `Batch from Lead Conversion ${new Date().toISOString().split('T')[0]}`;
+
+      const batchResult = await registrationBatchService.createRegistrationBatchJob({
+        name: batchJobName,
+        restaurant_ids: restaurantIds,
+        organisation_id: orgId,
+        source_lead_scrape_job_id,
+        created_by: userId
+      });
+
+      result.registration_batch = {
+        id: batchResult.batch_job.id,
+        name: batchResult.batch_job.name,
+        status: batchResult.batch_job.status,
+        total_restaurants: batchResult.batch_job.total_restaurants
+      };
+
+      console.log(`[LeadScrapeService] Created registration batch ${batchResult.batch_job.id} for ${restaurantIds.length} restaurants`);
+    } catch (batchError) {
+      console.error('[LeadScrapeService] Failed to create registration batch:', batchError);
+      result.registration_batch_error = batchError.message;
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -1418,6 +1710,7 @@ module.exports = {
 
   // Lead operations
   getPendingLeads,
+  getPendingLeadsFilterOptions,
   getLead,
   updateLead,
   convertLeadsToRestaurants,

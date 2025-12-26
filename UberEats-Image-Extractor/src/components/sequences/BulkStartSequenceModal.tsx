@@ -71,6 +71,7 @@ interface Restaurant {
 interface BulkStartSequenceModalProps {
   open: boolean;
   onClose: () => void;
+  onSuccess?: (result: BulkOperationResult, restaurants: Restaurant[]) => void;
   restaurants: Restaurant[];
 }
 
@@ -97,6 +98,7 @@ interface BulkOperationResult {
 export function BulkStartSequenceModal({
   open,
   onClose,
+  onSuccess,
   restaurants,
 }: BulkStartSequenceModalProps) {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
@@ -155,6 +157,11 @@ export function BulkStartSequenceModal({
 
       setOperationResult(result);
       setOperationComplete(true);
+
+      // Trigger post-sequence actions (e.g., auto-extraction)
+      if (onSuccess) {
+        onSuccess(result, currentRestaurants);
+      }
 
       // Show appropriate toast based on results
       if (result.summary.failure === 0) {

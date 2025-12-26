@@ -50,6 +50,21 @@ router.get('/pending', authMiddleware, async (req, res) => {
 });
 
 /**
+ * GET /api/leads/pending/filter-options
+ * Get available filter options for pending leads (unique cities and cuisines from jobs)
+ * Returns only cities/cuisines from jobs that have pending leads
+ */
+router.get('/pending/filter-options', authMiddleware, async (req, res) => {
+  try {
+    const result = await leadScrapeService.getPendingLeadsFilterOptions(req.user.organisationId);
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error('Error fetching pending leads filter options:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * GET /api/leads/:id
  * Get a single lead with full details
  */
@@ -109,6 +124,10 @@ router.patch('/:id', authMiddleware, async (req, res) => {
  * Convert selected leads to restaurants
  * Body:
  *   - lead_ids: string[] (required)
+ *   - address_source: string (optional) - 'ubereats', 'google', or 'auto' (default)
+ *   - create_registration_batch: boolean (optional) - Create a registration batch for Phase 2 orchestration
+ *   - batch_name: string (optional) - Name for the registration batch
+ *   - source_lead_scrape_job_id: string (optional) - Link to source lead scrape job
  * Protected by leadScraping.leadConversion feature flag
  */
 router.post('/convert', authMiddleware, requireLeadScrapingConversion, async (req, res) => {
@@ -127,10 +146,26 @@ router.post('/convert', authMiddleware, requireLeadScrapingConversion, async (re
       });
     }
 
+    // Validate address_source if provided
+    const validAddressSources = ['ubereats', 'google', 'auto'];
+    const addressSource = req.body.address_source || 'auto';
+    if (!validAddressSources.includes(addressSource)) {
+      return res.status(400).json({
+        success: false,
+        error: `Invalid address_source. Must be one of: ${validAddressSources.join(', ')}`
+      });
+    }
+
     const result = await leadScrapeService.convertLeadsToRestaurants(
       req.body.lead_ids,
       req.user.organisationId,
-      req.user.id
+      req.user.id,
+      {
+        address_source: addressSource,
+        create_registration_batch: req.body.create_registration_batch || false,
+        batch_name: req.body.batch_name,
+        source_lead_scrape_job_id: req.body.source_lead_scrape_job_id
+      }
     );
 
     // Track lead conversions (only count successful conversions)
@@ -139,8 +174,8 @@ router.post('/convert', authMiddleware, requireLeadScrapingConversion, async (re
         req.user.organisationId,
         result.summary.converted,
         {
-          lead_ids: result.results.filter(r => r.success).map(r => r.lead_id),
-          restaurant_ids: result.results.filter(r => r.success).map(r => r.restaurant_id)
+          lead_ids: result.converted.map(r => r.lead_id),
+          restaurant_ids: result.converted.map(r => r.restaurant_id)
         }
       ).catch(err => console.error('[UsageTracking] Failed to track lead conversions:', err));
     }

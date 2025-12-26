@@ -44,6 +44,42 @@
  *
  * Example (custom admin URL):
  *   node add-option-sets.js --payload="/path/to/temp-option-sets-payload.json" --admin-url="https://admin.ozorders.com.au"
+ *
+ * =============================================================================
+ * IMPORTANT: Menu Item Selection - Featured Items Handling
+ * =============================================================================
+ *
+ * The "Add / Remove From Items" tab in CloudWaitress displays menu items in a
+ * tree structure with categories. Some menus have a "Featured Items" section
+ * at the top that duplicates items from other categories.
+ *
+ * PROBLEM:
+ * When a menu item appears in BOTH "Featured Items" AND its actual category
+ * (e.g., "Half Chicken" in Featured Items AND in "Chicken" category), the
+ * menuItemNames array from extraction contains duplicates. Using .first()
+ * selector would:
+ *   1. First occurrence: Click Featured Items checkbox (selects it)
+ *   2. Second occurrence: Click Featured Items checkbox AGAIN (deselects it!)
+ *
+ * SOLUTION:
+ * 1. Deduplicate menuItemNames using Set to process each name only once
+ * 2. For each unique name, find ALL matching checkboxes in the DOM
+ * 3. Click ALL of them (both Featured Items AND category checkboxes)
+ *
+ * SELECTOR USED:
+ * The working selector is: span.m-l-2:text-is("${itemName}")
+ * - span.m-l-2 targets the menu item label spans in the checkbox tree
+ * - :text-is() does exact text matching
+ * - We then traverse up to the parent label and click it
+ *
+ * NOTE: The alternative selector `label:has(span:text-is(...))` was NOT
+ * matching elements in this UI. Always use the span.m-l-2 approach.
+ *
+ * PERFORMANCE:
+ * - Removed isChecked() calls before clicking (saves ~10s per item)
+ * - Removed waitForTimeout() between clicks
+ * - Clicking an already-checked checkbox is safe in this UI
+ * =============================================================================
  */
 
 const { chromium } = require('playwright');
@@ -638,43 +674,32 @@ async function addOptionSets() {
             await page.waitForTimeout(300);
 
             // Find and click checkboxes for matching menu item names
-            // Checkboxes have labels with span containing the item name
+            // Deduplicate names, then click ALL matching checkboxes for each name
+            // This handles items appearing in both Featured Items AND their category
             let matchedCount = 0;
-            for (const itemName of menuItemNames) {
+            const uniqueMenuItemNames = [...new Set(menuItemNames)];
+            for (const itemName of uniqueMenuItemNames) {
               try {
-                // Find checkbox label containing the item name
-                const checkbox = page.locator(`label:has(span:text-is("${itemName}")) input[type="checkbox"]`).first();
-
-                if (await checkbox.count() > 0) {
-                  // Check if not already checked
-                  const isChecked = await checkbox.isChecked();
-                  if (!isChecked) {
-                    await checkbox.click();
-                    await page.waitForTimeout(100);
-                    matchedCount++;
-                    console.log(`      Checked: "${itemName}"`);
-                  } else {
-                    console.log(`      Already checked: "${itemName}"`);
-                    matchedCount++;
-                  }
-                } else {
-                  // Try alternative selector - find by text and click parent
-                  const labelSpan = page.locator(`span.m-l-2:text-is("${itemName}")`).first();
-                  if (await labelSpan.count() > 0) {
+                // Find ALL matching spans with m-l-2 class (menu item labels)
+                const labelSpanLocator = page.locator(`span.m-l-2:text-is("${itemName}")`);
+                const count = await labelSpanLocator.count();
+                if (count > 0) {
+                  // Click all matching checkboxes
+                  for (let i = 0; i < count; i++) {
+                    const labelSpan = labelSpanLocator.nth(i);
                     const parentLabel = labelSpan.locator('xpath=ancestor::label');
                     await parentLabel.click();
-                    await page.waitForTimeout(100);
-                    matchedCount++;
-                    console.log(`      Checked (alt): "${itemName}"`);
-                  } else {
-                    console.log(`      Not found: "${itemName}"`);
                   }
+                  matchedCount++;
+                  console.log(`      Checked: "${itemName}" (${count} checkbox${count > 1 ? 'es' : ''})`);
+                } else {
+                  console.log(`      Not found: "${itemName}"`);
                 }
               } catch (checkError) {
                 console.log(`      Failed to check "${itemName}": ${checkError.message}`);
               }
             }
-            console.log(`    Matched ${matchedCount}/${menuItemNames.length} menu items`);
+            console.log(`    Matched ${matchedCount}/${uniqueMenuItemNames.length} menu items`);
 
           } catch (addItemsError) {
             console.log(`    Failed to add menu items: ${addItemsError.message}`);
