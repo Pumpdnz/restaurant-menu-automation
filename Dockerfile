@@ -15,6 +15,7 @@ ENV HEADLESS=true
 RUN apt-get update && apt-get install -y \
     libvips-dev \
     libheif-dev \
+    libglib2.0-dev \
     build-essential \
     python3 \
     && rm -rf /var/lib/apt/lists/*
