@@ -11,11 +11,12 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 ENV HEADLESS=true
 
 # Install system dependencies for full image format support (AVIF/HEIF/10-bit)
-# Cache bust v2: Added libglib2.0-dev for sharp compilation
+# Cache bust v3: Added pkg-config for header discovery
 RUN apt-get update && apt-get install -y \
     libvips-dev \
     libheif-dev \
     libglib2.0-dev \
+    pkg-config \
     build-essential \
     python3 \
     && rm -rf /var/lib/apt/lists/*
