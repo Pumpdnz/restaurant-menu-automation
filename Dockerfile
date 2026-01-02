@@ -10,15 +10,22 @@ ENV NODE_ENV=production
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 ENV HEADLESS=true
 
+# Install system dependencies for full image format support (AVIF/HEIF/10-bit)
+# This layer is cached and only rebuilds if this instruction changes
+RUN apt-get update && apt-get install -y \
+    libvips-dev \
+    libheif-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy package files first (for Docker layer caching)
 COPY UberEats-Image-Extractor/package*.json ./UberEats-Image-Extractor/
 COPY scripts/package*.json ./scripts/
 COPY scripts/restaurant-registration/package*.json ./scripts/restaurant-registration/
 
-# Install UberEats-Image-Extractor dependencies
+# Install UberEats-Image-Extractor dependencies and rebuild sharp with system libvips
 # Note: --legacy-peer-deps needed for react-day-picker (requires React 18) with React 19
 WORKDIR /app/UberEats-Image-Extractor
-RUN npm ci --omit=dev --legacy-peer-deps
+RUN npm ci --omit=dev --legacy-peer-deps && npm rebuild sharp --build-from-source
 
 # Install scripts dependencies (for dotenv, sharp, etc. used by ordering-page-customization.js)
 WORKDIR /app/scripts
