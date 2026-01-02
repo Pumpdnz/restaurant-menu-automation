@@ -15,6 +15,8 @@ ENV HEADLESS=true
 RUN apt-get update && apt-get install -y \
     libvips-dev \
     libheif-dev \
+    build-essential \
+    python3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy package files first (for Docker layer caching)
@@ -22,10 +24,14 @@ COPY UberEats-Image-Extractor/package*.json ./UberEats-Image-Extractor/
 COPY scripts/package*.json ./scripts/
 COPY scripts/restaurant-registration/package*.json ./scripts/restaurant-registration/
 
-# Install UberEats-Image-Extractor dependencies and rebuild sharp with system libvips
+# Install UberEats-Image-Extractor dependencies and build sharp from source with system libvips
 # Note: --legacy-peer-deps needed for react-day-picker (requires React 18) with React 19
+# Sharp must be built from source to use system libvips with full AVIF/HEIF support
+# node-addon-api and node-gyp are included in dependencies for this purpose
 WORKDIR /app/UberEats-Image-Extractor
-RUN npm ci --omit=dev --legacy-peer-deps && npm rebuild sharp --build-from-source
+RUN npm ci --legacy-peer-deps && \
+    rm -rf node_modules/sharp/build node_modules/sharp/vendor && \
+    cd node_modules/sharp && npm run build
 
 # Install scripts dependencies (for dotenv, sharp, etc. used by ordering-page-customization.js)
 WORKDIR /app/scripts

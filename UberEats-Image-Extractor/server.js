@@ -7628,9 +7628,34 @@ app.post('/api/website-extraction/branding', authMiddleware, requireFirecrawlBra
           sourceUrl
         );
 
-        // Convert favicon to base64 PNG (resize to 32x32 for consistency)
         const sharp = require('sharp');
-        const resizedFavicon = await sharp(faviconBuffer)
+        const sharpIco = require('sharp-ico');
+
+        let processableBuffer = faviconBuffer;
+
+        // Check if it's an ICO file (by URL extension or magic bytes)
+        const isIcoUrl = brandingResult.images.faviconUrl.toLowerCase().endsWith('.ico');
+        const isIcoMagic = faviconBuffer.length >= 4 &&
+          faviconBuffer[0] === 0 && faviconBuffer[1] === 0 &&
+          faviconBuffer[2] === 1 && faviconBuffer[3] === 0;
+
+        if (isIcoUrl || isIcoMagic) {
+          console.log('[API] Converting ICO favicon to PNG');
+          try {
+            // Decode ICO and get the largest image
+            const images = sharpIco.sharpsFromIco(faviconBuffer);
+            if (images && images.length > 0) {
+              // Get the largest image (last in array, sorted by size)
+              const largestImage = images[images.length - 1];
+              processableBuffer = await largestImage.png().toBuffer();
+            }
+          } catch (icoError) {
+            console.error('[API] ICO decode failed, trying as regular image:', icoError.message);
+          }
+        }
+
+        // Convert favicon to base64 PNG (resize to 32x32 for consistency)
+        const resizedFavicon = await sharp(processableBuffer)
           .resize(32, 32, {
             fit: 'contain',
             background: { r: 255, g: 255, b: 255, alpha: 0 }
