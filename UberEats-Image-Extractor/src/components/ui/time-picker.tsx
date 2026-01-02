@@ -20,8 +20,8 @@ const HOURS = Array.from({ length: 24 }, (_, i) =>
   i.toString().padStart(2, '0')
 )
 
-// Generate minutes in 15-minute increments: 00, 15, 30, 45
-const MINUTES = ['00', '15', '30', '45']
+// Generate minutes in 15-minute increments: 00, 15, 30, 45, plus 59 for end-of-hour
+const MINUTES = ['00', '15', '30', '45', '59']
 
 export function TimePicker({
   value,
@@ -120,20 +120,44 @@ export function TimePicker({
             />
           </div>
         </PopoverTrigger>
-        <PopoverContent className="w-[80px] p-1 max-h-[200px] overflow-y-auto" align="start">
-          <div className="grid grid-cols-1 gap-0.5">
-            {HOURS.map((h) => (
-              <button
-                key={h}
-                onClick={() => selectHour(h)}
-                className={cn(
-                  "px-2 py-1 text-sm rounded hover:bg-accent text-center",
-                  parsedHours === h && "bg-accent font-medium"
-                )}
-              >
-                {h}
-              </button>
-            ))}
+        <PopoverContent className="w-[140px] p-1" align="start">
+          <div className="flex gap-2">
+            {/* AM hours (00-11) */}
+            <div className="flex-1">
+              <div className="text-xs text-muted-foreground text-center mb-1">AM</div>
+              <div className="grid grid-cols-1 gap-0.5">
+                {HOURS.slice(0, 12).map((h) => (
+                  <button
+                    key={h}
+                    onClick={() => selectHour(h)}
+                    className={cn(
+                      "px-2 py-1 text-sm rounded hover:bg-accent text-center",
+                      parsedHours === h && "bg-accent font-medium"
+                    )}
+                  >
+                    {h}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* PM hours (12-23) */}
+            <div className="flex-1">
+              <div className="text-xs text-muted-foreground text-center mb-1">PM</div>
+              <div className="grid grid-cols-1 gap-0.5">
+                {HOURS.slice(12, 24).map((h) => (
+                  <button
+                    key={h}
+                    onClick={() => selectHour(h)}
+                    className={cn(
+                      "px-2 py-1 text-sm rounded hover:bg-accent text-center",
+                      parsedHours === h && "bg-accent font-medium"
+                    )}
+                  >
+                    {h}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </PopoverContent>
       </Popover>

@@ -197,6 +197,12 @@ export function YoloConfigBatchView({
   // Form data state for each job
   const [formDataByJob, setFormDataByJob] = useState<Record<string, YoloModeFormData>>({});
 
+  // Header image field type for Issue 16
+  type HeaderImageField = 'website_og_image' | 'ubereats_og_image' | 'doordash_og_image' | 'facebook_cover_image';
+
+  // Track if header image save is in progress
+  const [isHeaderImageSaving, setIsHeaderImageSaving] = useState(false);
+
   // Currently selected job for editing
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
 
@@ -265,17 +271,52 @@ export function YoloConfigBatchView({
     value: YoloModeFormData[S][K]
   ) => {
     if (!selectedJobId) return;
-    setFormDataByJob((prev) => ({
-      ...prev,
-      [selectedJobId]: {
-        ...prev[selectedJobId],
+    setFormDataByJob((prev) => {
+      const currentFormData = prev[selectedJobId];
+      if (!currentFormData) return prev;
+
+      const updated = {
+        ...currentFormData,
         [section]: {
-          ...prev[selectedJobId][section],
+          ...currentFormData[section],
           [key]: value,
         },
-      },
-    }));
+      };
+
+      // Sync email between account and onboarding tabs when one is empty
+      if (section === 'onboarding' && key === 'userEmail' && typeof value === 'string') {
+        // If account email is empty, sync from onboarding
+        if (!currentFormData.account.email) {
+          updated.account = { ...updated.account, email: value };
+        }
+      } else if (section === 'account' && key === 'email' && typeof value === 'string') {
+        // If onboarding email is empty, sync from account
+        if (!currentFormData.onboarding.userEmail) {
+          updated.onboarding = { ...updated.onboarding, userEmail: value };
+        }
+      }
+
+      return {
+        ...prev,
+        [selectedJobId]: updated,
+      };
+    });
   }, [selectedJobId]);
+
+  // Handle header image save - saves directly to database (Issue 16)
+  const handleHeaderImageSave = useCallback(async (field: HeaderImageField, url: string) => {
+    if (!selectedJobId) return;
+
+    setIsHeaderImageSaving(true);
+    try {
+      await saveRestaurantMutation.mutateAsync({
+        jobId: selectedJobId,
+        updates: { [field]: url },
+      });
+    } finally {
+      setIsHeaderImageSaving(false);
+    }
+  }, [selectedJobId, saveRestaurantMutation]);
 
   // Check if a job is configured (has password set)
   const isJobConfigured = useCallback((jobId: string) => {
@@ -391,6 +432,7 @@ export function YoloConfigBatchView({
   // Extract saveable fields from form data to compare with restaurant
   const getSaveableFields = useCallback((formData: YoloModeFormData, restaurant: Restaurant | undefined) => {
     if (!restaurant) return {};
+
     return {
       email: formData.account.email,
       phone: formData.account.phone || formData.restaurant.phone,
@@ -405,6 +447,7 @@ export function YoloConfigBatchView({
       secondary_color: formData.website.secondaryColor,
       contact_name: formData.onboarding.userName,
       contact_email: formData.onboarding.userEmail,
+      // Note: Header images (Issue 16) are saved directly via handleHeaderImageSave
     };
   }, []);
 
@@ -786,6 +829,8 @@ export function YoloConfigBatchView({
                         formData={selectedFormData}
                         updateFormData={updateFormData}
                         restaurant={toRestaurantType(selectedJob)}
+                        onHeaderImageSave={handleHeaderImageSave}
+                        isHeaderImageSaving={isHeaderImageSaving}
                       />
                     </TabsContent>
 

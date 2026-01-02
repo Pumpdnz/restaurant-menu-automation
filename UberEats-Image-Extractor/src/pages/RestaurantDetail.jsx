@@ -40,6 +40,7 @@ import {
   Upload,
   FileCheck,
   Code,
+  Check,
   XCircle,
   Database,
   Download,
@@ -81,7 +82,8 @@ import {
   useResumeSequence,
   useCancelSequence,
   useFinishSequence,
-  useDeleteSequenceInstance
+  useDeleteSequenceInstance,
+  useRecreateSequence
 } from '../hooks/useSequences';
 import { QualificationForm } from '../components/demo-meeting/QualificationForm';
 import { RestaurantSwitcher } from '../components/restaurants/RestaurantSwitcher';
@@ -249,6 +251,7 @@ export default function RestaurantDetail() {
   const cancelSequenceMutation = useCancelSequence();
   const finishSequenceMutation = useFinishSequence();
   const deleteSequenceMutation = useDeleteSequenceInstance();
+  const recreateSequenceMutation = useRecreateSequence();
 
   // New states for URL search and details extraction
   const [searchingForUrl, setSearchingForUrl] = useState({});
@@ -293,7 +296,9 @@ export default function RestaurantDetail() {
   const [isConfiguring, setIsConfiguring] = useState(false);
   const [codeGenerated, setCodeGenerated] = useState(false);
   const [customizationStatus, setCustomizationStatus] = useState(null);
-  const [generatedFilePaths, setGeneratedFilePaths] = useState(null);
+  const [generatedFilePaths, setGeneratedFilePaths] = useState(null); // Legacy - kept for backward compatibility
+  const [codeInjectionId, setCodeInjectionId] = useState(null); // New: Database storage ID
+  const [codeInjectionGeneratedAt, setCodeInjectionGeneratedAt] = useState(null); // New: Generation timestamp
   const [customizationMode, setCustomizationMode] = useState('generate'); // 'generate' or 'existing'
   const [existingHeadPath, setExistingHeadPath] = useState('');
   const [existingBodyPath, setExistingBodyPath] = useState('');
@@ -560,6 +565,28 @@ export default function RestaurantDetail() {
     }
   }, [isEditing, editedData.cuisine]);
 
+  // Check for existing code injection content stored in database
+  useEffect(() => {
+    const checkExistingCodeInjection = async () => {
+      if (!id) return;
+
+      try {
+        const response = await railwayApi.get(`/api/registration/code-injection/${id}`);
+        if (response.data.hasContent) {
+          setCodeInjectionId(response.data.codeInjectionId);
+          setCodeInjectionGeneratedAt(response.data.generatedAt);
+          setCodeGenerated(true);
+          console.log('[RestaurantDetail] Found existing code injection:', response.data.codeInjectionId);
+        }
+      } catch (error) {
+        // No existing code injection - that's fine, user will generate new
+        console.log('[RestaurantDetail] No existing code injection found');
+      }
+    };
+
+    checkExistingCodeInjection();
+  }, [id]);
+
   const fetchRestaurantDetails = async () => {
     try {
       const response = await api.get(`/restaurants/${id}/details`);
@@ -704,6 +731,13 @@ export default function RestaurantDetail() {
   const handleDeleteSequence = async (instanceId) => {
     if (window.confirm('Are you sure you want to delete this sequence? This action cannot be undone.')) {
       await deleteSequenceMutation.mutateAsync(instanceId);
+      refetchSequences();
+    }
+  };
+
+  const handleRecreateSequence = async (instanceId) => {
+    if (window.confirm('Recreate this sequence? This will delete the current sequence and create a new one with updated restaurant data (e.g., contact names, emails).')) {
+      await recreateSequenceMutation.mutateAsync(instanceId);
       refetchSequences();
     }
   };
@@ -1046,14 +1080,22 @@ export default function RestaurantDetail() {
 
       if (response.data.success) {
         setCodeGenerated(true);
+        // New: Store database ID for persistent storage
+        setCodeInjectionId(response.data.codeInjectionId);
+        setCodeInjectionGeneratedAt(response.data.generatedAt);
+        // Legacy: Keep file paths for backward compatibility
         setGeneratedFilePaths(response.data.filePaths);
         setCustomizationStatus({
           success: true,
-          message: 'Code injections generated successfully'
+          message: response.data.codeInjectionId
+            ? 'Code injections generated and stored in database'
+            : 'Code injections generated successfully'
         });
         toast({
           title: "Success",
-          description: "Code injections generated successfully",
+          description: response.data.codeInjectionId
+            ? "Code injections generated and stored in database"
+            : "Code injections generated successfully",
         });
       } else {
         setCustomizationStatus({
@@ -1150,8 +1192,8 @@ export default function RestaurantDetail() {
   };
 
   const handleConfigureWebsite = async () => {
-    // Check based on mode
-    if (customizationMode === 'generate' && !generatedFilePaths) {
+    // Check based on mode - support both database ID and legacy file paths
+    if (customizationMode === 'generate' && !codeInjectionId && !generatedFilePaths) {
       setCustomizationStatus({
         success: false,
         message: 'Please generate code injections first'
@@ -1183,7 +1225,8 @@ export default function RestaurantDetail() {
     try {
       const response = await railwayApi.post('/api/registration/configure-website', {
         restaurantId: id,
-        filePaths: generatedFilePaths,
+        codeInjectionId: codeInjectionId, // New: Database storage ID
+        filePaths: generatedFilePaths, // Legacy: Kept for backward compatibility
         headerConfig: headerEnabled ? {
           enabled: true,
           backgroundSource: headerBgSource
@@ -5182,6 +5225,7 @@ export default function RestaurantDetail() {
                     onCancel={handleCancelSequence}
                     onFinish={handleFinishSequence}
                     onDelete={handleDeleteSequence}
+                    onRecreate={handleRecreateSequence}
                     onRefresh={refetchSequences}
                     hideRestaurantLink={true}
                     onStartSequence={() => {
@@ -6356,9 +6400,19 @@ export default function RestaurantDetail() {
                                 </p>
                               )}
                               {codeGenerated && !isGenerating && (
-                                <p className="text-xs text-muted-foreground text-center">
-                                  Code injections ready for configuration
-                                </p>
+                                <div className="text-center space-y-1">
+                                  <p className="text-xs text-green-600 font-medium flex items-center justify-center gap-1">
+                                    <Check className="h-3 w-3" />
+                                    {codeInjectionId
+                                      ? 'Code stored in database - persists across sessions'
+                                      : 'Code injections ready for configuration'}
+                                  </p>
+                                  {codeInjectionGeneratedAt && (
+                                    <p className="text-xs text-muted-foreground">
+                                      Generated {new Date(codeInjectionGeneratedAt).toLocaleString()}
+                                    </p>
+                                  )}
+                                </div>
                               )}
                             </div>
                           )}
@@ -8038,7 +8092,26 @@ export default function RestaurantDetail() {
 
                   {/* Version selection checkboxes for manual mode */}
                   <div className="space-y-2 mt-4">
-                    <p className="font-medium">Select which versions to generate:</p>
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium">Select which versions to generate:</p>
+                      <label className="flex items-center space-x-2 text-sm text-muted-foreground cursor-pointer hover:text-foreground">
+                        <input
+                          type="checkbox"
+                          checked={Object.values(versionsToUpdate).every(v => v)}
+                          onChange={(e) => setVersionsToUpdate({
+                            logo_url: e.target.checked,
+                            logo_nobg_url: e.target.checked,
+                            logo_standard_url: e.target.checked,
+                            logo_thermal_url: e.target.checked,
+                            logo_thermal_alt_url: e.target.checked,
+                            logo_thermal_contrast_url: e.target.checked,
+                            logo_thermal_adaptive_url: e.target.checked,
+                            logo_favicon_url: e.target.checked
+                          })}
+                        />
+                        <span>Select All</span>
+                      </label>
+                    </div>
                     <div className="space-y-2 pl-4">
                       <label className="flex items-center space-x-2">
                         <input
@@ -8138,7 +8211,24 @@ export default function RestaurantDetail() {
 
                       {/* Color Selection for manual mode */}
                       <div className="mt-4 mb-2 pt-3 border-t">
-                        <p className="text-sm font-medium text-gray-700">Brand Colors to Update:</p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium text-gray-700">Brand Colors to Update:</p>
+                          <label className="flex items-center space-x-2 text-sm text-muted-foreground cursor-pointer hover:text-foreground">
+                            <input
+                              type="checkbox"
+                              checked={Object.values(colorsToUpdate).every(v => v)}
+                              onChange={(e) => setColorsToUpdate({
+                                primary_color: e.target.checked,
+                                secondary_color: e.target.checked,
+                                tertiary_color: e.target.checked,
+                                accent_color: e.target.checked,
+                                background_color: e.target.checked,
+                                theme: e.target.checked
+                              })}
+                            />
+                            <span>Select All</span>
+                          </label>
+                        </div>
                         {(restaurant?.primary_color || restaurant?.secondary_color) && (
                           <p className="text-xs text-amber-600 mt-1">
                             Some colors already exist - uncheck to preserve them
@@ -8353,13 +8443,34 @@ export default function RestaurantDetail() {
 
               {/* Version selection checkboxes */}
               <div className="space-y-2">
-                <p className="font-medium">
-                  {processMode === 'reprocess'
-                    ? 'Select versions to regenerate:'
-                    : processMode === 'replace'
-                      ? 'Select which versions to replace:'
-                      : ''}
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="font-medium">
+                    {processMode === 'reprocess'
+                      ? 'Select versions to regenerate:'
+                      : processMode === 'replace'
+                        ? 'Select which versions to replace:'
+                        : ''}
+                  </p>
+                  {(processMode === 'reprocess' || processMode === 'replace') && (
+                    <label className="flex items-center space-x-2 text-sm text-muted-foreground cursor-pointer hover:text-foreground">
+                      <input
+                        type="checkbox"
+                        checked={Object.values(versionsToUpdate).every(v => v)}
+                        onChange={(e) => setVersionsToUpdate({
+                          logo_url: e.target.checked,
+                          logo_nobg_url: e.target.checked,
+                          logo_standard_url: e.target.checked,
+                          logo_thermal_url: e.target.checked,
+                          logo_thermal_alt_url: e.target.checked,
+                          logo_thermal_contrast_url: e.target.checked,
+                          logo_thermal_adaptive_url: e.target.checked,
+                          logo_favicon_url: e.target.checked
+                        })}
+                      />
+                      <span>Select All</span>
+                    </label>
+                  )}
+                </div>
 
                 {(processMode === 'reprocess' || processMode === 'replace') && (
                   <div className="space-y-2 pl-4">
@@ -8465,7 +8576,24 @@ export default function RestaurantDetail() {
                     {processMode === 'replace' && (
                       <>
                         <div className="mt-4 mb-2 pt-3 border-t">
-                          <p className="text-sm font-medium text-gray-700">Brand Colors to Update:</p>
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium text-gray-700">Brand Colors to Update:</p>
+                            <label className="flex items-center space-x-2 text-sm text-muted-foreground cursor-pointer hover:text-foreground">
+                              <input
+                                type="checkbox"
+                                checked={Object.values(colorsToUpdate).every(v => v)}
+                                onChange={(e) => setColorsToUpdate({
+                                  primary_color: e.target.checked,
+                                  secondary_color: e.target.checked,
+                                  tertiary_color: e.target.checked,
+                                  accent_color: e.target.checked,
+                                  background_color: e.target.checked,
+                                  theme: e.target.checked
+                                })}
+                              />
+                              <span>Select All</span>
+                            </label>
+                          </div>
                         </div>
 
                         <label className="flex items-center space-x-2">
@@ -9948,6 +10076,7 @@ export default function RestaurantDetail() {
         onOpenChange={setYoloModeOpen}
         restaurant={restaurant}
         registrationStatus={registrationStatus}
+        onRefresh={() => fetchRestaurantDetails()}
         onExecute={async (formData) => {
           // Refresh data after execution completes
           await fetchRestaurantDetails();

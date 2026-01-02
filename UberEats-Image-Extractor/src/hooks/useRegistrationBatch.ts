@@ -446,6 +446,136 @@ export function useRetryRegistrationJob() {
 }
 
 /**
+ * Hook to resume Step 6 from last completed phase
+ * Use when a job failed mid-execution and has partial progress saved
+ */
+export function useResumeStep6() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (jobId: string) => {
+      const response = await api.post(`/registration-batches/jobs/${jobId}/resume-step-6`);
+      return response.data;
+    },
+    onSuccess: (response) => {
+      toast.success('Step 6 resume initiated', {
+        description: `Resuming from ${response.resuming_from || 'beginning'}`,
+      });
+      // Invalidate queries to update UI
+      queryClient.invalidateQueries({ queryKey: ['registration-batch'] });
+      queryClient.invalidateQueries({ queryKey: ['registration-job'] });
+      queryClient.invalidateQueries({ queryKey: ['registration-batches'] });
+    },
+    onError: (error: any) => {
+      toast.error('Failed to resume Step 6', {
+        description: error.response?.data?.error || error.message,
+      });
+    },
+  });
+}
+
+/**
+ * Hook to update a sub-step status manually
+ */
+export function useUpdateSubStepStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      jobId,
+      subStepKey,
+      status,
+      data,
+    }: {
+      jobId: string;
+      subStepKey: string;
+      status: 'completed' | 'failed' | 'skipped' | 'pending';
+      data?: Record<string, any>;
+    }) => {
+      const response = await api.patch(
+        `/registration-batches/jobs/${jobId}/steps/6/sub-steps/${subStepKey}`,
+        { status, data }
+      );
+      return response.data;
+    },
+    onSuccess: (response) => {
+      toast.success('Sub-step updated', {
+        description: `${response.updated_sub_step} marked as ${response.new_status}`,
+      });
+      if (response.validation_warnings?.length > 0) {
+        toast.warning('Warning', {
+          description: response.validation_warnings.join(', '),
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ['registration-batch'] });
+      queryClient.invalidateQueries({ queryKey: ['registration-job'] });
+    },
+    onError: (error: any) => {
+      toast.error('Failed to update sub-step', {
+        description: error.response?.data?.error || error.message,
+      });
+    },
+  });
+}
+
+/**
+ * Hook to reset a sub-step to pending
+ */
+export function useResetSubStep() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      jobId,
+      subStepKey,
+      cascade = true,
+    }: {
+      jobId: string;
+      subStepKey: string;
+      cascade?: boolean;
+    }) => {
+      const response = await api.post(
+        `/registration-batches/jobs/${jobId}/steps/6/sub-steps/${subStepKey}/reset`,
+        { cascade }
+      );
+      return response.data;
+    },
+    onSuccess: (response) => {
+      const count = response.reset_sub_steps?.length || 1;
+      toast.success('Sub-step reset', {
+        description: count > 1
+          ? `Reset ${count} sub-steps (including dependents)`
+          : 'Sub-step reset to pending',
+      });
+      queryClient.invalidateQueries({ queryKey: ['registration-batch'] });
+      queryClient.invalidateQueries({ queryKey: ['registration-job'] });
+    },
+    onError: (error: any) => {
+      toast.error('Failed to reset sub-step', {
+        description: error.response?.data?.error || error.message,
+      });
+    },
+  });
+}
+
+/**
+ * Hook to get sub-step validation context
+ */
+export function useSubStepValidation(jobId: string, subStepKey: string) {
+  return useQuery({
+    queryKey: ['sub-step-validation', jobId, subStepKey],
+    queryFn: async () => {
+      const response = await api.get(
+        `/registration-batches/jobs/${jobId}/steps/6/sub-steps/${subStepKey}/validation`
+      );
+      return response.data;
+    },
+    enabled: !!jobId && !!subStepKey,
+    staleTime: 10000, // 10 seconds
+  });
+}
+
+/**
  * Hook to create a new registration batch (standalone, not from lead conversion)
  */
 export function useCreateRegistrationBatch() {
@@ -585,6 +715,11 @@ export function useSaveRestaurantFromConfig() {
         secondary_color?: string;
         contact_name?: string;
         contact_email?: string;
+        // Header images (Issue 16 - can be URL or base64, server converts URLs)
+        website_og_image?: string;
+        ubereats_og_image?: string;
+        doordash_og_image?: string;
+        facebook_cover_image?: string;
       };
     }) => {
       const response = await api.patch(

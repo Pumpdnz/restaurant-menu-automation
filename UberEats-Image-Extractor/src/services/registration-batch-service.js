@@ -12,10 +12,84 @@
  */
 
 const { getSupabaseClient } = require('./database-service');
+const { executeWithRetry, formatErrorMessage } = require('./database-error-handler');
 const axios = require('axios');
 
 // Base URL for internal API calls (server calls itself)
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3007';
+
+// CloudWaitress Rate Limiting Configuration
+// Minimum delay between account creations in milliseconds (default: 60 seconds)
+const CLOUDWAITRESS_RATE_LIMIT_MS = parseInt(process.env.CLOUDWAITRESS_RATE_LIMIT_MS || '60000', 10);
+
+/**
+ * Helper function to delay execution
+ * @param {number} ms - Milliseconds to delay
+ */
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * Global CloudWaitress Account Creation Queue
+ * Ensures only one account creation happens at a time with rate limiting,
+ * while allowing all other registration steps to proceed in parallel.
+ */
+class CloudWaitressRateLimiter {
+  constructor() {
+    this.queue = [];
+    this.isProcessing = false;
+    this.lastExecutionTime = 0;
+  }
+
+  /**
+   * Add an account creation operation to the queue
+   * @param {Function} operation - Async function to execute
+   * @returns {Promise} - Resolves when the operation completes
+   */
+  async enqueue(operation, jobInfo = '') {
+    return new Promise((resolve, reject) => {
+      this.queue.push({ operation, resolve, reject, jobInfo });
+      console.log(`[CloudWaitress Queue] Added to queue: ${jobInfo} (queue length: ${this.queue.length})`);
+      this.processQueue();
+    });
+  }
+
+  async processQueue() {
+    if (this.isProcessing || this.queue.length === 0) {
+      return;
+    }
+
+    this.isProcessing = true;
+
+    while (this.queue.length > 0) {
+      const { operation, resolve, reject, jobInfo } = this.queue.shift();
+
+      // Calculate delay needed based on last execution time
+      const now = Date.now();
+      const timeSinceLastExecution = now - this.lastExecutionTime;
+      const delayNeeded = Math.max(0, CLOUDWAITRESS_RATE_LIMIT_MS - timeSinceLastExecution);
+
+      if (delayNeeded > 0 && this.lastExecutionTime > 0) {
+        console.log(`[CloudWaitress Queue] Rate limit: waiting ${delayNeeded}ms before ${jobInfo}`);
+        await delay(delayNeeded);
+      }
+
+      console.log(`[CloudWaitress Queue] Executing: ${jobInfo} (remaining in queue: ${this.queue.length})`);
+
+      try {
+        this.lastExecutionTime = Date.now();
+        const result = await operation();
+        resolve(result);
+      } catch (error) {
+        reject(error);
+      }
+    }
+
+    this.isProcessing = false;
+  }
+}
+
+// Global instance of the rate limiter
+const cloudWaitressRateLimiter = new CloudWaitressRateLimiter();
 
 /**
  * Registration Step Definitions
@@ -679,6 +753,7 @@ async function markExtractionsExecutedOnCreation(batchId, restaurantIds, orgId) 
 
 /**
  * Update step status for a registration job
+ * Includes retry logic for transient database errors
  */
 async function updateStepStatus(jobId, stepNumber, status, additionalData = {}) {
   const client = getSupabaseClient();
@@ -697,20 +772,23 @@ async function updateStepStatus(jobId, stepNumber, status, additionalData = {}) 
     updates.completed_at = new Date().toISOString();
   }
 
-  const { data, error } = await client
-    .from('registration_job_steps')
-    .update(updates)
-    .eq('job_id', jobId)
-    .eq('step_number', stepNumber)
-    .select()
-    .single();
+  const data = await executeWithRetry(
+    () => client
+      .from('registration_job_steps')
+      .update(updates)
+      .eq('job_id', jobId)
+      .eq('step_number', stepNumber)
+      .select()
+      .single(),
+    `updateStepStatus(job=${jobId}, step=${stepNumber}, status=${status})`
+  );
 
-  if (error) throw error;
   return data;
 }
 
 /**
  * Update job status
+ * Includes retry logic for transient database errors
  * @param {string} jobId - Job ID
  * @param {string} status - New status
  * @param {string|null} errorMessage - Optional error message
@@ -736,38 +814,54 @@ async function updateJobStatus(jobId, status, errorMessage = null, currentStep =
     updates.current_step = currentStep;
   }
 
-  const { data, error } = await client
-    .from('registration_jobs')
-    .update(updates)
-    .eq('id', jobId)
-    .select()
-    .single();
+  const data = await executeWithRetry(
+    () => client
+      .from('registration_jobs')
+      .update(updates)
+      .eq('id', jobId)
+      .select()
+      .single(),
+    `updateJobStatus(job=${jobId}, status=${status})`
+  );
 
-  if (error) throw error;
   return data;
 }
 
 /**
  * Increment batch progress counters
+ * Includes retry logic for transient database errors
  */
 async function incrementBatchProgress(batchId, type) {
+  // Skip for single-restaurant mode (no batch)
+  if (!batchId) {
+    return;
+  }
+
   const client = getSupabaseClient();
 
   const column = type === 'completed' ? 'completed_restaurants' : 'failed_restaurants';
 
-  const { data: batch } = await client
-    .from('registration_batch_jobs')
-    .select(column)
-    .eq('id', batchId)
-    .single();
+  // Read current value with retry
+  const batch = await executeWithRetry(
+    () => client
+      .from('registration_batch_jobs')
+      .select(column)
+      .eq('id', batchId)
+      .single(),
+    `incrementBatchProgress.read(batch=${batchId}, type=${type})`
+  );
 
-  await client
-    .from('registration_batch_jobs')
-    .update({
-      [column]: (batch?.[column] || 0) + 1,
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', batchId);
+  // Update with retry
+  await executeWithRetry(
+    () => client
+      .from('registration_batch_jobs')
+      .update({
+        [column]: (batch?.[column] || 0) + 1,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', batchId),
+    `incrementBatchProgress.update(batch=${batchId}, type=${type})`
+  );
 }
 
 /**
@@ -962,7 +1056,32 @@ async function processStep1(batchId, orgId) {
                     restaurant.website_url
                   );
                   const sharp = require('sharp');
-                  const resizedFavicon = await sharp(faviconBuffer)
+                  const sharpIco = require('sharp-ico');
+
+                  let processableBuffer = faviconBuffer;
+
+                  // Check if it's an ICO file (by URL extension or magic bytes)
+                  const isIcoUrl = brandingResult.images.faviconUrl.toLowerCase().endsWith('.ico');
+                  const isIcoMagic = faviconBuffer.length >= 4 &&
+                    faviconBuffer[0] === 0 && faviconBuffer[1] === 0 &&
+                    faviconBuffer[2] === 1 && faviconBuffer[3] === 0;
+
+                  if (isIcoUrl || isIcoMagic) {
+                    console.log(`[Registration Batch Service] Converting ICO favicon for ${restaurant.name}`);
+                    try {
+                      // Decode ICO and get the largest image
+                      const images = sharpIco.sharpsFromIco(faviconBuffer);
+                      if (images && images.length > 0) {
+                        // Get the largest image (last in array, sorted by size)
+                        const largestImage = images[images.length - 1];
+                        processableBuffer = await largestImage.png().toBuffer();
+                      }
+                    } catch (icoError) {
+                      console.error(`[Registration Batch Service] ICO decode failed, trying as regular image:`, icoError.message);
+                    }
+                  }
+
+                  const resizedFavicon = await sharp(processableBuffer)
                     .resize(32, 32, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 0 } })
                     .png()
                     .toBuffer();
@@ -1512,7 +1631,8 @@ async function processStep6ForSelectedJobs(batchId, orgId, selectedJobIds, authC
 
   console.log(`[Registration Batch Service] Starting Yolo Mode for ${eligibleJobs.length} selected restaurants`);
 
-  // Execute selected restaurants in parallel
+  // Execute all restaurants in parallel - CloudWaitress rate limiting is handled
+  // at the sub-step level via the global cloudWaitressRateLimiter queue
   await Promise.allSettled(
     eligibleJobs.map(job => executeYoloModeForJob(job, batchId, authContext))
   );
@@ -1562,7 +1682,9 @@ async function executeYoloModeForJob(job, batchId, authContext = null) {
 
   // Shared context for passing data between steps
   const context = {
-    codeGenerationFilePaths: null,
+    codeInjectionId: null, // New: Database storage ID for code injection
+    codeInjectionGeneratedAt: null, // New: Generation timestamp
+    codeGenerationFilePaths: null, // Legacy: kept for backward compatibility
     onboardingUserCreated: false,
     menuImportSucceeded: false,
     authContext, // Auth context for server-to-server calls
@@ -1632,13 +1754,18 @@ async function executeYoloModeForJob(job, batchId, authContext = null) {
       throw new Error(`Account registration failed`);
     }
 
-    // Store codeGeneration filePaths for websiteConfig
+    // Store codeGeneration result for websiteConfig
     const codeGenResult = phase1Results[1];
-    if (codeGenResult.status === 'fulfilled' && codeGenResult.value.result?.result?.filePaths) {
-      context.codeGenerationFilePaths = codeGenResult.value.result.result.filePaths;
+    if (codeGenResult.status === 'fulfilled' && codeGenResult.value.result?.result) {
+      const codeGenData = codeGenResult.value.result.result;
+      // New: Capture database ID for persistent storage
+      context.codeInjectionId = codeGenData.codeInjectionId || null;
+      context.codeInjectionGeneratedAt = codeGenData.generatedAt || null;
+      // Legacy: Keep file paths for backward compatibility
+      context.codeGenerationFilePaths = codeGenData.filePaths || null;
     }
 
-    await updatePhaseProgress(job.id, 6, 'phase1', 'completed', phaseProgress);
+    await updatePhaseProgress(job.id, 6, 'phase1', 'completed', phaseProgress, context);
 
     // ========== PHASE 2: Configuration (Parallel after Phase 1) ==========
     await updatePhaseProgress(job.id, 6, 'phase2', 'in_progress', phaseProgress);
@@ -1649,8 +1776,8 @@ async function executeYoloModeForJob(job, batchId, authContext = null) {
     // Run remaining Phase 2 steps in parallel
     const phase2Promises = [];
 
-    // 2a. Website Configuration (only if codeGeneration succeeded)
-    if (context.codeGenerationFilePaths) {
+    // 2a. Website Configuration (only if codeGeneration succeeded - check DB ID or file paths)
+    if (context.codeInjectionId || context.codeGenerationFilePaths) {
       phase2Promises.push(
         executeSubStep('websiteConfig', job, config, phaseProgress, context)
           .then(result => ({ step: 'websiteConfig', result }))
@@ -1705,7 +1832,7 @@ async function executeYoloModeForJob(job, batchId, authContext = null) {
       context.menuImportSucceeded = true;
     }
 
-    await updatePhaseProgress(job.id, 6, 'phase2', 'completed', phaseProgress);
+    await updatePhaseProgress(job.id, 6, 'phase2', 'completed', phaseProgress, context);
 
     // ========== PHASE 3: Menu Setup (After menuImport) ==========
     await updatePhaseProgress(job.id, 6, 'phase3', 'in_progress', phaseProgress);
@@ -1717,7 +1844,7 @@ async function executeYoloModeForJob(job, batchId, authContext = null) {
       updateSubStepInProgress(phaseProgress, 'optionSets', 'skipped', { reason });
     }
 
-    await updatePhaseProgress(job.id, 6, 'phase3', 'completed', phaseProgress);
+    await updatePhaseProgress(job.id, 6, 'phase3', 'completed', phaseProgress, context);
 
     // ========== PHASE 4: Finalization (After menuImport) ==========
     await updatePhaseProgress(job.id, 6, 'phase4', 'in_progress', phaseProgress);
@@ -1729,7 +1856,7 @@ async function executeYoloModeForJob(job, batchId, authContext = null) {
       updateSubStepInProgress(phaseProgress, 'itemTags', 'skipped', { reason });
     }
 
-    await updatePhaseProgress(job.id, 6, 'phase4', 'completed', phaseProgress);
+    await updatePhaseProgress(job.id, 6, 'phase4', 'completed', phaseProgress, context);
 
     // ========== COMPLETE ==========
     await updateStepStatus(job.id, 6, 'completed', {
@@ -1756,7 +1883,7 @@ async function executeYoloModeForJob(job, batchId, authContext = null) {
     // Set Step 5 back to action_required with the error message
     await updateStepStatus(job.id, 5, 'action_required', {
       error_message: `Previous execution failed: ${error.message}`,
-      last_failure: {
+      error_details: {
         timestamp: new Date().toISOString(),
         error: error.message,
         sub_step_progress: phaseProgress
@@ -1790,6 +1917,25 @@ async function executeSubStep(subStepName, job, config, phaseProgress, context =
     return { skipped: true };
   }
 
+  // For cloudwaitressAccount, route through the rate limiter queue
+  // This ensures only one account creation happens at a time across all jobs/batches
+  if (subStepName === 'cloudwaitressAccount' && CLOUDWAITRESS_RATE_LIMIT_MS > 0) {
+    const restaurantName = job.restaurant?.name || job.restaurant_id;
+    return cloudWaitressRateLimiter.enqueue(
+      () => executeSubStepInternal(subStepName, job, config, phaseProgress, context),
+      restaurantName
+    );
+  }
+
+  // All other sub-steps execute directly
+  return executeSubStepInternal(subStepName, job, config, phaseProgress, context);
+}
+
+/**
+ * Internal execution of a sub-step with retry logic
+ * Separated to allow cloudwaitressAccount to be queued while keeping retry logic intact
+ */
+async function executeSubStepInternal(subStepName, job, config, phaseProgress, context = {}) {
   let lastError = null;
 
   for (let attempt = 1; attempt <= MAX_SUB_STEP_RETRIES; attempt++) {
@@ -1868,14 +2014,19 @@ async function executeYoloModeSubStep(subStepName, job, config, context = {}) {
       'Content-Type': 'application/json',
     };
     if (context.authContext?.token) {
-      headers['Authorization'] = `Bearer ${context.authContext.token}`;
+      // Token may already include "Bearer " prefix from request headers
+      const token = context.authContext.token;
+      headers['Authorization'] = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+      console.log(`[Registration Batch Service] Using auth token (length: ${token.length})`);
+    } else {
+      console.warn(`[Registration Batch Service] No auth token available for ${subStepName}`);
     }
     if (context.authContext?.organisationId) {
       headers['X-Organisation-ID'] = context.authContext.organisationId;
     }
 
     const response = await axios.post(url, payload, {
-      timeout: 300000, // 5 minutes timeout for Playwright scripts
+      timeout: 3600000, // 60 minutes timeout for Playwright scripts (option sets can take very long for large menus)
       headers,
     });
 
@@ -1959,7 +2110,8 @@ function buildSubStepRequest(subStepName, restaurantId, config, context) {
       endpoint: '/api/registration/configure-website',
       payload: {
         restaurantId,
-        filePaths: context.codeGenerationFilePaths || null, // Passed from codeGeneration result
+        codeInjectionId: context.codeInjectionId || null, // New: Database storage ID
+        filePaths: context.codeGenerationFilePaths || null, // Legacy: kept for backward compatibility
         headerConfig: {
           enabled: website.configureHeader || false,
           backgroundSource: website.headerImageSource,
@@ -2091,21 +2243,46 @@ function initializePhaseProgress() {
 
 /**
  * Update phase status in progress object
+ * Includes retry logic for transient database errors
+ * @param {string} jobId - Job ID
+ * @param {number} stepNumber - Step number (6 for YOLO mode)
+ * @param {string} phaseName - Phase name (phase1-phase4)
+ * @param {string} status - Phase status (in_progress, completed)
+ * @param {object} phaseProgress - Phase progress object to update
+ * @param {object|null} context - Optional context to persist for resume capability
  */
-async function updatePhaseProgress(jobId, stepNumber, phaseName, status, phaseProgress) {
+async function updatePhaseProgress(jobId, stepNumber, phaseName, status, phaseProgress, context = null) {
   phaseProgress.current_phase = phaseName;
   phaseProgress.phases[phaseName].status = status;
 
-  // Update in database
+  // Store context variables for resume capability when phase completes
+  if (context && status === 'completed') {
+    phaseProgress.context = {
+      // NEW: Database-persisted code injection (primary)
+      codeInjectionId: context.codeInjectionId || null,
+      codeInjectionGeneratedAt: context.codeInjectionGeneratedAt || null,
+      // LEGACY: File paths (fallback during migration)
+      codeGenerationFilePaths: context.codeGenerationFilePaths || null,
+      // Other context variables
+      onboardingUserCreated: context.onboardingUserCreated || false,
+      menuImportSucceeded: context.menuImportSucceeded || false
+    };
+  }
+
+  // Update in database with retry logic
   const client = getSupabaseClient();
-  await client
-    .from('registration_job_steps')
-    .update({
-      sub_step_progress: phaseProgress,
-      updated_at: new Date().toISOString()
-    })
-    .eq('job_id', jobId)
-    .eq('step_number', stepNumber);
+
+  await executeWithRetry(
+    () => client
+      .from('registration_job_steps')
+      .update({
+        sub_step_progress: phaseProgress,
+        updated_at: new Date().toISOString()
+      })
+      .eq('job_id', jobId)
+      .eq('step_number', stepNumber),
+    `updatePhaseProgress(job=${jobId}, phase=${phaseName}, status=${status})`
+  );
 }
 
 /**
@@ -2123,6 +2300,630 @@ function updateSubStepInProgress(phaseProgress, subStepName, status, data = {}) 
       break;
     }
   }
+}
+
+// ============================================================================
+// STEP 6 RESUME FUNCTIONALITY
+// ============================================================================
+
+/**
+ * Detect the last fully completed phase from sub_step_progress
+ * @param {object} phaseProgress - The sub_step_progress object
+ * @returns {string|null} Last completed phase name or null if none completed
+ */
+function detectLastCompletePhase(phaseProgress) {
+  if (!phaseProgress?.phases) return null;
+
+  // Check phases in reverse order (phase4 → phase1)
+  for (const phase of ['phase4', 'phase3', 'phase2', 'phase1']) {
+    if (phaseProgress.phases[phase]?.status === 'completed') {
+      return phase;
+    }
+  }
+  return null;
+}
+
+/**
+ * Reconstruct context from completed sub-steps in phaseProgress
+ * This allows resuming Step 6 with the necessary context data
+ *
+ * Priority:
+ * 1. Use explicitly stored context from phaseProgress.context (Phase D persistence)
+ * 2. Fall back to inference from sub-step statuses (legacy behavior)
+ *
+ * @param {object} phaseProgress - The sub_step_progress object
+ * @returns {object} Reconstructed context
+ */
+function reconstructContext(phaseProgress) {
+  // If context was explicitly stored (Phase D), use it directly
+  if (phaseProgress?.context) {
+    console.log('[reconstructContext] Using stored context from phaseProgress.context');
+    return {
+      codeInjectionId: phaseProgress.context.codeInjectionId || null,
+      codeInjectionGeneratedAt: phaseProgress.context.codeInjectionGeneratedAt || null,
+      codeGenerationFilePaths: phaseProgress.context.codeGenerationFilePaths || null,
+      onboardingUserCreated: phaseProgress.context.onboardingUserCreated || false,
+      menuImportSucceeded: phaseProgress.context.menuImportSucceeded || false,
+      authContext: null
+    };
+  }
+
+  // Fallback: Infer context from sub-step statuses (legacy behavior)
+  console.log('[reconstructContext] Inferring context from sub-step statuses (no stored context)');
+
+  const context = {
+    codeInjectionId: null, // New: Database storage ID
+    codeInjectionGeneratedAt: null, // New: Generation timestamp
+    codeGenerationFilePaths: null, // Legacy: kept for backward compatibility
+    onboardingUserCreated: false,
+    menuImportSucceeded: false,
+    authContext: null
+  };
+
+  if (!phaseProgress?.phases) return context;
+
+  const phase1 = phaseProgress.phases.phase1?.sub_steps || {};
+  const phase2 = phaseProgress.phases.phase2?.sub_steps || {};
+
+  // Check if codeGeneration completed - look for codeInjectionId or filePaths in the sub-step data
+  if (phase1.codeGeneration?.status === 'completed') {
+    const codeGenData = phase1.codeGeneration || {};
+    // New: Capture database ID if available
+    context.codeInjectionId = codeGenData.codeInjectionId || null;
+    context.codeInjectionGeneratedAt = codeGenData.generatedAt || null;
+    // Legacy: If filePaths were stored, use them; otherwise mark as true to indicate it ran
+    context.codeGenerationFilePaths = codeGenData.filePaths || true;
+  }
+
+  // Check if onboarding user was created
+  if (phase1.createOnboardingUser?.status === 'completed') {
+    context.onboardingUserCreated = true;
+  }
+
+  // Check if menu import succeeded
+  if (phase2.menuImport?.status === 'completed') {
+    context.menuImportSucceeded = true;
+  }
+
+  return context;
+}
+
+/**
+ * Resume Step 6 execution from last completed phase
+ * @param {object} job - Registration job with steps and execution_config
+ * @param {string} batchId - Batch ID
+ * @param {object} authContext - Auth context for API calls
+ */
+async function resumeYoloModeForJob(job, batchId, authContext = null) {
+  // Get Step 6 record with existing progress
+  const step6 = job.steps?.find(s => s.step_number === 6);
+  const existingProgress = step6?.sub_step_progress;
+
+  if (!existingProgress) {
+    // No existing progress - start from scratch
+    console.log(`[Registration Batch Service] No existing progress for job ${job.id}, starting fresh`);
+    return executeYoloModeForJob(job, batchId, authContext);
+  }
+
+  const config = job.execution_config || {};
+  const phaseProgress = existingProgress; // Use existing progress
+
+  // Reconstruct context from completed steps
+  const context = reconstructContext(phaseProgress);
+  context.authContext = authContext;
+
+  // Detect resume point
+  const lastCompletePhase = detectLastCompletePhase(phaseProgress);
+
+  console.log(`[Registration Batch Service] Resuming job ${job.id} from ${lastCompletePhase || 'beginning'}`);
+
+  await updateStepStatus(job.id, 6, 'in_progress');
+  await updateJobStatus(job.id, 'in_progress', null, 6);
+
+  // Extract config sections for conditional logic
+  const menu = config.menu || {};
+
+  try {
+    // Resume from appropriate phase
+    switch (lastCompletePhase) {
+      case 'phase1':
+        // Phase 1 complete, resume from Phase 2
+        await executePhase2Resume(job, config, phaseProgress, context);
+        await executePhase3Resume(job, config, phaseProgress, context, menu);
+        await executePhase4Resume(job, config, phaseProgress, context, menu);
+        break;
+
+      case 'phase2':
+        // Phase 2 complete, resume from Phase 3
+        await executePhase3Resume(job, config, phaseProgress, context, menu);
+        await executePhase4Resume(job, config, phaseProgress, context, menu);
+        break;
+
+      case 'phase3':
+        // Phase 3 complete, resume from Phase 4
+        await executePhase4Resume(job, config, phaseProgress, context, menu);
+        break;
+
+      case 'phase4':
+        // All phases complete - just mark as done
+        console.log(`[Registration Batch Service] Job ${job.id} already fully completed`);
+        break;
+
+      default:
+        // No completed phases - start from beginning
+        console.log(`[Registration Batch Service] No completed phases, starting from Phase 1`);
+        return executeYoloModeForJob(job, batchId, authContext);
+    }
+
+    // Mark complete
+    await updateStepStatus(job.id, 6, 'completed', {
+      sub_step_progress: phaseProgress
+    });
+
+    await updateJobStatus(job.id, 'completed');
+    await incrementBatchProgress(batchId, 'completed');
+
+    console.log(`[Registration Batch Service] Resume completed for job ${job.id}`);
+
+  } catch (error) {
+    console.error(`[Registration Batch Service] Resume failed for job ${job.id}:`, error);
+
+    // Store partial progress for future resume attempts
+    await updateStepStatus(job.id, 6, 'failed', {
+      sub_step_progress: phaseProgress,
+      error_message: error.message,
+      error_details: {
+        timestamp: new Date().toISOString(),
+        error: error.message,
+        resumed_from: lastCompletePhase
+      }
+    });
+
+    await updateJobStatus(job.id, 'action_required', `Resume failed: ${error.message}`, 6);
+
+    throw error;
+  }
+}
+
+/**
+ * Execute Phase 2 for resume (after Phase 1 already completed)
+ */
+async function executePhase2Resume(job, config, phaseProgress, context) {
+  const menu = config.menu || {};
+  const onboarding = config.onboarding || {};
+
+  await updatePhaseProgress(job.id, 6, 'phase2', 'in_progress', phaseProgress);
+
+  // restaurantRegistration is BLOCKING for remaining config steps
+  await executeSubStep('restaurantRegistration', job, config, phaseProgress, context);
+
+  // Run remaining Phase 2 steps in parallel
+  const phase2Promises = [];
+
+  // 2a. Website Configuration (only if codeGeneration succeeded - check DB ID or file paths)
+  if (context.codeInjectionId || context.codeGenerationFilePaths) {
+    phase2Promises.push(
+      executeSubStep('websiteConfig', job, config, phaseProgress, context)
+        .then(result => ({ step: 'websiteConfig', result }))
+    );
+  } else {
+    updateSubStepInProgress(phaseProgress, 'websiteConfig', 'skipped', { reason: 'Code generation failed - no content available' });
+    phase2Promises.push(Promise.resolve({ step: 'websiteConfig', result: { skipped: true } }));
+  }
+
+  // 2b. Services Configuration (always run)
+  phase2Promises.push(
+    executeSubStep('servicesConfig', job, config, phaseProgress, context)
+      .then(result => ({ step: 'servicesConfig', result }))
+  );
+
+  // 2c. Payment Configuration (always run)
+  phase2Promises.push(
+    executeSubStep('paymentConfig', job, config, phaseProgress, context)
+      .then(result => ({ step: 'paymentConfig', result }))
+  );
+
+  // 2d. Menu Import (only if menu selected)
+  if (menu.selectedMenuId) {
+    phase2Promises.push(
+      executeSubStep('menuImport', job, config, phaseProgress, context)
+        .then(result => {
+          context.menuImportSucceeded = result.success && !result.skipped;
+          return { step: 'menuImport', result };
+        })
+    );
+  } else {
+    updateSubStepInProgress(phaseProgress, 'menuImport', 'skipped', { reason: 'No menu selected' });
+    phase2Promises.push(Promise.resolve({ step: 'menuImport', result: { skipped: true } }));
+  }
+
+  // 2e. Onboarding Sync (only if onboarding user was created and sync enabled)
+  if (onboarding.syncOnboardingRecord && context.onboardingUserCreated) {
+    phase2Promises.push(
+      executeSubStep('syncOnboardingUser', job, config, phaseProgress, context)
+        .then(result => ({ step: 'syncOnboardingUser', result }))
+    );
+  } else {
+    updateSubStepInProgress(phaseProgress, 'syncOnboardingUser', 'skipped', { reason: 'Onboarding sync disabled or user not created' });
+    phase2Promises.push(Promise.resolve({ step: 'syncOnboardingUser', result: { skipped: true } }));
+  }
+
+  const phase2Results = await Promise.allSettled(phase2Promises);
+
+  // Check menu import result for Phase 3 & 4
+  const menuImportResult = phase2Results[3];
+  if (menuImportResult?.status === 'fulfilled' && menuImportResult.value?.result?.success) {
+    context.menuImportSucceeded = true;
+  }
+
+  await updatePhaseProgress(job.id, 6, 'phase2', 'completed', phaseProgress, context);
+}
+
+/**
+ * Execute Phase 3 for resume (optionSets)
+ */
+async function executePhase3Resume(job, config, phaseProgress, context, menu) {
+  await updatePhaseProgress(job.id, 6, 'phase3', 'in_progress', phaseProgress);
+
+  if (menu.addOptionSets && context.menuImportSucceeded) {
+    await executeSubStep('optionSets', job, config, phaseProgress, context);
+  } else {
+    const reason = !context.menuImportSucceeded ? 'Menu import failed or skipped' : 'Option sets disabled';
+    updateSubStepInProgress(phaseProgress, 'optionSets', 'skipped', { reason });
+  }
+
+  await updatePhaseProgress(job.id, 6, 'phase3', 'completed', phaseProgress, context);
+}
+
+/**
+ * Execute Phase 4 for resume (itemTags)
+ */
+async function executePhase4Resume(job, config, phaseProgress, context, menu) {
+  await updatePhaseProgress(job.id, 6, 'phase4', 'in_progress', phaseProgress);
+
+  if (menu.addItemTags && context.menuImportSucceeded) {
+    await executeSubStep('itemTags', job, config, phaseProgress, context);
+  } else {
+    const reason = !context.menuImportSucceeded ? 'Menu import failed or skipped' : 'Item tags disabled';
+    updateSubStepInProgress(phaseProgress, 'itemTags', 'skipped', { reason });
+  }
+
+  await updatePhaseProgress(job.id, 6, 'phase4', 'completed', phaseProgress, context);
+}
+
+// ============================================================================
+// STEP 6 SUB-STEP MANUAL EDITING
+// ============================================================================
+
+/**
+ * Sub-step dependency map
+ * Each key lists the sub-steps that must be completed before it can be marked complete
+ */
+const SUB_STEP_DEPENDENCIES = {
+  cloudwaitressAccount: [],
+  codeGeneration: [],
+  createOnboardingUser: [],
+  uploadImages: [],
+  restaurantRegistration: ['cloudwaitressAccount'],
+  websiteConfig: ['codeGeneration', 'restaurantRegistration'],
+  servicesConfig: ['restaurantRegistration'],
+  paymentConfig: ['restaurantRegistration'],
+  menuImport: ['restaurantRegistration'],
+  syncOnboardingUser: ['createOnboardingUser', 'restaurantRegistration'],
+  optionSets: ['menuImport'],
+  itemTags: ['menuImport']
+};
+
+/**
+ * Sub-step to phase mapping
+ */
+const SUB_STEP_PHASES = {
+  cloudwaitressAccount: 'phase1',
+  codeGeneration: 'phase1',
+  createOnboardingUser: 'phase1',
+  uploadImages: 'phase1',
+  restaurantRegistration: 'phase2',
+  websiteConfig: 'phase2',
+  servicesConfig: 'phase2',
+  paymentConfig: 'phase2',
+  menuImport: 'phase2',
+  syncOnboardingUser: 'phase2',
+  optionSets: 'phase3',
+  itemTags: 'phase4'
+};
+
+/**
+ * Get sub-step status from phaseProgress
+ * @param {object} phaseProgress - The sub_step_progress object
+ * @param {string} subStepKey - Sub-step key name
+ * @returns {string|null} Status or null if not found
+ */
+function getSubStepStatus(phaseProgress, subStepKey) {
+  if (!phaseProgress?.phases) return null;
+
+  for (const phase of Object.values(phaseProgress.phases)) {
+    if (phase.sub_steps && phase.sub_steps[subStepKey]) {
+      return phase.sub_steps[subStepKey].status;
+    }
+  }
+  return null;
+}
+
+/**
+ * Validate if a sub-step can be transitioned to a new status
+ * @param {object} phaseProgress - The sub_step_progress object
+ * @param {string} subStepKey - Sub-step key name
+ * @param {string} newStatus - Target status
+ * @returns {object} { valid: boolean, errors: string[], warnings: string[] }
+ */
+function validateSubStepTransition(phaseProgress, subStepKey, newStatus) {
+  const warnings = [];
+  const errors = [];
+
+  // Check if sub-step exists
+  const currentStatus = getSubStepStatus(phaseProgress, subStepKey);
+  if (currentStatus === null) {
+    errors.push(`Sub-step '${subStepKey}' not found`);
+    return { valid: false, errors, warnings };
+  }
+
+  // Validate transition to 'completed'
+  if (newStatus === 'completed') {
+    const deps = SUB_STEP_DEPENDENCIES[subStepKey] || [];
+    for (const dep of deps) {
+      const depStatus = getSubStepStatus(phaseProgress, dep);
+      if (!['completed', 'skipped'].includes(depStatus)) {
+        errors.push(`Cannot mark '${subStepKey}' as completed: dependency '${dep}' is '${depStatus}'`);
+      }
+    }
+  }
+
+  // Validate transition from 'failed' to 'completed' (must reset first)
+  if (currentStatus === 'failed' && newStatus === 'completed') {
+    warnings.push(`Sub-step was previously failed. Consider resetting to pending first.`);
+  }
+
+  return { valid: errors.length === 0, errors, warnings };
+}
+
+/**
+ * Get dependent sub-steps that should be affected when a sub-step changes
+ * @param {string} subStepKey - The sub-step being changed
+ * @returns {string[]} List of dependent sub-step keys
+ */
+function getDependentSubSteps(subStepKey) {
+  const dependents = [];
+  for (const [key, deps] of Object.entries(SUB_STEP_DEPENDENCIES)) {
+    if (deps.includes(subStepKey)) {
+      dependents.push(key);
+    }
+  }
+  return dependents;
+}
+
+/**
+ * Update a single sub-step status with validation
+ * @param {string} jobId - Job ID
+ * @param {string} subStepKey - Sub-step key name
+ * @param {string} newStatus - Target status ('completed', 'failed', 'skipped', 'pending')
+ * @param {object} data - Additional data to store
+ * @param {string} orgId - Organization ID for auth
+ * @returns {Promise<object>} Updated sub_step_progress and validation info
+ */
+async function updateSubStepStatus(jobId, subStepKey, newStatus, data = {}, orgId) {
+  const client = getSupabaseClient();
+
+  // Get job with Step 6 data
+  const { data: job, error: jobError } = await client
+    .from('registration_jobs')
+    .select(`
+      id,
+      organisation_id,
+      steps:registration_job_steps(*)
+    `)
+    .eq('id', jobId)
+    .eq('organisation_id', orgId)
+    .single();
+
+  if (jobError || !job) {
+    throw new Error('Job not found');
+  }
+
+  const step6 = job.steps?.find(s => s.step_number === 6);
+  if (!step6?.sub_step_progress) {
+    throw new Error('No Step 6 progress exists for this job');
+  }
+
+  const phaseProgress = step6.sub_step_progress;
+
+  // Validate the transition
+  const validation = validateSubStepTransition(phaseProgress, subStepKey, newStatus);
+  if (!validation.valid) {
+    throw new Error(validation.errors.join('; '));
+  }
+
+  // Update the sub-step in the phaseProgress object
+  const phaseName = SUB_STEP_PHASES[subStepKey];
+  if (phaseProgress.phases[phaseName]?.sub_steps?.[subStepKey]) {
+    phaseProgress.phases[phaseName].sub_steps[subStepKey] = {
+      ...phaseProgress.phases[phaseName].sub_steps[subStepKey],
+      status: newStatus,
+      manually_updated: true,
+      updated_at: new Date().toISOString(),
+      ...data
+    };
+  }
+
+  // Save to database
+  await executeWithRetry(
+    () => client
+      .from('registration_job_steps')
+      .update({
+        sub_step_progress: phaseProgress,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', step6.id),
+    `updateSubStepStatus(job=${jobId}, subStep=${subStepKey}, status=${newStatus})`
+  );
+
+  return {
+    success: true,
+    sub_step_progress: phaseProgress,
+    validation_warnings: validation.warnings,
+    updated_sub_step: subStepKey,
+    new_status: newStatus
+  };
+}
+
+/**
+ * Reset a sub-step to pending, optionally cascading to dependents
+ * @param {string} jobId - Job ID
+ * @param {string} subStepKey - Sub-step key name
+ * @param {boolean} cascadeReset - Whether to reset dependent sub-steps
+ * @param {string} orgId - Organization ID for auth
+ * @returns {Promise<object>} Updated sub_step_progress
+ */
+async function resetSubStep(jobId, subStepKey, cascadeReset = true, orgId) {
+  const client = getSupabaseClient();
+
+  // Get job with Step 6 data
+  const { data: job, error: jobError } = await client
+    .from('registration_jobs')
+    .select(`
+      id,
+      organisation_id,
+      steps:registration_job_steps(*)
+    `)
+    .eq('id', jobId)
+    .eq('organisation_id', orgId)
+    .single();
+
+  if (jobError || !job) {
+    throw new Error('Job not found');
+  }
+
+  const step6 = job.steps?.find(s => s.step_number === 6);
+  if (!step6?.sub_step_progress) {
+    throw new Error('No Step 6 progress exists for this job');
+  }
+
+  const phaseProgress = step6.sub_step_progress;
+  const resetSubSteps = [subStepKey];
+
+  // If cascading, add all dependent sub-steps
+  if (cascadeReset) {
+    const dependents = getDependentSubSteps(subStepKey);
+    resetSubSteps.push(...dependents);
+
+    // Recursively get dependents of dependents
+    for (const dep of dependents) {
+      const nestedDeps = getDependentSubSteps(dep);
+      for (const nested of nestedDeps) {
+        if (!resetSubSteps.includes(nested)) {
+          resetSubSteps.push(nested);
+        }
+      }
+    }
+  }
+
+  // Reset each sub-step
+  for (const stepKey of resetSubSteps) {
+    const phaseName = SUB_STEP_PHASES[stepKey];
+    if (phaseProgress.phases[phaseName]?.sub_steps?.[stepKey]) {
+      phaseProgress.phases[phaseName].sub_steps[stepKey] = {
+        status: 'pending',
+        reset_at: new Date().toISOString(),
+        reset_cascade: cascadeReset && stepKey !== subStepKey
+      };
+    }
+  }
+
+  // Save to database
+  await executeWithRetry(
+    () => client
+      .from('registration_job_steps')
+      .update({
+        sub_step_progress: phaseProgress,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', step6.id),
+    `resetSubStep(job=${jobId}, subStep=${subStepKey}, cascade=${cascadeReset})`
+  );
+
+  return {
+    success: true,
+    sub_step_progress: phaseProgress,
+    reset_sub_steps: resetSubSteps
+  };
+}
+
+/**
+ * Get validation context for a sub-step (dependencies and allowed transitions)
+ * @param {string} jobId - Job ID
+ * @param {string} subStepKey - Sub-step key name
+ * @param {string} orgId - Organization ID for auth
+ * @returns {Promise<object>} Validation context
+ */
+async function getSubStepValidation(jobId, subStepKey, orgId) {
+  const client = getSupabaseClient();
+
+  // Get job with Step 6 data
+  const { data: job, error: jobError } = await client
+    .from('registration_jobs')
+    .select(`
+      id,
+      organisation_id,
+      steps:registration_job_steps(*)
+    `)
+    .eq('id', jobId)
+    .eq('organisation_id', orgId)
+    .single();
+
+  if (jobError || !job) {
+    throw new Error('Job not found');
+  }
+
+  const step6 = job.steps?.find(s => s.step_number === 6);
+  if (!step6?.sub_step_progress) {
+    throw new Error('No Step 6 progress exists for this job');
+  }
+
+  const phaseProgress = step6.sub_step_progress;
+  const currentStatus = getSubStepStatus(phaseProgress, subStepKey);
+  const deps = SUB_STEP_DEPENDENCIES[subStepKey] || [];
+
+  // Check each dependency status
+  const dependencies = {};
+  let canMarkComplete = true;
+
+  for (const dep of deps) {
+    const depStatus = getSubStepStatus(phaseProgress, dep);
+    const isValid = ['completed', 'skipped'].includes(depStatus);
+    dependencies[dep] = {
+      status: depStatus,
+      required: true,
+      valid: isValid,
+      errorMessage: isValid ? null : `Dependency '${dep}' must be completed or skipped first`
+    };
+    if (!isValid) canMarkComplete = false;
+  }
+
+  // Determine allowed status transitions
+  const canMarkAs = {
+    completed: canMarkComplete,
+    failed: currentStatus === 'in_progress' || currentStatus === 'pending',
+    skipped: true, // Can always skip
+    pending: true  // Can always reset to pending
+  };
+
+  return {
+    subStepKey,
+    currentStatus,
+    phase: SUB_STEP_PHASES[subStepKey],
+    dependencies,
+    dependents: getDependentSubSteps(subStepKey),
+    canMarkAs
+  };
 }
 
 // ============================================================================
@@ -2359,11 +3160,61 @@ const ALLOWED_RESTAURANT_UPDATE_FIELDS = [
   'contact_name',    // Onboarding tab
   'contact_email',   // Onboarding tab
   // Note: onboarding password is NOT saved to database for security
+  // Header images (Issue 16 - allow manual entry/replacement)
+  'website_og_image',    // Website tab - Website OG image
+  'ubereats_og_image',   // Website tab - UberEats banner image
+  'doordash_og_image',   // Website tab - DoorDash image
+  'facebook_cover_image', // Website tab - Facebook cover image
 ];
+
+// Fields that contain image URLs and should be converted to base64 on save
+const IMAGE_URL_FIELDS = [
+  'website_og_image',
+  'ubereats_og_image',
+  'doordash_og_image',
+  'facebook_cover_image',
+];
+
+/**
+ * Convert image URL to base64 data URI
+ * Uses the downloadImageToBuffer function from logo-extraction-service
+ *
+ * @param {string} imageUrl - HTTP/HTTPS URL of the image
+ * @returns {Promise<string|null>} Base64 data URI or null on failure
+ */
+async function convertImageUrlToBase64(imageUrl) {
+  if (!imageUrl || typeof imageUrl !== 'string') {
+    return null;
+  }
+
+  // Already base64? Return as-is
+  if (imageUrl.startsWith('data:image')) {
+    return imageUrl;
+  }
+
+  // Not a URL? Return as-is
+  if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+    return imageUrl;
+  }
+
+  try {
+    console.log(`[Registration Batch Service] Converting image URL to base64:`, imageUrl.substring(0, 80) + '...');
+    const { downloadImageToBuffer } = require('./logo-extraction-service');
+    const imageBuffer = await downloadImageToBuffer(imageUrl, imageUrl);
+    const base64 = `data:image/jpeg;base64,${imageBuffer.toString('base64')}`;
+    console.log(`[Registration Batch Service] Image converted to base64 (${base64.length} chars)`);
+    return base64;
+  } catch (error) {
+    console.error(`[Registration Batch Service] Failed to convert image URL to base64:`, error.message);
+    // Return original URL on failure - better to have the URL than nothing
+    return imageUrl;
+  }
+}
 
 /**
  * Update restaurant record from Yolo Mode configuration
  * Only updates allowed fields to prevent unauthorized modifications
+ * Converts image URLs to base64 before saving
  *
  * @param {string} jobId - Registration job ID
  * @param {object} updates - Partial restaurant data to update
@@ -2402,6 +3253,17 @@ async function updateRestaurantFromConfig(jobId, updates, orgId) {
 
   if (Object.keys(filteredUpdates).length === 0) {
     throw new Error('No valid fields to update');
+  }
+
+  // Convert image URLs to base64 (Issue 16)
+  for (const field of IMAGE_URL_FIELDS) {
+    if (filteredUpdates[field] && typeof filteredUpdates[field] === 'string') {
+      const originalValue = filteredUpdates[field];
+      // Only convert if it's a URL (not already base64)
+      if (originalValue.startsWith('http://') || originalValue.startsWith('https://')) {
+        filteredUpdates[field] = await convertImageUrlToBase64(originalValue);
+      }
+    }
   }
 
   console.log(`[Registration Batch Service] Updating fields:`, Object.keys(filteredUpdates));
@@ -2473,18 +3335,41 @@ async function executeYoloModeForSingleRestaurant(restaurantId, formData, organi
       })
       .eq('id', jobId);
 
-    // Reset Step 6 if exists
-    await client
+    // Reset Step 6 if exists, or create it if missing
+    const { data: existingStep } = await client
       .from('registration_job_steps')
-      .update({
-        status: 'pending',
-        sub_step_progress: null,
-        error_message: null,
-        started_at: null,
-        completed_at: null,
-      })
-      .eq('registration_job_id', jobId)
-      .eq('step_number', 6);
+      .select('id')
+      .eq('job_id', jobId)
+      .eq('step_number', 6)
+      .maybeSingle();
+
+    if (existingStep) {
+      await client
+        .from('registration_job_steps')
+        .update({
+          status: 'pending',
+          sub_step_progress: null,
+          error_message: null,
+          started_at: null,
+          completed_at: null,
+        })
+        .eq('id', existingStep.id);
+    } else {
+      // Create Step 6 record if it doesn't exist
+      const { error: stepError } = await client
+        .from('registration_job_steps')
+        .insert({
+          job_id: jobId,
+          step_number: 6,
+          step_name: 'Pumpd Account Setup',
+          step_type: 'automatic',
+          status: 'pending',
+        });
+
+      if (stepError) {
+        console.error(`[Registration Batch Service] Failed to create step record:`, stepError);
+      }
+    }
   } else {
     // Create new registration_job
     const { data: newJob, error: createError } = await client
@@ -2512,7 +3397,7 @@ async function executeYoloModeForSingleRestaurant(restaurantId, formData, organi
     const { error: stepError } = await client
       .from('registration_job_steps')
       .insert({
-        registration_job_id: jobId,
+        job_id: jobId,
         step_number: 6,
         step_name: 'Pumpd Account Setup',
         step_type: 'automatic',
@@ -2535,11 +3420,23 @@ async function executeYoloModeForSingleRestaurant(restaurantId, formData, organi
   setImmediate(async () => {
     try {
       // Fetch the full job with restaurant data
+      // Explicit column list - excludes saved_images which can contain megabytes of base64 data
       const { data: job, error: fetchError } = await client
         .from('registration_jobs')
         .select(`
           *,
-          restaurant:restaurants(*)
+          restaurant:restaurants(
+            id, name, slug, subdomain, address, city, email, phone,
+            ubereats_url, doordash_url, website_url, facebook_url,
+            opening_hours, cuisine,
+            contact_name, contact_email, contact_phone,
+            theme, primary_color, secondary_color, tertiary_color, accent_color, background_color,
+            logo_url, logo_nobg_url, logo_standard_url,
+            logo_thermal_url, logo_thermal_alt_url, logo_thermal_contrast_url, logo_thermal_adaptive_url,
+            logo_favicon_url, website_og_image, ubereats_og_image, doordash_og_image, facebook_cover_image,
+            user_email, user_password_hint,
+            stripe_connect_url
+          )
         `)
         .eq('id', jobId)
         .single();
@@ -2597,7 +3494,9 @@ async function executeYoloModeForSingleRestaurantInternal(job, formData, authCon
 
   // Shared context for passing data between steps
   const context = {
-    codeGenerationFilePaths: null,
+    codeInjectionId: null, // New: Database storage ID for code injection
+    codeInjectionGeneratedAt: null, // New: Generation timestamp
+    codeGenerationFilePaths: null, // Legacy: kept for backward compatibility
     onboardingUserCreated: false,
     menuImportSucceeded: false,
     authContext,
@@ -2667,13 +3566,18 @@ async function executeYoloModeForSingleRestaurantInternal(job, formData, authCon
       throw new Error(`Account registration failed`);
     }
 
-    // Store codeGeneration filePaths for websiteConfig
+    // Store codeGeneration result for websiteConfig
     const codeGenResult = phase1Results[1];
-    if (codeGenResult.status === 'fulfilled' && codeGenResult.value.result?.result?.filePaths) {
-      context.codeGenerationFilePaths = codeGenResult.value.result.result.filePaths;
+    if (codeGenResult.status === 'fulfilled' && codeGenResult.value.result?.result) {
+      const codeGenData = codeGenResult.value.result.result;
+      // New: Capture database ID for persistent storage
+      context.codeInjectionId = codeGenData.codeInjectionId || null;
+      context.codeInjectionGeneratedAt = codeGenData.generatedAt || null;
+      // Legacy: Keep file paths for backward compatibility
+      context.codeGenerationFilePaths = codeGenData.filePaths || null;
     }
 
-    await updatePhaseProgress(job.id, 6, 'phase1', 'completed', phaseProgress);
+    await updatePhaseProgress(job.id, 6, 'phase1', 'completed', phaseProgress, context);
 
     // ========== PHASE 2: Configuration ==========
     await updatePhaseProgress(job.id, 6, 'phase2', 'in_progress', phaseProgress);
@@ -2684,13 +3588,14 @@ async function executeYoloModeForSingleRestaurantInternal(job, formData, authCon
     // Run remaining Phase 2 steps in parallel
     const phase2Promises = [];
 
-    if (context.codeGenerationFilePaths) {
+    // Website Configuration (only if codeGeneration succeeded - check DB ID or file paths)
+    if (context.codeInjectionId || context.codeGenerationFilePaths) {
       phase2Promises.push(
         executeSubStep('websiteConfig', job, config, phaseProgress, context)
           .then(result => ({ step: 'websiteConfig', result }))
       );
     } else {
-      updateSubStepInProgress(phaseProgress, 'websiteConfig', 'skipped', { reason: 'Code generation failed or no filePaths' });
+      updateSubStepInProgress(phaseProgress, 'websiteConfig', 'skipped', { reason: 'Code generation failed - no content available' });
       phase2Promises.push(Promise.resolve({ step: 'websiteConfig', result: { skipped: true } }));
     }
 
@@ -2735,7 +3640,7 @@ async function executeYoloModeForSingleRestaurantInternal(job, formData, authCon
       context.menuImportSucceeded = true;
     }
 
-    await updatePhaseProgress(job.id, 6, 'phase2', 'completed', phaseProgress);
+    await updatePhaseProgress(job.id, 6, 'phase2', 'completed', phaseProgress, context);
 
     // ========== PHASE 3: Menu Setup ==========
     await updatePhaseProgress(job.id, 6, 'phase3', 'in_progress', phaseProgress);
@@ -2747,7 +3652,7 @@ async function executeYoloModeForSingleRestaurantInternal(job, formData, authCon
       updateSubStepInProgress(phaseProgress, 'optionSets', 'skipped', { reason });
     }
 
-    await updatePhaseProgress(job.id, 6, 'phase3', 'completed', phaseProgress);
+    await updatePhaseProgress(job.id, 6, 'phase3', 'completed', phaseProgress, context);
 
     // ========== PHASE 4: Finalization ==========
     await updatePhaseProgress(job.id, 6, 'phase4', 'in_progress', phaseProgress);
@@ -2759,7 +3664,7 @@ async function executeYoloModeForSingleRestaurantInternal(job, formData, authCon
       updateSubStepInProgress(phaseProgress, 'itemTags', 'skipped', { reason });
     }
 
-    await updatePhaseProgress(job.id, 6, 'phase4', 'completed', phaseProgress);
+    await updatePhaseProgress(job.id, 6, 'phase4', 'completed', phaseProgress, context);
 
     // ========== COMPLETE ==========
     await updateStepStatus(job.id, 6, 'completed', {
@@ -2801,13 +3706,15 @@ async function getSingleRestaurantYoloProgress(restaurantId, organisationId) {
       error_message,
       started_at,
       completed_at,
+      updated_at,
       registration_job_steps (
         step_number,
         status,
         sub_step_progress,
         error_message,
         started_at,
-        completed_at
+        completed_at,
+        updated_at
       )
     `)
     .eq('restaurant_id', restaurantId)
@@ -2824,15 +3731,52 @@ async function getSingleRestaurantYoloProgress(restaurantId, organisationId) {
   // Find Step 6 details
   const step6 = job.registration_job_steps?.find(s => s.step_number === 6);
 
+  // Detect stalled jobs: in_progress but no activity for more than 5 minutes
+  const STALL_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+  let isStalled = false;
+
+  if (job.status === 'in_progress') {
+    // Find the most recent activity timestamp from sub-steps
+    const phases = step6?.sub_step_progress?.phases || {};
+    let lastActivityTime = 0;
+
+    Object.values(phases).forEach((phase) => {
+      if (phase?.sub_steps) {
+        Object.values(phase.sub_steps).forEach((subStep) => {
+          if (subStep.completed_at && subStep.completed_at > lastActivityTime) {
+            lastActivityTime = subStep.completed_at;
+          }
+          if (subStep.started_at && subStep.started_at > lastActivityTime) {
+            lastActivityTime = subStep.started_at;
+          }
+        });
+      }
+    });
+
+    // Fall back to step updated_at or job started_at
+    if (!lastActivityTime) {
+      lastActivityTime = step6?.updated_at ? new Date(step6.updated_at).getTime() :
+                        job.started_at ? new Date(job.started_at).getTime() : 0;
+    }
+
+    const timeSinceActivity = Date.now() - lastActivityTime;
+    isStalled = timeSinceActivity > STALL_THRESHOLD_MS;
+
+    if (isStalled) {
+      console.log(`[Registration Batch Service] Job ${job.id} detected as stalled (no activity for ${Math.round(timeSinceActivity / 1000 / 60)} minutes)`);
+    }
+  }
+
   return {
     jobId: job.id,
-    status: job.status,
+    status: isStalled ? 'stalled' : job.status,
     currentPhase: step6?.sub_step_progress?.current_phase || null,
     phases: step6?.sub_step_progress?.phases || {},
     error: job.error_message || step6?.error_message || null,
     startedAt: job.started_at,
     completedAt: job.completed_at,
     stepStatus: step6?.status || 'pending',
+    isStalled,
   };
 }
 
@@ -2868,6 +3812,20 @@ module.exports = {
   processStep4,
   completeStep5,
   processStep6,
+
+  // Step 6 resume functionality
+  resumeYoloModeForJob,
+  detectLastCompletePhase,
+  reconstructContext,
+
+  // Step 6 sub-step manual editing
+  updateSubStepStatus,
+  resetSubStep,
+  getSubStepValidation,
+  getSubStepStatus,
+  validateSubStepTransition,
+  SUB_STEP_DEPENDENCIES,
+  SUB_STEP_PHASES,
 
   // Step retry/skip
   retryStep2ForJob,

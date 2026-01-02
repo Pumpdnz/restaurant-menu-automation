@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   ChevronDown,
   Trash2,
+  RefreshCw,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -83,6 +84,7 @@ interface SequenceProgressCardProps {
   onCancel?: (instanceId: string) => void;
   onFinish?: (instanceId: string, option: 'finish-only' | 'finish-followup' | 'finish-start-new') => void;
   onDelete?: (instanceId: string) => void;
+  onRecreate?: (instanceId: string) => void;
   onRefresh?: () => void;
   onStartSequence?: (restaurant: { id: string; name: string }) => void;
   onFollowUpTask?: (taskId: string) => void;
@@ -104,6 +106,7 @@ export function SequenceProgressCard({
   onCancel,
   onFinish,
   onDelete,
+  onRecreate,
   onRefresh,
   onStartSequence,
   onFollowUpTask,
@@ -277,6 +280,18 @@ export function SequenceProgressCard({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+        )}
+
+        {/* Recreate Button - for active/paused sequences to refresh with updated data */}
+        {['active', 'paused'].includes(instance.status) && onRecreate && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onRecreate(instance.id)}
+          >
+            <RefreshCw className="h-4 w-4 mr-1" />
+            Recreate
+          </Button>
         )}
 
         {/* Delete Button - for completed and cancelled sequences */}

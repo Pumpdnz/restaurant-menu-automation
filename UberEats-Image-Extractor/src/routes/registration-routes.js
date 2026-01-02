@@ -294,7 +294,7 @@ router.post('/register-account', requireRegistrationUserAccount, async (req, res
         .update({
           registration_status: 'failed',
           last_error: apiError.message,
-          retry_count: supabase.raw('retry_count + 1')
+          retry_count: (account.retry_count || 0) + 1
         })
         .eq('id', account.id);
       
@@ -1531,6 +1531,57 @@ router.post('/generate-code-injections', requireRegistrationCodeInjection, async
     
     console.log('[Code Generation] Success! Files generated at:', outputDir);
 
+    // Read file contents for database storage
+    let headContent, bodyContent, configContent;
+    try {
+      [headContent, bodyContent, configContent] = await Promise.all([
+        fs.readFile(filePaths.headInjection, 'utf-8'),
+        fs.readFile(filePaths.bodyInjection, 'utf-8'),
+        fs.readFile(filePaths.configuration, 'utf-8').then(JSON.parse)
+      ]);
+      console.log('[Code Generation] Read file contents for database storage');
+    } catch (readError) {
+      console.error('[Code Generation] Failed to read files for database storage:', readError);
+      // Continue without database storage - files still exist
+    }
+
+    // Store code injection content in database for production persistence
+    // Uses UPSERT to create record if it doesn't exist (Phase 1 runs before restaurant registration in Phase 2)
+    let codeInjectionId = null;
+    if (headContent && bodyContent) {
+      try {
+        const { data: pumpdRestaurant, error: upsertError } = await supabase
+          .from('pumpd_restaurants')
+          .upsert({
+            organisation_id: organisationId,
+            restaurant_id: restaurantId,
+            head_injection: headContent,
+            body_injection: bodyContent,
+            code_injection_config: {
+              ...configContent,
+              generatedBy: req.user?.id || null,
+              generationMethod: 'manual',
+              noGradient: noGradient || false
+            },
+            code_injection_generated_at: new Date().toISOString()
+          }, {
+            onConflict: 'organisation_id,restaurant_id'
+          })
+          .select('id')
+          .single();
+
+        if (upsertError) {
+          console.error('[Code Generation] Failed to store in database:', upsertError);
+        } else {
+          codeInjectionId = pumpdRestaurant.id;
+          console.log('[Code Generation] ✓ Stored in database:', codeInjectionId);
+        }
+      } catch (dbError) {
+        console.error('[Code Generation] Database storage error:', dbError);
+        // Don't fail - file-based approach still works
+      }
+    }
+
     // Track usage
     UsageTrackingService.trackRegistrationStep(organisationId, 'code_injection', {
       restaurant_id: restaurantId
@@ -1539,6 +1590,9 @@ router.post('/generate-code-injections', requireRegistrationCodeInjection, async
     res.json({
       success: true,
       message: 'Code injections generated successfully.',
+      codeInjectionId,
+      generatedAt: new Date().toISOString(),
+      // Legacy: filePaths kept for backward compatibility during migration
       filePaths
     });
     
@@ -1558,31 +1612,73 @@ router.post('/generate-code-injections', requireRegistrationCodeInjection, async
 });
 
 /**
+ * Get existing code injection status for a restaurant
+ * Returns whether code injection content exists in the database
+ */
+router.get('/code-injection/:restaurantId', async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const organisationId = req.user?.organisationId;
+
+    if (!organisationId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { supabase } = require('../services/database-service');
+
+    const { data: pumpdRestaurant, error } = await supabase
+      .from('pumpd_restaurants')
+      .select('id, head_injection, body_injection, code_injection_config, code_injection_generated_at')
+      .eq('restaurant_id', restaurantId)
+      .eq('organisation_id', organisationId)
+      .single();
+
+    if (error || !pumpdRestaurant) {
+      return res.json({
+        success: true,
+        hasContent: false,
+        codeInjectionId: null
+      });
+    }
+
+    const hasContent = !!(pumpdRestaurant.head_injection && pumpdRestaurant.body_injection);
+
+    res.json({
+      success: true,
+      hasContent,
+      codeInjectionId: hasContent ? pumpdRestaurant.id : null,
+      generatedAt: pumpdRestaurant.code_injection_generated_at,
+      config: pumpdRestaurant.code_injection_config
+    });
+
+  } catch (error) {
+    console.error('Error checking code injection:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+/**
  * Configure website settings with generated code
  * Uses edit-website-settings-dark.js or edit-website-settings-light.js based on theme
  */
 router.post('/configure-website', requireRegistrationWebsiteSettings, async (req, res) => {
-  const { restaurantId, filePaths } = req.body;
+  const { restaurantId, filePaths, codeInjectionId } = req.body;
   const organisationId = req.user?.organisationId;
-  
-  console.log('[Website Config] Request received:', { restaurantId, organisationId, filePaths });
-  
+
+  console.log('[Website Config] Request received:', { restaurantId, organisationId, codeInjectionId, hasFilePaths: !!filePaths });
+
   if (!organisationId) {
-    return res.status(401).json({ 
-      success: false, 
-      error: 'Organisation context required' 
-    });
-  }
-  
-  if (!filePaths?.headInjection || !filePaths?.bodyInjection) {
-    return res.status(400).json({
+    return res.status(401).json({
       success: false,
-      error: 'Generated file paths required. Please generate code injections first.'
+      error: 'Organisation context required'
     });
   }
-  
+
   // Track temporary files for cleanup (declare outside try-catch for scope)
   const tempFiles = [];
+
+  // Code injection content - will be populated from database or files
+  let codeInjectionContent = null;
   
   try {
     const { supabase } = require('../services/database-service');
@@ -1642,13 +1738,31 @@ router.post('/configure-website', requireRegistrationWebsiteSettings, async (req
       return colorMap[colorSource] || '#FFFFFF';
     };
 
-    // Get account credentials through pumpd_restaurants relationship
+    // Get account credentials and code injection content through pumpd_restaurants relationship
     const { data: pumpdRestaurant, error: pumpdRestError } = await supabase
       .from('pumpd_restaurants')
-      .select('*, pumpd_subdomain, pumpd_full_url, pumpd_accounts(email, user_password_hint)')
+      .select('*, pumpd_subdomain, pumpd_full_url, head_injection, body_injection, code_injection_config, pumpd_accounts(email, user_password_hint)')
       .eq('restaurant_id', restaurantId)
       .eq('organisation_id', organisationId)
       .single();
+
+    // Try to get code injection content from database first
+    if (pumpdRestaurant?.head_injection && pumpdRestaurant?.body_injection) {
+      codeInjectionContent = {
+        head: pumpdRestaurant.head_injection,
+        body: pumpdRestaurant.body_injection,
+        config: pumpdRestaurant.code_injection_config
+      };
+      console.log('[Website Config] Using code injection content from database');
+    } else if (filePaths?.headInjection && filePaths?.bodyInjection) {
+      // Fall back to file paths
+      console.log('[Website Config] Using code injection content from files');
+    } else {
+      return res.status(400).json({
+        success: false,
+        error: 'No code injection content available. Please generate code injections first.'
+      });
+    }
 
     const account = pumpdRestaurant?.pumpd_accounts || null;
 
@@ -1689,6 +1803,24 @@ router.post('/configure-website', requireRegistrationWebsiteSettings, async (req
 
     console.log('[Website Config] Using script:', scriptName);
 
+    // Determine code injection source and prepare arguments
+    let headArg, bodyArg;
+    let scriptEnv = { ...process.env, DEBUG_MODE: 'false' };
+
+    if (codeInjectionContent) {
+      // Database approach: Pass content via environment variables
+      scriptEnv.HEAD_INJECTION_CONTENT = Buffer.from(codeInjectionContent.head).toString('base64');
+      scriptEnv.BODY_INJECTION_CONTENT = Buffer.from(codeInjectionContent.body).toString('base64');
+      headArg = '--head-from-env';
+      bodyArg = '--body-from-env';
+      console.log('[Website Config] Passing code injection via environment variables');
+    } else {
+      // Legacy file path approach
+      headArg = `--head="${filePaths.headInjection}"`;
+      bodyArg = `--body="${filePaths.bodyInjection}"`;
+      console.log('[Website Config] Passing code injection via file paths');
+    }
+
     // Build command with all arguments
     let command = [
       'node',
@@ -1697,8 +1829,8 @@ router.post('/configure-website', requireRegistrationWebsiteSettings, async (req
       `--password="${finalAccount.user_password_hint}"`,
       `--name="${restaurant.name.replace(/"/g, '\\"')}"`,
       `--primary="${restaurant.primary_color}"`,
-      `--head="${filePaths.headInjection}"`,
-      `--body="${filePaths.bodyInjection}"`,
+      headArg,
+      bodyArg,
       `--admin-url="${scriptConfig.adminUrl}"`
     ];
 
@@ -1962,7 +2094,7 @@ router.post('/configure-website', requireRegistrationWebsiteSettings, async (req
     console.log('[Website Config] Executing configuration script...');
     
     const { stdout, stderr } = await execAsync(command, {
-      env: { ...process.env, DEBUG_MODE: 'false' },
+      env: scriptEnv,
       timeout: 240000 // 4 minute timeout - increased for complex configurations
     });
     
@@ -3066,7 +3198,7 @@ router.post('/add-option-sets', requireRegistrationOptionSets, async (req, res) 
 
     const { stdout, stderr } = await execAsync(command, {
       env: { ...process.env, DEBUG_MODE: 'false' },
-      timeout: 1200000 // 20 minute timeout
+      timeout: 3600000 // 60 minute timeout (tripled for large menus with many option sets)
     });
 
     // Clean up temp file
@@ -4495,6 +4627,94 @@ router.get('/single-restaurant-progress/:restaurantId', async (req, res) => {
 
   } catch (error) {
     console.error('[Single Restaurant YOLO] Error getting progress:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Resume a failed YOLO mode execution for a single restaurant
+ * Continues from the last completed phase
+ */
+router.post('/resume-single-restaurant/:restaurantId', async (req, res) => {
+  const { restaurantId } = req.params;
+  const organisationId = req.user?.organisationId;
+
+  if (!organisationId) {
+    return res.status(401).json({
+      success: false,
+      error: 'Organisation context required'
+    });
+  }
+
+  try {
+    const registrationBatchService = require('../services/registration-batch-service');
+    const { getSupabaseClient } = require('../services/database-service');
+    const client = getSupabaseClient();
+
+    // Find the most recent job for this restaurant (single-restaurant mode has null batch_job_id)
+    const { data: job, error: jobError } = await client
+      .from('registration_jobs')
+      .select(`
+        *,
+        steps:registration_job_steps(*),
+        restaurant:restaurants(*)
+      `)
+      .eq('restaurant_id', restaurantId)
+      .eq('organisation_id', organisationId)
+      .is('batch_job_id', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (jobError || !job) {
+      return res.status(404).json({
+        success: false,
+        error: 'No YOLO mode execution found for this restaurant'
+      });
+    }
+
+    // Check if Step 6 has partial progress
+    const step6 = job.steps?.find(s => s.step_number === 6);
+    if (!step6?.sub_step_progress) {
+      return res.status(400).json({
+        success: false,
+        error: 'No progress to resume from. Start a new execution instead.'
+      });
+    }
+
+    // Detect last completed phase for response
+    const lastCompletePhase = registrationBatchService.detectLastCompletePhase(step6.sub_step_progress);
+
+    console.log(`[Single Restaurant YOLO] Resuming execution for restaurant ${restaurantId}, job ${job.id}, from ${lastCompletePhase || 'beginning'}`);
+
+    // Return immediately, execute resume in background
+    res.json({
+      success: true,
+      message: 'Resume initiated',
+      jobId: job.id,
+      resumingFrom: lastCompletePhase || 'beginning'
+    });
+
+    // Execute resume in background
+    setImmediate(async () => {
+      try {
+        const authContext = {
+          token: req.headers.authorization,
+          organisationId
+        };
+
+        await registrationBatchService.resumeYoloModeForJob(job, null, authContext);
+        console.log(`[Single Restaurant YOLO] Resume completed for job ${job.id}`);
+      } catch (resumeError) {
+        console.error(`[Single Restaurant YOLO] Resume failed for job ${job.id}:`, resumeError);
+      }
+    });
+
+  } catch (error) {
+    console.error('[Single Restaurant YOLO] Error resuming execution:', error);
     res.status(500).json({
       success: false,
       error: error.message

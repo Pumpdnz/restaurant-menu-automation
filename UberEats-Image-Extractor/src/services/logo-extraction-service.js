@@ -7,13 +7,19 @@
 
 const axios = require('axios');
 const sharp = require('sharp');
+const sharpIco = require('sharp-ico');
 const FormData = require('form-data');
 const { Vibrant } = require('node-vibrant/node');
+const rateLimiter = require('./rate-limiter-service');
 
 // Configuration
 const REMOVE_BG_API_KEY = process.env.REMOVE_BG_API_KEY || '';
 const FIRECRAWL_API_KEY = process.env.FIRECRAWL_API_KEY || '';
 const FIRECRAWL_API_URL = process.env.FIRECRAWL_API_URL || 'https://api.firecrawl.dev';
+
+// Timeout configuration (in milliseconds)
+const FIRECRAWL_TIMEOUT = 60000; // 60 seconds for Firecrawl API calls
+const IMAGE_DOWNLOAD_TIMEOUT = 30000; // 30 seconds for image downloads
 
 /**
  * Extract multiple logo candidates from website using Firecrawl
@@ -213,6 +219,9 @@ async function extractBrandingWithFirecrawl(sourceUrl) {
   try {
     console.log('[Branding Extraction] Starting extraction from:', sourceUrl);
 
+    // Acquire rate limiter slot before making the request
+    await rateLimiter.acquireSlot(`branding-${sourceUrl}`);
+
     const response = await axios.post(
       `${FIRECRAWL_API_URL}/v2/scrape`,
       {
@@ -224,7 +233,8 @@ async function extractBrandingWithFirecrawl(sourceUrl) {
         headers: {
           'Authorization': `Bearer ${FIRECRAWL_API_KEY}`,
           'Content-Type': 'application/json'
-        }
+        },
+        timeout: FIRECRAWL_TIMEOUT
       }
     );
 
@@ -416,21 +426,22 @@ async function extractLogoUrlWithPuppeteer(websiteUrl) {
 async function downloadImageToBuffer(imageUrl, websiteUrl) {
   try {
     console.log('[Logo Extraction] Downloading image:', imageUrl);
-    
+
     // Handle relative URLs
     let fullUrl = imageUrl;
     if (!imageUrl.startsWith('http')) {
       const baseUrl = new URL(websiteUrl);
       fullUrl = new URL(imageUrl, baseUrl.origin).href;
     }
-    
+
     const response = await axios.get(fullUrl, {
       responseType: 'arraybuffer',
+      timeout: IMAGE_DOWNLOAD_TIMEOUT,
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; LogoExtractor/1.0)'
       }
     });
-    
+
     return Buffer.from(response.data);
   } catch (error) {
     console.error('[Logo Extraction] Download error:', error.message);
@@ -646,14 +657,53 @@ async function processLogoVersions(logoBuffer, options = {}) {
 
   try {
     // Get metadata
-    const metadata = await sharp(logoBuffer).metadata();
+    let workingBuffer = logoBuffer;
+
+    // Check for ICO format first (by magic bytes) since sharp doesn't support it
+    const isIcoMagic = logoBuffer.length >= 4 &&
+      logoBuffer[0] === 0 && logoBuffer[1] === 0 &&
+      logoBuffer[2] === 1 && logoBuffer[3] === 0;
+
+    if (isIcoMagic) {
+      try {
+        console.log('[Logo Extraction] Detected ICO format, converting to PNG');
+        const images = sharpIco.sharpsFromIco(logoBuffer);
+        if (images && images.length > 0) {
+          // Get the largest image (last in array)
+          const largestImage = images[images.length - 1];
+          workingBuffer = await largestImage.png().toBuffer();
+          console.log('[Logo Extraction] Successfully converted ICO to PNG');
+        }
+      } catch (icoError) {
+        console.error('[Logo Extraction] ICO conversion failed:', icoError.message);
+      }
+    }
+
+    let metadata = await sharp(workingBuffer).metadata();
     console.log('[Logo Extraction] Processing logo versions:', metadata, { skipFavicon });
-    
-    // 1. Original (as base64)
-    versions.original = `data:image/${metadata.format};base64,${logoBuffer.toString('base64')}`;
+
+    // Pre-convert problematic formats (HEIF/AVIF/SVG) to PNG for compatibility
+    const problematicFormats = ['heif', 'avif', 'svg'];
+
+    if (problematicFormats.includes(metadata.format)) {
+      try {
+        console.log(`[Logo Extraction] Converting ${metadata.format.toUpperCase()} to PNG for processing`);
+        workingBuffer = await sharp(workingBuffer)
+          .png()
+          .toBuffer();
+        metadata = await sharp(workingBuffer).metadata();
+        console.log(`[Logo Extraction] Successfully converted to PNG`);
+      } catch (conversionError) {
+        console.error(`[Logo Extraction] Failed to convert ${metadata.format}:`, conversionError.message);
+        // Keep original buffer but log the issue
+      }
+    }
+
+    // 1. Original (as base64) - use the converted buffer if available
+    versions.original = `data:image/${metadata.format};base64,${workingBuffer.toString('base64')}`;
     
     // 2. Standard (500x500, maintaining aspect ratio)
-    const standardBuffer = await sharp(logoBuffer)
+    const standardBuffer = await sharp(workingBuffer)
       .resize(500, 500, {
         fit: 'contain',
         background: { r: 255, g: 255, b: 255, alpha: 0 }
@@ -661,15 +711,15 @@ async function processLogoVersions(logoBuffer, options = {}) {
       .png()
       .toBuffer();
     versions.standard = `data:image/png;base64,${standardBuffer.toString('base64')}`;
-    
+
     // 3. No Background version
     try {
       // Check if already transparent
       const hasAlpha = metadata.hasAlpha || metadata.channels === 4;
-      
+
       if (hasAlpha) {
         // Already transparent, just trim
-        const noBgBuffer = await sharp(logoBuffer)
+        const noBgBuffer = await sharp(workingBuffer)
           .trim()
           .png()
           .toBuffer();
@@ -677,7 +727,7 @@ async function processLogoVersions(logoBuffer, options = {}) {
         console.log('[Logo Extraction] Logo already transparent, trimmed edges');
       } else {
         // Try to use Remove.bg API
-        const noBgBuffer = await removeBackgroundFromBuffer(logoBuffer);
+        const noBgBuffer = await removeBackgroundFromBuffer(workingBuffer);
         
         if (noBgBuffer) {
           // Successfully removed background, apply trim to remove any remaining whitespace
@@ -707,7 +757,7 @@ async function processLogoVersions(logoBuffer, options = {}) {
       const noBgBase64 = versions.nobg.split(',')[1];
       thermalSourceBuffer = Buffer.from(noBgBase64, 'base64');
     } else {
-      thermalSourceBuffer = logoBuffer;
+      thermalSourceBuffer = workingBuffer;
     }
     
     // Resize to 265px wide, maintaining aspect ratio
@@ -890,7 +940,7 @@ async function processLogoVersions(logoBuffer, options = {}) {
 
     // 5. Favicon (32x32) - skip if Firecrawl already provided one
     if (!skipFavicon) {
-      const faviconBuffer = await sharp(logoBuffer)
+      const faviconBuffer = await sharp(workingBuffer)
         .resize(32, 32, {
           fit: 'contain',
           background: { r: 255, g: 255, b: 255, alpha: 0 }
@@ -905,10 +955,18 @@ async function processLogoVersions(logoBuffer, options = {}) {
     return versions;
   } catch (error) {
     console.error('[Logo Extraction] Processing error:', error.message);
-    // Return at least the original
-    return {
-      original: `data:image/png;base64,${logoBuffer.toString('base64')}`
-    };
+    // Return at least the original with correct MIME type detection
+    try {
+      const fallbackMetadata = await sharp(logoBuffer).metadata();
+      return {
+        original: `data:image/${fallbackMetadata.format || 'png'};base64,${logoBuffer.toString('base64')}`
+      };
+    } catch {
+      // If even metadata fails, use generic octet-stream
+      return {
+        original: `data:application/octet-stream;base64,${logoBuffer.toString('base64')}`
+      };
+    }
   }
 }
 

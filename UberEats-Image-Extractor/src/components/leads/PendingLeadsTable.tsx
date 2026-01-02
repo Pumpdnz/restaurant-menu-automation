@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  ChevronUp,
   ChevronsDownUp,
   Globe,
   DollarSign,
@@ -56,6 +57,11 @@ import {
   Lead,
   useConvertLeadsToRestaurants,
   useDeleteLeads,
+  SortState,
+  SortableColumn,
+  getColumnDirection,
+  getColumnPriority,
+  cycleSortColumn,
 } from '../../hooks/useLeadScrape';
 import { LeadDetailModal } from './LeadDetailModal';
 import { BulkStartSequenceModal } from '../sequences/BulkStartSequenceModal';
@@ -125,6 +131,65 @@ interface PendingLeadsTableProps {
   leads: Lead[];
   isLoading: boolean;
   onRefresh: () => void;
+  sortState: SortState;
+  onSortChange: (newState: SortState) => void;
+}
+
+// Sortable header component
+interface SortableHeaderProps {
+  column: SortableColumn;
+  label: string;
+  sortState: SortState;
+  onSort: (column: SortableColumn) => void;
+  className?: string;
+}
+
+function SortableHeader({ column, label, sortState, onSort, className }: SortableHeaderProps) {
+  const direction = getColumnDirection(sortState, column);
+  const priority = getColumnPriority(sortState, column);
+  const isActive = direction !== 'disabled';
+
+  return (
+    <TableHead className={className}>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => onSort(column)}
+        className={cn(
+          "h-8 px-2 -ml-2 font-medium hover:bg-muted/50 group",
+          isActive && "bg-muted/30"
+        )}
+      >
+        {label}
+        <span className="ml-1.5 flex flex-col items-center justify-center h-4 w-4">
+          {/* Up chevron - visible when ascending, faint when descending, almost invisible when disabled */}
+          <ChevronUp
+            className={cn(
+              "h-3 w-3 -mb-0.5 transition-all",
+              direction === 'asc' && "stroke-brand-red",
+              direction === 'desc' && "stroke-muted-foreground/20",
+              direction === 'disabled' && "stroke-muted-foreground/40"
+            )}
+          />
+          {/* Down chevron - visible when descending, faint when ascending, almost invisible when disabled */}
+          <ChevronDown
+            className={cn(
+              "h-3 w-3 -mt-0.5 transition-all",
+              direction === 'desc' && "stroke-brand-blue",
+              direction === 'asc' && "stroke-muted-foreground/20",
+              direction === 'disabled' && "stroke-muted-foreground/40"
+            )}
+          />
+        </span>
+        {/* Priority badge - always show even when a single column is sorted */}
+        {priority !== null && (
+          <span className="ml-1 text-[10px] font-medium stroke-blue-600 text-blue-600 bg-blue-100 rounded-full w-4 h-4 flex items-center justify-center">
+            {priority}
+          </span>
+        )}
+      </Button>
+    </TableHead>
+  );
 }
 
 // Inline info field for expanded details
@@ -266,8 +331,15 @@ export function PendingLeadsTable({
   leads,
   isLoading,
   onRefresh,
+  sortState,
+  onSortChange,
 }: PendingLeadsTableProps) {
   const navigate = useNavigate();
+
+  // Sort handler
+  const handleSort = (column: SortableColumn) => {
+    onSortChange(cycleSortColumn(sortState, column));
+  };
 
   // Selection state
   const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
@@ -318,6 +390,48 @@ export function PendingLeadsTable({
         lead.email?.toLowerCase().includes(query)
     );
   }, [leads, searchQuery]);
+
+  // Sort leads based on sortState (client-side)
+  const sortedLeads = useMemo(() => {
+    if (sortState.length === 0) return filteredLeads;
+
+    return [...filteredLeads].sort((a, b) => {
+      for (const { column, direction } of sortState) {
+        let aVal: string | number | null = null;
+        let bVal: string | number | null = null;
+
+        switch (column) {
+          case 'restaurant_name':
+            aVal = a.restaurant_name?.toLowerCase() || '';
+            bVal = b.restaurant_name?.toLowerCase() || '';
+            break;
+          case 'city':
+            aVal = a.city?.toLowerCase() || '';
+            bVal = b.city?.toLowerCase() || '';
+            break;
+          case 'ubereats_number_of_reviews':
+            // Parse review count, stripping "+" and converting to number
+            aVal = a.ubereats_number_of_reviews
+              ? parseInt(a.ubereats_number_of_reviews.replace(/[^0-9]/g, ''), 10) || 0
+              : 0;
+            bVal = b.ubereats_number_of_reviews
+              ? parseInt(b.ubereats_number_of_reviews.replace(/[^0-9]/g, ''), 10) || 0
+              : 0;
+            break;
+          case 'created_at':
+            aVal = a.created_at ? new Date(a.created_at).getTime() : 0;
+            bVal = b.created_at ? new Date(b.created_at).getTime() : 0;
+            break;
+        }
+
+        // Compare values
+        if (aVal < bVal) return direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return direction === 'asc' ? 1 : -1;
+        // If equal, continue to next sort column
+      }
+      return 0;
+    });
+  }, [filteredLeads, sortState]);
 
   // Check if all filtered leads are selected
   const allSelected =
@@ -634,31 +748,37 @@ export function PendingLeadsTable({
       }
 
       // 2. Start branding extractions (fire and forget) for restaurants with website URLs
+      // Stagger requests to prevent overwhelming the API and causing socket hang up errors
       if (extractionOptions.has('branding')) {
         const restaurantsWithWebsite = convertedRestaurants.filter(r => r.website_url);
         brandingCount = restaurantsWithWebsite.length;
 
-        for (const restaurant of restaurantsWithWebsite) {
-          // Fire without awaiting - true fire and forget
-          api.post('/website-extraction/branding', {
-            restaurantId: restaurant.id,
-            sourceUrl: restaurant.website_url,
-            previewOnly: false,
-            versionsToUpdate: [
-              'logo_url', 'logo_nobg_url', 'logo_standard_url',
-              'logo_thermal_url', 'logo_thermal_alt_url', 'logo_thermal_contrast_url',
-              'logo_thermal_adaptive_url', 'logo_favicon_url'
-            ],
-            colorsToUpdate: [
-              'primary_color', 'secondary_color', 'tertiary_color',
-              'accent_color', 'background_color', 'theme'
-            ],
-            headerFieldsToUpdate: [
-              'website_og_image', 'website_og_title', 'website_og_description'
-            ]
-          }).catch((error) => {
-            console.error(`Branding extraction failed for ${restaurant.name}:`, error);
-          });
+        for (let i = 0; i < restaurantsWithWebsite.length; i++) {
+          const restaurant = restaurantsWithWebsite[i];
+
+          // Stagger branding extraction requests by 500ms each to prevent socket exhaustion
+          // The server-side rate limiter will handle further throttling if needed
+          setTimeout(() => {
+            api.post('/website-extraction/branding', {
+              restaurantId: restaurant.id,
+              sourceUrl: restaurant.website_url,
+              previewOnly: false,
+              versionsToUpdate: [
+                'logo_url', 'logo_nobg_url', 'logo_standard_url',
+                'logo_thermal_url', 'logo_thermal_alt_url', 'logo_thermal_contrast_url',
+                'logo_thermal_adaptive_url', 'logo_favicon_url'
+              ],
+              colorsToUpdate: [
+                'primary_color', 'secondary_color', 'tertiary_color',
+                'accent_color', 'background_color', 'theme'
+              ],
+              headerFieldsToUpdate: [
+                'website_og_image', 'website_og_title', 'website_og_description'
+              ]
+            }).catch((error) => {
+              console.error(`Branding extraction failed for ${restaurant.name}:`, error);
+            });
+          }, i * 500); // Stagger each request by 500ms
         }
       }
 
@@ -856,18 +976,41 @@ export function PendingLeadsTable({
                   onCheckedChange={toggleSelectAll}
                 />
               </TableHead>
-              <TableHead>Restaurant</TableHead>
+              <SortableHeader
+                column="restaurant_name"
+                label="Restaurant"
+                sortState={sortState}
+                onSort={handleSort}
+              />
               <TableHead className="w-24">Platform</TableHead>
-              <TableHead className="w-28">Location</TableHead>
+              <SortableHeader
+                column="city"
+                label="Location"
+                sortState={sortState}
+                onSort={handleSort}
+                className="w-28"
+              />
               <TableHead className="w-36">Cuisine</TableHead>
-              <TableHead className="w-20">Rating</TableHead>
+              <SortableHeader
+                column="ubereats_number_of_reviews"
+                label="Rating"
+                sortState={sortState}
+                onSort={handleSort}
+                className="w-20"
+              />
               <TableHead className="w-32">Contact</TableHead>
-              <TableHead className="w-28">Created</TableHead>
+              <SortableHeader
+                column="created_at"
+                label="Created"
+                sortState={sortState}
+                onSort={handleSort}
+                className="w-28"
+              />
               <TableHead className="w-24 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredLeads.map((lead) => (
+            {sortedLeads.map((lead) => (
               <React.Fragment key={lead.id}>
                 <TableRow
                   className={cn(
@@ -1108,7 +1251,7 @@ export function PendingLeadsTable({
 
           {!isConverting && (
             <DialogFooter className="flex justify-between sm:justify-between">
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 {conversionSummary.successful > 0 && (
                   <Button
                     variant="outline"
@@ -1118,6 +1261,20 @@ export function PendingLeadsTable({
                     }}
                   >
                     Start Sequence ({conversionSummary.successful})
+                  </Button>
+                )}
+                {conversionSummary.successful > 0 &&
+                  convertedRestaurants.some(r => r.ubereats_url || r.website_url) && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      // Reset extraction options to defaults
+                      setExtractionOptions(new Set(['menu', 'images', 'optionSets', 'branding']));
+                      setShowExtractionOptions(true);
+                      setIsConversionDialogOpen(false);
+                    }}
+                  >
+                    Start Extractions
                   </Button>
                 )}
                 {registrationBatch && (

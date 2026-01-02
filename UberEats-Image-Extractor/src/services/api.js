@@ -38,7 +38,7 @@ const api = axios.create({
 // This bypasses Netlify's ~30s gateway timeout by calling Railway directly
 const railwayApi = axios.create({
   baseURL: import.meta.env.VITE_RAILWAY_API_URL || 'http://localhost:3007',
-  timeout: 1200000, // 20 minutes - for Playwright scripts that take 2-5 min
+  timeout: 3600000, // 60 minutes - for Playwright scripts (option sets can take very long for large menus)
   // headers: {
   //   'Content-Type': 'application/json',
   // }, // Commented out to avoid errors passing csv files to the railway api

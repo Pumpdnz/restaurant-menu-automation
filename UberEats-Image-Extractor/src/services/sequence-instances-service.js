@@ -844,6 +844,178 @@ async function startSequenceBulk(templateId, restaurantIds, options = {}) {
 }
 
 /**
+ * Recreate a sequence - deletes existing and starts fresh from same template
+ * This allows variable replacement to use updated restaurant data (e.g., contact_name)
+ * @param {string} instanceId - Existing sequence instance ID
+ * @returns {Promise<object>} New sequence instance
+ */
+async function recreateSequence(instanceId) {
+  const client = getSupabaseClient();
+  const orgId = getCurrentOrganizationId();
+
+  // 1. Get existing instance to retrieve template_id and restaurant_id
+  const { data: existingInstance, error: fetchError } = await client
+    .from('sequence_instances')
+    .select('id, sequence_template_id, restaurant_id, status, assigned_to, created_by')
+    .eq('id', instanceId)
+    .eq('organisation_id', orgId)
+    .single();
+
+  if (fetchError || !existingInstance) {
+    throw new Error('Sequence instance not found');
+  }
+
+  const { sequence_template_id, restaurant_id, assigned_to, created_by } = existingInstance;
+
+  // 2. Delete existing tasks first (foreign key constraint)
+  const { error: deleteTasksError } = await client
+    .from('tasks')
+    .delete()
+    .eq('sequence_instance_id', instanceId);
+
+  if (deleteTasksError) {
+    console.error('Error deleting tasks for recreate:', deleteTasksError);
+    throw new Error('Failed to delete existing tasks');
+  }
+
+  // 3. Delete existing instance
+  const { error: deleteInstanceError } = await client
+    .from('sequence_instances')
+    .delete()
+    .eq('id', instanceId);
+
+  if (deleteInstanceError) {
+    console.error('Error deleting instance for recreate:', deleteInstanceError);
+    throw new Error('Failed to delete existing sequence instance');
+  }
+
+  // 4. Start new sequence from same template (uses fresh restaurant data for variable replacement)
+  const newInstance = await startSequence(sequence_template_id, restaurant_id, {
+    assigned_to,
+    created_by
+  });
+
+  return {
+    ...newInstance,
+    recreated_from: instanceId
+  };
+}
+
+/**
+ * Bulk recreate sequences for multiple instances
+ * @param {string[]} instanceIds - Array of instance IDs to recreate
+ * @returns {Promise<object>} Bulk operation results
+ */
+async function recreateSequenceBulk(instanceIds) {
+  if (!instanceIds || instanceIds.length === 0) {
+    throw new Error('At least one instance_id is required');
+  }
+
+  if (instanceIds.length > 100) {
+    throw new Error('Maximum 100 instances per bulk operation');
+  }
+
+  const results = {
+    succeeded: [],
+    failed: [],
+    summary: { total: instanceIds.length, success: 0, failure: 0 }
+  };
+
+  for (const instanceId of instanceIds) {
+    try {
+      const newInstance = await recreateSequence(instanceId);
+      results.succeeded.push({
+        original_instance_id: instanceId,
+        new_instance_id: newInstance.id,
+        restaurant_id: newInstance.restaurant_id,
+        tasks_created: newInstance.tasks_created
+      });
+    } catch (error) {
+      results.failed.push({
+        instance_id: instanceId,
+        error: error.message
+      });
+    }
+  }
+
+  results.summary.success = results.succeeded.length;
+  results.summary.failure = results.failed.length;
+
+  console.log(`[Bulk Recreate] Completed: ${results.summary.success} succeeded, ${results.summary.failure} failed`);
+
+  return results;
+}
+
+/**
+ * Get sequences for multiple restaurants in one query
+ * Optimized for batch views to avoid N+1 queries
+ * @param {string[]} restaurantIds - Array of restaurant IDs
+ * @returns {Promise<Record<string, Array>>} Map of restaurant_id to sequences
+ */
+async function getSequencesByRestaurantIds(restaurantIds) {
+  const client = getSupabaseClient();
+  const orgId = getCurrentOrganizationId();
+
+  if (!restaurantIds || restaurantIds.length === 0) {
+    return {};
+  }
+
+  const { data, error } = await client
+    .from('sequence_instances')
+    .select(`
+      *,
+      sequence_templates (id, name),
+      restaurants (id, name, contact_name, contact_email, contact_phone, email, phone, instagram_url, facebook_url),
+      tasks (
+        id, name, description, type, status, priority,
+        due_date, sequence_step_order, completed_at,
+        message, message_rendered, subject_line, subject_line_rendered
+      )
+    `)
+    .eq('organisation_id', orgId)
+    .in('restaurant_id', restaurantIds)
+    .in('status', ['active', 'paused'])
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching sequences by restaurant IDs:', error);
+    throw error;
+  }
+
+  // Group by restaurant_id and add progress calculation
+  const grouped = {};
+  for (const instance of data || []) {
+    const rid = instance.restaurant_id;
+    if (!grouped[rid]) {
+      grouped[rid] = [];
+    }
+
+    // Sort tasks by step_order and add restaurant data
+    const sortedTasks = instance.tasks && instance.tasks.length > 0
+      ? instance.tasks
+          .sort((a, b) => a.sequence_step_order - b.sequence_step_order)
+          .map(task => ({
+            ...task,
+            restaurants: instance.restaurants
+          }))
+      : [];
+
+    // Calculate progress
+    const completed = sortedTasks.filter(t => t.status === 'completed').length;
+    instance.tasks = sortedTasks;
+    instance.progress = {
+      completed,
+      total: instance.total_steps,
+      percentage: instance.total_steps > 0 ? Math.round((completed / instance.total_steps) * 100) : 0
+    };
+
+    grouped[rid].push(instance);
+  }
+
+  return grouped;
+}
+
+/**
  * Delete a sequence instance and its associated tasks
  * Only allows deleting completed or cancelled sequences
  * @param {string} instanceId - Instance ID
@@ -913,5 +1085,8 @@ module.exports = {
   finishSequence,
   deleteSequenceInstance,
   getRestaurantSequences,
-  getSequenceProgress
+  getSequenceProgress,
+  recreateSequence,
+  recreateSequenceBulk,
+  getSequencesByRestaurantIds
 };

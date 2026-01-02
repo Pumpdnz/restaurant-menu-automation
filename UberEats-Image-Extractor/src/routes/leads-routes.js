@@ -85,22 +85,50 @@ router.get('/:id', authMiddleware, async (req, res) => {
  * PATCH /api/leads/:id
  * Update a lead's information
  * Body (all optional):
- *   - restaurant_name: string
- *   - phone: string
- *   - email: string
- *   - website_url: string
- *   - instagram_url: string
- *   - facebook_url: string
- *   - google_maps_url: string
- *   - contact_name: string
- *   - contact_email: string
- *   - contact_phone: string
- *   - contact_role: string
- *   - organisation_name: string
- *   - city: string
- *   - region: string
- *   - opening_hours: object
- *   - opening_hours_text: string
+ *   Basic info:
+ *     - restaurant_name: string
+ *     - store_link: string
+ *   Location:
+ *     - ubereats_address: string
+ *     - google_address: string
+ *     - city: string
+ *     - region: string
+ *     - country: string
+ *     - google_maps_url: string
+ *   UberEats info:
+ *     - ubereats_number_of_reviews: string
+ *     - ubereats_average_review_rating: number
+ *     - ubereats_cuisine: string[]
+ *     - ubereats_price_rating: number
+ *     - ubereats_og_image: string
+ *   Google info:
+ *     - google_number_of_reviews: string
+ *     - google_average_review_rating: number
+ *   Contact person:
+ *     - contact_name: string
+ *     - contact_role: string
+ *     - contact_phone: string
+ *     - contact_email: string
+ *   Business contact:
+ *     - phone: string
+ *     - email: string
+ *   Organisation:
+ *     - organisation_name: string
+ *     - number_of_venues: number
+ *   Online presence:
+ *     - website_url: string
+ *     - instagram_url: string
+ *     - facebook_url: string
+ *   Business details:
+ *     - website_type: string
+ *     - online_ordering_platform: string
+ *     - online_ordering_handles_delivery: boolean
+ *   Ordering platform (Step 4):
+ *     - ordering_platform_url: string
+ *     - ordering_platform_name: string
+ *   Opening hours:
+ *     - opening_hours: object
+ *     - opening_hours_text: string
  */
 router.patch('/:id', authMiddleware, async (req, res) => {
   try {

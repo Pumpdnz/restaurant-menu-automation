@@ -41,8 +41,8 @@ export type ExecutionPhase = 'phase1' | 'phase2' | 'phase3' | 'phase4' | null;
 export type ExecutionStatus = 'idle' | 'running' | 'completed' | 'failed' | 'cancelled';
 
 // Polling configuration
-const POLL_INTERVAL = 2000; // 2 seconds
-const MAX_POLL_DURATION = 30 * 60 * 1000; // 30 minutes
+const POLL_INTERVAL = 5000; // 5 seconds
+const MAX_POLL_DURATION = 90 * 60 * 1000; // 90 minutes (option sets can take 60+ minutes for large menus)
 
 // Step definitions for progress display
 export const EXECUTION_STEPS = [
@@ -263,7 +263,7 @@ export function useYoloModeExecution() {
     pollStartTimeRef.current = null;
   }, []);
 
-  // Check for in-progress execution and resume polling if needed
+  // Check for in-progress or failed execution and resume polling if needed
   const checkAndResumeExecution = useCallback(async (restaurantId: string): Promise<boolean> => {
     // Don't start if already polling
     if (pollIntervalRef.current) return false;
@@ -299,12 +299,61 @@ export function useYoloModeExecution() {
         return true; // Indicates we resumed an existing execution
       }
 
-      return false; // No active execution
+      // Check if there's a failed or stalled execution with progress that can be resumed
+      if ((status === 'failed' || status === 'stalled') && phases && Object.keys(phases).length > 0) {
+        console.log(`[useYoloModeExecution] Found ${status} execution with progress, showing resume option`);
+
+        // Restore state to show progress but not executing
+        setIsExecuting(false);
+        setExecutionStatus('failed'); // Treat stalled as failed for UI purposes
+        if (existingJobId) setJobId(existingJobId);
+        restaurantIdRef.current = restaurantId;
+
+        if (phase) {
+          setCurrentPhase(phase as ExecutionPhase);
+        }
+
+        const results = convertPhasesToStepResults(phases);
+        setStepResults(results);
+
+        return true; // Indicates we found a resumable execution
+      }
+
+      return false; // No active or resumable execution
     } catch (err) {
       console.warn('[useYoloModeExecution] Could not check for in-progress execution:', err);
       return false;
     }
   }, [convertPhasesToStepResults, pollProgress]);
+
+  // Resume a failed execution from where it left off
+  const resumeExecution = useCallback(async (restaurantId: string): Promise<void> => {
+    setIsExecuting(true);
+    setExecutionStatus('running');
+    restaurantIdRef.current = restaurantId;
+
+    try {
+      const response = await api.post(`/registration/resume-single-restaurant/${restaurantId}`);
+
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to resume execution');
+      }
+
+      console.log('[useYoloModeExecution] Resume initiated, resuming from:', response.data.resumingFrom);
+      setJobId(response.data.jobId);
+
+      // Start polling for progress
+      await pollProgress(restaurantId);
+
+    } catch (error: any) {
+      setExecutionStatus('failed');
+      setIsExecuting(false);
+      throw error;
+    }
+  }, [pollProgress]);
+
+  // Can resume if execution failed and there's progress
+  const canResume = executionStatus === 'failed' && Object.keys(stepResults).length > 0;
 
   return {
     isExecuting,
@@ -312,9 +361,11 @@ export function useYoloModeExecution() {
     currentPhase,
     stepResults,
     jobId,
+    canResume,
     executeYoloMode,
     cancelExecution,
     resetExecution,
     checkAndResumeExecution,
+    resumeExecution,
   };
 }

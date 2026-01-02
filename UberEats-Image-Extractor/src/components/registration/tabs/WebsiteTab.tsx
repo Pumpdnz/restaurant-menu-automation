@@ -7,8 +7,11 @@ import { RadioGroup, RadioGroupItem } from '../../ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { Separator } from '../../ui/separator';
 import { Badge } from '../../ui/badge';
-import { Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { Image as ImageIcon, AlertCircle, Link2, CheckCircle2 } from 'lucide-react';
 import type { YoloModeFormData, Restaurant } from '../YoloModeDialog';
+
+// Header image field type
+type HeaderImageField = 'website_og_image' | 'ubereats_og_image' | 'doordash_og_image' | 'facebook_cover_image';
 
 interface WebsiteTabProps {
   formData: YoloModeFormData;
@@ -18,6 +21,16 @@ interface WebsiteTabProps {
     value: YoloModeFormData[S][K]
   ) => void;
   restaurant: Restaurant;
+  /**
+   * Callback when a header image URL is applied
+   * Should save to database immediately (URL converted to base64 on backend)
+   * Returns a promise that resolves when save is complete
+   */
+  onHeaderImageSave?: (field: HeaderImageField, url: string) => Promise<void>;
+  /**
+   * Whether a save operation is in progress
+   */
+  isHeaderImageSaving?: boolean;
 }
 
 // All possible image sources
@@ -97,9 +110,18 @@ function HeaderImagePreview({ url, label }: { url?: string; label: string }) {
   );
 }
 
-export function WebsiteTab({ formData, updateFormData, restaurant }: WebsiteTabProps) {
+export function WebsiteTab({
+  formData,
+  updateFormData,
+  restaurant,
+  onHeaderImageSave,
+  isHeaderImageSaving = false,
+}: WebsiteTabProps) {
   // Local state for cuisine input to allow typing commas
   const [cuisineInput, setCuisineInput] = useState(formData.website.cuisines.join(', '));
+
+  // Local state for header image URL input
+  const [headerImageUrlInput, setHeaderImageUrlInput] = useState('');
 
   // Sync local state when form data changes externally
   useEffect(() => {
@@ -111,14 +133,6 @@ export function WebsiteTab({ formData, updateFormData, restaurant }: WebsiteTabP
     const cuisines = cuisineInput.split(',').map(c => c.trim()).filter(c => c);
     updateFormData('website', 'cuisines', cuisines);
   };
-
-  // Filter image sources to only show available ones
-  const availableImageSources = useMemo(() => {
-    return ALL_IMAGE_SOURCES.filter(source => {
-      const value = restaurant[source.field as keyof Restaurant];
-      return value && typeof value === 'string' && value.length > 0;
-    });
-  }, [restaurant]);
 
   // Filter logo sources to only show available ones
   const availableLogoSources = useMemo(() => {
@@ -136,6 +150,15 @@ export function WebsiteTab({ formData, updateFormData, restaurant }: WebsiteTabP
   // Get the actual header image URL for a given source
   const getHeaderImageUrl = (source: string): string | undefined => {
     return restaurant[source as keyof Restaurant] as string | undefined;
+  };
+
+  // Handle header image URL apply - saves directly to database
+  const handleHeaderImageUrlSubmit = async () => {
+    const selectedSource = formData.website.headerImageSource as HeaderImageField;
+    if (headerImageUrlInput.trim() && onHeaderImageSave) {
+      await onHeaderImageSave(selectedSource, headerImageUrlInput.trim());
+      setHeaderImageUrlInput(''); // Clear input after successful save
+    }
   };
 
   // Handle theme change - also update text color defaults
@@ -272,45 +295,96 @@ export function WebsiteTab({ formData, updateFormData, restaurant }: WebsiteTabP
             <div className="space-y-4 pl-6 border-l-2 border-muted">
               <div className="space-y-2">
                 <Label>Header Background Image</Label>
-                {availableImageSources.length > 0 ? (
-                  <>
-                    <Select
-                      value={formData.website.headerImageSource}
-                      onValueChange={(value) => updateFormData('website', 'headerImageSource', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableImageSources.map((source) => (
-                          <SelectItem key={source.value} value={source.value}>
-                            <HeaderImagePreview
-                              url={getHeaderImageUrl(source.value)}
-                              label={source.label}
-                            />
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {/* Header Image Preview */}
-                    {getHeaderImageUrl(formData.website.headerImageSource) && (
-                      <div className="p-2 bg-muted/30 rounded space-y-1">
-                        <span className="text-sm text-muted-foreground">Preview:</span>
-                        <img
-                          src={getHeaderImageUrl(formData.website.headerImageSource)}
-                          alt="Header background preview"
-                          className="w-full max-h-32 object-cover rounded"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
-                          }}
-                        />
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground p-2 bg-muted/30 rounded">
-                    <AlertCircle className="h-4 w-4" />
-                    No header images available. Extract branding first.
+                {/* Always show all 4 image source options */}
+                <Select
+                  value={formData.website.headerImageSource}
+                  onValueChange={(value) => updateFormData('website', 'headerImageSource', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ALL_IMAGE_SOURCES.map((source) => {
+                      const imageUrl = getHeaderImageUrl(source.value);
+                      const hasImage = !!imageUrl && imageUrl.length > 0;
+                      return (
+                        <SelectItem key={source.value} value={source.value}>
+                          <div className="flex items-center gap-2">
+                            {hasImage ? (
+                              <HeaderImagePreview url={imageUrl} label={source.label} />
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <div className="h-8 w-14 rounded border bg-muted/50 flex items-center justify-center">
+                                  <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                                </div>
+                                <span className="text-sm text-muted-foreground">{source.label} (empty)</span>
+                              </div>
+                            )}
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+
+                {/* URL Input for adding/replacing header image */}
+                {onHeaderImageSave && (
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Link2 className="h-3 w-3" />
+                      Paste image URL to add/replace selected source
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={headerImageUrlInput}
+                        onChange={(e) => setHeaderImageUrlInput(e.target.value)}
+                        placeholder="https://example.com/image.jpg"
+                        className="flex-1"
+                        disabled={isHeaderImageSaving}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !isHeaderImageSaving) {
+                            e.preventDefault();
+                            handleHeaderImageUrlSubmit();
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleHeaderImageUrlSubmit}
+                        disabled={!headerImageUrlInput.trim() || isHeaderImageSaving}
+                        className="px-3 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                      >
+                        {isHeaderImageSaving ? (
+                          <>
+                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="h-4 w-4" />
+                            Apply & Save
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Image URL will be downloaded and converted to base64 when you click Apply.
+                    </p>
+                  </div>
+                )}
+
+                {/* Header Image Preview */}
+                {getHeaderImageUrl(formData.website.headerImageSource) && (
+                  <div className="p-2 bg-muted/30 rounded space-y-1">
+                    <span className="text-sm text-muted-foreground">Preview:</span>
+                    <img
+                      src={getHeaderImageUrl(formData.website.headerImageSource)}
+                      alt="Header background preview"
+                      className="w-full max-h-32 object-cover rounded"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
                   </div>
                 )}
               </div>

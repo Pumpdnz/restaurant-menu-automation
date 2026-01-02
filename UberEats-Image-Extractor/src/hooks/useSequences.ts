@@ -763,3 +763,116 @@ export function useRestaurantSequences(restaurantId: string, options?: { enabled
     refetchInterval: isEnabled ? 30000 : false, // Only refetch when enabled
   });
 }
+
+// ============================================
+// Registration Batch Sequence Hooks
+// ============================================
+
+/**
+ * Batch fetch sequences for multiple restaurants in one query
+ * Optimized for RegistrationBatchDetail to avoid N+1 queries
+ */
+export function useRegistrationBatchSequences(
+  restaurantIds: string[],
+  options?: { enabled?: boolean }
+) {
+  const enabled = options?.enabled !== false && restaurantIds.length > 0;
+
+  return useQuery<{ success: boolean; data: Record<string, SequenceInstance[]> }>({
+    queryKey: ['registration-batch-sequences', restaurantIds.sort().join(',')],
+    queryFn: async () => {
+      const response = await api.get(
+        `/sequence-instances/batch/restaurants?restaurant_ids=${restaurantIds.join(',')}`
+      );
+      return response.data;
+    },
+    enabled,
+    refetchInterval: enabled ? 30000 : false,
+  });
+}
+
+/**
+ * Recreate a single sequence - deletes and recreates with fresh restaurant data
+ */
+export function useRecreateSequence() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (instanceId: string) => {
+      const response = await api.post(`/sequence-instances/${instanceId}/recreate`);
+      return response.data.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['sequence-instances'] });
+      queryClient.invalidateQueries({ queryKey: ['registration-batch-sequences'] });
+      queryClient.invalidateQueries({ queryKey: ['restaurant-sequences'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      toast.success('Sequence recreated successfully', {
+        description: `Created ${data.tasks_created} tasks with updated data`,
+      });
+    },
+    onError: (error: any) => {
+      toast.error('Failed to recreate sequence', {
+        description: error.response?.data?.error || error.message,
+      });
+    },
+  });
+}
+
+/**
+ * Bulk recreate result type
+ */
+export interface BulkRecreateResult {
+  succeeded: {
+    original_instance_id: string;
+    new_instance_id: string;
+    restaurant_id: string;
+    tasks_created: number;
+  }[];
+  failed: {
+    instance_id: string;
+    error: string;
+  }[];
+  summary: {
+    total: number;
+    success: number;
+    failure: number;
+  };
+}
+
+/**
+ * Bulk recreate sequences for multiple instances
+ */
+export function useRecreateSequenceBulk() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (instanceIds: string[]) => {
+      const response = await api.post('/sequence-instances/bulk-recreate', {
+        instance_ids: instanceIds,
+      });
+      return response.data.data as BulkRecreateResult;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['sequence-instances'] });
+      queryClient.invalidateQueries({ queryKey: ['registration-batch-sequences'] });
+      queryClient.invalidateQueries({ queryKey: ['restaurant-sequences'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+
+      if (data.summary.failure === 0) {
+        toast.success('All sequences recreated successfully!', {
+          description: `${data.summary.success} sequence(s) recreated with updated data`,
+        });
+      } else if (data.summary.success === 0) {
+        toast.error('All sequences failed to recreate');
+      } else {
+        toast.warning(`Partial success: ${data.summary.success} recreated, ${data.summary.failure} failed`);
+      }
+    },
+    onError: (error: any) => {
+      toast.error('Failed to recreate sequences', {
+        description: error.response?.data?.error || error.message,
+      });
+    },
+  });
+}

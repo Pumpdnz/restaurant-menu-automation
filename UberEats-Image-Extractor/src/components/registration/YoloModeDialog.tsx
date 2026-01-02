@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import api from '../../services/api';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +11,21 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Button } from '../ui/button';
 import { useAuth } from '../../context/AuthContext';
-import { Loader2, Play, Save, X, ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
+import {
+  Loader2,
+  Play,
+  Save,
+  X,
+  ArrowLeft,
+  CheckCircle,
+  XCircle,
+  Globe,
+  Search,
+  ExternalLink,
+  Linkedin,
+  Facebook,
+  Sparkles,
+} from 'lucide-react';
 
 // Tab components
 import { AccountTab } from './tabs/AccountTab';
@@ -62,6 +77,10 @@ interface Restaurant {
   user_email?: string;
   user_password_hint?: string;
   stripe_connect_url?: string;
+  // Platform URLs for research links
+  website_url?: string;
+  ubereats_url?: string;
+  facebook_url?: string;
   menus?: Array<{
     id: string;
     name: string;
@@ -73,6 +92,9 @@ interface Restaurant {
     item_count?: number;
   }>;
 }
+
+// Header image field type for save functionality
+type HeaderImageField = 'website_og_image' | 'ubereats_og_image' | 'doordash_og_image' | 'facebook_cover_image';
 
 interface RegistrationStatus {
   success: boolean;
@@ -155,6 +177,8 @@ interface YoloModeDialogProps {
   registrationStatus: RegistrationStatus | null;
   onExecute: (formData: YoloModeFormData) => Promise<void>;
   onSave: (formData: YoloModeFormData) => Promise<void>;
+  /** Optional callback to refresh restaurant data after saving header image */
+  onRefresh?: () => void;
 }
 
 // Helper function to generate default password
@@ -182,6 +206,36 @@ function determineRegistrationMode(
   return 'existing_account_additional_restaurant';
 }
 
+// Header image sources in priority order: Website > Facebook > UberEats > DoorDash
+const HEADER_IMAGE_PRIORITY = [
+  'website_og_image',
+  'facebook_cover_image',
+  'ubereats_og_image',
+  'doordash_og_image',
+] as const;
+
+// Get the best available header image source based on priority
+function getDefaultHeaderImageSource(restaurant: Restaurant): { hasImage: boolean; source: string } {
+  for (const source of HEADER_IMAGE_PRIORITY) {
+    const value = restaurant[source as keyof Restaurant];
+    if (value && typeof value === 'string' && value.length > 0) {
+      return { hasImage: true, source };
+    }
+  }
+  // Default to website_og_image if none available
+  return { hasImage: false, source: 'website_og_image' };
+}
+
+// Google search URL helper
+function googleSearchUrl(query: string): string {
+  return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+}
+
+// Google AI mode search URL helper
+function googleAISearchUrl(query: string): string {
+  return `https://www.google.com/search?udm=50&q=${encodeURIComponent(query)}`;
+}
+
 // Initialize form data from restaurant and registration status
 function initializeFormData(
   restaurant: Restaurant,
@@ -192,10 +246,13 @@ function initializeFormData(
     ? restaurant.cuisine
     : (restaurant.cuisine ? [restaurant.cuisine] : []);
 
+  // Get the best available header image
+  const headerImage = getDefaultHeaderImageSource(restaurant);
+
   return {
     account: {
       registerNewUser: !registrationStatus?.hasAccount,
-      email: restaurant.user_email || restaurant.email || '',
+      email: restaurant.user_email || restaurant.email || restaurant.contact_email || '',
       password: restaurant.user_password_hint || generateDefaultPassword(restaurant.name),
       phone: restaurant.phone || '',
     },
@@ -220,8 +277,8 @@ function initializeFormData(
       primaryColor: restaurant.primary_color || '#000000',
       secondaryColor: restaurant.secondary_color || '#FFFFFF',
       disableGradients: false,
-      configureHeader: !!restaurant.website_og_image,
-      headerImageSource: 'website_og_image',
+      configureHeader: headerImage.hasImage,
+      headerImageSource: headerImage.source,
       headerLogoSource: 'logo_nobg_url',
       headerLogoDarkTint: 'none',
       headerLogoLightTint: 'none',
@@ -233,7 +290,7 @@ function initializeFormData(
       cardTextColor: theme === 'light' ? 'secondary' : 'white',
       cardTextCustomColor: '',
       faviconSource: 'logo_favicon_url',
-      itemLayout: 'list',
+      itemLayout: 'card',
     },
     payment: {
       includeStripeLink: false,
@@ -254,13 +311,15 @@ export function YoloModeDialog({
   restaurant,
   registrationStatus,
   onExecute,
-  onSave
+  onSave,
+  onRefresh,
 }: YoloModeDialogProps) {
   const { isFeatureEnabled } = useAuth();
   const [activeTab, setActiveTab] = useState('account');
   const [formData, setFormData] = useState<YoloModeFormData | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [viewMode, setViewMode] = useState<'form' | 'progress'>('form');
+  const [isHeaderImageSaving, setIsHeaderImageSaving] = useState(false);
 
   // Execution hook
   const {
@@ -268,21 +327,23 @@ export function YoloModeDialog({
     executionStatus,
     currentPhase,
     stepResults,
+    canResume,
     executeYoloMode,
     cancelExecution,
     resetExecution,
     checkAndResumeExecution,
+    resumeExecution,
   } = useYoloModeExecution();
 
-  // Check for in-progress execution when dialog opens
+  // Check for in-progress or failed execution when dialog opens
   // This allows resuming progress view if user closed dialog during execution
   useEffect(() => {
     if (open && restaurant?.id) {
       checkAndResumeExecution(restaurant.id).then((hasExecution) => {
         if (hasExecution) {
-          // Switch to progress view if there's an in-progress execution
+          // Switch to progress view if there's an in-progress or failed (resumable) execution
           setViewMode('progress');
-          console.log('[YoloModeDialog] Resuming in-progress execution');
+          console.log('[YoloModeDialog] Found existing execution, showing progress view');
         } else {
           // Reset to form view
           setActiveTab('account');
@@ -329,15 +390,48 @@ export function YoloModeDialog({
   ) => {
     setFormData(prev => {
       if (!prev) return prev;
-      return {
+
+      const updated = {
         ...prev,
         [section]: {
           ...prev[section],
           [key]: value,
         },
       };
+
+      // Sync email between account and onboarding tabs when one is empty
+      if (section === 'onboarding' && key === 'userEmail' && typeof value === 'string') {
+        // If account email is empty, sync from onboarding
+        if (!prev.account.email) {
+          updated.account = { ...updated.account, email: value };
+        }
+      } else if (section === 'account' && key === 'email' && typeof value === 'string') {
+        // If onboarding email is empty, sync from account
+        if (!prev.onboarding.userEmail) {
+          updated.onboarding = { ...updated.onboarding, userEmail: value };
+        }
+      }
+
+      return updated;
     });
   }, []);
+
+  // Handle header image save - saves directly to database (URL converted to base64 on backend)
+  const handleHeaderImageSave = useCallback(async (field: HeaderImageField, url: string) => {
+    if (!restaurant?.id) return;
+
+    setIsHeaderImageSaving(true);
+    try {
+      await api.patch(`/restaurants/${restaurant.id}`, { [field]: url });
+      // Refresh restaurant data to show the new image
+      onRefresh?.();
+    } catch (error) {
+      console.error('Failed to save header image:', error);
+      throw error;
+    } finally {
+      setIsHeaderImageSaving(false);
+    }
+  }, [restaurant?.id, onRefresh]);
 
   // Handle execute
   const handleExecute = async () => {
@@ -410,7 +504,109 @@ export function YoloModeDialog({
               onValueChange={setActiveTab}
               className="flex-1 overflow-hidden flex flex-col"
             >
-              <TabsList size="full" className="grid w-full" style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
+              {/* Research Links Bar */}
+              <div className="flex flex-wrap items-center gap-2 px-3 py-2 bg-blue-50 border rounded-t-lg text-xs">
+                <span className="text-muted-foreground font-medium mr-1">Research:</span>
+
+                {/* Website Link */}
+                {restaurant?.website_url && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => window.open(restaurant.website_url, '_blank')}
+                  >
+                    <Globe className="h-3 w-3 mr-1" />
+                    Website
+                  </Button>
+                )}
+
+                {/* Facebook Link */}
+                {restaurant?.facebook_url && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => window.open(restaurant.facebook_url, '_blank')}
+                  >
+                    <Facebook className="h-3 w-3 mr-1" />
+                    Facebook
+                  </Button>
+                )}
+
+                {/* UberEats Link */}
+                {restaurant?.ubereats_url && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => window.open(restaurant.ubereats_url, '_blank')}
+                  >
+                    <ExternalLink className="h-3 w-3 mr-1" />
+                    UberEats Page
+                  </Button>
+                )}
+
+                {/* Google search: Restaurant email */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => window.open(googleSearchUrl(
+                    `${restaurant?.name || ''} ${restaurant?.city || ''} email address`
+                  ), '_blank')}
+                >
+                  <Search className="h-3 w-3 mr-1" />
+                  Email Search
+                </Button>
+
+                {/* LinkedIn search: Contact person */}
+                {restaurant?.contact_name && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => window.open(googleSearchUrl(
+                      `${restaurant.contact_name} ${restaurant?.name || ''} LinkedIn`
+                    ), '_blank')}
+                  >
+                    <Linkedin className="h-3 w-3 mr-1" />
+                    Contact LinkedIn
+                  </Button>
+                )}
+
+                {/* Google search: Contact email */}
+                {restaurant?.contact_name && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => window.open(googleSearchUrl(
+                      `${restaurant.contact_name} ${restaurant?.name || ''} ${restaurant?.city || ''} email address`
+                    ), '_blank')}
+                  >
+                    <Search className="h-3 w-3 mr-1" />
+                    Contact Email
+                  </Button>
+                )}
+
+                {/* AI Mode Search */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => window.open(googleAISearchUrl(
+                    `What is the name of the owner of ${restaurant?.name || ''} ${restaurant?.city || ''} and are there any publicly available email addresses or phone numbers for contacting the business or their owners?`
+                  ), '_blank')}
+                >
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  AI Search
+                </Button>
+
+                <ExternalLink className="h-3 w-3 text-muted-foreground ml-auto" />
+              </div>
+
+              <TabsList size="full" className="grid w-full rounded-t-none" style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
                 {tabs.map(tab => (
                   <TabsTrigger key={tab.id} value={tab.id} size="full">
                     {tab.label}
@@ -448,6 +644,8 @@ export function YoloModeDialog({
                     formData={formData}
                     updateFormData={updateFormData}
                     restaurant={restaurant}
+                    onHeaderImageSave={handleHeaderImageSave}
+                    isHeaderImageSaving={isHeaderImageSaving}
                   />
                 </TabsContent>
 
@@ -521,10 +719,22 @@ export function YoloModeDialog({
                       </span>
                     )}
                     {executionStatus === 'failed' && (
-                      <span className="flex items-center text-red-600 text-sm">
-                        <XCircle className="h-4 w-4 mr-1" />
-                        Setup Failed
-                      </span>
+                      <>
+                        <span className="flex items-center text-red-600 text-sm">
+                          <XCircle className="h-4 w-4 mr-1" />
+                          Setup Failed
+                        </span>
+                        {canResume && restaurant?.id && (
+                          <Button
+                            variant="default"
+                            onClick={() => resumeExecution(restaurant.id)}
+                            disabled={isExecuting}
+                          >
+                            <Play className="h-4 w-4 mr-2" />
+                            Resume
+                          </Button>
+                        )}
+                      </>
                     )}
                     {executionStatus === 'cancelled' && (
                       <span className="flex items-center text-amber-600 text-sm">

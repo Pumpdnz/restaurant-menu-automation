@@ -1224,11 +1224,30 @@ async function updateLead(leadId, updates, orgId) {
 
     // Only allow certain fields to be updated
     const allowedFields = [
-      'restaurant_name', 'phone', 'email', 'website_url',
-      'instagram_url', 'facebook_url', 'google_maps_url',
-      'contact_name', 'contact_email', 'contact_phone', 'contact_role',
-      'organisation_name', 'city', 'region', 'opening_hours', 'opening_hours_text',
-      'ubereats_address', 'google_address'
+      // Basic info
+      'restaurant_name', 'store_link',
+      // Location
+      'ubereats_address', 'google_address', 'city', 'region', 'country', 'google_maps_url',
+      // UberEats info
+      'ubereats_number_of_reviews', 'ubereats_average_review_rating', 'ubereats_cuisine', 'ubereats_price_rating',
+      // Google info
+      'google_number_of_reviews', 'google_average_review_rating',
+      // Contact person
+      'contact_name', 'contact_role', 'contact_phone', 'contact_email',
+      // Business contact
+      'phone', 'email',
+      // Organisation
+      'organisation_name', 'number_of_venues',
+      // Online presence
+      'website_url', 'instagram_url', 'facebook_url',
+      // Business details
+      'website_type', 'online_ordering_platform', 'online_ordering_handles_delivery',
+      // Ordering platform (Step 4)
+      'ordering_platform_url', 'ordering_platform_name',
+      // Opening hours
+      'opening_hours', 'opening_hours_text',
+      // Header images
+      'website_og_image', 'ubereats_og_image', 'doordash_og_image', 'facebook_cover_image'
     ];
 
     const updateData = {};

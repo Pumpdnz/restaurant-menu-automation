@@ -97,6 +97,12 @@ export interface Lead {
   opening_hours: any | null;
   opening_hours_text: string | null;
   website_type: string | null;
+
+  // Header images
+  website_og_image: string | null;
+  ubereats_og_image: string | null;
+  doordash_og_image: string | null;
+  facebook_cover_image: string | null;
   online_ordering_platform: string | null;
   online_ordering_handles_delivery: boolean | null;
 
@@ -167,6 +173,75 @@ export interface PendingLeadsFilters {
   cuisine?: string;
   limit?: number;
   offset?: number;
+}
+
+// ============================================================================
+// PENDING LEADS SORTING
+// ============================================================================
+
+export type SortableColumn = 'restaurant_name' | 'city' | 'ubereats_number_of_reviews' | 'created_at';
+export type SortDirection = 'disabled' | 'desc' | 'asc';
+
+export interface ColumnSort {
+  column: SortableColumn;
+  direction: 'desc' | 'asc';
+}
+
+export type SortState = ColumnSort[];
+
+export const DEFAULT_PENDING_LEADS_SORT: SortState = [
+  { column: 'created_at', direction: 'desc' },
+  { column: 'ubereats_number_of_reviews', direction: 'desc' }
+];
+
+/**
+ * Serialize sort state to API parameter string
+ */
+export function serializeSortState(sortState: SortState): string {
+  return sortState.map(s => `${s.column}:${s.direction}`).join(',');
+}
+
+/**
+ * Get the current direction for a specific column from sort state
+ */
+export function getColumnDirection(sortState: SortState, column: SortableColumn): SortDirection {
+  const found = sortState.find(s => s.column === column);
+  return found ? found.direction : 'disabled';
+}
+
+/**
+ * Get the sort priority (1-based index) for a column, or null if not in sort
+ */
+export function getColumnPriority(sortState: SortState, column: SortableColumn): number | null {
+  const index = sortState.findIndex(s => s.column === column);
+  return index >= 0 ? index + 1 : null;
+}
+
+/**
+ * Cycle through sort states: disabled -> desc -> asc -> disabled
+ * When enabling a column, it's added as secondary sort (appended to end)
+ * When changing direction, column maintains its priority
+ * When disabling, column is removed from sort
+ */
+export function cycleSortColumn(sortState: SortState, column: SortableColumn): SortState {
+  const currentIndex = sortState.findIndex(s => s.column === column);
+
+  if (currentIndex === -1) {
+    // Column is disabled -> enable as descending, add as secondary (append to end)
+    return [...sortState, { column, direction: 'desc' }];
+  }
+
+  const current = sortState[currentIndex];
+
+  if (current.direction === 'desc') {
+    // Descending -> Ascending (keep position)
+    const newState = [...sortState];
+    newState[currentIndex] = { column, direction: 'asc' };
+    return newState;
+  }
+
+  // Ascending -> Disabled (remove from list)
+  return sortState.filter((_, i) => i !== currentIndex);
 }
 
 // ============================================================================

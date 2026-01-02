@@ -50,6 +50,22 @@ function cleanRestaurantName(name) {
 }
 
 /**
+ * Convert name to title case (capitalize first letter of each word)
+ * Used for contact_name field while full_legal_name stays as-is
+ *
+ * @param {string} name - Name in any case (e.g., "JOHN WILLIAM SMITH")
+ * @returns {string} Title case name (e.g., "John William Smith")
+ */
+function toTitleCase(name) {
+  if (!name) return '';
+  return name
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+/**
  * Parse street from a full address string
  * Extracts the street name portion by finding common street type suffixes
  *
@@ -573,8 +589,8 @@ function autoSelectDefaults(details) {
     // GST from NZBN details
     gst_number: details.nzbn_details?.gst_numbers?.[0],
 
-    // Contact from active director
-    contact_name: activeDirector?.name,
+    // Contact from active director (title case for contact_name, original for full_legal_name)
+    contact_name: toTitleCase(activeDirector?.name),
     full_legal_name: activeDirector?.full_legal_name,
 
     // Email from NZBN details (business email)

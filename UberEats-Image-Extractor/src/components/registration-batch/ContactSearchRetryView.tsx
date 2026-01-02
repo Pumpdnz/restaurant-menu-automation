@@ -15,6 +15,7 @@ import {
   Newspaper,
   ChevronsDownUp,
   ChevronsUpDown,
+  Sparkles,
 } from 'lucide-react';
 
 import {
@@ -358,6 +359,19 @@ function RestaurantRetryRow({
                       >
                         <Newspaper className="h-3 w-3 mr-1" />
                         Owner News
+                        <ExternalLink className="h-3 w-3 ml-1" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => {
+                          const query = encodeURIComponent(`What is the name of the owner of ${searchParams.restaurant_name || job.restaurant?.name || ''} ${job.restaurant?.city || ''} and what is the NZBN of the company behind this business and is there a publicly available email for contacting the business or their owners?`);
+                          window.open(`https://www.google.com/search?udm=50&q=${query}`, '_blank');
+                        }}
+                      >
+                        <Sparkles className="h-3 w-3 mr-1" />
+                        AI Search
                         <ExternalLink className="h-3 w-3 ml-1" />
                       </Button>
                     </div>

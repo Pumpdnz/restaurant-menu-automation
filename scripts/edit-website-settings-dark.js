@@ -87,6 +87,10 @@ const primaryColor = getArg('primary');
 const headPath = getArg('head');
 const bodyPath = getArg('body');
 const restaurantName = getArg('name');
+
+// Check for environment variable flags (database content approach)
+const headFromEnv = args.includes('--head-from-env');
+const bodyFromEnv = args.includes('--body-from-env');
 const logoPath = getArg('logo');
 const faviconPath = getArg('favicon'); // Separate favicon path (falls back to logo if not provided)
 const headerEnabled = getArg('header-enabled') === 'true';
@@ -109,12 +113,18 @@ const adminUrl = (getArg('admin-url') || DEFAULT_ADMIN_URL).replace(/\/$/, ''); 
 const LOGIN_URL = buildLoginUrl(adminUrl);
 const ADMIN_HOSTNAME = getAdminHostname(adminUrl);
 
-// Validate required arguments
-if (!email || !password || !primaryColor || !headPath || !bodyPath || !restaurantName) {
+// Validate required arguments - support either file paths or environment variable flags
+const hasHeadContent = headPath || (headFromEnv && process.env.HEAD_INJECTION_CONTENT);
+const hasBodyContent = bodyPath || (bodyFromEnv && process.env.BODY_INJECTION_CONTENT);
+
+if (!email || !password || !primaryColor || !hasHeadContent || !hasBodyContent || !restaurantName) {
   console.error('❌ Error: Missing required parameters');
   console.error('Required: --email=<email> --password=<password> --name=<name> --primary=<color> --head=<path> --body=<path>');
-  console.error('\nExample:');
+  console.error('  OR use --head-from-env --body-from-env with HEAD_INJECTION_CONTENT and BODY_INJECTION_CONTENT environment variables');
+  console.error('\nExample (file paths):');
   console.error('node edit-website-settings-dark.js --email="test@example.com" --password="Password123!" --name="Test Restaurant" --primary="#A47F20" --head="../generated-code/restaurant/head-injection.html" --body="../generated-code/restaurant/body-injection.html"');
+  console.error('\nExample (environment variables):');
+  console.error('HEAD_INJECTION_CONTENT=<base64> BODY_INJECTION_CONTENT=<base64> node edit-website-settings-dark.js --email="..." --password="..." --name="..." --primary="..." --head-from-env --body-from-env');
   process.exit(1);
 }
 
@@ -127,14 +137,24 @@ const takeScreenshot = async (page, name) => {
 async function editWebsiteSettingsDark() {
   console.log('🚀 Starting Dark Theme Website Configuration...\n');
   
-  // Read the injection files
+  // Read the injection content from environment variables or files
   let headCode, bodyCode;
+  let contentSource = 'files';
   try {
-    headCode = await fs.readFile(path.resolve(headPath), 'utf-8');
-    bodyCode = await fs.readFile(path.resolve(bodyPath), 'utf-8');
-    console.log('✓ Loaded code injection files');
+    if (headFromEnv && process.env.HEAD_INJECTION_CONTENT) {
+      // Decode from base64 environment variable
+      headCode = Buffer.from(process.env.HEAD_INJECTION_CONTENT, 'base64').toString('utf-8');
+      bodyCode = Buffer.from(process.env.BODY_INJECTION_CONTENT, 'base64').toString('utf-8');
+      contentSource = 'database (env vars)';
+      console.log('✓ Loaded code injection from environment variables (database content)');
+    } else {
+      // Read from file paths
+      headCode = await fs.readFile(path.resolve(headPath), 'utf-8');
+      bodyCode = await fs.readFile(path.resolve(bodyPath), 'utf-8');
+      console.log('✓ Loaded code injection files');
+    }
   } catch (error) {
-    console.error('❌ Error reading injection files:', error.message);
+    console.error('❌ Error reading injection content:', error.message);
     process.exit(1);
   }
   
@@ -144,8 +164,9 @@ async function editWebsiteSettingsDark() {
   console.log(`  Password: ${'*'.repeat(password.length)}`);
   console.log(`  Restaurant Name: ${restaurantName}`);
   console.log(`  Primary Color: ${primaryColor}`);
-  console.log(`  Head file: ${headPath} (${headCode.length} chars)`);
-  console.log(`  Body file: ${bodyPath} (${bodyCode.length} chars)`);
+  console.log(`  Content Source: ${contentSource}`);
+  console.log(`  Head content: ${headCode.length} chars`);
+  console.log(`  Body content: ${bodyCode.length} chars`);
   if (logoPath) console.log(`  Logo: ${logoPath}`);
   if (instagramUrl) console.log(`  Instagram: ${instagramUrl}`);
   if (facebookUrl) console.log(`  Facebook: ${facebookUrl}`);

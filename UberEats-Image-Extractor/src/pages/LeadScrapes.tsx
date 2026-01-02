@@ -11,6 +11,8 @@ import {
   useLeadScrapeJobs,
   usePendingLeads,
   usePendingLeadsFilterOptions,
+  SortState,
+  DEFAULT_PENDING_LEADS_SORT,
 } from '../hooks/useLeadScrape';
 import { ScrapeJobProgressCard } from '../components/leads/ScrapeJobProgressCard';
 import { CreateLeadScrapeJob } from '../components/leads/CreateLeadScrapeJob';
@@ -103,6 +105,9 @@ export default function LeadScrapes() {
     city: [] as string[],
     cuisine: [] as string[],
   });
+
+  // Pending leads sort state
+  const [pendingSortState, setPendingSortState] = useState<SortState>(DEFAULT_PENDING_LEADS_SORT);
 
   // Modal state
   const [createJobOpen, setCreateJobOpen] = useState(false);
@@ -374,6 +379,8 @@ export default function LeadScrapes() {
             leads={pendingLeads}
             isLoading={pendingLoading}
             onRefresh={refetchPending}
+            sortState={pendingSortState}
+            onSortChange={setPendingSortState}
           />
         </TabsContent>
       </div>

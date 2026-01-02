@@ -36,7 +36,7 @@ const EXCLUDED_CHAIN_PATTERNS = [
   /\bkfc\b/i,
   /kentucky\s*fried\s*chicken/i,
   /\bsubway\b/i,
-  /bowl['']?d\b/i,
+  /bowl.?d\b/i,  // Matches BOWL'D with any apostrophe variant
   /pita\s*pit/i,
   /burger\s*fuel/i,
   /carl'?s?\s*jr\.?/i,
@@ -49,8 +49,8 @@ const EXCLUDED_CHAIN_PATTERNS = [
   /domino'?s/i,
   /lone\s*star/i,
   /pizza\s*hut/i,
-  /hell'?s?\s*pizza/i,
-  /\bhell\s+[a-z]+\b/i, // "Hell {Location}" pattern
+  /hell.?s?\s*pizza/i,
+  /\bhell\s*\(/i,  // "Hell (Location)" pattern - matches Hell followed by parenthesis
   /pizza\s*club/i,
   /chicking/i,
   /wendy'?s/i,
@@ -65,7 +65,7 @@ const EXCLUDED_CHAIN_PATTERNS = [
   /shake\s*out/i,
   /downlow\s*burgers?/i,
   /denny'?s/i,
-  /egg'?d\b/i,
+  /egg.?d\b/i,  // Matches EGG'D with any apostrophe variant
   /\bhoyts\b/i,
   /wahlburgers?/i,
   /krispy\s*kreme/i,
@@ -84,7 +84,13 @@ const EXCLUDED_CHAIN_PATTERNS = [
   /\bcalimero\b/i,
   /\blj['']?s\b/i,
   /texas\s*chicken/i,
-  /burger\s*wisconsin/i,
+  /burger\s+wisconsin/i,
+  // Additional chains (added 2026-01-02)
+  /cobb\s*[&]\s*co\.?/i,  // Cobb & Co.
+  /\bk[\-\s]*chicken\b/i,  // K-Chicken
+  /winner\s+winner/i,  // Winner Winner
+  /robert\s+harris/i,  // Robert Harris
+  /\bportofino\b/i,  // Portofino
 ];
 
 /**

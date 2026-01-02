@@ -542,6 +542,180 @@ router.post('/jobs/:jobId/retry', authMiddleware, async (req, res) => {
   }
 });
 
+/**
+ * POST /api/registration-batches/jobs/:jobId/resume-step-6
+ * Resume Step 6 execution from the last completed phase
+ * This preserves existing progress and continues from where it left off
+ */
+router.post('/jobs/:jobId/resume-step-6', authMiddleware, async (req, res) => {
+  try {
+    const { getSupabaseClient } = require('../services/database-service');
+    const client = getSupabaseClient();
+
+    // Get the job with full details
+    const { data: job, error: jobError } = await client
+      .from('registration_jobs')
+      .select(`
+        *,
+        steps:registration_job_steps(*),
+        restaurant:restaurants(id, name, address, city)
+      `)
+      .eq('id', req.params.jobId)
+      .eq('organisation_id', req.user.organisationId)
+      .single();
+
+    if (jobError || !job) {
+      return res.status(404).json({
+        success: false,
+        error: 'Registration job not found'
+      });
+    }
+
+    // Check if Step 6 has partial progress
+    const step6 = job.steps?.find(s => s.step_number === 6);
+    if (!step6?.sub_step_progress) {
+      return res.status(400).json({
+        success: false,
+        error: 'No Step 6 progress to resume from. Use retry instead.'
+      });
+    }
+
+    // Detect last completed phase for response
+    const lastCompletePhase = registrationBatchService.detectLastCompletePhase(step6.sub_step_progress);
+
+    // Return immediately, execute resume in background
+    res.json({
+      success: true,
+      message: 'Step 6 resume initiated',
+      job_id: job.id,
+      resuming_from: lastCompletePhase || 'beginning'
+    });
+
+    // Execute resume in background
+    setImmediate(async () => {
+      try {
+        const authContext = {
+          token: req.headers.authorization,
+          organisationId: req.user.organisationId
+        };
+
+        await registrationBatchService.resumeYoloModeForJob(job, job.batch_job_id, authContext);
+        console.log(`[RegistrationBatchRoutes] Resume completed for job ${job.id}`);
+      } catch (resumeError) {
+        console.error(`[RegistrationBatchRoutes] Resume failed for job ${job.id}:`, resumeError);
+      }
+    });
+
+  } catch (error) {
+    console.error('[RegistrationBatchRoutes] Error resuming Step 6:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================================
+// STEP 6 SUB-STEP MANUAL EDITING ENDPOINTS
+// ============================================================================
+
+/**
+ * PATCH /api/registration-batches/jobs/:jobId/steps/6/sub-steps/:subStepKey
+ * Update a single sub-step status manually
+ * Body:
+ *   - status: 'completed' | 'failed' | 'skipped' | 'pending'
+ *   - data: object (optional additional data)
+ */
+router.patch('/jobs/:jobId/steps/6/sub-steps/:subStepKey', authMiddleware, async (req, res) => {
+  try {
+    const { jobId, subStepKey } = req.params;
+    const { status, data } = req.body;
+
+    if (!status) {
+      return res.status(400).json({
+        success: false,
+        error: 'Status is required'
+      });
+    }
+
+    const validStatuses = ['completed', 'failed', 'skipped', 'pending'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
+      });
+    }
+
+    const result = await registrationBatchService.updateSubStepStatus(
+      jobId,
+      subStepKey,
+      status,
+      data || {},
+      req.user.organisationId
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error('[RegistrationBatchRoutes] Error updating sub-step:', error);
+    res.status(error.message.includes('not found') ? 404 : 400).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/registration-batches/jobs/:jobId/steps/6/sub-steps/:subStepKey/reset
+ * Reset a sub-step to pending
+ * Body:
+ *   - cascade: boolean (default: true) - whether to reset dependent sub-steps
+ */
+router.post('/jobs/:jobId/steps/6/sub-steps/:subStepKey/reset', authMiddleware, async (req, res) => {
+  try {
+    const { jobId, subStepKey } = req.params;
+    const { cascade = true } = req.body;
+
+    const result = await registrationBatchService.resetSubStep(
+      jobId,
+      subStepKey,
+      cascade,
+      req.user.organisationId
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error('[RegistrationBatchRoutes] Error resetting sub-step:', error);
+    res.status(error.message.includes('not found') ? 404 : 400).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/registration-batches/jobs/:jobId/steps/6/sub-steps/:subStepKey/validation
+ * Get validation context for a sub-step (dependencies and allowed transitions)
+ */
+router.get('/jobs/:jobId/steps/6/sub-steps/:subStepKey/validation', authMiddleware, async (req, res) => {
+  try {
+    const { jobId, subStepKey } = req.params;
+
+    const result = await registrationBatchService.getSubStepValidation(
+      jobId,
+      subStepKey,
+      req.user.organisationId
+    );
+
+    res.json({
+      success: true,
+      ...result
+    });
+  } catch (error) {
+    console.error('[RegistrationBatchRoutes] Error getting sub-step validation:', error);
+    res.status(error.message.includes('not found') ? 404 : 400).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // ============================================================================
 // COMPANY SELECTION ENDPOINTS (Step 3 helpers)
 // ============================================================================

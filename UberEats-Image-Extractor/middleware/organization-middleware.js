@@ -7,8 +7,9 @@
 const databaseService = require('../src/services/database-service');
 
 function organizationMiddleware(req, res, next) {
-  // Get organization ID from header
-  const orgId = req.headers['x-organization-id'] || req.headers['X-Organization-ID'];
+  // Get organization ID from header (support both American and British spellings)
+  const orgId = req.headers['x-organization-id'] || req.headers['X-Organization-ID'] ||
+                req.headers['x-organisation-id'] || req.headers['X-Organisation-ID'];
   
   // Determine if this is a polling/status endpoint that doesn't need verbose logging
   const isStatusEndpoint = req.path.includes('/status/') || 

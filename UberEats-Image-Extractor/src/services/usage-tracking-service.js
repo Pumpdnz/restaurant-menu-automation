@@ -115,14 +115,83 @@ const DEFAULT_BILLING_RATES = {
 
 class UsageTrackingService {
   /**
-   * Track a usage event
+   * Check if an error is a transient/retryable error
+   * @param {Error|object} error - The error to check
+   * @returns {boolean} True if error is transient and should be retried
+   */
+  static isTransientError(error) {
+    if (!error) return false;
+
+    const errorStr = typeof error === 'string' ? error :
+      (error.message || error.code || JSON.stringify(error));
+
+    // Cloudflare 5xx errors (returned as HTML)
+    if (errorStr.includes('520:') || errorStr.includes('502:') ||
+        errorStr.includes('503:') || errorStr.includes('504:') ||
+        errorStr.includes('cloudflare') || errorStr.includes('<!DOCTYPE html>')) {
+      return true;
+    }
+
+    // Network/connection errors
+    if (errorStr.includes('ECONNRESET') || errorStr.includes('ETIMEDOUT') ||
+        errorStr.includes('ENOTFOUND') || errorStr.includes('ECONNREFUSED')) {
+      return true;
+    }
+
+    // HTTP 5xx status codes
+    if (error.status >= 500 || error.code >= 500) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Extract a clean error message from potentially verbose errors
+   * @param {Error|object} error - The error to format
+   * @returns {string} A clean, concise error message
+   */
+  static formatErrorMessage(error) {
+    if (!error) return 'Unknown error';
+
+    const errorStr = typeof error === 'string' ? error :
+      (error.message || JSON.stringify(error));
+
+    // Cloudflare HTML error page - extract the key info
+    if (errorStr.includes('<!DOCTYPE html>')) {
+      const titleMatch = errorStr.match(/<title>([^<]+)<\/title>/);
+      if (titleMatch) {
+        return `Cloudflare: ${titleMatch[1].split('|')[1]?.trim() || titleMatch[1]}`;
+      }
+      return 'Cloudflare connection error (HTML response received)';
+    }
+
+    // Supabase/PostgreSQL errors
+    if (error.code && error.message) {
+      return `${error.code}: ${error.message}`;
+    }
+
+    // Truncate very long messages
+    if (errorStr.length > 200) {
+      return errorStr.substring(0, 200) + '...';
+    }
+
+    return errorStr;
+  }
+
+  /**
+   * Track a usage event with retry logic for transient errors
    * @param {string} organisationId - Organization UUID
    * @param {string} eventType - Type of event (use UsageEventType constants)
    * @param {number} quantity - Quantity (default 1)
    * @param {object} metadata - Additional metadata to store
+   * @param {number} retryCount - Current retry attempt (internal use)
    * @returns {Promise<object|null>} The created event or null on error
    */
-  static async trackEvent(organisationId, eventType, quantity = 1, metadata = {}) {
+  static async trackEvent(organisationId, eventType, quantity = 1, metadata = {}, retryCount = 0) {
+    const MAX_RETRIES = 3;
+    const BASE_DELAY = 1000; // 1 second
+
     try {
       if (!organisationId) {
         console.warn('[UsageTracking] No organisation ID provided, skipping tracking');
@@ -142,7 +211,15 @@ class UsageTrackingService {
         .single();
 
       if (error) {
-        console.error('[UsageTracking] Database insert failed:', error);
+        // Check if this is a transient error that should be retried
+        if (this.isTransientError(error) && retryCount < MAX_RETRIES) {
+          const delay = BASE_DELAY * Math.pow(2, retryCount); // Exponential backoff
+          console.warn(`[UsageTracking] Transient error, retrying in ${delay}ms (attempt ${retryCount + 1}/${MAX_RETRIES}): ${this.formatErrorMessage(error)}`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return this.trackEvent(organisationId, eventType, quantity, metadata, retryCount + 1);
+        }
+
+        console.error('[UsageTracking] Database insert failed:', this.formatErrorMessage(error));
         throw error;
       }
 
@@ -159,7 +236,15 @@ class UsageTrackingService {
 
       return data;
     } catch (error) {
-      console.error('[UsageTracking] Failed to track usage event:', error);
+      // Final catch - check for transient errors one more time
+      if (this.isTransientError(error) && retryCount < MAX_RETRIES) {
+        const delay = BASE_DELAY * Math.pow(2, retryCount);
+        console.warn(`[UsageTracking] Transient error in catch, retrying in ${delay}ms (attempt ${retryCount + 1}/${MAX_RETRIES}): ${this.formatErrorMessage(error)}`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return this.trackEvent(organisationId, eventType, quantity, metadata, retryCount + 1);
+      }
+
+      console.error(`[UsageTracking] Failed to track usage event (after ${retryCount} retries):`, this.formatErrorMessage(error));
       // Don't throw - we don't want tracking failures to break functionality
       return null;
     }

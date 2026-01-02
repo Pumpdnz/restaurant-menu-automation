@@ -4,3 +4,4 @@ export { BatchStepList, BatchStepProgress, YoloSubStepProgress } from './BatchSt
 export { CompanySelectionView } from './CompanySelectionView';
 export { ContactSearchRetryView } from './ContactSearchRetryView';
 export { YoloConfigBatchView } from './YoloConfigBatchView';
+export { SubStepEditor } from './SubStepEditor';

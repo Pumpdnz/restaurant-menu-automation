@@ -12,14 +12,17 @@ import {
   ExternalLink,
   Trash2,
   User,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
+  ChevronUp,
+  ChevronDown,
   Filter,
   X,
   Star,
-  ChevronDown
 } from 'lucide-react';
+import {
+  getColumnDirection,
+  getColumnPriority,
+  cycleSortColumn,
+} from '../lib/sort-utils';
 import {
   Table,
   TableBody,
@@ -55,6 +58,51 @@ import { CreateTaskModal } from '../components/tasks/CreateTaskModal';
 import { StartSequenceModal } from '../components/sequences/StartSequenceModal';
 import { Collapsible, CollapsibleContent } from '../components/ui/collapsible';
 
+// SortableHeader component for multi-column sorting
+function SortableHeader({ column, label, sortState, onSort, className }) {
+  const direction = getColumnDirection(sortState, column);
+  const priority = getColumnPriority(sortState, column);
+  const isActive = direction !== 'disabled';
+
+  return (
+    <TableHead
+      className={cn(
+        "cursor-pointer",
+        isActive && "bg-muted/30",
+        className
+      )}
+      onClick={() => onSort(column)}
+    >
+      <div className="flex items-center">
+        {label}
+        <span className="ml-1.5 flex flex-col items-center justify-center h-4 w-4">
+          <ChevronUp
+            className={cn(
+              "h-3 w-3 -mb-0.5 transition-all",
+              direction === 'asc' && "stroke-brand-red",
+              direction === 'desc' && "stroke-muted-foreground/20",
+              direction === 'disabled' && "stroke-muted-foreground/40"
+            )}
+          />
+          <ChevronDown
+            className={cn(
+              "h-3 w-3 -mt-0.5 transition-all",
+              direction === 'desc' && "stroke-brand-blue",
+              direction === 'asc' && "stroke-muted-foreground/20",
+              direction === 'disabled' && "stroke-muted-foreground/40"
+            )}
+          />
+        </span>
+        {priority !== null && (
+          <span className="ml-1 text-[10px] font-medium text-blue-600 bg-blue-100 rounded-full w-4 h-4 flex items-center justify-center">
+            {priority}
+          </span>
+        )}
+      </div>
+    </TableHead>
+  );
+}
+
 export default function Restaurants() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -69,8 +117,10 @@ export default function Restaurants() {
   const [startSequenceModalOpen, setStartSequenceModalOpen] = useState(false);
   const [followUpTaskId, setFollowUpTaskId] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, restaurantId: null, restaurantName: null });
-  const [sortField, setSortField] = useState('created_at');
-  const [sortDirection, setSortDirection] = useState('desc');
+  // Multi-column sort state - array of { column, direction } objects
+  const [sortState, setSortState] = useState([
+    { column: 'created_at', direction: 'desc' }
+  ]);
   const [showFilters, setShowFilters] = useState(true);
 
   // Initialize filters from URL params
@@ -103,7 +153,7 @@ export default function Restaurants() {
   useEffect(() => {
     applyFiltersAndSort();
     updateUrlParams();
-  }, [restaurants, filters, sortField, sortDirection]);
+  }, [restaurants, filters, sortState]);
 
   const fetchRestaurants = async () => {
     try {
@@ -175,43 +225,47 @@ export default function Restaurants() {
       filtered = filtered.filter(r => r.icp_rating && r.icp_rating >= minRating);
     }
 
-    // Apply sorting
-    filtered.sort((a, b) => {
-      let valueA, valueB;
+    // Apply multi-column sorting
+    if (sortState.length > 0) {
+      filtered.sort((a, b) => {
+        for (const { column, direction } of sortState) {
+          let valueA, valueB;
 
-      switch (sortField) {
-        case 'created_at':
-        case 'last_contacted':
-          valueA = a[sortField] ? new Date(a[sortField]) : new Date(0);
-          valueB = b[sortField] ? new Date(b[sortField]) : new Date(0);
-          break;
-        case 'icp_rating':
-          valueA = a[sortField] || 0;
-          valueB = b[sortField] || 0;
-          break;
-        case 'name':
-          valueA = a[sortField]?.toLowerCase() || '';
-          valueB = b[sortField]?.toLowerCase() || '';
-          break;
-        case 'last_scraped':
-          valueA = a.restaurant_platforms?.[0]?.last_scraped_at
-            ? new Date(a.restaurant_platforms[0].last_scraped_at)
-            : new Date(0);
-          valueB = b.restaurant_platforms?.[0]?.last_scraped_at
-            ? new Date(b.restaurant_platforms[0].last_scraped_at)
-            : new Date(0);
-          break;
-        default:
-          valueA = a[sortField] || '';
-          valueB = b[sortField] || '';
-      }
+          switch (column) {
+            case 'created_at':
+            case 'last_contacted':
+              valueA = a[column] ? new Date(a[column]).getTime() : 0;
+              valueB = b[column] ? new Date(b[column]).getTime() : 0;
+              break;
+            case 'icp_rating':
+              valueA = a[column] || 0;
+              valueB = b[column] || 0;
+              break;
+            case 'name':
+              valueA = a[column]?.toLowerCase() || '';
+              valueB = b[column]?.toLowerCase() || '';
+              break;
+            case 'last_scraped':
+              valueA = a.restaurant_platforms?.[0]?.last_scraped_at
+                ? new Date(a.restaurant_platforms[0].last_scraped_at).getTime()
+                : 0;
+              valueB = b.restaurant_platforms?.[0]?.last_scraped_at
+                ? new Date(b.restaurant_platforms[0].last_scraped_at).getTime()
+                : 0;
+              break;
+            default:
+              valueA = a[column] || '';
+              valueB = b[column] || '';
+          }
 
-      if (sortDirection === 'asc') {
-        return valueA > valueB ? 1 : -1;
-      } else {
-        return valueA < valueB ? 1 : -1;
-      }
-    });
+          // Compare values
+          if (valueA < valueB) return direction === 'asc' ? -1 : 1;
+          if (valueA > valueB) return direction === 'asc' ? 1 : -1;
+          // If equal, continue to next sort column
+        }
+        return 0;
+      });
+    }
 
     setFilteredRestaurants(filtered);
   };
@@ -286,22 +340,9 @@ export default function Restaurants() {
     }, 0);
   };
 
-  const handleSort = (field) => {
-    if (sortField === field) {
-      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
-  };
-
-  const getSortIcon = (field) => {
-    if (sortField !== field) {
-      return <ArrowUpDown className="h-4 w-4 ml-1 inline opacity-50" />;
-    }
-    return sortDirection === 'asc'
-      ? <ArrowUp className="h-4 w-4 ml-1 inline" />
-      : <ArrowDown className="h-4 w-4 ml-1 inline" />;
+  // Multi-column sort handler
+  const handleSort = (column) => {
+    setSortState(prev => cycleSortColumn(prev, column));
   };
 
   const getWarmthBadge = (warmth, restaurantId) => {
@@ -887,13 +928,13 @@ export default function Restaurants() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead
-                  className="min-w-[200px] cursor-pointer hover:bg-muted/50"
-                  onClick={() => handleSort('name')}
-                >
-                  Name
-                  {getSortIcon('name')}
-                </TableHead>
+                <SortableHeader
+                  column="name"
+                  label="Name"
+                  sortState={sortState}
+                  onSort={handleSort}
+                  className="min-w-[200px]"
+                />
                 <TableHead className="min-w-[180px]">Lead Contact</TableHead>
                 <TableHead className="min-w-[110px]">Lead Type</TableHead>
                 <TableHead className="min-w-[150px]">Lead Category</TableHead>
@@ -901,28 +942,28 @@ export default function Restaurants() {
                 <TableHead className="min-w-[100px]">Warmth</TableHead>
                 <TableHead className="min-w-[130px]">Stage</TableHead>
                 <TableHead className="min-w-[180px]">Tasks</TableHead>
-                <TableHead
-                  className="min-w-[120px] cursor-pointer hover:bg-muted/50"
-                  onClick={() => handleSort('icp_rating')}
-                >
-                  ICP Rating
-                  {getSortIcon('icp_rating')}
-                </TableHead>
+                <SortableHeader
+                  column="icp_rating"
+                  label="ICP Rating"
+                  sortState={sortState}
+                  onSort={handleSort}
+                  className="min-w-[120px]"
+                />
                 <TableHead className="min-w-[110px]">Demo Store</TableHead>
-                <TableHead
-                  className="min-w-[120px] cursor-pointer hover:bg-muted/50"
-                  onClick={() => handleSort('last_contacted')}
-                >
-                  Last Contact
-                  {getSortIcon('last_contacted')}
-                </TableHead>
-                <TableHead
-                  className="min-w-[110px] cursor-pointer hover:bg-muted/50"
-                  onClick={() => handleSort('created_at')}
-                >
-                  Created
-                  {getSortIcon('created_at')}
-                </TableHead>
+                <SortableHeader
+                  column="last_contacted"
+                  label="Last Contact"
+                  sortState={sortState}
+                  onSort={handleSort}
+                  className="min-w-[120px]"
+                />
+                <SortableHeader
+                  column="created_at"
+                  label="Created"
+                  sortState={sortState}
+                  onSort={handleSort}
+                  className="min-w-[110px]"
+                />
                 <TableHead className="text-right min-w-[120px]">Actions</TableHead>
               </TableRow>
             </TableHeader>

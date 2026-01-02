@@ -1048,6 +1048,80 @@ function RestaurantSelectionRow({
                   Skip this restaurant
                 </Button>
               </div>
+
+              {/* Search Links for manual research */}
+              <div className="bg-muted/50 rounded-md p-3 space-y-2 mt-4">
+                <p className="text-xs text-muted-foreground">
+                  Search for company and contact information:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      const query = encodeURIComponent(job.restaurant?.name || '');
+                      window.open(`https://app.companiesoffice.govt.nz/companies/app/ui/pages/companies/search?q=${query}&entityStatusGroups=REGISTERED&advancedPanel=true&mode=advanced#results`, '_blank');
+                    }}
+                  >
+                    <Building2 className="h-3 w-3 mr-1" />
+                    Companies Office
+                    <ExternalLink className="h-3 w-3 ml-1" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      const query = encodeURIComponent(`${job.restaurant?.name || ''} ${job.restaurant?.city || ''} owner LinkedIn`);
+                      window.open(`https://www.google.com/search?q=${query}`, '_blank');
+                    }}
+                  >
+                    <Linkedin className="h-3 w-3 mr-1" />
+                    LinkedIn
+                    <ExternalLink className="h-3 w-3 ml-1" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      const query = encodeURIComponent(`${job.restaurant?.name || ''} ${job.restaurant?.city || ''} owner email address`);
+                      window.open(`https://www.google.com/search?q=${query}`, '_blank');
+                    }}
+                  >
+                    <Mail className="h-3 w-3 mr-1" />
+                    Email Search
+                    <ExternalLink className="h-3 w-3 ml-1" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      const query = encodeURIComponent(`${job.restaurant?.name || ''} ${job.restaurant?.city || ''} owner`);
+                      window.open(`https://www.google.com/search?q=${query}`, '_blank');
+                    }}
+                  >
+                    <User className="h-3 w-3 mr-1" />
+                    Owner Search
+                    <ExternalLink className="h-3 w-3 ml-1" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      const query = encodeURIComponent(`What is the name of the owner of ${job.restaurant?.name || ''} ${job.restaurant?.city || ''} and what is the NZBN of the company behind this business and is there a publicly available email for contacting the business or their owners?`);
+                      window.open(`https://www.google.com/search?udm=50&q=${query}`, '_blank');
+                    }}
+                  >
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    AI Search
+                    <ExternalLink className="h-3 w-3 ml-1" />
+                  </Button>
+                </div>
+              </div>
               </div>
             </CollapsibleContent>
           </TableCell>

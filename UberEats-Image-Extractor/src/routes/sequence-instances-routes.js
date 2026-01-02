@@ -58,6 +58,88 @@ router.get('/:id', authMiddleware, async (req, res) => {
 });
 
 /**
+ * GET /api/sequence-instances/batch/restaurants
+ * Get sequences for multiple restaurants in one query
+ * Query params:
+ *   - restaurant_ids: comma-separated UUIDs (required)
+ */
+router.get('/batch/restaurants', authMiddleware, async (req, res) => {
+  try {
+    const { restaurant_ids } = req.query;
+
+    if (!restaurant_ids) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required query parameter: restaurant_ids'
+      });
+    }
+
+    const ids = restaurant_ids.split(',').filter(id => id.trim());
+
+    if (ids.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'At least one restaurant_id is required'
+      });
+    }
+
+    const result = await sequenceInstancesService.getSequencesByRestaurantIds(ids);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Error fetching batch sequences:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/sequence-instances/bulk-recreate
+ * Bulk recreate sequences for multiple instances
+ * Body:
+ *   - instance_ids: UUID[] (required, 1-100 items)
+ */
+router.post('/bulk-recreate', authMiddleware, async (req, res) => {
+  try {
+    const { instance_ids } = req.body;
+
+    if (!instance_ids || !Array.isArray(instance_ids)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing or invalid field: instance_ids (must be an array)'
+      });
+    }
+
+    if (instance_ids.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'At least one instance_id is required'
+      });
+    }
+
+    if (instance_ids.length > 100) {
+      return res.status(400).json({
+        success: false,
+        error: 'Maximum 100 instances per bulk operation'
+      });
+    }
+
+    const result = await sequenceInstancesService.recreateSequenceBulk(instance_ids);
+
+    // Determine status code based on results
+    let statusCode = 200;
+    if (result.summary.success > 0 && result.summary.failure > 0) {
+      statusCode = 207; // Multi-Status (partial success)
+    } else if (result.summary.failure > 0 && result.summary.success === 0) {
+      statusCode = 207; // Multi-Status (all failed, but operation completed)
+    }
+
+    res.status(statusCode).json({ success: true, data: result });
+  } catch (error) {
+    console.error('Error bulk recreating sequences:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * POST /api/sequence-instances/bulk
  * Start sequences for multiple restaurants
  *
@@ -288,6 +370,28 @@ router.post('/:id/finish', authMiddleware, async (req, res) => {
     console.error('Error finishing sequence:', error);
     if (error.message.includes('not found') || error.message.includes('only finish')) {
       return res.status(400).json({ success: false, error: error.message });
+    }
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/sequence-instances/:id/recreate
+ * Recreate a sequence - deletes existing and starts fresh from same template
+ * This allows variable replacement to use updated restaurant data
+ */
+router.post('/:id/recreate', authMiddleware, async (req, res) => {
+  try {
+    const result = await sequenceInstancesService.recreateSequence(req.params.id);
+    res.json({
+      success: true,
+      data: result,
+      message: `Sequence recreated with ${result.tasks_created} tasks`
+    });
+  } catch (error) {
+    console.error('Error recreating sequence:', error);
+    if (error.message.includes('not found')) {
+      return res.status(404).json({ success: false, error: error.message });
     }
     res.status(500).json({ success: false, error: error.message });
   }

@@ -14,6 +14,13 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Separator } from '../ui/separator';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
+import {
   ExternalLink,
   Star,
   MapPin,
@@ -35,7 +42,10 @@ import {
   Copy,
   Check,
   ShoppingCart,
+  Image as ImageIcon,
+  Link2,
 } from 'lucide-react';
+import { OpeningHoursEditor, OpeningHoursSlot } from '../OpeningHoursEditor';
 import { cn } from '../../lib/utils';
 import {
   Lead,
@@ -63,6 +73,17 @@ const statusColors: Record<string, string> = {
   failed: 'bg-red-100 text-red-800 border-red-200',
 };
 
+// Header image field type
+type HeaderImageField = 'website_og_image' | 'ubereats_og_image' | 'doordash_og_image' | 'facebook_cover_image';
+
+// All possible header image sources
+const HEADER_IMAGE_SOURCES = [
+  { value: 'website_og_image' as HeaderImageField, label: 'Website OG Image' },
+  { value: 'ubereats_og_image' as HeaderImageField, label: 'UberEats Image' },
+  { value: 'doordash_og_image' as HeaderImageField, label: 'DoorDash Image' },
+  { value: 'facebook_cover_image' as HeaderImageField, label: 'Facebook Cover' },
+] as const;
+
 export function LeadDetailModal({
   open,
   leadId,
@@ -76,6 +97,70 @@ export function LeadDetailModal({
 
   // Form state for edit mode
   const [formData, setFormData] = useState<Partial<Lead>>({});
+
+  // Header image editing state
+  const [selectedHeaderImageSource, setSelectedHeaderImageSource] = useState<HeaderImageField>('ubereats_og_image');
+  const [headerImageUrlInput, setHeaderImageUrlInput] = useState('');
+  const [isHeaderImageSaving, setIsHeaderImageSaving] = useState(false);
+
+  // Opening hours state
+  const [openingHours, setOpeningHours] = useState<OpeningHoursSlot[]>([]);
+
+  // Helper to convert 12-hour time to 24-hour format
+  const convertTo24Hour = (time12h: string): string => {
+    if (!time12h) return '';
+    // If already in 24-hour format (no AM/PM), return as-is
+    if (!time12h.includes('AM') && !time12h.includes('PM') && !time12h.includes('am') && !time12h.includes('pm')) {
+      return time12h;
+    }
+    const [time, modifier] = time12h.split(' ');
+    let [hours, minutes] = time.split(':');
+    let hoursNum = parseInt(hours, 10);
+
+    if (modifier?.toUpperCase() === 'PM' && hoursNum !== 12) {
+      hoursNum += 12;
+    } else if (modifier?.toUpperCase() === 'AM' && hoursNum === 12) {
+      hoursNum = 0;
+    }
+
+    return `${hoursNum.toString().padStart(2, '0')}:${minutes || '00'}`;
+  };
+
+  // Normalize lead opening hours to OpeningHoursSlot format (for editing)
+  const normalizeLeadHours = (hours: any[]): OpeningHoursSlot[] => {
+    if (!hours || !Array.isArray(hours)) return [];
+
+    return hours
+      .filter(entry => (entry.open && entry.close) || (entry.hours?.open && entry.hours?.close)) // Skip closed days
+      .map(entry => ({
+        day: entry.day,
+        hours: {
+          open: entry.hours?.open || convertTo24Hour(entry.open),
+          close: entry.hours?.close || convertTo24Hour(entry.close),
+        }
+      }));
+  };
+
+  // Convert 24-hour time to 12-hour format (for saving in lead format)
+  const convertTo12Hour = (time24h: string): string => {
+    if (!time24h) return '';
+    const [hours, minutes] = time24h.split(':');
+    let hoursNum = parseInt(hours, 10);
+    const ampm = hoursNum >= 12 ? 'PM' : 'AM';
+    hoursNum = hoursNum % 12 || 12;
+    return `${hoursNum}:${minutes || '00'} ${ampm}`;
+  };
+
+  // Convert OpeningHoursSlot format back to lead scraping format (for saving)
+  const convertToLeadFormat = (slots: OpeningHoursSlot[]): any[] => {
+    if (!slots || slots.length === 0) return [];
+
+    return slots.map(slot => ({
+      day: slot.day,
+      open: convertTo12Hour(slot.hours.open),
+      close: convertTo12Hour(slot.hours.close),
+    }));
+  };
 
   // Fetch lead data
   const { data, isLoading, refetch } = useLead(leadId || '', {
@@ -142,7 +227,23 @@ export function LeadDetailModal({
         ordering_platform_name: lead.ordering_platform_name,
         // Opening Hours
         opening_hours_text: lead.opening_hours_text,
+        opening_hours: lead.opening_hours,
+        // Header Images
+        website_og_image: lead.website_og_image,
+        ubereats_og_image: lead.ubereats_og_image,
+        doordash_og_image: lead.doordash_og_image,
+        facebook_cover_image: lead.facebook_cover_image,
       });
+
+      // Initialize opening hours from lead data (normalize format)
+      if (lead.opening_hours && Array.isArray(lead.opening_hours)) {
+        setOpeningHours(normalizeLeadHours(lead.opening_hours));
+      } else {
+        setOpeningHours([]);
+      }
+
+      // Reset header image input
+      setHeaderImageUrlInput('');
     }
   }, [lead]);
 
@@ -163,9 +264,15 @@ export function LeadDetailModal({
     if (!leadId) return;
 
     try {
+      // Convert opening hours back to lead format before saving
+      const updatesWithHours = {
+        ...formData,
+        opening_hours: openingHours.length > 0 ? convertToLeadFormat(openingHours) : null,
+      };
+
       await updateMutation.mutateAsync({
         id: leadId,
-        updates: formData,
+        updates: updatesWithHours,
       });
       setMode('view');
       refetch();
@@ -221,10 +328,63 @@ export function LeadDetailModal({
         ordering_platform_name: lead.ordering_platform_name,
         // Opening Hours
         opening_hours_text: lead.opening_hours_text,
+        opening_hours: lead.opening_hours,
+        // Header Images
+        website_og_image: lead.website_og_image,
+        ubereats_og_image: lead.ubereats_og_image,
+        doordash_og_image: lead.doordash_og_image,
+        facebook_cover_image: lead.facebook_cover_image,
       });
+
+      // Reset opening hours (normalize format)
+      if (lead.opening_hours && Array.isArray(lead.opening_hours)) {
+        setOpeningHours(normalizeLeadHours(lead.opening_hours));
+      } else {
+        setOpeningHours([]);
+      }
+
+      // Reset header image input
+      setHeaderImageUrlInput('');
     }
     setMode('view');
   };
+
+  // Handle header image URL save
+  const handleHeaderImageSave = async () => {
+    if (!leadId || !headerImageUrlInput.trim()) return;
+
+    setIsHeaderImageSaving(true);
+    try {
+      const newUrl = headerImageUrlInput.trim();
+      await updateMutation.mutateAsync({
+        id: leadId,
+        updates: {
+          [selectedHeaderImageSource]: newUrl,
+        },
+      });
+      // Update local formData immediately so preview shows
+      setFormData(prev => ({
+        ...prev,
+        [selectedHeaderImageSource]: newUrl,
+      }));
+      setHeaderImageUrlInput('');
+      refetch();
+    } catch (error) {
+      // Error handled by mutation
+    } finally {
+      setIsHeaderImageSaving(false);
+    }
+  };
+
+  // Get header image URL for a source
+  const getHeaderImageUrl = (source: HeaderImageField): string | null => {
+    return formData[source] as string | null;
+  };
+
+  // Check if any header images exist
+  const hasAnyHeaderImage = HEADER_IMAGE_SOURCES.some(
+    source => getHeaderImageUrl(source.value)
+  );
 
   // Pass to next step
   const handlePassToNext = async () => {
@@ -307,7 +467,7 @@ export function LeadDetailModal({
   if (isLoading) {
     return (
       <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[800px]">
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
@@ -320,7 +480,7 @@ export function LeadDetailModal({
   if (!lead) {
     return (
       <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[800px]">
           <div className="text-center py-8 text-muted-foreground">
             Lead not found
           </div>
@@ -333,7 +493,7 @@ export function LeadDetailModal({
   if (mode === 'edit') {
     return (
       <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Lead</DialogTitle>
             <DialogDescription>Update lead information</DialogDescription>
@@ -737,7 +897,7 @@ export function LeadDetailModal({
               <div className="text-sm font-medium">Opening Hours</div>
 
               <div className="space-y-2">
-                <Label htmlFor="opening_hours_text">Opening Hours (text)</Label>
+                <Label htmlFor="opening_hours_text">Opening Hours (text format)</Label>
                 <Textarea
                   id="opening_hours_text"
                   value={formData.opening_hours_text || ''}
@@ -747,6 +907,127 @@ export function LeadDetailModal({
                   rows={3}
                   placeholder="Mon-Fri: 9am-9pm&#10;Sat-Sun: 10am-10pm"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Structured Hours</Label>
+                <div className="border rounded-lg p-3 bg-muted/20">
+                  <OpeningHoursEditor
+                    value={openingHours}
+                    onChange={setOpeningHours}
+                    isEditing={true}
+                  />
+                </div>
+              </div>
+
+              <Separator />
+              <div className="text-sm font-medium flex items-center gap-2">
+                <ImageIcon className="h-4 w-4" />
+                Header Images
+              </div>
+
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label>Select Image Source</Label>
+                  <Select
+                    value={selectedHeaderImageSource}
+                    onValueChange={(value) => setSelectedHeaderImageSource(value as HeaderImageField)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {HEADER_IMAGE_SOURCES.map((source) => {
+                        const imageUrl = getHeaderImageUrl(source.value);
+                        const hasImage = !!imageUrl && imageUrl.length > 0;
+                        return (
+                          <SelectItem key={source.value} value={source.value}>
+                            <div className="flex items-center gap-2">
+                              {hasImage ? (
+                                <>
+                                  <div className="h-6 w-10 rounded border bg-muted/50 overflow-hidden">
+                                    <img
+                                      src={imageUrl}
+                                      alt={source.label}
+                                      className="h-full w-full object-cover"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).style.display = 'none';
+                                      }}
+                                    />
+                                  </div>
+                                  <span>{source.label}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="h-6 w-10 rounded border bg-muted/50 flex items-center justify-center">
+                                    <ImageIcon className="h-3 w-3 text-muted-foreground" />
+                                  </div>
+                                  <span className="text-muted-foreground">{source.label} (empty)</span>
+                                </>
+                              )}
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* URL Input for adding/replacing header image */}
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Link2 className="h-3 w-3" />
+                    Paste image URL to add/replace selected source
+                  </Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={headerImageUrlInput}
+                      onChange={(e) => setHeaderImageUrlInput(e.target.value)}
+                      placeholder="https://example.com/image.jpg"
+                      className="flex-1"
+                      disabled={isHeaderImageSaving}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !isHeaderImageSaving) {
+                          e.preventDefault();
+                          handleHeaderImageSave();
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      onClick={handleHeaderImageSave}
+                      disabled={!headerImageUrlInput.trim() || isHeaderImageSaving}
+                      size="sm"
+                    >
+                      {isHeaderImageSaving ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="h-4 w-4 mr-1" />
+                          Apply & Save
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Preview of selected header image */}
+                {getHeaderImageUrl(selectedHeaderImageSource) && (
+                  <div className="p-2 bg-muted/30 rounded space-y-1">
+                    <span className="text-xs text-muted-foreground">Preview:</span>
+                    <img
+                      src={getHeaderImageUrl(selectedHeaderImageSource) || ''}
+                      alt="Header preview"
+                      className="w-full max-h-32 object-cover rounded"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
               </div>
           </div>
 
@@ -775,7 +1056,7 @@ export function LeadDetailModal({
   // View mode
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-start justify-between">
             <div className="flex-1">
@@ -982,6 +1263,40 @@ export function LeadDetailModal({
                         <span>{entry.open} - {entry.close}</span>
                       </div>
                     ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Header Images */}
+            {hasAnyHeaderImage && (
+              <>
+                <Separator />
+                <div>
+                  <div className="text-sm font-medium mb-2 flex items-center gap-2">
+                    <ImageIcon className="h-4 w-4" />
+                    Header Images
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    {HEADER_IMAGE_SOURCES.map((source) => {
+                      const imageUrl = lead[source.value];
+                      if (!imageUrl) return null;
+                      return (
+                        <div key={source.value} className="space-y-1">
+                          <div className="text-xs text-muted-foreground">{source.label}</div>
+                          <div className="h-20 rounded border bg-muted/30 overflow-hidden">
+                            <img
+                              src={imageUrl}
+                              alt={source.label}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </>

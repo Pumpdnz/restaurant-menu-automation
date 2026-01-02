@@ -1278,10 +1278,38 @@ async function getAllRestaurants() {
 
   try {
     const client = getSupabaseClient();
+    // Explicit column list - excludes logo_url and saved_images which can contain
+    // megabytes of base64 data causing JSON parsing failures on large responses
     const { data, error } = await client
       .from('restaurants')
       .select(`
-        *,
+        id, name, slug, address, phone, email, website,
+        brand_colors, metadata, weekly_sales_range,
+        contact_name, contact_email, contact_phone,
+        ubereats_url, doordash_url, website_url, instagram_url, facebook_url,
+        opening_hours, opening_hours_text,
+        organisation_id, organisation_name,
+        theme, primary_color, secondary_color, tertiary_color, background_color, accent_color,
+        logo_nobg_url, logo_standard_url, logo_thermal_url,
+        logo_thermal_alt_url, logo_thermal_contrast_url, logo_thermal_adaptive_url,
+        logo_favicon_url, hosted_logo_url,
+        user_email, user_password_hint, subdomain, stripe_connect_url,
+        payment_settings, service_settings, onboarding_status, workflow_notes,
+        city, cuisine,
+        meandyou_url, mobi2go_url, delivereasy_url, nextorder_url, foodhub_url, ordermeal_url,
+        lead_type, lead_category, lead_engagement_source, lead_warmth, lead_stage, lead_status,
+        lead_created_at, demo_store_url, demo_store_built,
+        contact_role, point_of_sale, online_ordering_platform,
+        uber_profitability_description, current_marketing_description, website_type,
+        painpoints, core_selling_points, features_to_highlight, possible_objections,
+        details, meeting_link,
+        website_og_image, website_og_description, website_og_title,
+        ubereats_og_image, doordash_og_image, facebook_cover_image,
+        full_legal_name, nzbn, company_number, gst_number,
+        additional_contacts_metadata, contact_instagram, contact_facebook, contact_linkedin,
+        additional_ordering_platform_url, company_name,
+        icp_rating, last_contacted, assigned_sales_rep,
+        created_at, updated_at,
         restaurant_platforms (
           url,
           last_scraped_at,
