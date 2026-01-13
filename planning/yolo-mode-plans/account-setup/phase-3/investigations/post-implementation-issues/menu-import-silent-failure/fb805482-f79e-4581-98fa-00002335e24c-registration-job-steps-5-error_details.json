@@ -1,0 +1,129 @@
+{
+    "error": "optionSets failed: Command failed: node \"/Users/giannimunro/Desktop/cursor-projects/automation/scripts/restaurant-registration/add-option-sets.js\" --payload=\"/Users/giannimunro/Desktop/cursor-projects/automation/scripts/restaurant-registration/temp-option-sets-payload-1767330154829.json\"\n\nError during option sets configuration: page.goto: net::ERR_CONNECTION_CLOSED at https://admin.pumpd.co.nz/login\nCall log:\n\u001b[2m  - navigating to \"https://admin.pumpd.co.nz/login\", waiting until \"domcontentloaded\"\u001b[22m\n\nScript failed: page.goto: net::ERR_CONNECTION_CLOSED at https://admin.pumpd.co.nz/login\nCall log:\n\u001b[2m  - navigating to \"https://admin.pumpd.co.nz/login\", waiting until \"domcontentloaded\"\u001b[22m\n\n",
+    "timestamp": "2026-01-02T05:02:44.656Z",
+    "sub_step_progress": {
+      "phases": {
+        "phase1": {
+          "status": "completed",
+          "sub_steps": {
+            "uploadImages": {
+              "status": "completed",
+              "attempt": 1,
+              "attempts": 1,
+              "started_at": 1767329279599,
+              "completed_at": 1767329282052
+            },
+            "codeGeneration": {
+              "status": "completed",
+              "attempt": 1,
+              "attempts": 1,
+              "started_at": 1767329279594,
+              "completed_at": 1767329326267
+            },
+            "cloudwaitressAccount": {
+              "status": "completed",
+              "attempt": 1,
+              "attempts": 1,
+              "started_at": 1767329339497,
+              "completed_at": 1767329345919
+            },
+            "createOnboardingUser": {
+              "status": "completed",
+              "attempt": 1,
+              "attempts": 1,
+              "started_at": 1767329279596,
+              "completed_at": 1767329316241
+            }
+          },
+          "description": "Initial parallel operations"
+        },
+        "phase2": {
+          "status": "completed",
+          "sub_steps": {
+            "menuImport": {
+              "status": "completed",
+              "attempt": 1,
+              "attempts": 1,
+              "started_at": 1767329445124,
+              "completed_at": 1767329533296
+            },
+            "paymentConfig": {
+              "status": "completed",
+              "attempt": 2,
+              "attempts": 2,
+              "started_at": 1767329445122,
+              "completed_at": 1767329606608,
+              "previous_error": "paymentConfig failed: Command failed: node /Users/giannimunro/Desktop/cursor-projects/automation/scripts/setup-stripe-payments-no-link.js --email=\"buzzhospitalityltd@gmail.com\" --password=\"Buzz789!\" --name=\"Buzz\" --admin-url=\"https://admin.pumpd.co.nz\" --country=\"NZ\"\n\n❌ Navigation failed: page.goto: Timeout 60000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https://admin.pumpd.co.nz/login\", waiting until \"domcontentloaded\"\u001b[22m\n\nScript failed: page.goto: Timeout 60000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https://admin.pumpd.co.nz/login\", waiting until \"domcontentloaded\"\u001b[22m\n\n    at setupStripePayments (/Users/giannimunro/Desktop/cursor-projects/automation/scripts/setup-stripe-payments-no-link.js:124:16) {\n  name: \u001b[32m'TimeoutError'\u001b[39m\n}\n"
+            },
+            "websiteConfig": {
+              "status": "completed",
+              "attempt": 2,
+              "attempts": 2,
+              "started_at": 1767329445122,
+              "completed_at": 1767329971363,
+              "previous_error": "websiteConfig failed: Website configuration timed out after 4 minutes.  Last successful step: STEP 16: Co Please try running the configuration again to complete the process."
+            },
+            "servicesConfig": {
+              "error": "servicesConfig failed: Command failed: node /Users/giannimunro/Desktop/cursor-projects/automation/scripts/setup-services-settings.js --email=\"buzzhospitalityltd@gmail.com\" --password=\"Buzz789!\" --name=\"Buzz\" --admin-url=\"https://admin.pumpd.co.nz\"\n\n❌ Navigation failed: page.fill: Target page, context or browser has been closed\nCall log:\n\u001b[2m  - waiting for locator('input[type=\"email\"]')\u001b[22m\n\nScript failed: page.title: Target page, context or browser has been closed\n    at setupServicesSettings (/Users/giannimunro/Desktop/cursor-projects/automation/scripts/setup-services-settings.js:932:43)\n",
+              "status": "failed",
+              "attempt": 3,
+              "attempts": 3,
+              "started_at": 1767329445122,
+              "previous_error": "servicesConfig failed: Command failed: node /Users/giannimunro/Desktop/cursor-projects/automation/scripts/setup-services-settings.js --email=\"buzzhospitalityltd@gmail.com\" --password=\"Buzz789!\" --name=\"Buzz\" --admin-url=\"https://admin.pumpd.co.nz\"\n"
+            },
+            "syncOnboardingUser": {
+              "status": "completed",
+              "attempt": 1,
+              "attempts": 1,
+              "started_at": 1767329445124,
+              "completed_at": 1767329479396
+            },
+            "restaurantRegistration": {
+              "status": "completed",
+              "attempt": 1,
+              "attempts": 1,
+              "started_at": 1767329346449,
+              "completed_at": 1767329445122
+            }
+          },
+          "description": "Configuration (parallel after phase1)"
+        },
+        "phase3": {
+          "status": "in_progress",
+          "sub_steps": {
+            "optionSets": {
+              "error": "optionSets failed: Command failed: node \"/Users/giannimunro/Desktop/cursor-projects/automation/scripts/restaurant-registration/add-option-sets.js\" --payload=\"/Users/giannimunro/Desktop/cursor-projects/automation/scripts/restaurant-registration/temp-option-sets-payload-1767330154829.json\"\n\nError during option sets configuration: page.goto: net::ERR_CONNECTION_CLOSED at https://admin.pumpd.co.nz/login\nCall log:\n\u001b[2m  - navigating to \"https://admin.pumpd.co.nz/login\", waiting until \"domcontentloaded\"\u001b[22m\n\nScript failed: page.goto: net::ERR_CONNECTION_CLOSED at https://admin.pumpd.co.nz/login\nCall log:\n\u001b[2m  - navigating to \"https://admin.pumpd.co.nz/login\", waiting until \"domcontentloaded\"\u001b[22m\n\n",
+              "status": "failed",
+              "attempt": 3,
+              "attempts": 3,
+              "started_at": 1767329972747,
+              "previous_error": "optionSets failed: Command failed: node \"/Users/giannimunro/Desktop/cursor-projects/automation/scripts/restaurant-registration/add-option-sets.js\" --payload=\"/Users/giannimunro/Desktop/cursor-projects/automation/scripts/restaurant-registration/temp-option-sets-payload-1767330060835.json\"\n    Failed to create \"Choice of Sauce\": locator.click: Target page, context or browser has been closed\n    Failed to create \"Substitution\": page.click: Target page, context or browser has been closed\n    Failed to create \"Choice of Preparation\": page.click: Target page, context or browser has been closed\n    Failed to create \"Choice of Size\": page.click: Target page, context or browser has been closed\n    Failed to create \"Choice of Flavour\": page.click: Target page, context or browser has been closed\n    Failed to create \"Add Protein\": page.click: Target page, context or browser has been closed\n    Failed to create \"Choice of Egg Preparation\": page.click: Target page, context or browser has been closed\n    Failed to create \"Substitution\": page.click: Target page, context or browser has been closed\n    Failed to create \"Size Choices\": page.click: Target page, context or browser has been closed\n    Failed to create \"Add-ons and Extras\": page.click: Target page, context or browser has been closed\n    Failed to create \"Choice of Steak Preparation\": page.click: Target page, context or browser has been closed\n\nError during option sets configuration: Failed to create any option sets\nScript failed: Failed to create any option sets\n"
+            }
+          },
+          "description": "Menu setup (after menuImport)"
+        },
+        "phase4": {
+          "status": "pending",
+          "sub_steps": {
+            "itemTags": {
+              "status": "pending"
+            }
+          },
+          "description": "Finalization (after menuImport)"
+        }
+      },
+      "context": {
+        "codeInjectionId": "ce08c4c5-ea7c-45f8-9082-3b0cb94193bd",
+        "menuImportSucceeded": true,
+        "onboardingUserCreated": true,
+        "codeGenerationFilePaths": {
+          "completion": "/Users/giannimunro/Desktop/cursor-projects/automation/generated-code/buzz/completion.json",
+          "bodyInjection": "/Users/giannimunro/Desktop/cursor-projects/automation/generated-code/buzz/body-injection.html",
+          "configuration": "/Users/giannimunro/Desktop/cursor-projects/automation/generated-code/buzz/configuration.json",
+          "headInjection": "/Users/giannimunro/Desktop/cursor-projects/automation/generated-code/buzz/head-injection.html"
+        },
+        "codeInjectionGeneratedAt": "2026-01-02T04:48:46.266Z"
+      },
+      "current_phase": "phase3"
+    }
+  }
