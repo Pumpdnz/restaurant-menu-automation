@@ -458,7 +458,7 @@ export default function OptionSetCard({
             </div>
 
             {/* Menu items using this option set */}
-            {!isEditing && editedSet.menuItems && editedSet.menuItems.length > 0 && (
+            {!isEditing && !optionSet.isNew && (
               <div className="mt-4 pt-4 border-t">
                 <div className="flex items-center justify-between mb-2">
                   <Label className="text-sm font-medium">Applied to Menu Items</Label>
@@ -468,31 +468,27 @@ export default function OptionSetCard({
                     variant="outline"
                   >
                     <Settings className="h-3 w-3 mr-1" />
-                    Manage Items
+                    {editedSet.menuItems?.length > 0 ? 'Manage Items' : 'Add Menu Items'}
                   </Button>
                 </div>
-                <div className="space-y-2">
-                  {editedSet.menuItems.map((item, index) => (
-                    <div key={item.id || index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm">{item.name}</span>
-                        <Badge variant="outline" className="text-xs">
-                          {item.category}
-                        </Badge>
+                {editedSet.menuItems && editedSet.menuItems.length > 0 ? (
+                  <div className="space-y-2">
+                    {editedSet.menuItems.map((item, index) => (
+                      <div key={item.id || index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">{item.name}</span>
+                          <Badge variant="outline" className="text-xs">
+                            {item.category}
+                          </Badge>
+                        </div>
                       </div>
-                      {isEditing && (
-                        <Button
-                          onClick={() => console.log('Remove association', item.id)}
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-amber-600 bg-amber-50 p-3 rounded">
+                    This option set is not assigned to any menu items. Click "Add Menu Items" to assign it.
+                  </p>
+                )}
               </div>
             )}
           </CardContent>

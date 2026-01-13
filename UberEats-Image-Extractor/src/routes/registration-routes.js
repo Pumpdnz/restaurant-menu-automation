@@ -912,11 +912,37 @@ router.post('/upload-csv-menu', requireRegistrationMenuUpload, upload.single('cs
       console.error('[CSV Upload] Script stderr:', stderr);
     }
     
-    // Parse results from stdout
-    const success = stdout.includes('CSV import completed successfully') || 
-                   stdout.includes('✅') ||
-                   stdout.includes('Successfully imported') ||
-                   stdout.includes('Import completed');
+    // Check for failure indicators FIRST (before success patterns)
+    const failed = stdout.includes('CSV IMPORT FAILED') ||
+                   stdout.includes('Import failed') ||
+                   stdout.includes('rejected') ||
+                   stderr.includes('FAILED');
+
+    if (failed) {
+      console.error('[CSV Upload] Script reported failure');
+      // Extract error details from output
+      const errorMatch = stdout.match(/❌ CSV IMPORT FAILED[:\s]*(.+?)(?:\n|$)/);
+      const errorDetail = errorMatch ? errorMatch[1] : 'Unknown error';
+
+      // Clean up file before returning error
+      if (csvFile?.path) {
+        try {
+          await fs.unlink(csvFile.path);
+        } catch (unlinkError) {
+          console.error('[CSV Upload] Failed to clean up file:', unlinkError);
+        }
+      }
+
+      return res.status(500).json({
+        success: false,
+        error: `Menu import failed: ${errorDetail}`,
+        details: stdout.substring(stdout.lastIndexOf('❌'))
+      });
+    }
+
+    // Parse results from stdout - only check success if no failure detected
+    const success = stdout.includes('CSV import completed successfully') ||
+                   stdout.includes('CSV IMPORT PROCESS COMPLETED');
     
     // Clean up uploaded file
     try {
@@ -949,8 +975,11 @@ router.post('/upload-csv-menu', requireRegistrationMenuUpload, upload.single('cs
     });
     
   } catch (error) {
-    console.error('[CSV Upload] Error:', error);
-    
+    console.error('[CSV Upload] Error:', error.message);
+    // Log stdout/stderr from failed script execution
+    if (error.stdout) console.error('[CSV Upload] Script stdout:', error.stdout);
+    if (error.stderr) console.error('[CSV Upload] Script stderr:', error.stderr);
+
     // Clean up file on error
     if (csvFile?.path) {
       try {
@@ -960,16 +989,25 @@ router.post('/upload-csv-menu', requireRegistrationMenuUpload, upload.single('cs
         console.error('[CSV Upload] Failed to clean up file after error:', unlinkError);
       }
     }
-    
-    // Determine if it's a timeout error
-    const isTimeout = error.code === 'ETIMEDOUT' || error.message.includes('timeout');
-    
+
+    // Determine error type
+    const isTimeout = error.code === 'ETIMEDOUT' || error.message.includes('timeout') || error.killed;
+
+    // Extract meaningful error from script output if available
+    let errorMessage = error.message;
+    if (error.stdout) {
+      const failMatch = error.stdout.match(/❌ CSV IMPORT FAILED[:\s]*(.+?)(?:\n|$)/);
+      if (failMatch) {
+        errorMessage = `Menu import failed: ${failMatch[1]}`;
+      }
+    }
+
     res.status(500).json({
       success: false,
-      error: isTimeout ? 
+      error: isTimeout ?
         'Upload timed out. The menu may be too large or the server may be busy. Please try again.' :
-        error.message,
-      details: error.stderr || null
+        errorMessage,
+      details: error.stdout?.substring(error.stdout.lastIndexOf('❌')) || error.stderr || null
     });
   }
 });
@@ -1078,10 +1116,24 @@ router.post('/import-menu-direct', requireRegistrationMenuUpload, async (req, re
     console.log('[Direct Import] Script output:', stdout);
     if (stderr) console.error('[Direct Import] Script stderr:', stderr);
 
+    // Check for explicit failure indicators FIRST (before success patterns)
+    const failed = (stdout.includes('❌') && stdout.includes('FAILED')) ||
+                   stdout.includes('CSV IMPORT FAILED') ||
+                   stdout.includes('File upload failed') ||
+                   stderr.includes('FAILED');
+
+    if (failed) {
+      console.error('[Direct Import] Script reported failure');
+      return res.status(500).json({
+        success: false,
+        error: 'Menu import failed - file upload error',
+        details: stdout.substring(stdout.lastIndexOf('❌'))
+      });
+    }
+
+    // Only check success if no failure detected above
     const success = stdout.includes('CSV import completed successfully') ||
-                   stdout.includes('✅') ||
-                   stdout.includes('Successfully imported') ||
-                   stdout.includes('Import completed');
+                   stdout.includes('CSV IMPORT PROCESS COMPLETED');
 
     if (success) {
       await supabase
@@ -1104,15 +1156,29 @@ router.post('/import-menu-direct', requireRegistrationMenuUpload, async (req, re
     });
 
   } catch (error) {
-    console.error('[Direct Import] Error:', error);
+    console.error('[Direct Import] Error:', error.message);
+    // Log stdout/stderr from failed script execution
+    if (error.stdout) console.error('[Direct Import] Script stdout:', error.stdout);
+    if (error.stderr) console.error('[Direct Import] Script stderr:', error.stderr);
 
-    const isTimeout = error.code === 'ETIMEDOUT' || error.message.includes('timeout');
+    // Determine error type
+    const isTimeout = error.code === 'ETIMEDOUT' || error.message.includes('timeout') || error.killed;
+
+    // Extract meaningful error from script output if available
+    let errorMessage = error.message;
+    if (error.stdout) {
+      const failMatch = error.stdout.match(/❌ CSV IMPORT FAILED[:\s]*(.+?)(?:\n|$)/);
+      if (failMatch) {
+        errorMessage = `Menu import failed: ${failMatch[1]}`;
+      }
+    }
 
     res.status(500).json({
       success: false,
       error: isTimeout ?
         'Import timed out. Please try again.' :
-        error.message
+        errorMessage,
+      details: error.stdout?.substring(error.stdout.lastIndexOf('❌')) || error.stderr || null
     });
   } finally {
     // Cleanup temp file
@@ -2849,12 +2915,15 @@ router.post('/configure-services', requireRegistrationServicesConfig, async (req
 /**
  * Add Item Tags to menu items
  * Uses add-item-tags.js script to automate tag configuration on Pumpd admin portal
+ *
+ * Enhanced to support applying tags to menu items when menuId is provided.
+ * Backwards compatible - if no menuId provided, just creates preset tags.
  */
 router.post('/add-item-tags', requireRegistrationItemTags, async (req, res) => {
-  const { restaurantId } = req.body;
+  const { restaurantId, menuId } = req.body;
   const organisationId = req.user?.organisationId;
 
-  console.log('[Item Tags] Request received:', { restaurantId, organisationId });
+  console.log('[Item Tags] Request received:', { restaurantId, menuId, organisationId });
 
   if (!organisationId) {
     return res.status(401).json({
@@ -2862,6 +2931,9 @@ router.post('/add-item-tags', requireRegistrationItemTags, async (req, res) => {
       error: 'Organisation context required'
     });
   }
+
+  // Temp file path for payload
+  let payloadPath = null;
 
   try {
     const { supabase } = require('../services/database-service');
@@ -2919,55 +2991,189 @@ router.post('/add-item-tags', requireRegistrationItemTags, async (req, res) => {
       adminHostname: scriptConfig.adminHostname
     });
 
+    // Define preset tags with colors
+    const PRESET_TAGS = [
+      { name: 'Popular', color: '#b400fa' },
+      { name: 'New', color: '#3f92ff' },
+      { name: 'Deal', color: '#4fc060' },
+      { name: 'Vegan', color: '#36AB36' },
+      { name: 'Vegetarian', color: '#32CD32' },
+      { name: 'Gluten Free', color: '#FF8C00' },
+      { name: 'Dairy Free', color: '#4682B4' },
+      { name: 'Nut Free', color: '#DEB887' },
+      { name: 'Halal', color: '#8B7355' },
+      { name: 'Spicy', color: '#FF3333' }
+    ];
+
+    // Build tag-to-menuItems mapping if menuId is provided
+    let itemTagsArray = PRESET_TAGS.map(t => ({ ...t, menuItemNames: [] }));
+
+    if (menuId) {
+      console.log('[Item Tags] Fetching menu items with tags for menu:', menuId);
+
+      // Fetch menu items that have tags
+      const { data: menuItems, error: menuItemsError } = await supabase
+        .from('menu_items')
+        .select('id, name, tags')
+        .eq('menu_id', menuId)
+        .not('tags', 'is', null);
+
+      if (menuItemsError) {
+        console.error('[Item Tags] Error fetching menu items:', menuItemsError);
+      } else if (menuItems && menuItems.length > 0) {
+        console.log(`[Item Tags] Found ${menuItems.length} menu items with tags`);
+
+        // Build tag-to-items mapping with case-insensitive matching
+        const tagToMenuItems = new Map();
+        const normalizeTag = (tag) => tag.trim().toLowerCase();
+
+        // Initialize all preset tags in the map
+        PRESET_TAGS.forEach(tag => {
+          tagToMenuItems.set(normalizeTag(tag.name), []);
+        });
+
+        // Map common tag variants to canonical names
+        const tagVariants = {
+          'most liked': 'popular',
+          'favourite': 'popular',
+          'favorites': 'popular',
+          'hot': 'spicy',
+          'contains nuts': 'nut free',
+          'gf': 'gluten free'
+        };
+
+        // Process each menu item's tags
+        menuItems.forEach(item => {
+          if (Array.isArray(item.tags)) {
+            item.tags.forEach(tag => {
+              let normalizedTag = normalizeTag(tag);
+
+              // Check for variant mappings
+              if (tagVariants[normalizedTag]) {
+                normalizedTag = tagVariants[normalizedTag];
+              }
+
+              // Only include tags that match our preset tags
+              if (tagToMenuItems.has(normalizedTag)) {
+                tagToMenuItems.get(normalizedTag).push(item.name);
+              }
+            });
+          }
+        });
+
+        // Build the final itemTags array with menuItemNames
+        itemTagsArray = PRESET_TAGS.map(presetTag => {
+          const normalizedName = normalizeTag(presetTag.name);
+          const menuItemNames = tagToMenuItems.get(normalizedName) || [];
+          return {
+            name: presetTag.name,
+            color: presetTag.color,
+            menuItemNames
+          };
+        });
+
+        // Log summary
+        const tagsWithItems = itemTagsArray.filter(t => t.menuItemNames.length > 0);
+        console.log(`[Item Tags] ${tagsWithItems.length} tags have menu items to apply:`);
+        tagsWithItems.forEach(t => {
+          console.log(`  - ${t.name}: ${t.menuItemNames.length} items`);
+        });
+      } else {
+        console.log('[Item Tags] No menu items with tags found, creating tags only');
+      }
+    } else {
+      console.log('[Item Tags] No menuId provided, creating tags only (legacy mode)');
+    }
+
+    // Create JSON payload for script
+    const scriptPayload = {
+      email: finalAccount.email,
+      password: finalAccount.user_password_hint,
+      restaurantName: restaurant.name,
+      adminUrl: scriptConfig.adminUrl,
+      itemTags: itemTagsArray
+    };
+
     // Execute add-item-tags.js script
     const scriptPath = path.join(__dirname, '../../../scripts/restaurant-registration/add-item-tags.js');
 
-    // Build command with proper escaping
-    const command = [
-      'node',
-      scriptPath,
-      `--email="${finalAccount.email}"`,
-      `--password="${finalAccount.user_password_hint}"`,
-      `--name="${restaurant.name.replace(/"/g, '\\"')}"`,
-      `--admin-url="${scriptConfig.adminUrl}"`
-    ].join(' ');
+    // Write payload to temp file to avoid command line length limits
+    payloadPath = path.join(__dirname, `../../../scripts/restaurant-registration/temp-item-tags-payload-${Date.now()}.json`);
+    await require('fs').promises.writeFile(payloadPath, JSON.stringify(scriptPayload));
+
+    const command = `node "${scriptPath}" --payload="${payloadPath}"`;
 
     console.log('[Item Tags] Executing item tags configuration script...');
 
     const { stdout, stderr } = await execAsync(command, {
       env: { ...process.env, DEBUG_MODE: 'false' },
-      timeout: 180000 // 3 minute timeout
+      timeout: 3600000 // 60 minute timeout (increased for large menus with many items)
     });
+
+    // Clean up temp file
+    try {
+      await require('fs').promises.unlink(payloadPath);
+      payloadPath = null;
+    } catch (e) {
+      console.log('[Item Tags] Could not delete temp file:', e.message);
+    }
 
     console.log('[Item Tags] Script output:', stdout);
     if (stderr) {
       console.error('[Item Tags] Script stderr:', stderr);
     }
 
+    // Parse summary from output if available
+    let summary = { total: itemTagsArray.length, created: 0, failed: 0, itemsAssigned: 0 };
+    const summaryMatch = stdout.match(/Successfully created: (\d+)\/(\d+)/);
+    if (summaryMatch) {
+      summary.created = parseInt(summaryMatch[1]);
+      summary.total = parseInt(summaryMatch[2]);
+      summary.failed = summary.total - summary.created;
+    }
+    const itemsMatch = stdout.match(/Menu items assigned: (\d+)/);
+    if (itemsMatch) {
+      summary.itemsAssigned = parseInt(itemsMatch[1]);
+    }
+
     // Check for success indicators
     const success = stdout.includes('Successfully') ||
                    stdout.includes('completed') ||
                    stdout.includes('Item tags configured') ||
-                   stdout.includes('Tags added');
+                   stdout.includes('Tags added') ||
+                   summary.created > 0;
 
     console.log('[Item Tags] Configuration result:', success ? 'Success' : 'Partial/Failed');
 
     // Track usage
     if (success) {
       UsageTrackingService.trackRegistrationStep(organisationId, 'item_tags', {
-        restaurant_id: restaurantId
+        restaurant_id: restaurantId,
+        menu_id: menuId || null,
+        tags_created: summary.created,
+        items_assigned: summary.itemsAssigned
       }).catch(err => console.error('[UsageTracking] Failed to track item tags:', err));
     }
 
     res.json({
       success,
       message: success ? 'Item tags configured successfully' : 'Configuration completed with warnings',
+      summary,
       output: stdout,
       error: stderr || null
     });
 
   } catch (error) {
     console.error('[Item Tags] Error:', error);
+
+    // Clean up temp file on error
+    if (payloadPath) {
+      try {
+        await require('fs').promises.unlink(payloadPath);
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+    }
 
     const isTimeout = error.code === 'ETIMEDOUT' || error.message.includes('timeout');
 

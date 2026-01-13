@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { formatDistanceToNow, format } from 'date-fns';
 import {
@@ -17,14 +18,19 @@ import {
   Hash,
   Globe,
   RefreshCw,
+  ChevronDown,
 } from 'lucide-react';
 import {
   useLeadScrapeJob,
   useStartLeadScrapeJob,
   useCancelLeadScrapeJob,
   useDeleteLeadScrapeJob,
+  useUpdateJobStatus,
+  LeadScrapeJob,
 } from '../hooks/useLeadScrape';
 import { ScrapeJobStepList } from '../components/leads/ScrapeJobStepList';
+import { ScrapeJobStepDetailModal } from '../components/leads/ScrapeJobStepDetailModal';
+import { LeadScrapeJobStep } from '../hooks/useLeadScrape';
 
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -41,6 +47,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '../components/ui/alert-dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '../components/ui/popover';
 
 // Status badge colors
 const statusColors: Record<string, string> = {
@@ -186,8 +197,52 @@ export default function LeadScrapeDetail() {
   const startMutation = useStartLeadScrapeJob();
   const cancelMutation = useCancelLeadScrapeJob();
   const deleteMutation = useDeleteLeadScrapeJob();
+  const updateStatusMutation = useUpdateJobStatus();
 
-  const isActionLoading = startMutation.isPending || cancelMutation.isPending || deleteMutation.isPending;
+  // Status dropdown state
+  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
+
+  const isActionLoading = startMutation.isPending || cancelMutation.isPending || deleteMutation.isPending || updateStatusMutation.isPending;
+
+  // Available statuses for dropdown
+  const availableStatuses: { value: LeadScrapeJob['status']; label: string }[] = [
+    { value: 'draft', label: 'Draft' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'in_progress', label: 'In Progress' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'cancelled', label: 'Cancelled' },
+    { value: 'failed', label: 'Failed' },
+  ];
+
+  // Handle status change
+  const handleStatusChange = async (newStatus: LeadScrapeJob['status']) => {
+    if (!id || newStatus === job?.status) return;
+    await updateStatusMutation.mutateAsync({ jobId: id, status: newStatus });
+    setStatusDropdownOpen(false);
+    refetch();
+  };
+
+  // Step detail modal state
+  const [selectedStep, setSelectedStep] = useState<LeadScrapeJobStep | null>(null);
+  const [isStepDetailModalOpen, setIsStepDetailModalOpen] = useState(false);
+
+  // Open step detail modal for a specific step number
+  const handleOpenStepModal = (stepNumber: number) => {
+    const step = job?.steps?.find((s: LeadScrapeJobStep) => s.step_number === stepNumber);
+    if (step) {
+      setSelectedStep(step);
+      setIsStepDetailModalOpen(true);
+    }
+  };
+
+  // Navigate to pending leads filtered by city/cuisine
+  const handleViewPendingLeads = () => {
+    if (!job) return;
+    const params = new URLSearchParams({ tab: 'pending' });
+    if (job.city) params.set('city', job.city);
+    if (job.cuisine) params.set('cuisine', job.cuisine);
+    window.open(`/leads?${params.toString()}`, '_blank');
+  };
 
   // Action handlers
   const handleStart = async () => {
@@ -251,10 +306,45 @@ export default function LeadScrapeDetail() {
           <div>
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-2xl font-bold">{job.name}</h1>
-              <Badge className={statusColors[job.status]} variant="outline">
-                {getStatusIcon(job.status)}
-                <span className="ml-1">{job.status.replace('_', ' ')}</span>
-              </Badge>
+              <Popover open={statusDropdownOpen} onOpenChange={setStatusDropdownOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity"
+                    disabled={updateStatusMutation.isPending}
+                  >
+                    <Badge className={statusColors[job.status]} variant="outline">
+                      {updateStatusMutation.isPending ? (
+                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                      ) : (
+                        getStatusIcon(job.status)
+                      )}
+                      <span className="ml-1">{job.status.replace('_', ' ')}</span>
+                      <ChevronDown className="h-3 w-3 ml-1" />
+                    </Badge>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-40 p-1" align="start">
+                  <div className="flex flex-col gap-0.5">
+                    {availableStatuses.map(({ value, label }) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => handleStatusChange(value)}
+                        disabled={value === job.status}
+                        className={`text-left px-2 py-1.5 text-sm rounded transition-colors ${
+                          value === job.status
+                            ? 'bg-muted text-muted-foreground cursor-default'
+                            : 'hover:bg-muted cursor-pointer'
+                        }`}
+                      >
+                        <span className={`inline-block w-2 h-2 rounded-full mr-2 ${statusColors[value].split(' ')[0]}`} />
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
             <p className="text-sm text-muted-foreground mt-1">
               Created {formatDistanceToNow(new Date(job.created_at))} ago
@@ -448,21 +538,44 @@ export default function LeadScrapeDetail() {
             <AnimatedProgressBar value={progress} />
           </div>
 
-          {/* Lead stats */}
-          <div className="grid grid-cols-3 gap-4 pt-2">
+          {/* Lead stats - Pipeline Progress */}
+          <div className="grid grid-cols-3 gap-3 pt-2">
             <div className="text-center p-3 bg-blue-50 rounded-lg">
-              <p className="text-2xl font-bold text-blue-600">{stats.leads_extracted}</p>
+              <p className="text-2xl font-bold text-blue-600">{job.lead_stats?.total_extracted ?? stats.leads_extracted}</p>
               <p className="text-xs text-muted-foreground">Extracted</p>
             </div>
-            <div className="text-center p-3 bg-green-50 rounded-lg">
-              <p className="text-2xl font-bold text-green-600">{stats.leads_passed}</p>
+            <div className="text-center p-3 bg-orange-50 rounded-lg">
+              <p className="text-2xl font-bold text-orange-600">{stats.leads_passed}</p>
               <p className="text-xs text-muted-foreground">Passed</p>
             </div>
+          {/* Lead stats - Conversion Status */}
             <div className="text-center p-3 bg-red-50 rounded-lg">
-              <p className="text-2xl font-bold text-red-600">{stats.leads_failed}</p>
-              <p className="text-xs text-muted-foreground">Failed</p>
+              <p className="text-2xl font-bold text-red-600">{job.lead_stats.unprocessed}</p>
+              <p className="text-xs text-muted-foreground">Unprocessed</p>
             </div>
-          </div>
+            <button
+              type="button"
+              onClick={() => handleOpenStepModal(4)}
+              className="text-center p-3 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors cursor-pointer w-full"
+              title="Click to view processed leads (Step 4)"
+            >
+              <p className="text-2xl font-bold text-purple-600 hover:text-purple-700">{job.lead_stats.processed}</p>
+              <p className="text-xs text-muted-foreground">Processed</p>
+            </button>
+            <button
+              type="button"
+              onClick={handleViewPendingLeads}
+              className="text-center p-3 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors cursor-pointer w-full"
+              title={`Click to view pending leads for ${job.city}${job.cuisine ? ` - ${job.cuisine}` : ''}`}
+            >
+              <p className="text-2xl font-bold text-yellow-600 hover:text-yellow-700">{job.lead_stats.pending}</p>
+              <p className="text-xs text-muted-foreground">Pending</p>
+            </button>
+            <div className="text-center p-3 bg-green-50 rounded-lg">
+              <p className="text-2xl font-bold text-green-600">{job.lead_stats.converted}</p>
+              <p className="text-xs text-muted-foreground">Converted</p>
+            </div>
+          </div>  
         </CardContent>
       </Card>
 
@@ -546,6 +659,18 @@ export default function LeadScrapeDetail() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Step Detail Modal - for clickable stats */}
+      <ScrapeJobStepDetailModal
+        open={isStepDetailModalOpen}
+        jobId={id || ''}
+        step={selectedStep}
+        onClose={() => {
+          setIsStepDetailModalOpen(false);
+          setSelectedStep(null);
+        }}
+        onRefresh={() => refetch()}
+      />
     </div>
   );
 }

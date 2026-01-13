@@ -105,16 +105,22 @@ export function getChangedItems(editedItems, originalMenuData) {
   Object.keys(editedItems).forEach(itemId => {
     const original = originalLookup[itemId];
     const edited = editedItems[itemId];
-    
+
+    console.log(`[MenuItemValidator] Checking item ${itemId}:`);
+    console.log('[MenuItemValidator] Original imageURL:', original?.imageURL);
+    console.log('[MenuItemValidator] Edited imageURL:', edited?.imageURL);
+
     if (original && edited && hasItemChanges(original, edited)) {
-      changes.push({
+      const change = {
         id: itemId,
         name: edited.name,
         price: edited.price,
         description: edited.description,
         tags: edited.tags,
         imageURL: edited.imageURL
-      });
+      };
+      console.log('[MenuItemValidator] Change detected, adding:', change);
+      changes.push(change);
     }
   });
 

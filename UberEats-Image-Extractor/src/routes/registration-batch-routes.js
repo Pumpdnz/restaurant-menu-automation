@@ -19,7 +19,12 @@ const companiesOfficeBatchService = require('../services/companies-office-batch-
  * Query params:
  *   - search: string (search by batch name)
  *   - status: string (comma-separated: pending,in_progress,completed,failed,cancelled)
- *   - limit: number (default: 20)
+ *   - current_step: string (comma-separated: 1,2,3,4,5,6)
+ *   - city: string (comma-separated city names - matches ANY restaurant in batch)
+ *   - cuisine: string (comma-separated cuisine slugs - matches ANY restaurant in batch)
+ *   - sort_by: string (created_at, total_restaurants, current_step, name)
+ *   - sort_direction: string (asc, desc - default: desc)
+ *   - limit: number (default: 50)
  *   - offset: number (default: 0)
  */
 router.get('/', authMiddleware, async (req, res) => {
@@ -27,6 +32,11 @@ router.get('/', authMiddleware, async (req, res) => {
     const filters = {
       search: req.query.search,
       status: req.query.status,
+      current_step: req.query.current_step,
+      city: req.query.city,
+      cuisine: req.query.cuisine,
+      sort_by: req.query.sort_by,
+      sort_direction: req.query.sort_direction,
       limit: req.query.limit,
       offset: req.query.offset
     };

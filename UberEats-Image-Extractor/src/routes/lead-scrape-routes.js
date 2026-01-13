@@ -27,6 +27,7 @@ const { UsageTrackingService } = require('../services/usage-tracking-service');
  *   - platform: string (ubereats, doordash, etc.)
  *   - city: string
  *   - cuisine: string
+ *   - current_step: string (comma-separated: 1,2,3,4,5)
  *   - started_after: ISO date
  *   - started_before: ISO date
  *   - limit: number (default: 50)
@@ -40,6 +41,7 @@ router.get('/', authMiddleware, async (req, res) => {
       platform: req.query.platform,
       city: req.query.city,
       cuisine: req.query.cuisine,
+      current_step: req.query.current_step,
       started_after: req.query.started_after,
       started_before: req.query.started_before,
       limit: req.query.limit,
@@ -284,6 +286,39 @@ router.post('/:id/cancel', authMiddleware, async (req, res) => {
     }
     if (error.message.includes('Can only cancel')) {
       return res.status(400).json({ success: false, error: error.message });
+    }
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * PATCH /api/lead-scrape-jobs/:id/status
+ * Update job status directly
+ * Body:
+ *   - status: string (draft, pending, in_progress, completed, cancelled, failed)
+ */
+router.patch('/:id/status', authMiddleware, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const validStatuses = ['draft', 'pending', 'in_progress', 'completed', 'cancelled', 'failed'];
+
+    if (!status || !validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
+      });
+    }
+
+    const job = await leadScrapeService.updateJobStatus(
+      req.params.id,
+      status,
+      req.user.organisationId
+    );
+    res.json({ success: true, job });
+  } catch (error) {
+    console.error('Error updating job status:', error);
+    if (error.message.includes('not found')) {
+      return res.status(404).json({ success: false, error: error.message });
     }
     res.status(500).json({ success: false, error: error.message });
   }
@@ -688,6 +723,138 @@ router.post('/:jobId/validate-leads', authMiddleware, async (req, res) => {
     if (error.message.includes('not found')) {
       return res.status(404).json({ success: false, error: error.message });
     }
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================================
+// ANALYTICS ENDPOINTS
+// ============================================================================
+
+const leadScrapeAnalyticsService = require('../services/lead-scrape-analytics-service');
+
+/**
+ * GET /api/lead-scrape-jobs/analytics/summary
+ * Get summary statistics for lead scraping
+ * Query params:
+ *   - startDate: ISO date (optional)
+ *   - endDate: ISO date (optional)
+ *   - platform: string (optional)
+ */
+router.get('/analytics/summary', authMiddleware, async (req, res) => {
+  try {
+    const { startDate, endDate, platform } = req.query;
+
+    const stats = await leadScrapeAnalyticsService.getSummaryStats(
+      req.user.organisationId,
+      { startDate, endDate, platform }
+    );
+
+    res.json({ success: true, data: stats });
+  } catch (error) {
+    console.error('Error fetching analytics summary:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/lead-scrape-jobs/analytics/coverage
+ * Get coverage data grouped by city/cuisine
+ * Query params:
+ *   - startDate: ISO date (optional)
+ *   - endDate: ISO date (optional)
+ *   - platform: string (optional)
+ *   - city: string (optional)
+ *   - cuisine: string (optional)
+ */
+router.get('/analytics/coverage', authMiddleware, async (req, res) => {
+  try {
+    const { startDate, endDate, platform, city, cuisine } = req.query;
+
+    const coverage = await leadScrapeAnalyticsService.getCoverageByCity(
+      req.user.organisationId,
+      { startDate, endDate, platform, city, cuisine }
+    );
+
+    res.json({ success: true, data: coverage });
+  } catch (error) {
+    console.error('Error fetching coverage data:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/lead-scrape-jobs/analytics/heatmap
+ * Get heatmap matrix data (city x cuisine)
+ * Query params:
+ *   - startDate: ISO date (optional)
+ *   - endDate: ISO date (optional)
+ *   - platform: string (optional)
+ */
+router.get('/analytics/heatmap', authMiddleware, async (req, res) => {
+  try {
+    const { startDate, endDate, platform } = req.query;
+
+    const heatmap = await leadScrapeAnalyticsService.getHeatmapMatrix(
+      req.user.organisationId,
+      { startDate, endDate, platform }
+    );
+
+    res.json({ success: true, data: heatmap });
+  } catch (error) {
+    console.error('Error fetching heatmap data:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/lead-scrape-jobs/analytics/opportunities
+ * Get gap/opportunity analysis
+ * Query params:
+ *   - startDate: ISO date (optional)
+ *   - endDate: ISO date (optional)
+ *   - platform: string (optional)
+ *   - minScore: number (optional, filter by minimum opportunity score)
+ */
+router.get('/analytics/opportunities', authMiddleware, async (req, res) => {
+  try {
+    const { startDate, endDate, platform, minScore } = req.query;
+
+    let opportunities = await leadScrapeAnalyticsService.getOpportunities(
+      req.user.organisationId,
+      { startDate, endDate, platform }
+    );
+
+    // Filter by minimum score if provided
+    if (minScore) {
+      opportunities = opportunities.filter(o => o.opportunity_score >= parseInt(minScore));
+    }
+
+    res.json({ success: true, data: opportunities });
+  } catch (error) {
+    console.error('Error fetching opportunities:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/lead-scrape-jobs/analytics/trends
+ * Get activity trends over time
+ * Query params:
+ *   - timeframe: string (e.g., '7d', '30d', '90d')
+ */
+router.get('/analytics/trends', authMiddleware, async (req, res) => {
+  try {
+    const { timeframe } = req.query;
+
+    const trends = await leadScrapeAnalyticsService.getActivityTrends(
+      req.user.organisationId,
+      { timeframe }
+    );
+
+    res.json({ success: true, data: trends });
+  } catch (error) {
+    console.error('Error fetching trends:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

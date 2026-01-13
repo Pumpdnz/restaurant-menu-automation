@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import {
@@ -9,6 +10,7 @@ import {
   Clock,
   Loader2,
   ChevronRight,
+  Store,
 } from 'lucide-react';
 
 import {
@@ -119,6 +121,7 @@ export function BatchProgressCard({
   const navigate = useNavigate();
   const startMutation = useStartRegistrationBatch();
   const cancelMutation = useCancelRegistrationBatch();
+  const [isRestaurantListExpanded, setIsRestaurantListExpanded] = useState(false);
 
   const progress = batch.total_restaurants > 0
     ? Math.round(
@@ -146,6 +149,16 @@ export function BatchProgressCard({
                 <span>{batch.completed_restaurants}/{batch.total_restaurants} completed</span>
                 <span>Step {batch.current_step}/{batch.total_steps}</span>
               </div>
+              {/* Compact restaurant preview */}
+              {batch.jobs && batch.jobs.length > 0 && (
+                <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                  <Store className="h-3 w-3" />
+                  <span className="truncate max-w-[200px]">
+                    {batch.jobs.slice(0, 2).map(j => j.restaurant?.name || 'Unknown').join(', ')}
+                    {batch.jobs.length > 2 && ` +${batch.jobs.length - 2}`}
+                  </span>
+                </div>
+              )}
             </div>
             <div className="flex gap-1">
               {[1, 2, 3, 4, 5, 6].map((step) => (
@@ -180,6 +193,41 @@ export function BatchProgressCard({
                 <> &bull; Started {formatDistanceToNow(new Date(batch.started_at))} ago</>
               )}
             </CardDescription>
+
+            {/* Restaurant preview */}
+            {batch.jobs && batch.jobs.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {batch.jobs.slice(0, isRestaurantListExpanded ? undefined : 4).map((job) => (
+                  <a
+                    key={job.id}
+                    href={`/restaurants/${job.restaurant_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center gap-1 text-xs bg-muted/50 px-2 py-0.5 rounded-md hover:bg-muted transition-colors cursor-pointer"
+                    title={job.restaurant?.city ? `${job.restaurant.name} - ${job.restaurant.city} (Click to open)` : `${job.restaurant?.name} (Click to open)`}
+                  >
+                    <Store className="h-3 w-3 text-muted-foreground" />
+                    <span className="truncate max-w-[120px] hover:text-brand-blue">{job.restaurant?.name || 'Unknown'}</span>
+                    {job.restaurant?.city && (
+                      <span className="text-muted-foreground">({job.restaurant.city})</span>
+                    )}
+                  </a>
+                ))}
+                {batch.jobs.length > 4 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsRestaurantListExpanded(!isRestaurantListExpanded);
+                    }}
+                    className="flex items-center text-xs text-muted-foreground hover:text-foreground px-2 py-0.5 hover:bg-muted/50 rounded-md transition-colors"
+                  >
+                    {isRestaurantListExpanded ? 'Show less' : `+${batch.jobs.length - 4} more`}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Step indicators */}
@@ -203,14 +251,14 @@ export function BatchProgressCard({
             <span className="font-medium">{progress}%</span>
           </div>
           <Progress value={progress} className="h-2" />
-          <p className="text-sm text-muted-foreground">
-            Step {batch.current_step} of {batch.total_steps}: {currentStepDef?.step_name || 'Unknown'}
+          <div className="text-sm text-muted-foreground flex items-center flex-wrap gap-1">
+            <span>Step {batch.current_step} of {batch.total_steps}: {currentStepDef?.step_name || 'Unknown'}</span>
             {isActionRequired && (
-              <Badge variant="outline" className="ml-2 text-orange-600 border-orange-300">
+              <Badge variant="outline" className="text-orange-600 border-orange-300">
                 Action Required
               </Badge>
             )}
-          </p>
+          </div>
         </div>
       </CardContent>
 

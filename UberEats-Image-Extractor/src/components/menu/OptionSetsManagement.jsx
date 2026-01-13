@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from '../ui/select';
 import OptionSetCard from './OptionSetCard';
+import MenuItemAssociationDialog from './MenuItemAssociationDialog';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../../hooks/use-toast';
 
@@ -21,6 +22,8 @@ export default function OptionSetsManagement({ menuId, orgId }) {
   const [filterCategory, setFilterCategory] = useState('all');
   const [isCreating, setIsCreating] = useState(false);
   const [expandedSets, setExpandedSets] = useState(new Set());
+  const [newlyCreatedOptionSet, setNewlyCreatedOptionSet] = useState(null);
+  const [showNewOptionSetDialog, setShowNewOptionSetDialog] = useState(false);
   const { toast } = useToast();
 
   // Load option sets for this menu
@@ -31,7 +34,7 @@ export default function OptionSetsManagement({ menuId, orgId }) {
   const loadOptionSets = async () => {
     try {
       setLoading(true);
-      
+
       // Get all unique option sets for this menu through the junction table
       const { data, error } = await supabase
         .from('menu_item_option_sets')
@@ -56,18 +59,18 @@ export default function OptionSetsManagement({ menuId, orgId }) {
       // Deduplicate option sets (same option set may be used by multiple items)
       const uniqueSets = new Map();
       const optionSetUsage = new Map(); // Track menu items for each option set
-      
+
       data?.forEach(item => {
         if (item.option_set && item.menu_item) {
           const optionSetId = item.option_set.id;
-          
+
           if (!uniqueSets.has(optionSetId)) {
             uniqueSets.set(optionSetId, item.option_set);
             optionSetUsage.set(optionSetId, {
               menuItems: []
             });
           }
-          
+
           // Track menu item usage
           const usage = optionSetUsage.get(optionSetId);
           const categoryName = item.menu_item.category?.name || 'Uncategorized';
@@ -78,7 +81,7 @@ export default function OptionSetsManagement({ menuId, orgId }) {
           });
         }
       });
-      
+
       // Add usage information to each option set
       const optionSetsWithUsage = Array.from(uniqueSets.entries()).map(([id, optionSet]) => {
         const usage = optionSetUsage.get(id);
@@ -166,10 +169,21 @@ export default function OptionSetsManagement({ menuId, orgId }) {
           if (itemsError) throw itemsError;
         }
 
+        // Store the newly created option set and show the association dialog
+        setNewlyCreatedOptionSet(newSet);
+        setShowNewOptionSetDialog(true);
+        setIsCreating(false);
+
+        // Remove the temporary new item from the list
+        setOptionSets(prev => prev.filter(os => !os.isNew));
+
         toast({
           title: "Option set created",
-          description: `"${newSet.name}" has been created successfully`
+          description: `Now assign "${newSet.name}" to menu items`
         });
+
+        // Don't reload yet - wait for user to assign menu items
+        return;
       } else {
         // Update existing option set
         const { error: setError } = await supabase
@@ -463,6 +477,29 @@ export default function OptionSetsManagement({ menuId, orgId }) {
             />
           ))}
         </div>
+      )}
+
+      {/* Dialog for assigning menu items to newly created option set */}
+      {newlyCreatedOptionSet && (
+        <MenuItemAssociationDialog
+          open={showNewOptionSetDialog}
+          onOpenChange={(open) => {
+            if (!open) {
+              // User closed the dialog - reload the list
+              setShowNewOptionSetDialog(false);
+              setNewlyCreatedOptionSet(null);
+              loadOptionSets();
+            }
+          }}
+          optionSet={newlyCreatedOptionSet}
+          menuId={menuId}
+          orgId={orgId}
+          onAssociationsUpdated={() => {
+            setShowNewOptionSetDialog(false);
+            setNewlyCreatedOptionSet(null);
+            loadOptionSets();
+          }}
+        />
       )}
     </div>
   );

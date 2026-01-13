@@ -15,19 +15,42 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
   }
 });
 
+// Internal service key for service-to-service calls (never expires)
+const INTERNAL_SERVICE_KEY = process.env.INTERNAL_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+
 /**
  * Simple authentication middleware
  * Verifies JWT token and loads user profile with organization
+ * Also supports internal service-to-service calls via X-Service-Key header
  */
 async function authMiddleware(req, res, next) {
   try {
+    // Check for internal service-to-service call first
+    const serviceKey = req.headers['x-service-key'];
+    const orgIdHeader = req.headers['x-organisation-id'];
+
+    if (serviceKey && serviceKey === INTERNAL_SERVICE_KEY && orgIdHeader) {
+      // Internal service call - bypass JWT validation
+      console.log('[Auth] Internal service call authenticated for org:', orgIdHeader);
+      req.user = {
+        id: 'internal-service',
+        email: 'service@internal',
+        role: 'super_admin', // Service calls have full access
+        organisationId: orgIdHeader,
+        organisation: { id: orgIdHeader },
+        isServiceCall: true
+      };
+      req.orgFilter = () => ({ organisation_id: orgIdHeader });
+      return next();
+    }
+
     // Extract token from Authorization header
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ 
+      return res.status(401).json({
         error: 'No token provided',
-        message: 'Authorization header with Bearer token is required' 
+        message: 'Authorization header with Bearer token is required'
       });
     }
 
@@ -35,12 +58,12 @@ async function authMiddleware(req, res, next) {
 
     // Verify token with Supabase
     const { data: { user }, error } = await supabase.auth.getUser(token);
-    
+
     if (error || !user) {
       console.error('Token verification failed:', error);
-      return res.status(401).json({ 
+      return res.status(401).json({
         error: 'Invalid token',
-        message: 'Token is invalid or expired' 
+        message: 'Token is invalid or expired'
       });
     }
 

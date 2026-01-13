@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
   ChevronUp,
   ChevronsDownUp,
   Globe,
@@ -127,12 +128,22 @@ function TableSkeleton() {
   );
 }
 
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100, 200, 500, 1000];
+
 interface PendingLeadsTableProps {
   leads: Lead[];
   isLoading: boolean;
   onRefresh: () => void;
   sortState: SortState;
   onSortChange: (newState: SortState) => void;
+  // Pagination props
+  pagination?: {
+    total: number;
+    page: number;
+    pageSize: number;
+    onPageChange: (page: number) => void;
+    onPageSizeChange?: (size: number) => void;
+  };
 }
 
 // Sortable header component
@@ -189,6 +200,93 @@ function SortableHeader({ column, label, sortState, onSort, className }: Sortabl
         )}
       </Button>
     </TableHead>
+  );
+}
+
+// Pagination controls component - used at top and bottom of table
+interface PaginationControlsProps {
+  pagination: {
+    total: number;
+    page: number;
+    pageSize: number;
+    onPageChange: (page: number) => void;
+    onPageSizeChange?: (size: number) => void;
+  };
+  position: 'top' | 'bottom';
+  searchInfo?: {
+    searchQuery: string;
+    filteredCount: number;
+    totalCount: number;
+  };
+}
+
+function PaginationControls({ pagination, position, searchInfo }: PaginationControlsProps) {
+  const totalPages = Math.ceil(pagination.total / pagination.pageSize);
+  const startItem = pagination.page * pagination.pageSize + 1;
+  const endItem = Math.min((pagination.page + 1) * pagination.pageSize, pagination.total);
+
+  return (
+    <div className={cn(
+      "flex items-center justify-between gap-4 px-4 py-2",
+      position === 'top' ? "border-b bg-muted/30" : "border-t bg-muted/30"
+    )}>
+      {/* Left side - item count info */}
+      <div className="text-sm text-muted-foreground">
+        {position === 'bottom' && searchInfo?.searchQuery && searchInfo.filteredCount !== searchInfo.totalCount ? (
+          <span>{searchInfo.filteredCount} matching search of {searchInfo.totalCount} on page</span>
+        ) : (
+          <span>
+            Showing {startItem}-{endItem} of {pagination.total} leads
+          </span>
+        )}
+      </div>
+
+      {/* Right side - pagination controls */}
+      <div className="flex items-center gap-4">
+        {/* Page size selector */}
+        {pagination.onPageSizeChange && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Per page:</span>
+            <select
+              value={pagination.pageSize}
+              onChange={(e) => pagination.onPageSizeChange?.(Number(e.target.value))}
+              className="h-8 rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              {PAGE_SIZE_OPTIONS.map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Page navigation */}
+        {totalPages > 1 && (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => pagination.onPageChange(pagination.page - 1)}
+              disabled={pagination.page === 0}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm text-muted-foreground min-w-[100px] text-center">
+              Page {pagination.page + 1} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => pagination.onPageChange(pagination.page + 1)}
+              disabled={pagination.page + 1 >= totalPages}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -333,6 +431,7 @@ export function PendingLeadsTable({
   onRefresh,
   sortState,
   onSortChange,
+  pagination,
 }: PendingLeadsTableProps) {
   const navigate = useNavigate();
 
@@ -378,7 +477,7 @@ export function PendingLeadsTable({
   const convertMutation = useConvertLeadsToRestaurants();
   const deleteMutation = useDeleteLeads();
 
-  // Filter leads based on search
+  // Filter leads based on search (within-page search)
   const filteredLeads = useMemo(() => {
     if (!searchQuery) return leads;
     const query = searchQuery.toLowerCase();
@@ -952,6 +1051,14 @@ export function PendingLeadsTable({
 
       {/* Table */}
       <div className="rounded-lg border bg-card overflow-hidden">
+        {/* Top pagination controls */}
+        {pagination && (
+          <PaginationControls
+            pagination={pagination}
+            position="top"
+          />
+        )}
+
         <Table>
           <TableHeader>
             <TableRow>
@@ -1162,13 +1269,30 @@ export function PendingLeadsTable({
             ))}
           </TableBody>
         </Table>
-      </div>
 
-      {/* Results count */}
-      <div className="text-sm text-muted-foreground text-center">
-        {searchQuery && filteredLeads.length !== leads.length
-          ? `Showing ${filteredLeads.length} of ${leads.length} leads`
-          : `${leads.length} pending lead${leads.length !== 1 ? 's' : ''}`}
+        {/* Bottom pagination controls */}
+        {pagination && (
+          <PaginationControls
+            pagination={pagination}
+            position="bottom"
+            searchInfo={{
+              searchQuery,
+              filteredCount: filteredLeads.length,
+              totalCount: leads.length,
+            }}
+          />
+        )}
+
+        {/* Simple footer when no pagination */}
+        {!pagination && (
+          <div className="flex items-center justify-between py-3 px-4 border-t bg-muted/30">
+            <div className="text-sm text-muted-foreground">
+              {searchQuery && filteredLeads.length !== leads.length
+                ? `Showing ${filteredLeads.length} of ${leads.length} leads`
+                : `${leads.length} pending lead${leads.length !== 1 ? 's' : ''}`}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Lead Detail Modal */}

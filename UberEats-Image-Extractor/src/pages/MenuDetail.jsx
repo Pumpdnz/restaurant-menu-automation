@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api, { menuItemAPI } from '../services/api';
-import { 
+import {
   ArrowLeftIcon,
   DocumentArrowDownIcon,
   PhotoIcon,
@@ -16,7 +16,8 @@ import {
   ChevronDownIcon,
   TrashIcon,
   ArrowPathIcon,
-  DocumentTextIcon
+  DocumentTextIcon,
+  PlusIcon
 } from '@heroicons/react/24/outline';
 import EditableMenuItem from '../components/menu/EditableMenuItem';
 import OptionSetsManagement from '../components/menu/OptionSetsManagement';
@@ -374,19 +375,70 @@ export default function MenuDetail() {
 
   const handleDeleteItem = (itemId) => {
     setDeletedItems(prev => new Set([...prev, itemId]));
-    
+
     // Remove from editedItems if it was being edited
     setEditedItems(prev => {
       const newEdited = { ...prev };
       delete newEdited[itemId];
       return newEdited;
     });
-    
+
     // Remove from validation errors
     setValidationErrors(prev => {
       const newErrors = { ...prev };
       delete newErrors[itemId];
       return newErrors;
+    });
+  };
+
+  const handleAddItem = () => {
+    if (!selectedCategory) return;
+
+    // Find the original category name if it was renamed
+    const originalCategoryName = Object.entries(categoryNameChanges).find(
+      ([original, renamed]) => renamed === selectedCategory
+    )?.[0] || selectedCategory;
+
+    // Find the category ID from the menu data
+    const categoryItems = menuData[originalCategoryName];
+    const categoryId = categoryItems?.[0]?.categoryId;
+
+    // Generate a temporary ID for the new item
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    const newItem = {
+      id: tempId,
+      name: '',
+      price: null,
+      description: '',
+      tags: [],
+      imageURL: null,
+      categoryId: categoryId,
+      categoryName: originalCategoryName,
+      optionSets: [],
+      isNew: true
+    };
+
+    // Add the new item to menuData
+    setMenuData(prev => ({
+      ...prev,
+      [originalCategoryName]: [...(prev[originalCategoryName] || []), newItem]
+    }));
+
+    // Also add to editedItems so it's tracked for saving
+    setEditedItems(prev => ({
+      ...prev,
+      [tempId]: newItem
+    }));
+
+    // Enable edit mode if not already
+    if (!isEditMode) {
+      setIsEditMode(true);
+    }
+
+    toast({
+      title: "New item added",
+      description: "Fill in the item details and click Save Changes to create it."
     });
   };
 
@@ -538,19 +590,50 @@ export default function MenuDetail() {
         hasChanges = true;
       }
       
-      // Get only the changed items that aren't deleted and weren't renamed
-      const changedItems = getChangedItems(editedItems, originalMenuData).filter(
-        item => !itemsToDelete.has(item.id) && 
+      // Separate new items (temp IDs) from existing items
+      const newItems = Object.values(editedItems).filter(
+        item => item.id?.startsWith('temp-') && !itemsToDelete.has(item.id)
+      );
+      const existingEditedItems = Object.fromEntries(
+        Object.entries(editedItems).filter(([id]) => !id.startsWith('temp-'))
+      );
+
+      // Create new items first
+      if (newItems.length > 0) {
+        console.log('[Frontend] Creating new items:', newItems);
+        for (const newItem of newItems) {
+          try {
+            const response = await menuItemAPI.addToCategory(newItem.categoryId, {
+              name: newItem.name,
+              price: newItem.price,
+              description: newItem.description || '',
+              tags: newItem.tags || []
+            });
+            if (response.data.success) {
+              console.log('[Frontend] Created new item:', response.data.item);
+            }
+          } catch (err) {
+            console.error('[Frontend] Failed to create item:', newItem.name, err);
+            throw new Error(`Failed to create item "${newItem.name}": ${err.message}`);
+          }
+        }
+        changesSummary.push(`${newItems.length} items created`);
+        hasChanges = true;
+      }
+
+      // Get only the changed items that aren't deleted, weren't renamed, and aren't new
+      const changedItems = getChangedItems(existingEditedItems, originalMenuData).filter(
+        item => !itemsToDelete.has(item.id) &&
                 !categoryRenamedItems.some(renamed => renamed.id === item.id)
       );
-      
-      // Combine all updates: deletions, category renames, and other changes
+
+      // Combine all updates: deletions, category renames, and other changes (excluding new items)
       const allItemsToUpdate = [...deletionUpdates, ...categoryRenamedItems, ...changedItems];
-      
+
       console.log('[Frontend] Category name changes:', categoryNameChanges);
       console.log('[Frontend] Category renamed items:', categoryRenamedItems);
       console.log('[Frontend] All items to update:', allItemsToUpdate);
-      
+
       if (allItemsToUpdate.length > 0) {
         const response = await menuItemAPI.bulkUpdate(allItemsToUpdate);
         if (response.data.success) {
@@ -1016,14 +1099,25 @@ export default function MenuDetail() {
                 ) : (
                   <span>{categoryNameChanges[selectedCategory] || selectedCategory}</span>
                 )}
-                <Badge variant="secondary">
-                  {(() => {
-                    const originalCategoryName = Object.entries(categoryNameChanges).find(
-                      ([original, renamed]) => renamed === selectedCategory
-                    )?.[0] || selectedCategory;
-                    return menuData[originalCategoryName]?.filter(item => !deletedItems.has(item.id)).length || 0;
-                  })()} items
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">
+                    {(() => {
+                      const originalCategoryName = Object.entries(categoryNameChanges).find(
+                        ([original, renamed]) => renamed === selectedCategory
+                      )?.[0] || selectedCategory;
+                      return menuData[originalCategoryName]?.filter(item => !deletedItems.has(item.id)).length || 0;
+                    })()} items
+                  </Badge>
+                  <Button
+                    onClick={handleAddItem}
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                  >
+                    <PlusIcon className="h-4 w-4" />
+                    Add Item
+                  </Button>
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent>

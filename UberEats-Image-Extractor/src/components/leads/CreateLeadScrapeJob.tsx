@@ -43,6 +43,9 @@ interface CreateLeadScrapeJobProps {
   onClose: () => void;
   onSuccess?: () => void;
   editJob?: LeadScrapeJob | null;
+  prefillCity?: string;
+  prefillCuisine?: string;
+  prefillPageOffset?: number;
 }
 
 // Platform options
@@ -70,6 +73,9 @@ export function CreateLeadScrapeJob({
   onClose,
   onSuccess,
   editJob,
+  prefillCity,
+  prefillCuisine,
+  prefillPageOffset,
 }: CreateLeadScrapeJobProps) {
   // Form state
   const [platform, setPlatform] = useState('ubereats');
@@ -120,6 +126,35 @@ export function CreateLeadScrapeJob({
       resetForm();
     }
   }, [open, editJob]);
+
+  // Handle prefill data from Reports tab
+  useEffect(() => {
+    if (open && !editJob && (prefillCity || prefillCuisine || prefillPageOffset)) {
+      // Set prefilled city
+      if (prefillCity) {
+        setSelectedCity({
+          id: '',
+          country: 'nz',
+          city_name: prefillCity,
+          city_code: prefillCity.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          region_code: '',
+          ubereats_slug: '',
+        });
+      }
+      // Set prefilled cuisine
+      if (prefillCuisine) {
+        setSelectedCuisine({
+          id: '',
+          display_name: prefillCuisine.charAt(0).toUpperCase() + prefillCuisine.slice(1),
+          slug: prefillCuisine.toLowerCase(),
+        });
+      }
+      // Set prefilled page offset
+      if (prefillPageOffset) {
+        setPageOffset(prefillPageOffset);
+      }
+    }
+  }, [open, editJob, prefillCity, prefillCuisine, prefillPageOffset]);
 
   const resetForm = () => {
     setPlatform('ubereats');

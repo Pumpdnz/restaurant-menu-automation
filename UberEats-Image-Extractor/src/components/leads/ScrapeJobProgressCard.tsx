@@ -3,23 +3,29 @@ import { formatDistanceToNow } from 'date-fns';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Play,
-  Pause,
   X,
   ExternalLink,
   Eye,
   Trash2,
   Loader2,
   RefreshCw,
+  ChevronDown,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '../ui/popover';
 import { ScrapeJobStepList } from './ScrapeJobStepList';
 import {
   LeadScrapeJob,
   useStartLeadScrapeJob,
   useCancelLeadScrapeJob,
   useDeleteLeadScrapeJob,
+  useUpdateJobStatus,
 } from '../../hooks/useLeadScrape';
 
 interface ScrapeJobProgressCardProps {
@@ -96,13 +102,28 @@ export function ScrapeJobProgressCard({
   compact = false,
 }: ScrapeJobProgressCardProps) {
   const navigate = useNavigate();
-  const [isStepsExpanded, setIsStepsExpanded] = useState(true);
+
+  // Determine if steps should be expanded by default
+  // Expand if job was started within the past 7 days
+  const shouldExpandByDefault = () => {
+    if (!job.started_at) return false;
+    const startedAt = new Date(job.started_at);
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    return startedAt >= sevenDaysAgo;
+  };
+
+  const [isStepsExpanded, setIsStepsExpanded] = useState(shouldExpandByDefault);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Mutations
   const startMutation = useStartLeadScrapeJob();
   const cancelMutation = useCancelLeadScrapeJob();
   const deleteMutation = useDeleteLeadScrapeJob();
+  const updateStatusMutation = useUpdateJobStatus();
+
+  // Status dropdown state
+  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
 
   // Handle manual refresh
   const handleRefresh = async () => {
@@ -152,11 +173,27 @@ export function ScrapeJobProgressCard({
     }
   };
 
+  const handleStatusChange = async (newStatus: LeadScrapeJob['status']) => {
+    if (newStatus === job.status) return;
+    await updateStatusMutation.mutateAsync({ jobId: job.id, status: newStatus });
+    setStatusDropdownOpen(false);
+    if (onRefresh) onRefresh();
+  };
+
+  const availableStatuses: { value: LeadScrapeJob['status']; label: string }[] = [
+    { value: 'draft', label: 'Draft' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'in_progress', label: 'In Progress' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'cancelled', label: 'Cancelled' },
+    { value: 'failed', label: 'Failed' },
+  ];
+
   const handleViewDetails = () => {
     navigate(`/leads/${job.id}`);
   };
 
-  const isLoading = startMutation.isPending || cancelMutation.isPending || deleteMutation.isPending;
+  const isLoading = startMutation.isPending || cancelMutation.isPending || deleteMutation.isPending || updateStatusMutation.isPending;
 
   return (
     <Card>
@@ -170,9 +207,43 @@ export function ScrapeJobProgressCard({
               >
                 {job.name}
               </Link>
-              <Badge className={statusColors[job.status]} variant="outline">
-                {job.status.replace('_', ' ')}
-              </Badge>
+              <Popover open={statusDropdownOpen} onOpenChange={setStatusDropdownOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity"
+                    disabled={updateStatusMutation.isPending}
+                  >
+                    <Badge className={statusColors[job.status]} variant="outline">
+                      {updateStatusMutation.isPending ? (
+                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                      ) : null}
+                      {job.status.replace('_', ' ')}
+                      <ChevronDown className="h-3 w-3 ml-1" />
+                    </Badge>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-40 p-1" align="start">
+                  <div className="flex flex-col gap-0.5">
+                    {availableStatuses.map(({ value, label }) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => handleStatusChange(value)}
+                        disabled={value === job.status}
+                        className={`text-left px-2 py-1.5 text-sm rounded transition-colors ${
+                          value === job.status
+                            ? 'bg-muted text-muted-foreground cursor-default'
+                            : 'hover:bg-muted cursor-pointer'
+                        }`}
+                      >
+                        <span className={`inline-block w-2 h-2 rounded-full mr-2 ${statusColors[value].split(' ')[0]}`} />
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </CardTitle>
             <CardDescription className="mt-1">
               {getTimeAgoText()} {job.current_step > 0 && `• Step ${job.current_step} of ${job.total_steps || 4}`}
@@ -196,8 +267,17 @@ export function ScrapeJobProgressCard({
             </div>
             {/* Job details */}
             <div className="text-sm text-muted-foreground">
-              City: {job.city} | Cuisine: {job.cuisine} | Leads Limit: {job.leads_limit}
+              City: {job.city} | Cuisine: {job.cuisine} | Leads Limit: {job.leads_limit} | Page Offset: {job.page_offset || 1} | Extracted: {job.lead_stats?.total_extracted ?? stats.leads_extracted}
             </div>
+            {/* Lead status totals */}
+            {job.lead_stats && job.lead_stats.total_extracted > 0 && (
+              <div className="text-xs flex flex-wrap gap-x-3 gap-y-1 mt-1">
+                <span className="text-red-600">Unprocessed: {job.lead_stats.unprocessed}</span>
+                <span className="text-purple-600">Processed: {job.lead_stats.processed}</span>
+                <span className="text-yellow-600">Pending: {job.lead_stats.pending}</span>
+                <span className="text-green-600">Converted: {job.lead_stats.converted}</span>
+              </div>
+            )}
           </div>
         </div>
       </CardHeader>

@@ -33,6 +33,14 @@ export interface LeadScrapeJob {
   updated_at: string;
   metadata: any;
   steps?: LeadScrapeJobStep[];
+  // Lead statistics (populated by backend)
+  lead_stats?: {
+    total_extracted: number;
+    unprocessed: number;
+    processed: number;
+    pending: number;
+    converted: number;
+  };
 }
 
 export interface LeadScrapeJobStep {
@@ -160,6 +168,7 @@ export interface LeadScrapeJobFilters {
   platform?: string;
   city?: string;
   cuisine?: string;
+  current_step?: string;
   started_after?: string;
   started_before?: string;
   limit?: number;
@@ -261,6 +270,7 @@ export function useLeadScrapeJobs(filters: LeadScrapeJobFilters = {}) {
       if (filters.platform) params.append('platform', filters.platform);
       if (filters.city) params.append('city', filters.city);
       if (filters.cuisine) params.append('cuisine', filters.cuisine);
+      if (filters.current_step) params.append('current_step', filters.current_step);
       if (filters.started_after) params.append('started_after', filters.started_after);
       if (filters.started_before) params.append('started_before', filters.started_before);
       if (filters.limit) params.append('limit', filters.limit.toString());
@@ -536,7 +546,7 @@ export function useRetryFailedLeads() {
  * Hook to fetch pending leads (ready for conversion)
  */
 export function usePendingLeads(filters: PendingLeadsFilters = {}) {
-  return useQuery<{ success: boolean; leads: Lead[]; total: number; limit: number; offset: number }>({
+  return useQuery<{ success: boolean; leads: Lead[]; pagination: { total: number; limit: number; offset: number; hasMore: boolean } }>({
     queryKey: ['pending-leads', filters],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -767,6 +777,30 @@ export function useMarkLeadsFailed() {
     },
     onError: (error: any) => {
       toast.error('Failed to mark leads', {
+        description: error.response?.data?.error || error.message,
+      });
+    },
+  });
+}
+
+/**
+ * Hook to update job status directly
+ */
+export function useUpdateJobStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ jobId, status }: { jobId: string; status: LeadScrapeJob['status'] }) => {
+      const response = await api.patch(`/lead-scrape-jobs/${jobId}/status`, { status });
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['lead-scrape-jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-scrape-job', variables.jobId] });
+      toast.success(`Job status updated to ${variables.status.replace('_', ' ')}`);
+    },
+    onError: (error: any) => {
+      toast.error('Failed to update job status', {
         description: error.response?.data?.error || error.message,
       });
     },

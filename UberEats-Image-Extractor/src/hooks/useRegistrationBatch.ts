@@ -6,12 +6,27 @@ import api from '../services/api';
 // TYPES
 // ============================================================================
 
+// Lightweight restaurant info for batch list preview
+export interface RegistrationJobPreview {
+  id: string;
+  restaurant_id: string;
+  status: string;
+  current_step: number;
+  error_message: string | null;
+  restaurant?: {
+    id: string;
+    name: string;
+    city?: string;
+    cuisine?: string | string[];
+  };
+}
+
 export interface RegistrationBatchJob {
   id: string;
   name: string;
   organisation_id: string;
   source_lead_scrape_job_id: string | null;
-  status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
+  status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled' | 'action_required';
   total_restaurants: number;
   completed_restaurants: number;
   failed_restaurants: number;
@@ -22,6 +37,8 @@ export interface RegistrationBatchJob {
   completed_at: string | null;
   created_by: string | null;
   metadata: Record<string, any>;
+  // Jobs with restaurant preview (populated in list endpoint)
+  jobs?: RegistrationJobPreview[];
 }
 
 export interface RegistrationJob {
@@ -30,7 +47,7 @@ export interface RegistrationJob {
   restaurant_id: string;
   restaurant_name?: string;
   organisation_id: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
+  status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled' | 'action_required';
   current_step: number;
   execution_config: Record<string, any>;
   pumpd_user_id: string | null;
@@ -129,6 +146,11 @@ export interface StepSummary {
 export interface RegistrationBatchFilters {
   status?: string[];
   search?: string;
+  current_step?: string[];
+  city?: string[];
+  cuisine?: string[];
+  sort_by?: 'created_at' | 'total_restaurants' | 'current_step' | 'name';
+  sort_direction?: 'asc' | 'desc';
   limit?: number;
   offset?: number;
 }
@@ -193,6 +215,11 @@ export function useRegistrationBatches(filters: RegistrationBatchFilters = {}) {
       const params = new URLSearchParams();
       if (filters.status?.length) params.append('status', filters.status.join(','));
       if (filters.search) params.append('search', filters.search);
+      if (filters.current_step?.length) params.append('current_step', filters.current_step.join(','));
+      if (filters.city?.length) params.append('city', filters.city.join(','));
+      if (filters.cuisine?.length) params.append('cuisine', filters.cuisine.join(','));
+      if (filters.sort_by) params.append('sort_by', filters.sort_by);
+      if (filters.sort_direction) params.append('sort_direction', filters.sort_direction);
       if (filters.limit) params.append('limit', filters.limit.toString());
       if (filters.offset) params.append('offset', filters.offset.toString());
 

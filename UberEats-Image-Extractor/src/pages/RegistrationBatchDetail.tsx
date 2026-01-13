@@ -26,6 +26,7 @@ import {
   useStartRegistrationBatch,
   useCancelRegistrationBatch,
   useRetryRegistrationJob,
+  useResumeStep6,
   RegistrationJob,
   REGISTRATION_STEPS,
   YOLO_MODE_SUB_STEPS,
@@ -97,6 +98,7 @@ function RestaurantRow({
   isExpanded,
   onToggle,
   onRetry,
+  onResumeStep6,
   isSelected,
   onToggleSelection,
   sequences,
@@ -114,6 +116,7 @@ function RestaurantRow({
   isExpanded: boolean;
   onToggle: () => void;
   onRetry: () => void;
+  onResumeStep6: () => void;
   isSelected: boolean;
   onToggleSelection: () => void;
   sequences: SequenceInstance[];
@@ -206,7 +209,24 @@ function RestaurantRow({
           )}
         </TableCell>
         <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-          {job.status === 'failed' && (
+          {/* Resume button - shows when Step 6 has partial progress and job/step indicates failure */}
+          {step6Data?.sub_step_progress && (
+            job.status === 'failed' ||
+            (job.status as string) === 'action_required' ||
+            step6Data?.status === 'failed' ||
+            step6Data?.status === 'action_required'
+          ) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onResumeStep6}
+              title="Resume from last completed phase"
+            >
+              <Play className="h-4 w-4" />
+            </Button>
+          )}
+          {/* Retry button - shows when failed but no Step 6 progress */}
+          {job.status === 'failed' && !step6Data?.sub_step_progress && (
             <Button variant="ghost" size="sm" onClick={onRetry}>
               <RotateCcw className="h-4 w-4" />
             </Button>
@@ -265,10 +285,14 @@ function RestaurantRow({
                           {YOLO_MODE_SUB_STEPS.map((subStep) => {
                             const progress = getSubStepStatus(subStepProgress, subStep.key);
                             const status = progress?.status || 'pending';
-                            // Enable editing when Step 6 has failed/has errors, or job is not actively processing
-                            const step6Failed = step6Data?.status === 'failed' || !!step6Data?.error_message;
-                            const jobNotProcessing = job.status !== 'in_progress';
-                            const canEdit = hasSubStepProgress && (step6Failed || (jobNotProcessing && job.current_step === 6));
+                            // Enable editing when:
+                            // 1. Job is not actively processing (includes action_required, failed, completed, pending)
+                            // 2. Step 6 specifically failed or has errors (even during processing)
+                            const canEdit = hasSubStepProgress && (
+                              job.status !== 'in_progress' ||
+                              step6Data?.status === 'failed' ||
+                              !!step6Data?.error_message
+                            );
 
                             return (
                               <SubStepEditor
@@ -355,6 +379,7 @@ export default function RegistrationBatchDetail() {
   const startMutation = useStartRegistrationBatch();
   const cancelMutation = useCancelRegistrationBatch();
   const retryMutation = useRetryRegistrationJob();
+  const resumeStep6Mutation = useResumeStep6();
 
   const [expandedJobIds, setExpandedJobIds] = useState<Set<string>>(new Set());
   const [isProgressOpen, setIsProgressOpen] = useState(true);
@@ -799,6 +824,7 @@ export default function RegistrationBatchDetail() {
                   isExpanded={expandedJobIds.has(job.id)}
                   onToggle={() => toggleExpanded(job.id)}
                   onRetry={() => retryMutation.mutate({ jobId: job.id })}
+                  onResumeStep6={() => resumeStep6Mutation.mutate(job.id)}
                   isSelected={selectedJobIds.has(job.id)}
                   onToggleSelection={() => toggleSelection(job.id)}
                   sequences={getSequencesForRestaurant(job.restaurant_id)}

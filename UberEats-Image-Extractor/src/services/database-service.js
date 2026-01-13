@@ -4,6 +4,8 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
+const { processMenuItemTags, getTagStats } = require('./tag-detection-service');
+const { processCommonImageAssociations, getAssociationStats } = require('./common-images-service');
 
 // Initialize Supabase client
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -50,6 +52,12 @@ function setUserSupabaseClient(token) {
 // Get the appropriate Supabase client (user-authenticated if available, otherwise default)
 function getSupabaseClient() {
   return userSupabaseClient || supabase;
+}
+
+// Get the service-level Supabase client (bypasses RLS, never expires)
+// Use this for background operations that don't need user context
+function getServiceSupabaseClient() {
+  return supabase;
 }
 
 // Check if database is available
@@ -1051,14 +1059,24 @@ async function saveExtractionResults(jobId, extractionData) {
     
     // Extract menu items
     const menuItems = extractionData.menuItems || [];
-    
+
+    // Process tags - detect from categories, names, descriptions and clean abbreviations
+    const categoryNames = categories.map(c => c.name || c);
+    console.log(`[Database] Processing tags for ${menuItems.length} menu items...`);
+    const processedMenuItems = processMenuItemTags(menuItems, categoryNames);
+    const tagStats = getTagStats(processedMenuItems);
+    console.log(`[Database] Tag detection complete: ${tagStats.itemsWithTags} items tagged, ${tagStats.uniqueTags} unique tags`);
+    if (tagStats.tags.length > 0) {
+      console.log(`[Database] Detected tags: ${tagStats.tags.join(', ')}`);
+    }
+
     // Debug: Check for duplicate image URLs in the extraction data
     console.log('[Database] DEBUG: Analyzing extraction data images...');
     const imageUrlCounts = {};
     const itemsWithImages = [];
     const itemsWithoutImages = [];
-    
-    menuItems.forEach((item, idx) => {
+
+    processedMenuItems.forEach((item, idx) => {
       const url = item.imageURL || item.dishImageURL;
       const itemName = item.dishName || item.name;
       
@@ -1086,13 +1104,13 @@ async function saveExtractionResults(jobId, extractionData) {
       });
     }
     
-    const itemRecords = await createMenuItems(menu.id, categoryMap, menuItems, job.organisation_id);
+    const itemRecords = await createMenuItems(menu.id, categoryMap, processedMenuItems, job.organisation_id);
     
     // Create item image map - ORIGINAL LOGIC (index-based)
     console.log('[Database] DEBUG: Mapping images to created items...');
     const itemImageMap = {};
     itemRecords.forEach((item, index) => {
-      const originalItem = menuItems[index];
+      const originalItem = processedMenuItems[index];
       if (originalItem && (originalItem.imageURL || originalItem.dishImageURL)) {
         const imageUrl = originalItem.imageURL || originalItem.dishImageURL;
         itemImageMap[item.id] = imageUrl;
@@ -1101,7 +1119,22 @@ async function saveExtractionResults(jobId, extractionData) {
         console.log(`[Database] Mapping: Item[${index}] "${item.name}" (id: ${item.id}) -> NO IMAGE`);
       }
     });
-    
+
+    // Auto-associate common images for items without extracted images
+    console.log('[Database] Processing common image associations...');
+    const commonImageResult = processCommonImageAssociations(
+      itemRecords,
+      processedMenuItems,
+      itemImageMap
+    );
+    console.log(getAssociationStats(commonImageResult));
+
+    // Add common image associations to itemImageMap
+    for (const [itemId, association] of Object.entries(commonImageResult.associations)) {
+      itemImageMap[itemId] = association.url;
+      console.log(`[Database] Common Image: "${association.metadata.matchedItemName}" -> ${association.metadata.imageName} (${(association.metadata.confidence * 100).toFixed(0)}%)`);
+    }
+
     // Create item images - pass organisation_id from job
     await createItemImages(itemImageMap, job.organisation_id);
     
@@ -2756,13 +2789,16 @@ async function bulkUpdateMenuItems(updates) {
             } else {
               // Create new image association
               console.log('[Database] Creating new image association for item:', id);
-              await getSupabaseClient()
+              const { error: insertError } = await getSupabaseClient()
                 .from('item_images')
                 .insert({
                   menu_item_id: id,
                   url: imageURL,
-                  is_primary: true
+                  type: 'primary'  // Column is 'type', not 'is_primary'
                 });
+              if (insertError) {
+                console.error('[Database] Error inserting image:', insertError);
+              }
             }
           }
           // If imageURL is the same as existing, do nothing
@@ -3329,6 +3365,7 @@ async function findCDNImageByUrl(originalUrl) {
 module.exports = {
   get supabase() { return supabase; },
   getSupabaseClient,
+  getServiceSupabaseClient,
   initializeDatabase,
   isDatabaseAvailable,
   setCurrentOrganizationId,

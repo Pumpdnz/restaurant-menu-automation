@@ -11,7 +11,7 @@
  * - Step 6: Pumpd Account Setup (phased parallel execution)
  */
 
-const { getSupabaseClient } = require('./database-service');
+const { getServiceSupabaseClient } = require('./database-service');
 const { executeWithRetry, formatErrorMessage } = require('./database-error-handler');
 const axios = require('axios');
 
@@ -152,7 +152,7 @@ function getRegistrationStepDefinitions() {
  * @returns {Promise<object>} Batch jobs list
  */
 async function listRegistrationBatchJobs(filters = {}, orgId) {
-  const client = getSupabaseClient();
+  const client = getServiceSupabaseClient();
 
   try {
     let query = client
@@ -164,11 +164,16 @@ async function listRegistrationBatchJobs(filters = {}, orgId) {
           restaurant_id,
           status,
           current_step,
-          error_message
+          error_message,
+          restaurant:restaurants (
+            id,
+            name,
+            city,
+            cuisine
+          )
         )
       `)
-      .eq('organisation_id', orgId)
-      .order('created_at', { ascending: false });
+      .eq('organisation_id', orgId);
 
     // Apply filters
     if (filters.search) {
@@ -180,30 +185,82 @@ async function listRegistrationBatchJobs(filters = {}, orgId) {
       query = query.in('status', statuses);
     }
 
-    // Pagination
-    const limit = parseInt(filters.limit) || 20;
-    const offset = parseInt(filters.offset) || 0;
-    query = query.range(offset, offset + limit - 1);
+    // Filter by current step (direct column)
+    if (filters.current_step) {
+      const steps = filters.current_step.split(',').map(s => parseInt(s));
+      query = query.in('current_step', steps);
+    }
 
-    const { data, error, count } = await query;
+    // Apply sorting
+    const sortBy = filters.sort_by || 'created_at';
+    const sortDirection = filters.sort_direction === 'asc' ? true : false;
+
+    // Map frontend sort keys to database columns
+    const sortColumnMap = {
+      'created_at': 'created_at',
+      'total_restaurants': 'total_restaurants',
+      'current_step': 'current_step',
+      'name': 'name'
+    };
+
+    const sortColumn = sortColumnMap[sortBy] || 'created_at';
+    query = query.order(sortColumn, { ascending: sortDirection });
+
+    const { data, error } = await query;
 
     if (error) throw error;
 
     // Map response
-    const batchJobs = data.map(batch => ({
+    let batchJobs = data.map(batch => ({
       ...batch,
       jobs: batch.registration_jobs || []
     }));
 
     batchJobs.forEach(batch => delete batch.registration_jobs);
 
+    // Client-side filtering for city (batch contains ANY restaurant in selected cities)
+    if (filters.city) {
+      const cities = filters.city.split(',').map(c => c.toLowerCase());
+      batchJobs = batchJobs.filter(batch => {
+        return batch.jobs.some(job => {
+          const restaurantCity = job.restaurant?.city?.toLowerCase();
+          return restaurantCity && cities.includes(restaurantCity);
+        });
+      });
+    }
+
+    // Client-side filtering for cuisine (batch contains ANY restaurant with selected cuisines)
+    if (filters.cuisine) {
+      const cuisines = filters.cuisine.split(',').map(c => c.toLowerCase());
+      batchJobs = batchJobs.filter(batch => {
+        return batch.jobs.some(job => {
+          const restaurantCuisine = job.restaurant?.cuisine;
+          if (!restaurantCuisine) return false;
+
+          // Handle both string and array cuisine formats
+          const cuisineArray = Array.isArray(restaurantCuisine)
+            ? restaurantCuisine.map(c => c.toLowerCase())
+            : [restaurantCuisine.toLowerCase()];
+
+          return cuisineArray.some(c => cuisines.includes(c));
+        });
+      });
+    }
+
+    // Apply pagination after client-side filtering
+    const limit = parseInt(filters.limit) || 50;
+    const offset = parseInt(filters.offset) || 0;
+    const totalCount = batchJobs.length;
+    const paginatedJobs = batchJobs.slice(offset, offset + limit);
+
     return {
-      batch_jobs: batchJobs,
+      batch_jobs: paginatedJobs,
+      total_count: totalCount,
       pagination: {
-        total: count,
+        total: totalCount,
         limit,
         offset,
-        has_more: data.length === limit
+        has_more: offset + paginatedJobs.length < totalCount
       }
     };
   } catch (error) {
@@ -219,7 +276,7 @@ async function listRegistrationBatchJobs(filters = {}, orgId) {
  * @returns {Promise<object>} Batch job with details
  */
 async function getRegistrationBatchJob(batchId, orgId) {
-  const client = getSupabaseClient();
+  const client = getServiceSupabaseClient();
 
   try {
     const { data: batch, error: batchError } = await client
@@ -416,7 +473,7 @@ async function getRegistrationBatchJob(batchId, orgId) {
  * @returns {Promise<object>} Created batch with jobs
  */
 async function createRegistrationBatchJob(data) {
-  const client = getSupabaseClient();
+  const client = getServiceSupabaseClient();
   const {
     name,
     restaurant_ids,
@@ -476,7 +533,7 @@ async function createRegistrationBatchJob(data) {
  * @returns {Promise<object>} Created job with steps
  */
 async function createRegistrationJob(data) {
-  const client = getSupabaseClient();
+  const client = getServiceSupabaseClient();
   const { batch_job_id, restaurant_id, organisation_id, execution_config } = data;
 
   try {
@@ -527,7 +584,7 @@ async function createRegistrationJob(data) {
  * @param {object} [additionalUpdates] - Additional fields to update
  */
 async function updateBatchStatus(batchId, status, additionalUpdates = {}) {
-  const client = getSupabaseClient();
+  const client = getServiceSupabaseClient();
 
   try {
     const updates = {
@@ -557,7 +614,7 @@ async function updateBatchStatus(batchId, status, additionalUpdates = {}) {
  * @param {string} orgId - Organization ID
  */
 async function startBatchJob(batchId, orgId) {
-  const client = getSupabaseClient();
+  const client = getServiceSupabaseClient();
 
   try {
     // 1. Validate batch exists and is in correct state
@@ -605,7 +662,7 @@ async function startBatchJob(batchId, orgId) {
  * @param {string} orgId - Organization ID
  */
 async function cancelBatchJob(batchId, orgId) {
-  const client = getSupabaseClient();
+  const client = getServiceSupabaseClient();
 
   try {
     // Validate batch exists
@@ -653,7 +710,7 @@ async function cancelBatchJob(batchId, orgId) {
  * @param {string} orgId - Organization ID
  */
 async function getBatchProgress(batchId, orgId) {
-  const client = getSupabaseClient();
+  const client = getServiceSupabaseClient();
 
   try {
     const { data: batch, error } = await client
@@ -707,7 +764,7 @@ async function getBatchProgress(batchId, orgId) {
  * @param {string} orgId - Organization ID
  */
 async function markExtractionsExecutedOnCreation(batchId, restaurantIds, orgId) {
-  const client = getSupabaseClient();
+  const client = getServiceSupabaseClient();
 
   try {
     // Verify batch exists and belongs to org
@@ -756,7 +813,7 @@ async function markExtractionsExecutedOnCreation(batchId, restaurantIds, orgId) 
  * Includes retry logic for transient database errors
  */
 async function updateStepStatus(jobId, stepNumber, status, additionalData = {}) {
-  const client = getSupabaseClient();
+  const client = getServiceSupabaseClient();
 
   const updates = {
     status,
@@ -795,7 +852,7 @@ async function updateStepStatus(jobId, stepNumber, status, additionalData = {}) 
  * @param {number|null} currentStep - Optional current step number to update
  */
 async function updateJobStatus(jobId, status, errorMessage = null, currentStep = null) {
-  const client = getSupabaseClient();
+  const client = getServiceSupabaseClient();
 
   const updates = {
     status,
@@ -837,7 +894,7 @@ async function incrementBatchProgress(batchId, type) {
     return;
   }
 
-  const client = getSupabaseClient();
+  const client = getServiceSupabaseClient();
 
   const column = type === 'completed' ? 'completed_restaurants' : 'failed_restaurants';
 
@@ -868,7 +925,7 @@ async function incrementBatchProgress(batchId, type) {
  * Check if all jobs have completed a specific step
  */
 async function checkAllJobsCompletedStep(batchId, stepNumber) {
-  const client = getSupabaseClient();
+  const client = getServiceSupabaseClient();
 
   // Get all job IDs for this batch
   const { data: jobs } = await client
@@ -895,7 +952,7 @@ async function checkAllJobsCompletedStep(batchId, stepNumber) {
  * Calculate final batch status
  */
 async function calculateBatchFinalStatus(batchId) {
-  const client = getSupabaseClient();
+  const client = getServiceSupabaseClient();
 
   const { data: batch } = await client
     .from('registration_batch_jobs')
@@ -948,7 +1005,7 @@ async function handleBatchError(batchId, error) {
 async function processStep1(batchId, orgId) {
   console.log(`[Registration Batch Service] Processing Step 1 for batch ${batchId}`);
 
-  const client = getSupabaseClient();
+  const client = getServiceSupabaseClient();
   const { batch_job, registration_jobs } = await getRegistrationBatchJob(batchId, orgId);
 
   for (const job of registration_jobs) {
@@ -1430,7 +1487,7 @@ async function processStep4(batchId, orgId) {
 async function completeStep5(batchId, configurations, orgId, selectedJobIds = null, authContext = null) {
   console.log(`[Registration Batch Service] Completing Step 5 for batch ${batchId}`);
 
-  const client = getSupabaseClient();
+  const client = getServiceSupabaseClient();
 
   // Determine which jobs to process
   // If selectedJobIds is provided, only process those jobs
@@ -1672,7 +1729,7 @@ async function processStep6ForSelectedJobs(batchId, orgId, selectedJobIds, authC
  * @param {object} authContext - Auth context for server-to-server calls { token, organisationId }
  */
 async function executeYoloModeForJob(job, batchId, authContext = null) {
-  const client = getSupabaseClient();
+  const client = getServiceSupabaseClient();
 
   await updateStepStatus(job.id, 6, 'in_progress');
   await updateJobStatus(job.id, 'in_progress', null, 6); // Update job's current_step to 6
@@ -1871,29 +1928,21 @@ async function executeYoloModeForJob(job, batchId, authContext = null) {
   } catch (error) {
     console.error(`[Registration Batch Service] Yolo Mode failed for job ${job.id}:`, error);
 
-    // Instead of marking as permanently failed, move back to Step 5 so user can review and retry
-    // This preserves the execution_config and allows the user to make adjustments
-
-    // Reset Step 6 to pending (will be re-run when user submits again)
-    await updateStepStatus(job.id, 6, 'pending', {
-      error_message: null,
-      sub_step_progress: null
-    });
-
-    // Set Step 5 back to action_required with the error message
-    await updateStepStatus(job.id, 5, 'action_required', {
-      error_message: `Previous execution failed: ${error.message}`,
+    // Preserve sub_step_progress on Step 6 for resume functionality
+    // This allows the Resume button to detect partial progress and continue from last completed phase
+    await updateStepStatus(job.id, 6, 'failed', {
+      error_message: error.message,
+      sub_step_progress: phaseProgress,
       error_details: {
         timestamp: new Date().toISOString(),
-        error: error.message,
-        sub_step_progress: phaseProgress
+        error: error.message
       }
     });
 
-    // Set job status to action_required so it appears in Step 5 UI again
-    await updateJobStatus(job.id, 'action_required', `Step 6 failed: ${error.message}`, 5); // Update job's current_step to 5
+    // Set job status to action_required with current_step at 6 for resume
+    await updateJobStatus(job.id, 'action_required', `Step 6 failed: ${error.message}`, 6);
 
-    console.log(`[Registration Batch Service] Job ${job.id} moved back to Step 5 for retry`);
+    console.log(`[Registration Batch Service] Job ${job.id} Step 6 failed - can be resumed from last completed phase`);
   }
 }
 
@@ -2009,20 +2058,19 @@ async function executeYoloModeSubStep(subStepName, job, config, context = {}) {
 
     console.log(`[Registration Batch Service] Calling ${url}`);
 
-    // Build headers with auth context if available
+    // Build headers for internal service-to-service call
+    // Use service key instead of user JWT to avoid token expiration during long operations
+    const serviceKey = process.env.INTERNAL_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
     const headers = {
       'Content-Type': 'application/json',
+      'X-Service-Key': serviceKey,
     };
-    if (context.authContext?.token) {
-      // Token may already include "Bearer " prefix from request headers
-      const token = context.authContext.token;
-      headers['Authorization'] = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
-      console.log(`[Registration Batch Service] Using auth token (length: ${token.length})`);
-    } else {
-      console.warn(`[Registration Batch Service] No auth token available for ${subStepName}`);
-    }
+
     if (context.authContext?.organisationId) {
       headers['X-Organisation-ID'] = context.authContext.organisationId;
+      console.log(`[Registration Batch Service] Using service key auth for org: ${context.authContext.organisationId}`);
+    } else {
+      console.warn(`[Registration Batch Service] No organisation ID available for ${subStepName}`);
     }
 
     const response = await axios.post(url, payload, {
@@ -2178,9 +2226,10 @@ function buildSubStepRequest(subStepName, restaurantId, config, context) {
 
     // ===== PHASE 4 =====
     itemTags: {
-      endpoint: '/api/registration/add-item-tags',
+      endpoint: menu.selectedMenuId ? '/api/registration/add-item-tags' : null,
       payload: {
         restaurantId,
+        menuId: menu.selectedMenuId,
       },
     },
   };
@@ -2270,7 +2319,7 @@ async function updatePhaseProgress(jobId, stepNumber, phaseName, status, phasePr
   }
 
   // Update in database with retry logic
-  const client = getSupabaseClient();
+  const client = getServiceSupabaseClient();
 
   await executeWithRetry(
     () => client
@@ -2450,9 +2499,12 @@ async function resumeYoloModeForJob(job, batchId, authContext = null) {
         break;
 
       default:
-        // No completed phases - start from beginning
-        console.log(`[Registration Batch Service] No completed phases, starting from Phase 1`);
-        return executeYoloModeForJob(job, batchId, authContext);
+        // No completed phases - resume from Phase 1 (may have partial progress)
+        console.log(`[Registration Batch Service] No completed phases, resuming from Phase 1`);
+        await executePhase1Resume(job, config, phaseProgress, context);
+        await executePhase2Resume(job, config, phaseProgress, context);
+        await executePhase3Resume(job, config, phaseProgress, context, menu);
+        await executePhase4Resume(job, config, phaseProgress, context, menu);
     }
 
     // Mark complete
@@ -2486,7 +2538,121 @@ async function resumeYoloModeForJob(job, batchId, authContext = null) {
 }
 
 /**
+ * Helper to check if a sub-step should be skipped during resume
+ * @param {object} phaseProgress - The sub_step_progress object
+ * @param {string} subStepKey - Sub-step key name
+ * @returns {boolean} True if sub-step is already completed or skipped
+ */
+function shouldSkipSubStepOnResume(phaseProgress, subStepKey) {
+  const status = getSubStepStatus(phaseProgress, subStepKey);
+  return status === 'completed' || status === 'skipped';
+}
+
+/**
+ * Execute Phase 1 for resume (when Phase 1 partially failed)
+ * Only retries failed/pending sub-steps, skips already completed ones
+ */
+async function executePhase1Resume(job, config, phaseProgress, context) {
+  const account = config.account || {};
+  const menu = config.menu || {};
+  const onboarding = config.onboarding || {};
+
+  await updatePhaseProgress(job.id, 6, 'phase1', 'in_progress', phaseProgress);
+
+  const phase1Promises = [];
+
+  // 1a. Account Registration (only if registerNewUser is true and not already completed)
+  if (shouldSkipSubStepOnResume(phaseProgress, 'cloudwaitressAccount')) {
+    console.log('[Resume] cloudwaitressAccount already completed, skipping');
+    phase1Promises.push(Promise.resolve({ step: 'cloudwaitressAccount', result: { skipped: true, reason: 'already completed' } }));
+  } else if (account.registerNewUser !== false) {
+    phase1Promises.push(
+      executeSubStep('cloudwaitressAccount', job, config, phaseProgress, context)
+        .then(result => ({ step: 'cloudwaitressAccount', result }))
+    );
+  } else {
+    updateSubStepInProgress(phaseProgress, 'cloudwaitressAccount', 'skipped', { reason: 'Account registration disabled' });
+    phase1Promises.push(Promise.resolve({ step: 'cloudwaitressAccount', result: { skipped: true } }));
+  }
+
+  // 1b. Code Generation (only if not already completed)
+  if (shouldSkipSubStepOnResume(phaseProgress, 'codeGeneration')) {
+    console.log('[Resume] codeGeneration already completed, skipping');
+    // Reconstruct context from existing data if available
+    const codeGenData = phaseProgress.phases?.phase1?.sub_steps?.codeGeneration || {};
+    context.codeInjectionId = codeGenData.codeInjectionId || context.codeInjectionId;
+    context.codeInjectionGeneratedAt = codeGenData.generatedAt || context.codeInjectionGeneratedAt;
+    context.codeGenerationFilePaths = codeGenData.filePaths || context.codeGenerationFilePaths || true;
+    phase1Promises.push(Promise.resolve({ step: 'codeGeneration', result: { skipped: true, reason: 'already completed' } }));
+  } else {
+    phase1Promises.push(
+      executeSubStep('codeGeneration', job, config, phaseProgress, context)
+        .then(result => ({ step: 'codeGeneration', result }))
+    );
+  }
+
+  // 1c. Onboarding User Creation (only if enabled and not already completed)
+  if (shouldSkipSubStepOnResume(phaseProgress, 'createOnboardingUser')) {
+    console.log('[Resume] createOnboardingUser already completed, skipping');
+    context.onboardingUserCreated = getSubStepStatus(phaseProgress, 'createOnboardingUser') === 'completed';
+    phase1Promises.push(Promise.resolve({ step: 'createOnboardingUser', result: { skipped: true, reason: 'already completed' } }));
+  } else if (onboarding.createOnboardingUser) {
+    phase1Promises.push(
+      executeSubStep('createOnboardingUser', job, config, phaseProgress, context)
+        .then(result => {
+          context.onboardingUserCreated = result.success && !result.skipped;
+          return { step: 'createOnboardingUser', result };
+        })
+    );
+  } else {
+    updateSubStepInProgress(phaseProgress, 'createOnboardingUser', 'skipped', { reason: 'Onboarding user creation disabled' });
+    phase1Promises.push(Promise.resolve({ step: 'createOnboardingUser', result: { skipped: true } }));
+  }
+
+  // 1d. Image Upload (only if menu selected and uploadImages enabled and not already completed)
+  if (shouldSkipSubStepOnResume(phaseProgress, 'uploadImages')) {
+    console.log('[Resume] uploadImages already completed, skipping');
+    phase1Promises.push(Promise.resolve({ step: 'uploadImages', result: { skipped: true, reason: 'already completed' } }));
+  } else if (menu.selectedMenuId && menu.uploadImages) {
+    phase1Promises.push(
+      executeSubStep('uploadImages', job, config, phaseProgress, context)
+        .then(result => ({ step: 'uploadImages', result }))
+    );
+  } else {
+    updateSubStepInProgress(phaseProgress, 'uploadImages', 'skipped', { reason: 'No menu selected or image upload disabled' });
+    phase1Promises.push(Promise.resolve({ step: 'uploadImages', result: { skipped: true } }));
+  }
+
+  const phase1Results = await Promise.allSettled(phase1Promises);
+
+  // Check account registration result (BLOCKING) - only if it was actually run
+  const accountResult = phase1Results[0];
+  if (accountResult.status === 'rejected') {
+    throw new Error(`Account registration failed: ${accountResult.reason?.message || accountResult.reason}`);
+  }
+  if (accountResult.status === 'fulfilled' &&
+      accountResult.value.result?.success === false &&
+      accountResult.value.result?.reason !== 'already completed') {
+    throw new Error(`Account registration failed`);
+  }
+
+  // Store codeGeneration result for websiteConfig (only if it was actually run)
+  const codeGenResult = phase1Results[1];
+  if (codeGenResult.status === 'fulfilled' &&
+      codeGenResult.value.result?.result &&
+      codeGenResult.value.result?.reason !== 'already completed') {
+    const codeGenData = codeGenResult.value.result.result;
+    context.codeInjectionId = codeGenData.codeInjectionId || null;
+    context.codeInjectionGeneratedAt = codeGenData.generatedAt || null;
+    context.codeGenerationFilePaths = codeGenData.filePaths || null;
+  }
+
+  await updatePhaseProgress(job.id, 6, 'phase1', 'completed', phaseProgress, context);
+}
+
+/**
  * Execute Phase 2 for resume (after Phase 1 already completed)
+ * Only retries failed/pending sub-steps, skips already completed ones
  */
 async function executePhase2Resume(job, config, phaseProgress, context) {
   const menu = config.menu || {};
@@ -2494,14 +2660,21 @@ async function executePhase2Resume(job, config, phaseProgress, context) {
 
   await updatePhaseProgress(job.id, 6, 'phase2', 'in_progress', phaseProgress);
 
-  // restaurantRegistration is BLOCKING for remaining config steps
-  await executeSubStep('restaurantRegistration', job, config, phaseProgress, context);
+  // restaurantRegistration is BLOCKING for remaining config steps - only run if not completed
+  if (shouldSkipSubStepOnResume(phaseProgress, 'restaurantRegistration')) {
+    console.log('[Resume] restaurantRegistration already completed, skipping');
+  } else {
+    await executeSubStep('restaurantRegistration', job, config, phaseProgress, context);
+  }
 
-  // Run remaining Phase 2 steps in parallel
+  // Run remaining Phase 2 steps in parallel (only those not already completed)
   const phase2Promises = [];
 
-  // 2a. Website Configuration (only if codeGeneration succeeded - check DB ID or file paths)
-  if (context.codeInjectionId || context.codeGenerationFilePaths) {
+  // 2a. Website Configuration (only if codeGeneration succeeded and not already completed)
+  if (shouldSkipSubStepOnResume(phaseProgress, 'websiteConfig')) {
+    console.log('[Resume] websiteConfig already completed, skipping');
+    phase2Promises.push(Promise.resolve({ step: 'websiteConfig', result: { skipped: true, reason: 'already completed' } }));
+  } else if (context.codeInjectionId || context.codeGenerationFilePaths) {
     phase2Promises.push(
       executeSubStep('websiteConfig', job, config, phaseProgress, context)
         .then(result => ({ step: 'websiteConfig', result }))
@@ -2511,20 +2684,35 @@ async function executePhase2Resume(job, config, phaseProgress, context) {
     phase2Promises.push(Promise.resolve({ step: 'websiteConfig', result: { skipped: true } }));
   }
 
-  // 2b. Services Configuration (always run)
-  phase2Promises.push(
-    executeSubStep('servicesConfig', job, config, phaseProgress, context)
-      .then(result => ({ step: 'servicesConfig', result }))
-  );
+  // 2b. Services Configuration (only if not already completed)
+  if (shouldSkipSubStepOnResume(phaseProgress, 'servicesConfig')) {
+    console.log('[Resume] servicesConfig already completed, skipping');
+    phase2Promises.push(Promise.resolve({ step: 'servicesConfig', result: { skipped: true, reason: 'already completed' } }));
+  } else {
+    phase2Promises.push(
+      executeSubStep('servicesConfig', job, config, phaseProgress, context)
+        .then(result => ({ step: 'servicesConfig', result }))
+    );
+  }
 
-  // 2c. Payment Configuration (always run)
-  phase2Promises.push(
-    executeSubStep('paymentConfig', job, config, phaseProgress, context)
-      .then(result => ({ step: 'paymentConfig', result }))
-  );
+  // 2c. Payment Configuration (only if not already completed)
+  if (shouldSkipSubStepOnResume(phaseProgress, 'paymentConfig')) {
+    console.log('[Resume] paymentConfig already completed, skipping');
+    phase2Promises.push(Promise.resolve({ step: 'paymentConfig', result: { skipped: true, reason: 'already completed' } }));
+  } else {
+    phase2Promises.push(
+      executeSubStep('paymentConfig', job, config, phaseProgress, context)
+        .then(result => ({ step: 'paymentConfig', result }))
+    );
+  }
 
-  // 2d. Menu Import (only if menu selected)
-  if (menu.selectedMenuId) {
+  // 2d. Menu Import (only if menu selected and not already completed)
+  if (shouldSkipSubStepOnResume(phaseProgress, 'menuImport')) {
+    console.log('[Resume] menuImport already completed, skipping');
+    // If already completed, mark context as succeeded
+    context.menuImportSucceeded = getSubStepStatus(phaseProgress, 'menuImport') === 'completed';
+    phase2Promises.push(Promise.resolve({ step: 'menuImport', result: { skipped: true, reason: 'already completed', success: context.menuImportSucceeded } }));
+  } else if (menu.selectedMenuId) {
     phase2Promises.push(
       executeSubStep('menuImport', job, config, phaseProgress, context)
         .then(result => {
@@ -2537,8 +2725,11 @@ async function executePhase2Resume(job, config, phaseProgress, context) {
     phase2Promises.push(Promise.resolve({ step: 'menuImport', result: { skipped: true } }));
   }
 
-  // 2e. Onboarding Sync (only if onboarding user was created and sync enabled)
-  if (onboarding.syncOnboardingRecord && context.onboardingUserCreated) {
+  // 2e. Onboarding Sync (only if not already completed)
+  if (shouldSkipSubStepOnResume(phaseProgress, 'syncOnboardingUser')) {
+    console.log('[Resume] syncOnboardingUser already completed, skipping');
+    phase2Promises.push(Promise.resolve({ step: 'syncOnboardingUser', result: { skipped: true, reason: 'already completed' } }));
+  } else if (onboarding.syncOnboardingRecord && context.onboardingUserCreated) {
     phase2Promises.push(
       executeSubStep('syncOnboardingUser', job, config, phaseProgress, context)
         .then(result => ({ step: 'syncOnboardingUser', result }))
@@ -2550,7 +2741,7 @@ async function executePhase2Resume(job, config, phaseProgress, context) {
 
   const phase2Results = await Promise.allSettled(phase2Promises);
 
-  // Check menu import result for Phase 3 & 4
+  // Check menu import result for Phase 3 & 4 (only if it was actually run)
   const menuImportResult = phase2Results[3];
   if (menuImportResult?.status === 'fulfilled' && menuImportResult.value?.result?.success) {
     context.menuImportSucceeded = true;
@@ -2561,11 +2752,15 @@ async function executePhase2Resume(job, config, phaseProgress, context) {
 
 /**
  * Execute Phase 3 for resume (optionSets)
+ * Only retries if optionSets is not already completed
  */
 async function executePhase3Resume(job, config, phaseProgress, context, menu) {
   await updatePhaseProgress(job.id, 6, 'phase3', 'in_progress', phaseProgress);
 
-  if (menu.addOptionSets && context.menuImportSucceeded) {
+  // Check if optionSets already completed - skip if so
+  if (shouldSkipSubStepOnResume(phaseProgress, 'optionSets')) {
+    console.log('[Resume] optionSets already completed, skipping');
+  } else if (menu.addOptionSets && context.menuImportSucceeded) {
     await executeSubStep('optionSets', job, config, phaseProgress, context);
   } else {
     const reason = !context.menuImportSucceeded ? 'Menu import failed or skipped' : 'Option sets disabled';
@@ -2577,11 +2772,15 @@ async function executePhase3Resume(job, config, phaseProgress, context, menu) {
 
 /**
  * Execute Phase 4 for resume (itemTags)
+ * Only retries if itemTags is not already completed
  */
 async function executePhase4Resume(job, config, phaseProgress, context, menu) {
   await updatePhaseProgress(job.id, 6, 'phase4', 'in_progress', phaseProgress);
 
-  if (menu.addItemTags && context.menuImportSucceeded) {
+  // Check if itemTags already completed - skip if so
+  if (shouldSkipSubStepOnResume(phaseProgress, 'itemTags')) {
+    console.log('[Resume] itemTags already completed, skipping');
+  } else if (menu.addItemTags && context.menuImportSucceeded) {
     await executeSubStep('itemTags', job, config, phaseProgress, context);
   } else {
     const reason = !context.menuImportSucceeded ? 'Menu import failed or skipped' : 'Item tags disabled';
@@ -2702,6 +2901,91 @@ function getDependentSubSteps(subStepKey) {
 }
 
 /**
+ * Calculate phase status based on sub-step statuses
+ * @param {object} phaseProgress - The sub_step_progress object
+ * @param {string} phaseName - Phase name to calculate
+ * @returns {string} Calculated phase status
+ */
+function calculatePhaseStatus(phaseProgress, phaseName) {
+  const phase = phaseProgress.phases[phaseName];
+  if (!phase?.sub_steps) return 'pending';
+
+  const statuses = Object.values(phase.sub_steps).map(s => s.status);
+
+  // If any sub-step is in_progress or retrying, phase is in_progress
+  if (statuses.some(s => s === 'in_progress' || s === 'retrying')) {
+    return 'in_progress';
+  }
+
+  // If all sub-steps are completed or skipped, phase is completed
+  if (statuses.every(s => s === 'completed' || s === 'skipped')) {
+    return 'completed';
+  }
+
+  // If any sub-step failed (and none in_progress), phase is failed
+  if (statuses.some(s => s === 'failed')) {
+    return 'failed';
+  }
+
+  // If all sub-steps are pending, phase is pending
+  if (statuses.every(s => s === 'pending')) {
+    return 'pending';
+  }
+
+  // Mixed state (some completed, some pending, none failed) = in_progress
+  return 'in_progress';
+}
+
+/**
+ * Update current_phase based on phase statuses
+ * Sets current_phase to the first non-completed phase
+ * @param {object} phaseProgress - The sub_step_progress object
+ */
+function updateCurrentPhase(phaseProgress) {
+  const phaseOrder = ['phase1', 'phase2', 'phase3', 'phase4'];
+
+  for (const phaseName of phaseOrder) {
+    const status = phaseProgress.phases[phaseName]?.status;
+    if (status !== 'completed' && status !== 'skipped') {
+      phaseProgress.current_phase = phaseName;
+      return;
+    }
+  }
+
+  // All phases completed
+  phaseProgress.current_phase = 'completed';
+}
+
+/**
+ * Get allowed status transitions for a sub-step
+ * @param {string} currentStatus - Current sub-step status
+ * @param {string[]} deps - Dependency keys
+ * @param {object} phaseProgress - The sub_step_progress object
+ * @returns {string[]} List of allowed target statuses
+ */
+function getAllowedTransitions(currentStatus, deps, phaseProgress) {
+  const transitions = [];
+
+  // Can always mark as failed
+  if (currentStatus !== 'failed') transitions.push('failed');
+
+  // Can always mark as pending
+  if (currentStatus !== 'pending') transitions.push('pending');
+
+  // Can mark as completed only if all deps are completed/skipped
+  const depsOk = deps.every(dep => {
+    const status = getSubStepStatus(phaseProgress, dep);
+    return status === 'completed' || status === 'skipped';
+  });
+  if (depsOk && currentStatus !== 'completed') transitions.push('completed');
+
+  // Can mark as skipped if deps are ok
+  if (depsOk && currentStatus !== 'skipped') transitions.push('skipped');
+
+  return transitions;
+}
+
+/**
  * Update a single sub-step status with validation
  * @param {string} jobId - Job ID
  * @param {string} subStepKey - Sub-step key name
@@ -2711,7 +2995,7 @@ function getDependentSubSteps(subStepKey) {
  * @returns {Promise<object>} Updated sub_step_progress and validation info
  */
 async function updateSubStepStatus(jobId, subStepKey, newStatus, data = {}, orgId) {
-  const client = getSupabaseClient();
+  const client = getServiceSupabaseClient();
 
   // Get job with Step 6 data
   const { data: job, error: jobError } = await client
@@ -2754,24 +3038,74 @@ async function updateSubStepStatus(jobId, subStepKey, newStatus, data = {}, orgI
     };
   }
 
-  // Save to database
+  // CASCADE: Recalculate phase status
+  const oldPhaseStatus = phaseProgress.phases[phaseName].status;
+  const newPhaseStatus = calculatePhaseStatus(phaseProgress, phaseName);
+  if (oldPhaseStatus !== newPhaseStatus) {
+    phaseProgress.phases[phaseName].status = newPhaseStatus;
+    console.log(`[updateSubStepStatus] Phase ${phaseName} status cascaded: ${oldPhaseStatus} → ${newPhaseStatus}`);
+  }
+
+  // CASCADE: Update current_phase
+  const oldCurrentPhase = phaseProgress.current_phase;
+  updateCurrentPhase(phaseProgress);
+  if (oldCurrentPhase !== phaseProgress.current_phase) {
+    console.log(`[updateSubStepStatus] current_phase updated: ${oldCurrentPhase} → ${phaseProgress.current_phase}`);
+  }
+
+  // CASCADE: Determine if job/step status needs updating
+  const allPhasesCompleted = ['phase1', 'phase2', 'phase3', 'phase4']
+    .every(p => phaseProgress.phases[p]?.status === 'completed');
+  const anyPhaseFailed = ['phase1', 'phase2', 'phase3', 'phase4']
+    .some(p => phaseProgress.phases[p]?.status === 'failed');
+
+  const currentStepStatus = step6.status;
+  let newStepStatus = currentStepStatus;
+  let statusCascaded = false;
+
+  if (allPhasesCompleted && currentStepStatus !== 'completed') {
+    newStepStatus = 'completed';
+    statusCascaded = true;
+  } else if (anyPhaseFailed && currentStepStatus !== 'failed') {
+    newStepStatus = 'failed';
+    statusCascaded = true;
+  } else if (!allPhasesCompleted && !anyPhaseFailed && currentStepStatus === 'completed') {
+    // User reopened a completed step by marking something as failed/pending
+    newStepStatus = 'in_progress';
+    statusCascaded = true;
+  }
+
+  // Save sub_step_progress to database
   await executeWithRetry(
     () => client
       .from('registration_job_steps')
       .update({
         sub_step_progress: phaseProgress,
+        status: newStepStatus,
         updated_at: new Date().toISOString()
       })
       .eq('id', step6.id),
     `updateSubStepStatus(job=${jobId}, subStep=${subStepKey}, status=${newStatus})`
   );
 
+  // CASCADE: Update job status if step status changed
+  if (statusCascaded) {
+    const newJobStatus = newStepStatus === 'completed' ? 'completed' :
+                         newStepStatus === 'failed' ? 'action_required' : 'in_progress';
+    console.log(`[updateSubStepStatus] Cascading job status to: ${newJobStatus}`);
+    await updateJobStatus(jobId, newJobStatus, null, 6);
+  }
+
   return {
     success: true,
     sub_step_progress: phaseProgress,
     validation_warnings: validation.warnings,
     updated_sub_step: subStepKey,
-    new_status: newStatus
+    new_status: newStatus,
+    phase_status_changed: oldPhaseStatus !== newPhaseStatus,
+    new_phase_status: newPhaseStatus,
+    step_status_changed: statusCascaded,
+    new_step_status: newStepStatus
   };
 }
 
@@ -2784,7 +3118,7 @@ async function updateSubStepStatus(jobId, subStepKey, newStatus, data = {}, orgI
  * @returns {Promise<object>} Updated sub_step_progress
  */
 async function resetSubStep(jobId, subStepKey, cascadeReset = true, orgId) {
-  const client = getSupabaseClient();
+  const client = getServiceSupabaseClient();
 
   // Get job with Step 6 data
   const { data: job, error: jobError } = await client
@@ -2826,9 +3160,11 @@ async function resetSubStep(jobId, subStepKey, cascadeReset = true, orgId) {
     }
   }
 
-  // Reset each sub-step
+  // Reset each sub-step and track affected phases
+  const affectedPhases = new Set();
   for (const stepKey of resetSubSteps) {
     const phaseName = SUB_STEP_PHASES[stepKey];
+    affectedPhases.add(phaseName);
     if (phaseProgress.phases[phaseName]?.sub_steps?.[stepKey]) {
       phaseProgress.phases[phaseName].sub_steps[stepKey] = {
         status: 'pending',
@@ -2838,22 +3174,72 @@ async function resetSubStep(jobId, subStepKey, cascadeReset = true, orgId) {
     }
   }
 
+  // CASCADE: Recalculate affected phase statuses
+  const phaseChanges = [];
+  for (const phaseName of affectedPhases) {
+    const oldStatus = phaseProgress.phases[phaseName].status;
+    const newStatus = calculatePhaseStatus(phaseProgress, phaseName);
+    if (oldStatus !== newStatus) {
+      phaseProgress.phases[phaseName].status = newStatus;
+      phaseChanges.push({ phase: phaseName, from: oldStatus, to: newStatus });
+      console.log(`[resetSubStep] Phase ${phaseName} status cascaded: ${oldStatus} → ${newStatus}`);
+    }
+  }
+
+  // CASCADE: Update current_phase
+  const oldCurrentPhase = phaseProgress.current_phase;
+  updateCurrentPhase(phaseProgress);
+  if (oldCurrentPhase !== phaseProgress.current_phase) {
+    console.log(`[resetSubStep] current_phase updated: ${oldCurrentPhase} → ${phaseProgress.current_phase}`);
+  }
+
+  // CASCADE: Determine if job/step status needs updating
+  const allPhasesCompleted = ['phase1', 'phase2', 'phase3', 'phase4']
+    .every(p => phaseProgress.phases[p]?.status === 'completed');
+  const anyPhaseFailed = ['phase1', 'phase2', 'phase3', 'phase4']
+    .some(p => phaseProgress.phases[p]?.status === 'failed');
+
+  const currentStepStatus = step6.status;
+  let newStepStatus = currentStepStatus;
+  let statusCascaded = false;
+
+  // Resetting sub-steps typically means reopening work
+  if (!allPhasesCompleted && currentStepStatus === 'completed') {
+    newStepStatus = 'in_progress';
+    statusCascaded = true;
+  } else if (!anyPhaseFailed && currentStepStatus === 'failed') {
+    // If we reset a failed sub-step and no phases are failed anymore
+    newStepStatus = 'in_progress';
+    statusCascaded = true;
+  }
+
   // Save to database
   await executeWithRetry(
     () => client
       .from('registration_job_steps')
       .update({
         sub_step_progress: phaseProgress,
+        status: newStepStatus,
         updated_at: new Date().toISOString()
       })
       .eq('id', step6.id),
     `resetSubStep(job=${jobId}, subStep=${subStepKey}, cascade=${cascadeReset})`
   );
 
+  // CASCADE: Update job status if step status changed
+  if (statusCascaded) {
+    const newJobStatus = 'action_required'; // Reset implies user needs to take action
+    console.log(`[resetSubStep] Cascading job status to: ${newJobStatus}`);
+    await updateJobStatus(jobId, newJobStatus, null, 6);
+  }
+
   return {
     success: true,
     sub_step_progress: phaseProgress,
-    reset_sub_steps: resetSubSteps
+    reset_sub_steps: resetSubSteps,
+    phase_changes: phaseChanges,
+    step_status_changed: statusCascaded,
+    new_step_status: newStepStatus
   };
 }
 
@@ -2865,7 +3251,7 @@ async function resetSubStep(jobId, subStepKey, cascadeReset = true, orgId) {
  * @returns {Promise<object>} Validation context
  */
 async function getSubStepValidation(jobId, subStepKey, orgId) {
-  const client = getSupabaseClient();
+  const client = getServiceSupabaseClient();
 
   // Get job with Step 6 data
   const { data: job, error: jobError } = await client
@@ -2891,6 +3277,8 @@ async function getSubStepValidation(jobId, subStepKey, orgId) {
   const phaseProgress = step6.sub_step_progress;
   const currentStatus = getSubStepStatus(phaseProgress, subStepKey);
   const deps = SUB_STEP_DEPENDENCIES[subStepKey] || [];
+  const phaseName = SUB_STEP_PHASES[subStepKey];
+  const dependents = getDependentSubSteps(subStepKey);
 
   // Check each dependency status
   const dependencies = {};
@@ -2908,7 +3296,7 @@ async function getSubStepValidation(jobId, subStepKey, orgId) {
     if (!isValid) canMarkComplete = false;
   }
 
-  // Determine allowed status transitions
+  // Determine allowed status transitions (legacy format)
   const canMarkAs = {
     completed: canMarkComplete,
     failed: currentStatus === 'in_progress' || currentStatus === 'pending',
@@ -2916,13 +3304,38 @@ async function getSubStepValidation(jobId, subStepKey, orgId) {
     pending: true  // Can always reset to pending
   };
 
+  // Enhanced: Get allowed transitions array
+  const allowedTransitions = getAllowedTransitions(currentStatus, deps, phaseProgress);
+
+  // Enhanced: Dependency statuses array for UI
+  const dependencyStatuses = deps.map(dep => ({
+    key: dep,
+    status: getSubStepStatus(phaseProgress, dep),
+    phase: SUB_STEP_PHASES[dep]
+  }));
+
+  // Enhanced: Cascade warning for reset operations
+  let cascadeWarning = null;
+  if (dependents.length > 0) {
+    cascadeWarning = `Resetting will also reset: ${dependents.join(', ')}`;
+  }
+
   return {
+    success: true,
     subStepKey,
     currentStatus,
-    phase: SUB_STEP_PHASES[subStepKey],
+    phase: phaseName,
+    phase_status: phaseProgress.phases[phaseName]?.status,
     dependencies,
-    dependents: getDependentSubSteps(subStepKey),
-    canMarkAs
+    dependents,
+    canMarkAs,
+    // Enhanced response fields
+    allowed_transitions: allowedTransitions,
+    dependency_statuses: dependencyStatuses,
+    cascade_warning: cascadeWarning,
+    blocking_dependencies: dependencyStatuses.filter(d =>
+      !['completed', 'skipped'].includes(d.status)
+    )
   };
 }
 
@@ -2942,7 +3355,7 @@ async function getSubStepValidation(jobId, subStepKey, orgId) {
  * @returns {Promise<object>} Updated job with new search results
  */
 async function retryStep2ForJob(jobId, searchParams, orgId) {
-  const client = getSupabaseClient();
+  const client = getServiceSupabaseClient();
   const companiesOfficeBatchService = require('./companies-office-batch-service');
 
   console.log(`[Registration Batch Service] Retrying Step 2 for job ${jobId}`);
@@ -3051,7 +3464,7 @@ async function retryStep2ForJob(jobId, searchParams, orgId) {
  * @returns {Promise<object>} Result
  */
 async function skipWithManualEntry(jobId, manualDetails, orgId) {
-  const client = getSupabaseClient();
+  const client = getServiceSupabaseClient();
 
   console.log(`[Registration Batch Service] Skipping Steps 2-4 with manual entry for job ${jobId}`);
 
@@ -3222,7 +3635,7 @@ async function convertImageUrlToBase64(imageUrl) {
  * @returns {Promise<object>} Updated restaurant data
  */
 async function updateRestaurantFromConfig(jobId, updates, orgId) {
-  const client = getSupabaseClient();
+  const client = getServiceSupabaseClient();
 
   console.log(`[Registration Batch Service] Updating restaurant for job ${jobId}`);
 
@@ -3305,7 +3718,7 @@ async function updateRestaurantFromConfig(jobId, updates, orgId) {
  * @returns {Promise<{jobId: string}>} - Job ID for polling
  */
 async function executeYoloModeForSingleRestaurant(restaurantId, formData, organisationId, authContext = null) {
-  const client = getSupabaseClient();
+  const client = getServiceSupabaseClient();
 
   console.log(`[Registration Batch Service] Starting single-restaurant YOLO mode for restaurant ${restaurantId}`);
 
@@ -3695,7 +4108,7 @@ async function executeYoloModeForSingleRestaurantInternal(job, formData, authCon
  * @returns {Promise<object|null>} Progress object or null if not started
  */
 async function getSingleRestaurantYoloProgress(restaurantId, organisationId) {
-  const client = getSupabaseClient();
+  const client = getServiceSupabaseClient();
 
   const { data: job, error } = await client
     .from('registration_jobs')

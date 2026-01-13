@@ -281,6 +281,7 @@ export default function RestaurantDetail() {
   // Item Tags states
   const [isAddingTags, setIsAddingTags] = useState(false);
   const [tagsStatus, setTagsStatus] = useState(null);
+  const [selectedMenuForItemTags, setSelectedMenuForItemTags] = useState('');
 
   // Option Sets states
   const [selectedMenuForOptionSets, setSelectedMenuForOptionSets] = useState('');
@@ -341,7 +342,7 @@ export default function RestaurantDetail() {
   const [headerBgSource, setHeaderBgSource] = useState('website_og_image');
 
   // Items configuration state
-  const [itemLayout, setItemLayout] = useState('list'); // 'list' or 'card'
+  const [itemLayout, setItemLayout] = useState('card'); // 'list' or 'card'
 
   // Text color configuration state (defaults to white for dark theme compatibility)
   const [navTextColorSource, setNavTextColorSource] = useState('white');
@@ -943,6 +944,15 @@ export default function RestaurantDetail() {
 
   // Item Tags handler
   const handleAddItemTags = async () => {
+    if (!selectedMenuForItemTags) {
+      toast({
+        title: "Error",
+        description: "Please select a menu first",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (!registrationStatus?.account || registrationStatus.account.registration_status !== 'completed') {
       toast({
         title: "Error",
@@ -966,7 +976,8 @@ export default function RestaurantDetail() {
 
     try {
       const response = await railwayApi.post('/api/registration/add-item-tags', {
-        restaurantId: id
+        restaurantId: id,
+        menuId: selectedMenuForItemTags
       });
 
       setTagsStatus(response.data);
@@ -974,7 +985,7 @@ export default function RestaurantDetail() {
       if (response.data.success) {
         toast({
           title: "Success",
-          description: "Item tags configured successfully",
+          description: `Item tags configured successfully${response.data.summary?.itemsAssigned ? ` (${response.data.summary.itemsAssigned} items assigned)` : ''}`,
         });
       } else {
         toast({
@@ -5895,32 +5906,67 @@ export default function RestaurantDetail() {
                         )}
                       </Button>
 
-                      {/* Add Tags Button */}
+                      {/* Add Item Tags Section */}
                       {isFeatureEnabled('registration.itemTagUploading') && (
-                        <div className="space-y-2">
-                          <Button
-                            onClick={handleAddItemTags}
-                            disabled={isAddingTags}
-                            className="w-full"
-                            variant="outline"
-                          >
-                            {isAddingTags ? (
-                              <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Adding Tags...
-                              </>
-                            ) : (
-                              <>
-                                <Tag className="h-4 w-4 mr-2" />
-                                Add Item Tags
-                              </>
-                            )}
-                          </Button>
-                          {isAddingTags && (
-                            <p className="text-xs text-muted-foreground text-center">
-                              This may take 2-3 minutes. Please don't close this window.
-                            </p>
-                          )}
+                        <div className="border-t pt-4 mt-4">
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-sm font-medium">
+                              <Tag className="h-4 w-4" />
+                              Add Item Tags from Menu
+                            </div>
+
+                            {/* Menu Dropdown for Item Tags */}
+                            <Select
+                              value={selectedMenuForItemTags}
+                              onValueChange={setSelectedMenuForItemTags}
+                              disabled={isAddingTags}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select a menu..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {restaurant?.menus && restaurant.menus.length > 0 ? (
+                                  restaurant.menus.map((menu) => (
+                                    <SelectItem key={menu.id} value={menu.id}>
+                                      Version {menu.version} - {menu.platforms?.name || 'Unknown'}
+                                      {menu.is_active && ' (Active)'}
+                                    </SelectItem>
+                                  ))
+                                ) : (
+                                  <SelectItem value="none" disabled>
+                                    No menus available
+                                  </SelectItem>
+                                )}
+                              </SelectContent>
+                            </Select>
+
+                            {/* Add Item Tags Button */}
+                            <div className="space-y-2">
+                              <Button
+                                onClick={handleAddItemTags}
+                                disabled={isAddingTags || !selectedMenuForItemTags}
+                                className="w-full"
+                                variant="outline"
+                              >
+                                {isAddingTags ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Adding Tags...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Tag className="h-4 w-4 mr-2" />
+                                    Add Item Tags
+                                  </>
+                                )}
+                              </Button>
+                              {isAddingTags && (
+                                <p className="text-xs text-muted-foreground text-center">
+                                  This may take 2-3 minutes. Please don't close this window.
+                                </p>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       )}
 
@@ -6554,8 +6600,8 @@ export default function RestaurantDetail() {
                               <SelectValue placeholder="Select item layout" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="list">List (Default)</SelectItem>
-                              <SelectItem value="card">Card</SelectItem>
+                              <SelectItem value="list">List</SelectItem>
+                              <SelectItem value="card">Card (Default)</SelectItem>
                             </SelectContent>
                           </Select>
                           <p className="text-xs text-muted-foreground">

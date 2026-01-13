@@ -116,6 +116,11 @@ async function listLeadScrapeJobs(filters = {}, orgId) {
       query = query.ilike('cuisine', `%${filters.cuisine}%`);
     }
 
+    if (filters.current_step) {
+      const steps = filters.current_step.split(',').map(s => parseInt(s));
+      query = query.in('current_step', steps);
+    }
+
     if (filters.started_after) {
       query = query.gte('started_at', filters.started_after);
     }
@@ -141,6 +146,21 @@ async function listLeadScrapeJobs(filters = {}, orgId) {
 
     // Remove the raw nested data
     jobs.forEach(job => delete job.lead_scrape_job_steps);
+
+    // Fetch lead stats for all jobs in a single query
+    const jobIds = jobs.map(j => j.id);
+    if (jobIds.length > 0) {
+      const leadStatsMap = await getLeadStatsForJobs(jobIds);
+      jobs.forEach(job => {
+        job.lead_stats = leadStatsMap[job.id] || {
+          total_extracted: 0,
+          unprocessed: 0,
+          processed: 0,
+          pending: 0,
+          converted: 0,
+        };
+      });
+    }
 
     return {
       jobs,
@@ -206,10 +226,126 @@ async function getLeadScrapeJob(jobId, orgId) {
     };
     delete job.lead_scrape_job_steps;
 
+    // Add lead stats
+    const leadStats = await getLeadStatsForJob(jobId);
+    job.lead_stats = leadStats;
+
     return job;
   } catch (error) {
     console.error('[LeadScrapeService] Error getting job:', error);
     throw error;
+  }
+}
+
+/**
+ * Get lead statistics for a job
+ * @param {string} jobId - Job ID
+ * @returns {Promise<object>} Lead stats (total_extracted, unprocessed, processed, pending, converted)
+ */
+async function getLeadStatsForJob(jobId) {
+  const client = getSupabaseClient();
+
+  try {
+    const { data, error } = await client
+      .from('leads')
+      .select('current_step, step_progression_status, converted_to_restaurant_id')
+      .eq('lead_scrape_job_id', jobId);
+
+    if (error) throw error;
+
+    const leads = data || [];
+
+    const stats = {
+      total_extracted: leads.length,
+      unprocessed: 0,
+      processed: 0,
+      pending: 0,
+      converted: 0,
+    };
+
+    for (const lead of leads) {
+      const isPassed = lead.current_step === 4 && lead.step_progression_status === 'passed';
+      const isConverted = lead.converted_to_restaurant_id !== null;
+
+      if (isConverted) {
+        stats.converted++;
+        stats.processed++;
+      } else if (isPassed) {
+        stats.pending++;
+        stats.processed++;
+      } else {
+        stats.unprocessed++;
+      }
+    }
+
+    return stats;
+  } catch (error) {
+    console.error('[LeadScrapeService] Error getting lead stats:', error);
+    // Return empty stats on error rather than failing
+    return {
+      total_extracted: 0,
+      unprocessed: 0,
+      processed: 0,
+      pending: 0,
+      converted: 0,
+    };
+  }
+}
+
+/**
+ * Get lead statistics for multiple jobs in a single query (batch version)
+ * @param {string[]} jobIds - Array of Job IDs
+ * @returns {Promise<object>} Map of jobId -> stats
+ */
+async function getLeadStatsForJobs(jobIds) {
+  const client = getSupabaseClient();
+
+  try {
+    const { data, error } = await client
+      .from('leads')
+      .select('lead_scrape_job_id, current_step, step_progression_status, converted_to_restaurant_id')
+      .in('lead_scrape_job_id', jobIds);
+
+    if (error) throw error;
+
+    // Initialize stats map for all job IDs
+    const statsMap = {};
+    jobIds.forEach(id => {
+      statsMap[id] = {
+        total_extracted: 0,
+        unprocessed: 0,
+        processed: 0,
+        pending: 0,
+        converted: 0,
+      };
+    });
+
+    // Aggregate stats from leads
+    for (const lead of (data || [])) {
+      const stats = statsMap[lead.lead_scrape_job_id];
+      if (!stats) continue;
+
+      stats.total_extracted++;
+
+      const isPassed = lead.current_step === 4 && lead.step_progression_status === 'passed';
+      const isConverted = lead.converted_to_restaurant_id !== null;
+
+      if (isConverted) {
+        stats.converted++;
+        stats.processed++;
+      } else if (isPassed) {
+        stats.pending++;
+        stats.processed++;
+      } else {
+        stats.unprocessed++;
+      }
+    }
+
+    return statsMap;
+  } catch (error) {
+    console.error('[LeadScrapeService] Error getting lead stats for jobs:', error);
+    // Return empty map on error
+    return {};
   }
 }
 
@@ -1067,17 +1203,29 @@ async function getPendingLeads(filters = {}, orgId) {
     }
 
     // Filter by job's city (from the lead scrape job, not the lead itself)
+    // Supports comma-separated values for multi-select
     if (filters.city) {
-      query = query.eq('lead_scrape_jobs.city', filters.city);
+      const cities = filters.city.split(',').map(c => c.trim());
+      if (cities.length === 1) {
+        query = query.eq('lead_scrape_jobs.city', cities[0]);
+      } else {
+        query = query.in('lead_scrape_jobs.city', cities);
+      }
     }
 
     // Filter by job's cuisine (from the lead scrape job, not the lead itself)
+    // Supports comma-separated values for multi-select
     if (filters.cuisine) {
-      query = query.eq('lead_scrape_jobs.cuisine', filters.cuisine);
+      const cuisines = filters.cuisine.split(',').map(c => c.trim());
+      if (cuisines.length === 1) {
+        query = query.eq('lead_scrape_jobs.cuisine', cuisines[0]);
+      } else {
+        query = query.in('lead_scrape_jobs.cuisine', cuisines);
+      }
     }
 
-    // Pagination
-    const limit = parseInt(filters.limit) || 50;
+    // Pagination - default to 500 for pending leads (higher than jobs list)
+    const limit = parseInt(filters.limit) || 500;
     const offset = parseInt(filters.offset) || 0;
     query = query.range(offset, offset + limit - 1);
 
@@ -1711,15 +1859,66 @@ async function getCityCodes(country = null) {
   }
 }
 
+/**
+ * Update job status directly
+ */
+async function updateJobStatus(jobId, status, organisationId) {
+  const client = getSupabaseClient();
+
+  try {
+    // Verify job exists and belongs to organisation
+    const { data: existingJob, error: fetchError } = await client
+      .from('lead_scrape_jobs')
+      .select('*')
+      .eq('id', jobId)
+      .eq('organisation_id', organisationId)
+      .single();
+
+    if (fetchError || !existingJob) {
+      throw new Error('Job not found');
+    }
+
+    // Build update payload
+    const updates = { status, updated_at: new Date().toISOString() };
+
+    // Set timestamp fields based on status change
+    if (status === 'completed' && !existingJob.completed_at) {
+      updates.completed_at = new Date().toISOString();
+    } else if (status === 'cancelled' && !existingJob.cancelled_at) {
+      updates.cancelled_at = new Date().toISOString();
+    } else if (status === 'in_progress' && !existingJob.started_at) {
+      updates.started_at = new Date().toISOString();
+    }
+
+    const { data: updatedJob, error: updateError } = await client
+      .from('lead_scrape_jobs')
+      .update(updates)
+      .eq('id', jobId)
+      .select('*')
+      .single();
+
+    if (updateError) throw updateError;
+
+    console.log(`[LeadScrapeService] Updated job ${jobId} status to: ${status}`);
+    return updatedJob;
+  } catch (error) {
+    console.error('[LeadScrapeService] Error updating job status:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   // Job operations
   listLeadScrapeJobs,
   getLeadScrapeJob,
+  getLeadStatsForJob,
+  getLeadStatsForJobs,
   createLeadScrapeJob,
   updateLeadScrapeJob,
   deleteLeadScrapeJob,
   startLeadScrapeJob,
   cancelLeadScrapeJob,
+  updateJobStatus,
 
   // Step operations
   getJobStep,

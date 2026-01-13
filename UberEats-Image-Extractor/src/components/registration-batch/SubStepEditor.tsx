@@ -26,6 +26,7 @@ import { cn } from '../../lib/utils';
 import {
   useUpdateSubStepStatus,
   useResetSubStep,
+  useSubStepValidation,
 } from '../../hooks/useRegistrationBatch';
 
 interface SubStepEditorProps {
@@ -47,6 +48,7 @@ export function SubStepEditor({
 }: SubStepEditorProps) {
   const updateStatus = useUpdateSubStepStatus();
   const resetSubStep = useResetSubStep();
+  const validation = useSubStepValidation(jobId, subStepKey);
 
   const handleMarkAs = async (newStatus: 'completed' | 'failed' | 'skipped') => {
     try {
@@ -148,17 +150,34 @@ export function SubStepEditor({
           <MoreHorizontal className="h-3 w-3 ml-1 opacity-50" />
         </Badge>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-48">
+      <DropdownMenuContent align="start" className="w-56">
         <DropdownMenuLabel className="text-xs text-muted-foreground">
           {subStepKey}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
 
+        {/* Show blocking dependencies warning */}
+        {validation.data?.blocking_dependencies?.length > 0 && (
+          <>
+            <div className="px-2 py-1.5 text-xs text-amber-600 bg-amber-50 rounded mx-1 mb-2">
+              <span className="font-medium">Blocked by: </span>
+              {validation.data.blocking_dependencies.map((d: any) => d.key).join(', ')}
+            </div>
+          </>
+        )}
+
         {/* Mark as Completed */}
         <DropdownMenuItem
           onClick={() => handleMarkAs('completed')}
-          disabled={status === 'completed' || isLoading}
-          className="text-green-600"
+          disabled={
+            status === 'completed' ||
+            isLoading ||
+            !validation.data?.allowed_transitions?.includes('completed')
+          }
+          className={cn(
+            'text-green-600',
+            !validation.data?.allowed_transitions?.includes('completed') && 'opacity-50'
+          )}
         >
           <CheckCircle2 className="h-4 w-4 mr-2" />
           Mark as Completed
@@ -177,14 +196,28 @@ export function SubStepEditor({
         {/* Mark as Skipped */}
         <DropdownMenuItem
           onClick={() => handleMarkAs('skipped')}
-          disabled={status === 'skipped' || isLoading}
-          className="text-muted-foreground"
+          disabled={
+            status === 'skipped' ||
+            isLoading ||
+            !validation.data?.allowed_transitions?.includes('skipped')
+          }
+          className={cn(
+            'text-muted-foreground',
+            !validation.data?.allowed_transitions?.includes('skipped') && 'opacity-50'
+          )}
         >
           <SkipForward className="h-4 w-4 mr-2" />
           Mark as Skipped
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />
+
+        {/* Show cascade warning if there are dependents */}
+        {validation.data?.cascade_warning && (
+          <div className="px-2 py-1.5 text-xs text-orange-600 bg-orange-50 rounded mx-1 mb-2">
+            {validation.data.cascade_warning}
+          </div>
+        )}
 
         {/* Reset to Pending */}
         <DropdownMenuItem

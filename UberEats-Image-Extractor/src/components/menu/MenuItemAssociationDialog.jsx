@@ -123,6 +123,16 @@ export default function MenuItemAssociationDialog({
   };
 
   const handleSave = async () => {
+    // Validate at least one menu item is selected
+    if (selectedItems.size === 0) {
+      toast({
+        title: "Selection required",
+        description: "Please select at least one menu item to assign this option set to.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       setSaving(true);
 
@@ -329,9 +339,9 @@ export default function MenuItemAssociationDialog({
           </Button>
           <Button
             onClick={handleSave}
-            disabled={saving || loading}
+            disabled={saving || loading || selectedItems.size === 0}
           >
-            {saving ? 'Saving...' : 'Save Changes'}
+            {saving ? 'Saving...' : selectedItems.size === 0 ? 'Select Items to Save' : 'Save Changes'}
           </Button>
         </DialogFooter>
       </DialogContent>
