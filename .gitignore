@@ -43,6 +43,7 @@ screenshots/
 *.png
 *.jpg
 *.jpeg
+generated-code/
 
 # Temporary files
 tmp/
