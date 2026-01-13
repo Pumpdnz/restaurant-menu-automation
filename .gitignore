@@ -72,3 +72,6 @@ test-results/
 *.local.md
 notes.txt
 TODO.txt
+
+# Claude Data
+.claude/data/
