@@ -318,8 +318,4 @@ If stuck after 3 attempts on same issue:
 
 ## Dev Server
 
-Ensure dev server is running before starting:
-```bash
-cd UberEats-Image-Extractor && npm run dev
-# Server runs at localhost:5007
-```
+Dev server is already running at `localhost:5007` - no startup needed.

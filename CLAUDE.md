@@ -92,4 +92,7 @@ npm start
 ## Notes
 - All paths have been updated from `cursor-projects/pumpd-webhook/automation` to `cursor-projects/automation`
 - Ports changed from 3006/5006 to 3007/5007 to avoid conflicts
-- Always use the CSV file WITHOUT images for menu import (images uploaded separately)
+
+# IMPORTANT NOTES
+- Agent workflow has been make obsolete by MAJOR changes to application
+- Agent instructions are now INCORRECT due to API changes and have yet to be updated to interact with the application in it's current state

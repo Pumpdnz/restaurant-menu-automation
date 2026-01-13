@@ -5,8 +5,9 @@ PLAN_TO_EXECUTE: $ARGUMENTS
 NUMBER_OF_PARALLEL_WORKTREES: $ARGUMENTS
 
 ## Run these commands top to bottom
-RUN `find server -type f \( -name "*.js" -o -name "*.ts" \) | head -10` to show server structure
-RUN `find src -type f \( -name "*.tsx" -o -name "*.ts" \) | head -10` to show frontend structure  
+RUN `find UberEats-Image-Extractor -type f -name "*.js" ! -path "*/node_modules/*" | head -10` to show server structure
+RUN `find UberEats-Image-Extractor/src -type f \( -name "*.tsx" -o -name "*.ts" \) | head -10` to show frontend structure
+RUN `find scripts -type f -name "*.js" ! -path "*/node_modules/*" | head -10` to show automation scripts
 RUN `ls -la trees/*/` to show worktree structure
 READ: PLAN_TO_EXECUTE
 
@@ -29,4 +30,10 @@ Each agent will independently implement the engineering plan detailed in PLAN_TO
 
 When the subagent completes it's work, have the subagent to report their final changes made in a comprehensive `RESULTS.md` file at the root of their respective workspace.
 
-Make sure agents don't run start.sh or any other script that would start the server or client - focus on the code changes only.
+Make sure agents don't run `npm start` or any other script that would start the server or client - focus on the code changes only.
+
+## Project Structure Reference
+- `UberEats-Image-Extractor/` - Main application (server.js + React frontend)
+- `UberEats-Image-Extractor/src/` - React frontend source
+- `scripts/` - Automation scripts (logo extraction, image processing)
+- `scripts/restaurant-registration/` - Playwright registration scripts
