@@ -49,6 +49,7 @@ generated-code/
 tmp/
 temp/
 *.tmp
+scripts/restaurant-registration/backups/
 
 # Cache
 .cache/
