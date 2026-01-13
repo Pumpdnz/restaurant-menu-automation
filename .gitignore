@@ -50,6 +50,7 @@ tmp/
 temp/
 *.tmp
 scripts/restaurant-registration/backups/
+scripts/restaurant-registration/tests/
 
 # Cache
 .cache/
