@@ -590,28 +590,27 @@ async function importCSVMenu() {
       // Wait for success indication
       await page.waitForTimeout(5000);
       
-      // Check for success message or navigation change
-      const successIndicator = page.locator('text=/Success|Imported|Complete/i').first();
-      if (await successIndicator.count() > 0) {
-        console.log('  ✅ CSV import completed successfully!');
-      } else {
-        console.log('  ⚠️ Import status unclear - check screenshot');
+      // Check for explicit error messages first
+      const errorIndicator = page.locator('text=/Error|Failed|Invalid|Blocked|limit|rejected/i').first();
+      if (await errorIndicator.count() > 0) {
+        const errorText = await errorIndicator.textContent().catch(() => 'Unknown error');
+        console.error(`  ❌ Import rejected: ${errorText}`);
+        await takeScreenshot(page, 'error-import-failed');
+        throw new Error('CloudWaitress rejected import');
       }
-      
+
+      // No error message = success (CloudWaitress closes modal on success without explicit message)
+      console.log('  ✅ CSV import completed successfully!');
+
       await takeScreenshot(page, '09-import-complete');
-      
+
     } catch (error) {
-      console.error('  ❌ File upload failed:', error.message);
-      await takeScreenshot(page, 'error-file-upload');
-      
-      // Alternative approach documentation
-      console.log('\n📝 Alternative Manual Approach:');
-      console.log('If automated file upload fails, you can:');
-      console.log('1. Use the browser window that remains open');
-      console.log('2. Manually click "Choose File" button');
-      console.log('3. Navigate to:', csvPath);
-      console.log('4. Select the CSV file manually');
-      console.log('5. Complete the import process');
+      // Only log if this is a new error (not one we already logged above)
+      if (!error.message.includes('rejected')) {
+        console.error('  ❌ File upload failed:', error.message);
+        await takeScreenshot(page, 'error-file-upload');
+      }
+      throw error;
     }
     
     console.log('\n✅ CSV IMPORT PROCESS COMPLETED!');
@@ -622,23 +621,32 @@ async function importCSVMenu() {
     console.log('  ✓ Import initiated');
     
   } catch (error) {
-    console.error('\n❌ Import failed:', error.message);
-    await takeScreenshot(page, 'error-state');
-    
-    console.log('\nCurrent URL:', page.url());
-    console.log('Page title:', await page.title());
-    
+    console.error('\n❌ CSV IMPORT FAILED:', error.message);
+    try {
+      await takeScreenshot(page, 'error-state');
+      console.error('  URL:', page.url());
+    } catch (screenshotError) {
+      // Ignore screenshot errors
+    }
+    throw error;
   } finally {
     if (DEBUG_MODE) {
       console.log('\n🐛 Browser left open for inspection');
       console.log('Press Ctrl+C to exit');
       await new Promise(() => {}); // Keep alive
     } else {
-      await browser.close();
-      console.log('\n✨ Browser closed');
+      try {
+        await browser.close();
+        console.log('\n✨ Browser closed');
+      } catch (closeError) {
+        console.error('Browser close error:', closeError.message);
+      }
     }
   }
 }
 
 // Run the import
-importCSVMenu();
+importCSVMenu().catch((error) => {
+  console.error('Script failed:', error.message);
+  process.exit(1);
+});

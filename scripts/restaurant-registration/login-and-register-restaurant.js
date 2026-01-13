@@ -434,7 +434,26 @@ async function loginAndRegisterRestaurant() {
       };
       dayEntries = Object.entries(defaultHours).map(([day, hours]) => ({ day, hours }));
     }
-    
+
+    // Filter out closed days (where both open and close are "Closed")
+    const originalCount = dayEntries.length;
+    dayEntries = dayEntries.filter(entry => {
+      const openValue = entry.hours?.open?.toLowerCase() || '';
+      const closeValue = entry.hours?.close?.toLowerCase() || '';
+      const isClosedDay = openValue === 'closed' && closeValue === 'closed';
+      return !isClosedDay;
+    });
+
+    if (dayEntries.length < originalCount) {
+      const closedCount = originalCount - dayEntries.length;
+      console.log(`  ℹ️ Skipping ${closedCount} closed day(s)`);
+    }
+
+    // Handle edge case where all days are closed
+    if (dayEntries.length === 0) {
+      console.log('  ⚠️ All days are marked as closed - skipping opening hours configuration');
+      await takeScreenshot(page, '10-no-open-days');
+    } else {
     // Calculate how many slots we need to add (we start with 1)
     const slotsNeeded = dayEntries.length - 1;
     
@@ -518,7 +537,8 @@ async function loginAndRegisterRestaurant() {
     }
     
     await takeScreenshot(page, '11-times-configured');
-    
+    } // End of else block for dayEntries.length > 0
+
     // STEP 12: Set System Locale (country-specific)
     console.log('\n🌍 STEP 12: Set System Locale');
 

@@ -8,6 +8,7 @@
  * - Smart restaurant matching by name
  * - Navigation to correct restaurant management
  * - Item tags configuration
+ * - Applying tags to specific menu items (when payload provided)
  *
  * Supports multiple CloudWaitress resellers with configurable admin URLs.
  *
@@ -15,6 +16,20 @@
  *   node add-item-tags.js [options]
  *
  * Options:
+ *   --payload="/path/to/temp-item-tags-payload.json" (enhanced mode)
+ *   Contains: {
+ *      email: string,
+ *      password: string,
+ *      restaurantName: string,
+ *      adminUrl: string (optional - defaults to https://admin.pumpd.co.nz),
+ *      itemTags: [{
+ *        name: string,
+ *        color: string,
+ *        menuItemNames: string[] (optional - menu items to apply this tag to)
+ *      }]
+ *   }
+ *
+ *   Legacy mode (creates preset tags without menu item assignment):
  *   --email=<email>           Login email (required)
  *   --password=<password>     User password (required)
  *   --name=<name>             Restaurant name for matching (required)
@@ -24,15 +39,19 @@
  * Environment Variables:
  *   DEBUG_MODE=true           Alternative way to enable debug mode
  *
- * Example (default NZ):
+ * Example (enhanced mode with payload):
+ *   node add-item-tags.js --payload="/path/to/temp-item-tags-payload.json"
+ *
+ * Example (legacy mode - NZ):
  *   node add-item-tags.js --email="test@example.com" --password="Password123!" --name="Test Restaurant"
  *
- * Example (custom admin URL):
+ * Example (legacy mode - custom admin URL):
  *   node add-item-tags.js --email="test@example.com" --password="Password123!" --name="Test Restaurant" --admin-url="https://admin.ozorders.com.au"
  */
 
 const { chromium } = require('playwright');
 const path = require('path');
+const fs = require('fs').promises;
 
 // Load environment variables from centralized .env file
 require('dotenv').config({ path: path.join(__dirname, '../../UberEats-Image-Extractor/.env') });
@@ -72,12 +91,18 @@ const ITEM_TAGS = [
 
 // Selectors for tag creation form
 const SELECTORS = {
+  // Tag creation selectors
   createButton: '#scroll-root > div > div > div > div > div > div.m-t-8 > div.grid-2.xs.xs-gap.m-t-10 > div:nth-child(1) > div > button',
   tagNameField: 'form > div > div:nth-child(3) > div:nth-child(1) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > input',
   tagTextField: 'form > div > div:nth-child(3) > div:nth-child(2) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > input',
   colorPicker: 'form > div > div:nth-child(3) > div:nth-child(4) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.group__FormGroupComponent-evaCTb.joUTxJ.m-b-0.m-r-6 > div > div > div > div.colorpicker__SwatchWrapper-kmfhwV.hqNLmj > div',
   colorInput: 'form > div > div:nth-child(3) > div:nth-child(4) > div > div.group__FormGroupContent-ccjnpO.kpPgpj > div > div.group__FormGroupComponent-evaCTb.joUTxJ.m-b-0.m-r-6 > div > div > div > div.colorpicker__DropWrapper-hDQMcy.cAaOXs > div > div:nth-child(2) > div:nth-child(2) > div.flexbox-fix > div > div > input',
-  saveButton: 'form > div > div:nth-child(4) > button'
+  saveButton: 'form > div > div:nth-child(4) > button',
+
+  // Menu item selection selectors (for applying tags to items)
+  // The tab container ID follows the pattern #[feature]-tab-options-tab-select-content
+  addRemoveItemsTab: '#tag-tab-options-tab-select-content > div.components__TabSelectOptionsComponent-USxIn.cCRcoK > div:nth-child(2) > div',
+  menuExpandArrow: 'form > div > div:nth-child(1) > div > div > div > div > div > div > div.cursor.flex-center > svg'
 };
 
 // Get parameters from command line arguments
@@ -87,25 +112,59 @@ const getArg = (name) => {
   return arg ? arg.split('=')[1] : null;
 };
 
-// Parse arguments
-const email = getArg('email');
-const password = getArg('password');
-const restaurantName = getArg('name');
+// Parse arguments - support both payload mode and legacy CLI mode
+const payloadPath = getArg('payload');
 
-// Parse configurable parameters (with defaults)
-const adminUrl = (getArg('admin-url') || DEFAULT_ADMIN_URL).replace(/\/$/, '');
+// These will be populated either from payload or CLI args
+let email, password, restaurantName, adminUrl, itemTags;
 
-// Build URLs from admin base URL
-const LOGIN_URL = buildLoginUrl(adminUrl);
-const ADMIN_HOSTNAME = getAdminHostname(adminUrl);
+// Async initialization function to load payload if provided
+async function initializeParams() {
+  if (payloadPath) {
+    // Enhanced mode: Load from JSON payload file
+    console.log(`📄 Loading payload from: ${payloadPath}`);
+    try {
+      const payloadContent = await fs.readFile(payloadPath, 'utf-8');
+      const payload = JSON.parse(payloadContent);
 
-// Validate required arguments
-if (!email || !password || !restaurantName) {
-  console.error('❌ Error: Missing required parameters');
-  console.error('Required: --email=<email> --password=<password> --name=<restaurant_name>');
-  console.error('\nExample:');
-  console.error('node add-item-tags.js --email=test@example.com --password=Password123! --name="Test Restaurant"');
-  process.exit(1);
+      email = payload.email;
+      password = payload.password;
+      restaurantName = payload.restaurantName;
+      adminUrl = (payload.adminUrl || DEFAULT_ADMIN_URL).replace(/\/$/, '');
+      itemTags = payload.itemTags || ITEM_TAGS.map(t => ({ ...t, menuItemNames: [] }));
+
+      console.log(`  ✓ Loaded ${itemTags.length} item tags from payload`);
+      const tagsWithItems = itemTags.filter(t => t.menuItemNames && t.menuItemNames.length > 0);
+      if (tagsWithItems.length > 0) {
+        console.log(`  ✓ ${tagsWithItems.length} tags have menu items to apply`);
+      }
+    } catch (err) {
+      console.error(`❌ Error reading payload file: ${err.message}`);
+      process.exit(1);
+    }
+  } else {
+    // Legacy mode: Use CLI arguments
+    email = getArg('email');
+    password = getArg('password');
+    restaurantName = getArg('name');
+    adminUrl = (getArg('admin-url') || DEFAULT_ADMIN_URL).replace(/\/$/, '');
+    // Use default ITEM_TAGS without menu item assignments
+    itemTags = ITEM_TAGS.map(t => ({ ...t, menuItemNames: [] }));
+  }
+
+  // Validate required parameters
+  if (!email || !password || !restaurantName) {
+    console.error('❌ Error: Missing required parameters');
+    console.error('\nEnhanced mode (with menu item assignment):');
+    console.error('  --payload="/path/to/temp-item-tags-payload.json"');
+    console.error('\nLegacy mode (create tags only):');
+    console.error('  --email=<email> --password=<password> --name=<restaurant_name>');
+    console.error('\nExample:');
+    console.error('node add-item-tags.js --email=test@example.com --password=Password123! --name="Test Restaurant"');
+    process.exit(1);
+  }
+
+  return { email, password, restaurantName, adminUrl, itemTags };
 }
 
 // Screenshot utility - uses shared config (disabled by default)
@@ -115,12 +174,21 @@ const takeScreenshot = async (page, name) => {
 };
 
 async function addItemTags() {
+  // Initialize parameters (async to support payload file loading)
+  await initializeParams();
+
+  // Build URLs from admin base URL (must happen after initializeParams)
+  const LOGIN_URL = buildLoginUrl(adminUrl);
+  const ADMIN_HOSTNAME = getAdminHostname(adminUrl);
+
   console.log('🚀 Starting Menu Item Tags Configuration...\n');
   console.log('Configuration:');
   console.log(`  Admin Portal: ${adminUrl}`);
   console.log(`  Email: ${email}`);
   console.log(`  Password: ${'*'.repeat(password.length)}`);
   console.log(`  Restaurant: ${restaurantName}`);
+  console.log(`  Tags to create: ${itemTags.length}`);
+  console.log(`  Mode: ${payloadPath ? 'Enhanced (with menu item assignment)' : 'Legacy (create tags only)'}`);
   console.log(`  Debug Mode: ${DEBUG_MODE ? 'ON (browser will stay open)' : 'OFF'}`);
   console.log('');
   
@@ -420,14 +488,16 @@ async function addItemTags() {
 
     // STEP 5: Create Item Tags in loop
     console.log('\n🏷️  STEP 5: Creating Item Tags');
-    console.log(`  📋 ${ITEM_TAGS.length} tags to create\n`);
+    console.log(`  📋 ${itemTags.length} tags to create\n`);
 
     let successCount = 0;
     let failCount = 0;
+    let totalItemsAssigned = 0;
 
-    for (let i = 0; i < ITEM_TAGS.length; i++) {
-      const tag = ITEM_TAGS[i];
-      console.log(`  [${i + 1}/${ITEM_TAGS.length}] Creating tag: "${tag.name}" (${tag.color})`);
+    for (let i = 0; i < itemTags.length; i++) {
+      const tag = itemTags[i];
+      const menuItemNames = tag.menuItemNames || [];
+      console.log(`  [${i + 1}/${itemTags.length}] Creating tag: "${tag.name}" (${tag.color})${menuItemNames.length > 0 ? ` - ${menuItemNames.length} items to apply` : ''}`);
 
       try {
         // Step 5.1: Click "Create New Item Tag" button
@@ -451,10 +521,106 @@ async function addItemTags() {
         await colorInput.fill(tag.color);
         await page.waitForTimeout(200);
 
-        // Step 5.6: Click Save button
+        // Step 5.6: Add to menu items (if menuItemNames provided)
+        if (menuItemNames.length > 0) {
+          console.log(`      Adding to ${menuItemNames.length} menu items...`);
+
+          try {
+            // Click "Add / Remove From Items" tab
+            await page.click(SELECTORS.addRemoveItemsTab);
+            await page.waitForTimeout(500);
+            console.log('        Switched to Add/Remove From Items tab');
+
+            // Expand the Menu tree - try multiple selectors
+            let menuExpanded = false;
+
+            // Try the primary selector first
+            try {
+              const primaryArrow = page.locator(SELECTORS.menuExpandArrow).first();
+              if (await primaryArrow.count() > 0) {
+                await primaryArrow.click();
+                await page.waitForTimeout(300);
+                console.log('        Expanded Menu tree (primary selector)');
+                menuExpanded = true;
+              }
+            } catch (e) {
+              // Primary selector failed
+            }
+
+            // Fallback: Try to find any expand arrow within the form that's not in a category
+            if (!menuExpanded) {
+              try {
+                // Look for the first cursor.flex-center svg that's not inside m-l-2 (which are categories)
+                const formExpandArrows = await page.locator('form div.cursor.flex-center > svg').all();
+                if (formExpandArrows.length > 0) {
+                  await formExpandArrows[0].click();
+                  await page.waitForTimeout(300);
+                  console.log(`        Expanded Menu tree (fallback - found ${formExpandArrows.length} arrows)`);
+                  menuExpanded = true;
+                }
+              } catch (e) {
+                console.log('        Menu tree may already be expanded or not found');
+              }
+            }
+
+            // Wait a bit more for the tree to expand
+            await page.waitForTimeout(500);
+
+            // Expand all category sections to reveal menu items
+            // Use the same selector pattern as add-option-sets.js
+            const categoryExpanders = await page.locator('form div.m-l-2 > div > div > div.cursor.flex-center > svg').all();
+            console.log(`        Found ${categoryExpanders.length} category expanders`);
+
+            for (let k = 0; k < categoryExpanders.length; k++) {
+              try {
+                await categoryExpanders[k].click();
+                await page.waitForTimeout(200);
+              } catch (catError) {
+                // Category may already be expanded
+              }
+            }
+            await page.waitForTimeout(300);
+
+            // Find and click checkboxes for matching menu item names
+            // Deduplicate names to handle Featured Items duplicates
+            let matchedCount = 0;
+            const uniqueMenuItemNames = [...new Set(menuItemNames)];
+
+            for (const itemName of uniqueMenuItemNames) {
+              try {
+                // Find ALL matching spans with m-l-2 class (menu item labels)
+                const labelSpanLocator = page.locator(`span.m-l-2:text-is("${itemName}")`);
+                const count = await labelSpanLocator.count();
+
+                if (count > 0) {
+                  // Click all matching checkboxes (handles Featured Items appearing in multiple places)
+                  for (let j = 0; j < count; j++) {
+                    const labelSpan = labelSpanLocator.nth(j);
+                    const parentLabel = labelSpan.locator('xpath=ancestor::label');
+                    await parentLabel.click();
+                  }
+                  matchedCount++;
+                  console.log(`        Checked: "${itemName}" (${count} checkbox${count > 1 ? 'es' : ''})`);
+                } else {
+                  console.log(`        Not found: "${itemName}"`);
+                }
+              } catch (checkError) {
+                console.log(`        Failed to check "${itemName}": ${checkError.message}`);
+              }
+            }
+
+            console.log(`      Matched ${matchedCount}/${uniqueMenuItemNames.length} menu items`);
+            totalItemsAssigned += matchedCount;
+
+          } catch (addItemsError) {
+            console.log(`      Failed to add menu items: ${addItemsError.message}`);
+          }
+        }
+
+        // Step 5.7: Click Save button
         await page.click(SELECTORS.saveButton);
 
-        // Step 5.7: Wait for save to complete
+        // Step 5.8: Wait for save to complete
         await page.waitForTimeout(2000);
 
         console.log(`      ✓ Created "${tag.name}"`);
@@ -479,12 +645,15 @@ async function addItemTags() {
 
     // Summary
     console.log('\n📊 Item Tags Summary:');
-    console.log(`  ✅ Successfully created: ${successCount}/${ITEM_TAGS.length}`);
+    console.log(`  ✅ Successfully created: ${successCount}/${itemTags.length}`);
     if (failCount > 0) {
-      console.log(`  ❌ Failed: ${failCount}/${ITEM_TAGS.length}`);
+      console.log(`  ❌ Failed: ${failCount}/${itemTags.length}`);
+    }
+    if (totalItemsAssigned > 0) {
+      console.log(`  🏷️  Menu items assigned: ${totalItemsAssigned}`);
     }
 
-    if (successCount === ITEM_TAGS.length) {
+    if (successCount === itemTags.length) {
       console.log('\n✅ All item tags configured successfully!');
     } else if (successCount > 0) {
       console.log('\n⚠️ Item tags partially configured');
