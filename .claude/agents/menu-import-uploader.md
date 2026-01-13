@@ -1,6 +1,6 @@
 ---
 name: menu-import-uploader
-description: Proactively triggered to import CSV menu data and upload menu item images after restaurant registration. This agent sequentially runs two playwright browser automation scripts - first importing the CSV menu data without images (using the _no_images.csv version), then uploading corresponding menu item images using the image mapping file. The agent handles the complete menu setup process, ensuring all items and images are properly configured in the Pumpd admin portal. IMPORTANT: Always use the CSV file WITHOUT images for import since images are uploaded separately.
+description: Proactively triggered to import CSV menu data and upload menu item images after restaurant registration. This agent sequentially runs two playwright browser automation scripts - first importing the CSV menu data without images (using the _no_images.csv version), then uploading corresponding menu item images using the image mapping file. The agent handles the complete menu setup process, ensuring all items and images are properly configured in the Pumpd admin portal. IMPORTANT; Always use the CSV file WITHOUT images for import since images are uploaded separately.
 tools: Bash, Read, Write
 color: Blue
 ---
