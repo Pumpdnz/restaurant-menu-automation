@@ -2,7 +2,7 @@
   "task_name": "city-breakdown-dashboard",
   "created": "2026-01-15",
   "total_features": 9,
-  "completed_features": 7,
+  "completed_features": 8,
   "instructions": "CRITICAL: Only modify the 'passes' field. It is unacceptable to remove or edit feature definitions as this could lead to missing or buggy functionality.",
   "features": [
     {
@@ -129,9 +129,9 @@
         "Step 4: Verify file download initiates",
         "Step 5: Verify downloaded CSV contains expected city/cuisine data"
       ],
-      "passes": false,
-      "completed_iteration": null,
-      "notes": ""
+      "passes": true,
+      "completed_iteration": 8,
+      "notes": "Verified: Export CSV button in City Breakdown section downloads scrape-coverage-2026-01-15.csv. File contains proper headers (City,Cuisine,Leads,Jobs,Pages Scraped) and data for all cities with scraped cuisines (Auckland, Wellington, Hamilton, Christchurch, Tauranga)."
     },
     {
       "id": 9,

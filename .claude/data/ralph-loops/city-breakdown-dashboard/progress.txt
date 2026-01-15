@@ -7,7 +7,7 @@
 - Testing Method: Combined (Build + Browser)
 
 ## Current State
-- Iteration: 7
+- Iteration: 8
 - Status: completed
 - Last Updated: 2026-01-15
 
@@ -19,7 +19,7 @@
 5. [DONE] Empty cuisine buttons open dialog
 6. [DONE] Scraped cuisine buttons navigate
 7. [DONE] Page indicators work
-8. [pending] CSV export works
+8. [DONE] CSV export works
 9. [pending] Styling matches Dashboard patterns
 
 ## Completed
@@ -69,19 +69,28 @@
   - Tested unscraped page indicator: clicked gray page 7 for burger/Auckland
   - Dialog opens prefilled with City=Auckland, Cuisine=Burgers, Page Offset=7
 
+- Feature 8: CSV export works correctly (Iteration 8)
+  - No code changes required - verification only
+  - Clicked Export CSV button in City Breakdown section
+  - Downloaded file: scrape-coverage-2026-01-15.csv
+  - CSV contains headers: City,Cuisine,Leads,Jobs,Pages Scraped
+  - Data includes all cities with scraped cuisines (Auckland, Wellington, Hamilton, Christchurch, Tauranga)
+
 ## Remaining
-2 features (Features 8-9)
+1 feature (Feature 9)
 
 ## Current Blocker
 (none)
 
 ## Last Verification Result
-- Build: PASSED (no code changes in this iteration - verification only)
-- Browser: PASSED (Page indicators work correctly for both scraped and unscraped states)
+- Build: PASSED (4.46s - no code changes in this iteration)
+- Browser: PASSED (Export CSV downloads correct file with expected data)
 
 ## Next Session Instructions
-Continue with Feature 8: CSV export button functions correctly.
-Locate the Export CSV button in the City Breakdown section, click it, and verify a CSV file downloads with city/cuisine data.
+Continue with Feature 9: Table styling matches existing Dashboard card patterns.
+Compare the City Breakdown card with Recent Restaurants card for consistent styling (backdrop-blur-sm, bg-background/95, border-border).
+Verify header layout matches (title left, action button right).
+Check for console errors and test responsive layout on resize.
 
 ## Iteration History
 | # | Changes Made | Result | Blocker |
@@ -93,3 +102,4 @@ Locate the Export CSV button in the City Breakdown section, click it, and verify
 | 5 | Feature 5: Fixed handleStartScrape signature mismatch (object->positional). Verified dialog opens with prefilled city/cuisine for empty cuisines | PASSED | None |
 | 6 | Feature 6: Verified scraped cuisine buttons navigate correctly. Clicked 'Burger: 4 pages scraped' for Auckland -> new tab opens /leads?city=Auckland&cuisine=burger with correct filters. Pending Leads shows 4 filtered results | PASSED | None |
 | 7 | Feature 7: Verified page indicators. Green (scraped) page 3 for burger/Auckland -> opens job detail /leads/{jobId}. Gray (unscraped) page 7 -> opens dialog with City=Auckland, Cuisine=Burgers, Page Offset=7 prefilled | PASSED | None |
+| 8 | Feature 8: Verified CSV export. Clicked Export CSV button -> downloaded scrape-coverage-2026-01-15.csv with proper headers and city/cuisine data for 5 cities | PASSED | None |
