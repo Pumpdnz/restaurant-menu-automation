@@ -2,7 +2,7 @@
   "task_name": "city-breakdown-dashboard",
   "created": "2026-01-15",
   "total_features": 9,
-  "completed_features": 6,
+  "completed_features": 7,
   "instructions": "CRITICAL: Only modify the 'passes' field. It is unacceptable to remove or edit feature definitions as this could lead to missing or buggy functionality.",
   "features": [
     {
@@ -113,9 +113,9 @@
         "Step 4: Verify new tab opens to job detail /leads/{jobId}",
         "Step 5: Click an unscraped page indicator and verify dialog opens with page offset"
       ],
-      "passes": false,
-      "completed_iteration": null,
-      "notes": ""
+      "passes": true,
+      "completed_iteration": 7,
+      "notes": "Verified both page indicator behaviors: (1) Clicked green page 3 indicator for burger/Auckland -> opened job detail at /leads/db548503-2564-4ce0-90c7-00bef9cc5527 showing 'ubereats - burger - auckland' job with Page offset: 3. (2) Clicked gray page 7 indicator for burger/Auckland -> opened New Lead Scrape dialog prefilled with City=Auckland, Cuisine=Burgers, Page Offset=7."
     },
     {
       "id": 8,

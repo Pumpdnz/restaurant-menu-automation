@@ -7,8 +7,8 @@
 - Testing Method: Combined (Build + Browser)
 
 ## Current State
-- Iteration: 6
-- Status: COMPLETED
+- Iteration: 7
+- Status: completed
 - Last Updated: 2026-01-15
 
 ## Completion Criteria
@@ -18,7 +18,7 @@
 4. [DONE] Clickable leads route correctly
 5. [DONE] Empty cuisine buttons open dialog
 6. [DONE] Scraped cuisine buttons navigate
-7. [pending] Page indicators work
+7. [DONE] Page indicators work
 8. [pending] CSV export works
 9. [pending] Styling matches Dashboard patterns
 
@@ -61,19 +61,27 @@
   - Filters correctly applied (Auckland + Burger)
   - Pending Leads tab shows 4 leads matching the filter
 
+- Feature 7: Page indicators work correctly (Iteration 7)
+  - No code changes required - verification only
+  - Tested scraped page indicator: clicked green page 3 for burger/Auckland
+  - New tab opens to /leads/db548503-2564-4ce0-90c7-00bef9cc5527 (job detail)
+  - Job shows: ubereats - burger - auckland with Page offset: 3
+  - Tested unscraped page indicator: clicked gray page 7 for burger/Auckland
+  - Dialog opens prefilled with City=Auckland, Cuisine=Burgers, Page Offset=7
+
 ## Remaining
-3 features (Features 7-9)
+2 features (Features 8-9)
 
 ## Current Blocker
 (none)
 
 ## Last Verification Result
 - Build: PASSED (no code changes in this iteration - verification only)
-- Browser: PASSED (Scraped cuisine buttons navigate correctly)
+- Browser: PASSED (Page indicators work correctly for both scraped and unscraped states)
 
 ## Next Session Instructions
-Continue with Feature 7: Page indicators work correctly (scraped vs unscraped).
-Expand a city row, find a cuisine with some scraped pages (green indicators), click a scraped page indicator to verify it opens job detail. Then click an unscraped page indicator to verify dialog opens with page offset.
+Continue with Feature 8: CSV export button functions correctly.
+Locate the Export CSV button in the City Breakdown section, click it, and verify a CSV file downloads with city/cuisine data.
 
 ## Iteration History
 | # | Changes Made | Result | Blocker |
@@ -84,3 +92,4 @@ Expand a city row, find a cuisine with some scraped pages (green indicators), cl
 | 4 | Feature 4: Verified clickable lead counts - city-level opens /leads?tab=pending&city={city}, cuisine-level opens with both city AND cuisine filters | PASSED | None |
 | 5 | Feature 5: Fixed handleStartScrape signature mismatch (object->positional). Verified dialog opens with prefilled city/cuisine for empty cuisines | PASSED | None |
 | 6 | Feature 6: Verified scraped cuisine buttons navigate correctly. Clicked 'Burger: 4 pages scraped' for Auckland -> new tab opens /leads?city=Auckland&cuisine=burger with correct filters. Pending Leads shows 4 filtered results | PASSED | None |
+| 7 | Feature 7: Verified page indicators. Green (scraped) page 3 for burger/Auckland -> opens job detail /leads/{jobId}. Gray (unscraped) page 7 -> opens dialog with City=Auckland, Cuisine=Burgers, Page Offset=7 prefilled | PASSED | None |
