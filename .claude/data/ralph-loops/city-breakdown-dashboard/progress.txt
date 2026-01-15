@@ -7,8 +7,8 @@
 - Testing Method: Combined (Build + Browser)
 
 ## Current State
-- Iteration: 5
-- Status: completed
+- Iteration: 6
+- Status: COMPLETED
 - Last Updated: 2026-01-15
 
 ## Completion Criteria
@@ -17,7 +17,7 @@
 3. [DONE] Expandable city rows work
 4. [DONE] Clickable leads route correctly
 5. [DONE] Empty cuisine buttons open dialog
-6. [pending] Scraped cuisine buttons navigate
+6. [DONE] Scraped cuisine buttons navigate
 7. [pending] Page indicators work
 8. [pending] CSV export works
 9. [pending] Styling matches Dashboard patterns
@@ -54,19 +54,26 @@
   - Verified: BBQ for Auckland -> dialog shows City=Auckland, Cuisine=BBQ
   - Verified: Mexican for Wellington -> dialog shows City=Wellington, Cuisine=Mexican Food
 
+- Feature 6: Scraped cuisine buttons navigate (Iteration 6)
+  - No code changes required - verification only
+  - Clicked "Burger: 4 pages scraped - Click to view leads" button for Auckland
+  - New tab opens to /leads?city=Auckland&cuisine=burger
+  - Filters correctly applied (Auckland + Burger)
+  - Pending Leads tab shows 4 leads matching the filter
+
 ## Remaining
-4 features (Features 6-9)
+3 features (Features 7-9)
 
 ## Current Blocker
 (none)
 
 ## Last Verification Result
-- Build: PASSED (4.49s, no TypeScript errors)
-- Browser: PASSED (Empty cuisine buttons open dialog with correct prefill data)
+- Build: PASSED (no code changes in this iteration - verification only)
+- Browser: PASSED (Scraped cuisine buttons navigate correctly)
 
 ## Next Session Instructions
-Continue with Feature 6: Cuisine coverage buttons navigate for scraped cuisines.
-Find a cuisine with 1+ pages scraped (colored indicator like burger/pizza) and click to verify it opens a new tab with the correct filter.
+Continue with Feature 7: Page indicators work correctly (scraped vs unscraped).
+Expand a city row, find a cuisine with some scraped pages (green indicators), click a scraped page indicator to verify it opens job detail. Then click an unscraped page indicator to verify dialog opens with page offset.
 
 ## Iteration History
 | # | Changes Made | Result | Blocker |
@@ -76,3 +83,4 @@ Find a cuisine with 1+ pages scraped (colored indicator like burger/pizza) and c
 | 3 | Feature 3: Verified expandable city rows - click to expand/collapse shows cuisine breakdown with page indicators (1-10, green=scraped), Expand All/Collapse All buttons work | PASSED | None |
 | 4 | Feature 4: Verified clickable lead counts - city-level opens /leads?tab=pending&city={city}, cuisine-level opens with both city AND cuisine filters | PASSED | None |
 | 5 | Feature 5: Fixed handleStartScrape signature mismatch (object->positional). Verified dialog opens with prefilled city/cuisine for empty cuisines | PASSED | None |
+| 6 | Feature 6: Verified scraped cuisine buttons navigate correctly. Clicked 'Burger: 4 pages scraped' for Auckland -> new tab opens /leads?city=Auckland&cuisine=burger with correct filters. Pending Leads shows 4 filtered results | PASSED | None |

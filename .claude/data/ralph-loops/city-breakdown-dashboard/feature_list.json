@@ -2,7 +2,7 @@
   "task_name": "city-breakdown-dashboard",
   "created": "2026-01-15",
   "total_features": 9,
-  "completed_features": 5,
+  "completed_features": 6,
   "instructions": "CRITICAL: Only modify the 'passes' field. It is unacceptable to remove or edit feature definitions as this could lead to missing or buggy functionality.",
   "features": [
     {
@@ -97,9 +97,9 @@
         "Step 4: Verify new tab opens to /leads?city={city}&cuisine={slug}",
         "Step 5: Verify leads list shows correctly filtered data"
       ],
-      "passes": false,
-      "completed_iteration": null,
-      "notes": ""
+      "passes": true,
+      "completed_iteration": 6,
+      "notes": "Verified: Clicking 'Burger: 4 pages scraped - Click to view leads' button for Auckland opens new tab to /leads?city=Auckland&cuisine=burger. Filters correctly applied. Pending Leads tab shows 4 leads with correct Auckland + Burger filter."
     },
     {
       "id": 7,
