@@ -2,7 +2,7 @@
   "task_name": "city-breakdown-dashboard",
   "created": "2026-01-15",
   "total_features": 9,
-  "completed_features": 2,
+  "completed_features": 3,
   "instructions": "CRITICAL: Only modify the 'passes' field. It is unacceptable to remove or edit feature definitions as this could lead to missing or buggy functionality.",
   "features": [
     {
@@ -49,9 +49,9 @@
         "Step 4: Click again to collapse",
         "Step 5: Test Expand All / Collapse All button"
       ],
-      "passes": false,
-      "completed_iteration": null,
-      "notes": ""
+      "passes": true,
+      "completed_iteration": 3,
+      "notes": "Verified: Click city row expands to show cuisines with page indicators (numbered 1-10, green=scraped). Click again collapses. Expand All/Collapse All buttons work correctly."
     },
     {
       "id": 4,

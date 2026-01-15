@@ -7,14 +7,14 @@
 - Testing Method: Combined (Build + Browser)
 
 ## Current State
-- Iteration: 2
+- Iteration: 3
 - Status: completed
 - Last Updated: 2026-01-15
 
 ## Completion Criteria
 1. [DONE] Dialog state management added to Dashboard
 2. [DONE] CityBreakdownTab renders on Dashboard
-3. [pending] Expandable city rows work
+3. [DONE] Expandable city rows work
 4. [pending] Clickable leads route correctly
 5. [pending] Empty cuisine buttons open dialog
 6. [pending] Scraped cuisine buttons navigate
@@ -37,21 +37,22 @@
   - Build passes (4.72s), browser verification shows table with city data
 
 ## Remaining
-7 features (Features 3-9)
+6 features (Features 4-9)
 
 ## Current Blocker
 (none)
 
 ## Last Verification Result
-- Build: PASSED (4.72s, no errors)
-- Browser: PASSED (CityBreakdownTab renders with heatmap, table, and summary stats)
+- Build: PASSED (4.49s, no errors)
+- Browser: PASSED (Expandable city rows work correctly)
 
 ## Next Session Instructions
-Continue with Feature 3: Expandable city rows.
-Test clicking on city rows to expand/collapse and verify cuisine breakdown appears.
+Continue with Feature 4: Clickable lead counts route to correct lead detail pages.
+Test clicking on Total Leads count for a city and verify new tab opens to /leads with correct filters.
 
 ## Iteration History
 | # | Changes Made | Result | Blocker |
 |---|--------------|--------|---------|
 | 1 | Feature 1: Added dialog state management (createJobOpen, prefillScrapeData, handleStartScrape, CreateLeadScrapeJob dialog) | PASSED | None |
 | 2 | Feature 2: Added CityBreakdownTab to Dashboard with Card wrapper, brand-purple title, between Recent Activity and Quick Actions | PASSED | None |
+| 3 | Feature 3: Verified expandable city rows - click to expand/collapse shows cuisine breakdown with page indicators (1-10, green=scraped), Expand All/Collapse All buttons work | PASSED | None |
