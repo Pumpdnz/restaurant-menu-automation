@@ -1,0 +1,153 @@
+{
+  "task_name": "city-breakdown-dashboard",
+  "created": "2026-01-15",
+  "total_features": 9,
+  "completed_features": 1,
+  "instructions": "CRITICAL: Only modify the 'passes' field. It is unacceptable to remove or edit feature definitions as this could lead to missing or buggy functionality.",
+  "features": [
+    {
+      "id": 1,
+      "category": "setup",
+      "priority": "high",
+      "description": "Add dialog state management to Dashboard for CreateLeadScrapeJob",
+      "steps": [
+        "Step 1: Add useState for createJobOpen (boolean)",
+        "Step 2: Add useState for prefillScrapeData ({city, cuisine, pageOffset})",
+        "Step 3: Create handleStartScrape callback that sets prefill data and opens dialog",
+        "Step 4: Import CreateLeadScrapeJob component",
+        "Step 5: Verify build passes with no TypeScript errors"
+      ],
+      "passes": true,
+      "completed_iteration": 1,
+      "notes": "Added useState hooks, handleStartScrape callback, imported and rendered CreateLeadScrapeJob dialog"
+    },
+    {
+      "id": 2,
+      "category": "functional",
+      "priority": "high",
+      "description": "CityBreakdownTab component renders on Dashboard",
+      "steps": [
+        "Step 1: Import CityBreakdownTab from @/components/reports/CityBreakdownTab",
+        "Step 2: Add component between Recent Activity grid and Quick Actions card",
+        "Step 3: Pass filters={{}} and onStartScrape={handleStartScrape} props",
+        "Step 4: Wrap in Card with consistent Dashboard styling",
+        "Step 5: Navigate to Dashboard and verify table renders with data"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": ""
+    },
+    {
+      "id": 3,
+      "category": "functional",
+      "priority": "high",
+      "description": "Expandable city rows work correctly",
+      "steps": [
+        "Step 1: Navigate to Dashboard",
+        "Step 2: Click on a city row to expand",
+        "Step 3: Verify cuisine breakdown appears with page indicators",
+        "Step 4: Click again to collapse",
+        "Step 5: Test Expand All / Collapse All button"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": ""
+    },
+    {
+      "id": 4,
+      "category": "functional",
+      "priority": "high",
+      "description": "Clickable lead counts route to correct lead detail pages",
+      "steps": [
+        "Step 1: Navigate to Dashboard",
+        "Step 2: Click on Total Leads count for a city",
+        "Step 3: Verify new tab opens to /leads?tab=pending&city={city}",
+        "Step 4: Expand a city row and click cuisine-level leads count",
+        "Step 5: Verify new tab opens with city AND cuisine filter applied"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": ""
+    },
+    {
+      "id": 5,
+      "category": "functional",
+      "priority": "high",
+      "description": "Cuisine coverage buttons trigger dialog for empty cuisines",
+      "steps": [
+        "Step 1: Navigate to Dashboard",
+        "Step 2: Find a cuisine with 0 pages scraped (gray indicator)",
+        "Step 3: Click the empty cuisine indicator",
+        "Step 4: Verify CreateLeadScrapeJob dialog opens",
+        "Step 5: Verify dialog is prefilled with correct city and cuisine"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": ""
+    },
+    {
+      "id": 6,
+      "category": "functional",
+      "priority": "high",
+      "description": "Cuisine coverage buttons navigate for scraped cuisines",
+      "steps": [
+        "Step 1: Navigate to Dashboard",
+        "Step 2: Find a cuisine with 1+ pages scraped (colored indicator)",
+        "Step 3: Click the scraped cuisine indicator",
+        "Step 4: Verify new tab opens to /leads?city={city}&cuisine={slug}",
+        "Step 5: Verify leads list shows correctly filtered data"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": ""
+    },
+    {
+      "id": 7,
+      "category": "functional",
+      "priority": "medium",
+      "description": "Page indicators work correctly (scraped vs unscraped)",
+      "steps": [
+        "Step 1: Navigate to Dashboard and expand a city row",
+        "Step 2: Find a cuisine with some scraped pages (green indicators)",
+        "Step 3: Click a scraped page indicator",
+        "Step 4: Verify new tab opens to job detail /leads/{jobId}",
+        "Step 5: Click an unscraped page indicator and verify dialog opens with page offset"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": ""
+    },
+    {
+      "id": 8,
+      "category": "functional",
+      "priority": "medium",
+      "description": "CSV export button functions correctly",
+      "steps": [
+        "Step 1: Navigate to Dashboard",
+        "Step 2: Locate the Export CSV button in city breakdown section",
+        "Step 3: Click Export CSV button",
+        "Step 4: Verify file download initiates",
+        "Step 5: Verify downloaded CSV contains expected city/cuisine data"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": ""
+    },
+    {
+      "id": 9,
+      "category": "ui",
+      "priority": "medium",
+      "description": "Table styling matches existing Dashboard card patterns",
+      "steps": [
+        "Step 1: Navigate to Dashboard",
+        "Step 2: Compare city breakdown card with existing Recent Restaurants card",
+        "Step 3: Verify backdrop-blur-sm bg-background/95 border-border styling",
+        "Step 4: Verify header layout matches (title left, action button right)",
+        "Step 5: Check no console errors and responsive layout on resize"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": ""
+    }
+  ]
+}

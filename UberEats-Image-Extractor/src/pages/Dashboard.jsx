@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { 
-  Store, 
-  Download, 
-  FileText, 
+import {
+  Store,
+  Download,
+  FileText,
   TrendingUp,
   Clock,
   AlertCircle,
@@ -17,8 +17,23 @@ import { cn, formatDate, getRelativeTime } from '../lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Skeleton } from '../components/ui/skeleton';
+import { CreateLeadScrapeJob } from '../components/leads/CreateLeadScrapeJob';
 
 export default function Dashboard() {
+  // Dialog state for CreateLeadScrapeJob
+  const [createJobOpen, setCreateJobOpen] = useState(false);
+  const [prefillScrapeData, setPrefillScrapeData] = useState({
+    city: undefined,
+    cuisine: undefined,
+    pageOffset: undefined,
+  });
+
+  // Callback for CityBreakdownTab to trigger dialog with prefill data
+  const handleStartScrape = ({ city, cuisine, pageOffset }) => {
+    setPrefillScrapeData({ city, cuisine, pageOffset });
+    setCreateJobOpen(true);
+  };
+
   // Fetch dashboard data
   const { data: restaurants = [], isLoading: restaurantsLoading, error: restaurantsError } = useQuery({
     queryKey: ['restaurants'],
@@ -298,6 +313,18 @@ export default function Dashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Create Lead Scrape Job Dialog */}
+      <CreateLeadScrapeJob
+        open={createJobOpen}
+        onClose={() => {
+          setCreateJobOpen(false);
+          setPrefillScrapeData({ city: undefined, cuisine: undefined, pageOffset: undefined });
+        }}
+        prefillCity={prefillScrapeData.city}
+        prefillCuisine={prefillScrapeData.cuisine}
+        prefillPageOffset={prefillScrapeData.pageOffset}
+      />
     </div>
   );
 }
