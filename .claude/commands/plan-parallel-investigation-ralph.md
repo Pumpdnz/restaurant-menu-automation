@@ -1,11 +1,11 @@
 ---
-description: Create a plan for investigating a specific feature with parallel subagents
+description: Create a Ralph Loop optimized plan for investigating a specific feature with parallel subagents
 argument-hint: [path-to-project-docs]
 ---
 
-# Plan Parallel Investigation
+# Plan Parallel Investigation (Ralph Loop)
 
-Follow the `Workflow` to create an investigation plan within the `PATH_TO_PROJECT_DOCS` folder, then generate a prime prompt and spawn the investigation session.
+Follow the `Workflow` to create a Ralph Loop optimized investigation plan within the `PATH_TO_PROJECT_DOCS` folder, then generate a prime prompt and spawn the investigation session.
 
 ## Variables
 
@@ -24,23 +24,50 @@ USER_PROMPT: $ARGUMENTS
 - Consider the available tools in your system prompt which would be able to be used to investigate each piece of missing information.
 - If the `USER_PROMPT` does not contain sufficient information about what has already been implemented, complete an initial investigation of the current codebase or STOP and ask questions before continuing.
 
-### Phase 2: Clarify Requirements with User
+### Phase 2: Refine Requirements with User
 
-Use `AskUserQuestion()` to gather any missing details:
+Use `AskUserQuestion()` to gather Ralph Loop specific requirements:
 
-**Question Set 1: Scope Clarification**
-- What specific aspects need investigation?
-- Are there areas that should be excluded?
+**Question Set 1: Testing & Validation**
+```
+- "What testing approach is required?"
+  Options:
+  - Browser verification (Claude in Chrome) - For frontend/UI changes
+  - Playwright scripting - For automated UI testing
+  - API testing - For backend endpoints
+  - Database verification - For data layer changes
+  - Combined approach - Multiple testing methods
+```
 
-**Question Set 2: Implementation Preferences**
-- Are there existing patterns in the codebase to follow?
-- Any constraints or requirements not mentioned?
+**Question Set 2: Success Criteria**
+```
+- "What are the key acceptance criteria?"
+  Options:
+  - Build must pass (TypeScript, lint)
+  - Specific UI elements must render correctly
+  - Specific behaviors must work end-to-end
+  - No console errors
+  - All of the above
+```
 
-**Question Set 3: Output Expectations**
-- What format should investigation findings take?
-- Any specific questions that must be answered?
+**Question Set 3: Feature Flags (if applicable)**
+```
+- "Are there feature flags involved?"
+  Options:
+  - Yes, need to test with flags enabled/disabled
+  - No feature flags
+  - Unknown, needs investigation
+```
 
-Note: Only ask questions where the USER_PROMPT is genuinely ambiguous. Skip if requirements are clear.
+**Question Set 4: Browser Verification (if frontend)**
+```
+- "What browser verification is needed?"
+  Options:
+  - Visual confirmation of UI changes
+  - Interactive testing of user flows
+  - Both visual and interactive
+  - Not applicable (backend only)
+```
 
 ### Phase 3: Create Investigation Plan
 
@@ -62,12 +89,43 @@ Any known information about the current system, provided from one or more of the
 - From your optional initial investigation of the current codebase
 - From user provided answers to your optional clarification questions
 
+## Testing & Validation Requirements
+Document the testing approach confirmed with the user:
+- **Testing Method:** {Browser verification / Playwright / API / Database / Combined}
+- **Browser Verification Steps:** {If applicable}
+- **Feature Flag Testing:** {If applicable}
+
+## Success Criteria
+Specific, verifiable acceptance criteria:
+- [ ] Build passes (no TypeScript/lint errors)
+- [ ] {Specific UI element renders correctly}
+- [ ] {Specific behavior works end-to-end}
+- [ ] {No console errors}
+- [ ] {Additional criteria from user}
+
+## Feature Categories
+Categorize investigation areas for feature_list.json generation:
+
+### Functional Features
+- Feature that affects core functionality
+- User-facing behavior changes
+
+### UI Features
+- Visual/layout changes
+- Component modifications
+
+### Integration Features
+- API integrations
+- Data flow changes
+- Cross-system interactions
+
 ## Instructions
 Detailed instructions for the next instance of Claude Code to follow.
 - Include specific instructions to use the Task tool to spin up n number of subagents to investigate each `subagent_n_instructions` section in parallel.
 - **CRITICAL: Always use `subagent_type="general-purpose"` for investigation subagents.** Do NOT use "Explore" or "Plan" subagent types as they lack Write tool access and cannot create their investigation document deliverables.
 - Include specific instructions to prompt each subagent to only investigate, not change code, and to create an investigation document in the `PATH_TO_PROJECT_DOCS` folder as its deliverable.
 - Include instructions to read all files once the subagents have completed their work and then report the findings to the user
+- IMPORTANT: After investigation completes, run `/plan-ralph-loop` to generate Ralph Loop configuration from findings
 
 ## subagent_1_instructions
 - Context
@@ -117,11 +175,11 @@ After creating the investigation plan, generate a prime prompt for the next sess
 4. Wait for all subagents to complete
 5. Read all investigation documents and compile findings
 
-### Task 2: Report Findings
+### Task 2: Report and Continue
 **Instructions:**
 1. Summarize key findings from all investigation documents
 2. Identify any blockers or additional questions
-3. Report to user with recommendations
+3. Run `/plan-ralph-loop` to generate Ralph Loop configuration from findings
 
 ---
 
@@ -135,8 +193,9 @@ After creating the investigation plan, generate a prime prompt for the next sess
 ---
 
 ## Notes
-- Execute the investigation plan immediately upon reading
-- Do not wait for user confirmation to begin
+- Testing Method: {Selected testing method}
+- Success Criteria documented in investigation plan
+- After investigation, proceed to Ralph Loop setup via `/plan-ralph-loop`
 ```
 
 ### Phase 5: Save Prime Prompt and Spawn Session
@@ -150,12 +209,12 @@ After creating the investigation plan, generate a prime prompt for the next sess
 bash .claude/skills/continue-t/scripts/open-split-claude.sh "{filename}"
 ```
 
-Where `{filename}` is the name of the file created (without path, e.g., `session-dashboard-investigation.md`).
+Where `{filename}` is the name of the file created (without path, e.g., `session-dashboard-update-investigation.md`).
 
 ## Report
 
 - Provide a concise report to user:
 - Summarize your understanding of the overview of the current project and purpose of the investigation.
-- Report any clarifications gathered from user questions.
+- Report the testing and validation requirements confirmed with the user.
 - Report the purpose of each subagent investigation task.
-- Confirm the prime prompt has been saved and the investigation session is spawning.
+- Confirm the prime prompt has been saved and `/continue-t` is spawning the investigation session.

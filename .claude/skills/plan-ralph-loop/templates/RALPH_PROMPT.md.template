@@ -1,0 +1,115 @@
+# Ralph Loop: {TASK_NAME}
+
+## Configuration
+
+| Setting | Value |
+|---------|-------|
+| Ralph Loop Directory | `{RALPH_LOOP_DIR}` |
+| Project Directory | `{PROJECT_DIR}` |
+| Frontend Port | `{FRONTEND_PORT}` |
+| Backend Port | `{BACKEND_PORT}` |
+| Max Iterations | `{MAX_ITERATIONS}` |
+
+**IMPORTANT:** The dev server must be running BEFORE starting the Ralph Loop. The init.sh script only verifies - it does NOT start the server.
+
+## Key Files (READ THESE FIRST)
+
+| File | Path | Purpose |
+|------|------|---------|
+| Progress | `{RALPH_LOOP_DIR}/progress.txt` | Current iteration state |
+| Features | `{RALPH_LOOP_DIR}/feature_list.json` | All features and pass status |
+| Init Script | `{RALPH_LOOP_DIR}/init.sh` | Environment setup |
+
+---
+
+## Task Definition
+{TASK_DEFINITION_FROM_INVESTIGATION}
+
+## Technical Context
+{TECHNICAL_CONTEXT_FROM_INVESTIGATION}
+
+## Implementation Steps
+{IMPLEMENTATION_STEPS_FROM_INVESTIGATION}
+
+## Testing & Verification
+
+### Method: {TESTING_METHOD}
+
+{TESTING_METHOD_INSTRUCTIONS}
+
+### Verification Steps
+{VERIFICATION_STEPS_FROM_SUCCESS_CRITERIA}
+
+---
+
+## Session Start Procedure (MANDATORY)
+
+Every iteration MUST begin with these steps:
+
+1. `pwd` - Confirm working directory is `{PROJECT_DIR}`
+2. Read `{RALPH_LOOP_DIR}/progress.txt` - Understand current state
+3. Read `{RALPH_LOOP_DIR}/feature_list.json` - See all features and their status
+4. `git log --oneline -10` - Review recent work
+5. Run `bash {RALPH_LOOP_DIR}/init.sh` - Verify dev server is running on port {FRONTEND_PORT}
+6. **CRITICAL: Run basic E2E test BEFORE any new work**
+   - Navigate to `http://localhost:{FRONTEND_PORT}` and verify app loads
+   - If baseline test fails, FIX IT FIRST
+   - Do NOT proceed to new features with broken baseline
+7. Choose highest-priority feature where `passes: false`
+8. Begin implementation
+
+---
+
+## CRITICAL: One Feature Per Iteration
+
+Work on EXACTLY ONE feature per iteration. Do not:
+- Attempt to implement multiple features
+- Make "while I'm here" additional changes
+- Premature optimization
+- Refactoring beyond the current feature
+
+After completing ONE feature:
+1. Verify it works (browser test at `http://localhost:{FRONTEND_PORT}`)
+2. Update `{RALPH_LOOP_DIR}/feature_list.json`: set `passes: true`
+3. Commit with descriptive message
+4. Update `{RALPH_LOOP_DIR}/progress.txt`
+5. Exit iteration
+
+---
+
+## Clean State on Exit (MANDATORY)
+
+Before ending this iteration, ensure:
+- [ ] No half-implemented code remains
+- [ ] All changes are committed with descriptive messages
+- [ ] No major bugs introduced
+- [ ] Code is orderly and documented
+- [ ] Next session can immediately start on next feature
+
+---
+
+## Iteration Workflow
+
+1. Follow Session Start Procedure above
+2. Implement ONE feature
+3. Run verification (build + browser test at `http://localhost:{FRONTEND_PORT}`)
+4. Update `{RALPH_LOOP_DIR}/feature_list.json`: change `passes: false` to `passes: true`
+5. Update `{RALPH_LOOP_DIR}/progress.txt` with results
+6. Git commit with descriptive message
+7. If ALL features pass: output `<promise>{TASK_NAME} COMPLETE</promise>`
+8. If NOT complete: run `/continue-ralph {RALPH_LOOP_DIR}` to spawn next iteration
+
+## Completion Signal
+
+When ALL features in `{RALPH_LOOP_DIR}/feature_list.json` have `passes: true`, output:
+
+```
+<promise>{TASK_NAME} COMPLETE</promise>
+```
+
+## Constraints
+- Do NOT skip verification steps
+- Do NOT mark features as passing without browser verification
+- Do NOT modify feature definitions in `{RALPH_LOOP_DIR}/feature_list.json` (only `passes` field)
+- Do NOT exceed {MAX_ITERATIONS} iterations
+- If stuck on same issue for 3+ iterations, document blocker clearly in `{RALPH_LOOP_DIR}/progress.txt`

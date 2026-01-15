@@ -1,0 +1,34 @@
+# Ralph Loop Progress: {TASK_NAME}
+
+## Configuration
+- Created: {TIMESTAMP}
+- Max Iterations: {MAX_ITERATIONS}
+- Port: {PORT}
+- Testing Method: {TESTING_METHOD}
+
+## Current State
+- Iteration: 0
+- Status: not_started
+- Last Updated: {TIMESTAMP}
+
+## Completion Criteria
+{CRITERIA_LIST}
+
+## Completed
+(none yet)
+
+## Remaining
+{REMAINING_CRITERIA}
+
+## Current Blocker
+(none)
+
+## Last Verification Result
+(not run)
+
+## Next Session Instructions
+Begin implementation. Read RALPH_PROMPT.md for full context.
+
+## Iteration History
+| # | Changes Made | Result | Blocker |
+|---|--------------|--------|---------|

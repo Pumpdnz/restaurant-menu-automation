@@ -1,0 +1,23 @@
+{
+  "task_name": "{TASK_NAME}",
+  "created": "{TIMESTAMP}",
+  "total_features": 0,
+  "completed_features": 0,
+  "instructions": "CRITICAL: Only modify the 'passes' field. It is unacceptable to remove or edit feature definitions as this could lead to missing or buggy functionality.",
+  "features": [
+    {
+      "id": 1,
+      "category": "functional",
+      "priority": "high",
+      "description": "Feature description here",
+      "steps": [
+        "Step 1: Navigate to relevant page",
+        "Step 2: Perform action",
+        "Step 3: Verify expected result"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": ""
+    }
+  ]
+}
