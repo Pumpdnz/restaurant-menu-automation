@@ -7,13 +7,13 @@
 - Testing Method: Combined (Build + Browser)
 
 ## Current State
-- Iteration: 1
+- Iteration: 2
 - Status: completed
 - Last Updated: 2026-01-15
 
 ## Completion Criteria
 1. [DONE] Dialog state management added to Dashboard
-2. [pending] CityBreakdownTab renders on Dashboard
+2. [DONE] CityBreakdownTab renders on Dashboard
 3. [pending] Expandable city rows work
 4. [pending] Clickable leads route correctly
 5. [pending] Empty cuisine buttons open dialog
@@ -29,21 +29,29 @@
   - Imported and rendered CreateLeadScrapeJob dialog
   - Build passes successfully
 
+- Feature 2: CityBreakdownTab renders on Dashboard (Iteration 2)
+  - Imported CityBreakdownTab from @/components/reports/CityBreakdownTab
+  - Added Card wrapper with brand-purple title
+  - Placed between Recent Activity grid and Quick Actions card
+  - Passed filters={{}} and onStartScrape={handleStartScrape} props
+  - Build passes (4.72s), browser verification shows table with city data
+
 ## Remaining
-8 features (Features 2-9)
+7 features (Features 3-9)
 
 ## Current Blocker
 (none)
 
 ## Last Verification Result
-- Build: PASSED (4.32s, no errors)
-- Browser: PASSED (Dashboard loads correctly)
+- Build: PASSED (4.72s, no errors)
+- Browser: PASSED (CityBreakdownTab renders with heatmap, table, and summary stats)
 
 ## Next Session Instructions
-Continue with Feature 2: Add CityBreakdownTab component to Dashboard.
-Import the component, add it between Recent Activity grid and Quick Actions card.
+Continue with Feature 3: Expandable city rows.
+Test clicking on city rows to expand/collapse and verify cuisine breakdown appears.
 
 ## Iteration History
 | # | Changes Made | Result | Blocker |
 |---|--------------|--------|---------|
 | 1 | Feature 1: Added dialog state management (createJobOpen, prefillScrapeData, handleStartScrape, CreateLeadScrapeJob dialog) | PASSED | None |
+| 2 | Feature 2: Added CityBreakdownTab to Dashboard with Card wrapper, brand-purple title, between Recent Activity and Quick Actions | PASSED | None |

@@ -2,7 +2,7 @@
   "task_name": "city-breakdown-dashboard",
   "created": "2026-01-15",
   "total_features": 9,
-  "completed_features": 1,
+  "completed_features": 2,
   "instructions": "CRITICAL: Only modify the 'passes' field. It is unacceptable to remove or edit feature definitions as this could lead to missing or buggy functionality.",
   "features": [
     {
@@ -33,9 +33,9 @@
         "Step 4: Wrap in Card with consistent Dashboard styling",
         "Step 5: Navigate to Dashboard and verify table renders with data"
       ],
-      "passes": false,
-      "completed_iteration": null,
-      "notes": ""
+      "passes": true,
+      "completed_iteration": 2,
+      "notes": "Imported CityBreakdownTab, wrapped in Card with brand-purple title, placed between Recent Activity and Quick Actions. Table renders with city data, heatmap, and summary stats."
     },
     {
       "id": 3,

@@ -18,6 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Badge } from '../components/ui/badge';
 import { Skeleton } from '../components/ui/skeleton';
 import { CreateLeadScrapeJob } from '../components/leads/CreateLeadScrapeJob';
+import { CityBreakdownTab } from '../components/reports/CityBreakdownTab';
 
 export default function Dashboard() {
   // Dialog state for CreateLeadScrapeJob
@@ -281,6 +282,19 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* City Breakdown */}
+      <Card className="backdrop-blur-sm bg-background/95 border-border">
+        <CardHeader className="flex flex-row items-center justify-between py-3">
+          <CardTitle className="text-brand-purple">City Breakdown</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <CityBreakdownTab
+            filters={{}}
+            onStartScrape={handleStartScrape}
+          />
+        </CardContent>
+      </Card>
 
       {/* Quick Actions */}
       <Card className="backdrop-blur-sm bg-background/95 border-border">
