@@ -2,7 +2,7 @@
   "task_name": "city-breakdown-dashboard",
   "created": "2026-01-15",
   "total_features": 9,
-  "completed_features": 3,
+  "completed_features": 4,
   "instructions": "CRITICAL: Only modify the 'passes' field. It is unacceptable to remove or edit feature definitions as this could lead to missing or buggy functionality.",
   "features": [
     {
@@ -65,9 +65,9 @@
         "Step 4: Expand a city row and click cuisine-level leads count",
         "Step 5: Verify new tab opens with city AND cuisine filter applied"
       ],
-      "passes": false,
-      "completed_iteration": null,
-      "notes": ""
+      "passes": true,
+      "completed_iteration": 4,
+      "notes": "Verified: Clicking Auckland '115' leads opens /leads?tab=pending&city=Auckland. Clicking burger '47' leads in expanded Auckland row opens /leads?tab=pending&city=Auckland&cuisine=burger. Both tabs show correctly filtered data."
     },
     {
       "id": 5,
