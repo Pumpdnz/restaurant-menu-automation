@@ -30,7 +30,8 @@ export default function Dashboard() {
   });
 
   // Callback for CityBreakdownTab to trigger dialog with prefill data
-  const handleStartScrape = ({ city, cuisine, pageOffset }) => {
+  // Note: CityBreakdownTab calls this with positional arguments (city, cuisine, pageOffset)
+  const handleStartScrape = (city, cuisine, pageOffset) => {
     setPrefillScrapeData({ city, cuisine, pageOffset });
     setCreateJobOpen(true);
   };

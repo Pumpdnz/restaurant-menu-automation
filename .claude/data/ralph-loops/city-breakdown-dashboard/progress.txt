@@ -7,7 +7,7 @@
 - Testing Method: Combined (Build + Browser)
 
 ## Current State
-- Iteration: 4
+- Iteration: 5
 - Status: completed
 - Last Updated: 2026-01-15
 
@@ -16,7 +16,7 @@
 2. [DONE] CityBreakdownTab renders on Dashboard
 3. [DONE] Expandable city rows work
 4. [DONE] Clickable leads route correctly
-5. [pending] Empty cuisine buttons open dialog
+5. [DONE] Empty cuisine buttons open dialog
 6. [pending] Scraped cuisine buttons navigate
 7. [pending] Page indicators work
 8. [pending] CSV export works
@@ -46,19 +46,27 @@
   - Clicking cuisine-level leads (e.g., burger 47) opens /leads?tab=pending&city=Auckland&cuisine=burger
   - All tabs show correctly filtered data
 
+- Feature 5: Empty cuisine buttons trigger dialog (Iteration 5)
+  - Fixed handleStartScrape callback signature mismatch
+  - CityBreakdownTab passes positional args (city, cuisine, pageOffset)
+  - Dashboard was expecting object destructuring { city, cuisine, pageOffset }
+  - Changed to positional: (city, cuisine, pageOffset) => setPrefillScrapeData({ city, cuisine, pageOffset })
+  - Verified: BBQ for Auckland -> dialog shows City=Auckland, Cuisine=BBQ
+  - Verified: Mexican for Wellington -> dialog shows City=Wellington, Cuisine=Mexican Food
+
 ## Remaining
-5 features (Features 5-9)
+4 features (Features 6-9)
 
 ## Current Blocker
 (none)
 
 ## Last Verification Result
-- Build: N/A (no code changes needed - feature already working)
-- Browser: PASSED (Clickable lead counts route correctly at both city and cuisine levels)
+- Build: PASSED (4.49s, no TypeScript errors)
+- Browser: PASSED (Empty cuisine buttons open dialog with correct prefill data)
 
 ## Next Session Instructions
-Continue with Feature 5: Cuisine coverage buttons trigger dialog for empty cuisines.
-Find a cuisine with 0 pages scraped (gray indicator) and click to verify the CreateLeadScrapeJob dialog opens with prefilled city and cuisine.
+Continue with Feature 6: Cuisine coverage buttons navigate for scraped cuisines.
+Find a cuisine with 1+ pages scraped (colored indicator like burger/pizza) and click to verify it opens a new tab with the correct filter.
 
 ## Iteration History
 | # | Changes Made | Result | Blocker |
@@ -67,3 +75,4 @@ Find a cuisine with 0 pages scraped (gray indicator) and click to verify the Cre
 | 2 | Feature 2: Added CityBreakdownTab to Dashboard with Card wrapper, brand-purple title, between Recent Activity and Quick Actions | PASSED | None |
 | 3 | Feature 3: Verified expandable city rows - click to expand/collapse shows cuisine breakdown with page indicators (1-10, green=scraped), Expand All/Collapse All buttons work | PASSED | None |
 | 4 | Feature 4: Verified clickable lead counts - city-level opens /leads?tab=pending&city={city}, cuisine-level opens with both city AND cuisine filters | PASSED | None |
+| 5 | Feature 5: Fixed handleStartScrape signature mismatch (object->positional). Verified dialog opens with prefilled city/cuisine for empty cuisines | PASSED | None |

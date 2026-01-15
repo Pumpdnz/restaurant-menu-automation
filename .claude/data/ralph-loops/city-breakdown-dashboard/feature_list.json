@@ -2,7 +2,7 @@
   "task_name": "city-breakdown-dashboard",
   "created": "2026-01-15",
   "total_features": 9,
-  "completed_features": 4,
+  "completed_features": 5,
   "instructions": "CRITICAL: Only modify the 'passes' field. It is unacceptable to remove or edit feature definitions as this could lead to missing or buggy functionality.",
   "features": [
     {
@@ -81,9 +81,9 @@
         "Step 4: Verify CreateLeadScrapeJob dialog opens",
         "Step 5: Verify dialog is prefilled with correct city and cuisine"
       ],
-      "passes": false,
-      "completed_iteration": null,
-      "notes": ""
+      "passes": true,
+      "completed_iteration": 5,
+      "notes": "Fixed handleStartScrape signature mismatch (was expecting object destructuring but CityBreakdownTab passes positional args). Verified: Click BBQ for Auckland opens dialog prefilled with City=Auckland, Cuisine=BBQ. Click Mexican for Wellington opens dialog prefilled with City=Wellington, Cuisine=Mexican Food."
     },
     {
       "id": 6,
