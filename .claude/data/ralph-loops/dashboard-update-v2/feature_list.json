@@ -1,0 +1,244 @@
+{
+  "task_name": "dashboard-update-v2",
+  "created": "2026-01-17",
+  "total_features": 12,
+  "completed_features": 1,
+  "default_model": "opus",
+  "model_routing": {
+    "setup": "opus",
+    "functional": "opus",
+    "ui": "sonnet",
+    "verification": "sonnet",
+    "testing": "sonnet",
+    "documentation": "haiku"
+  },
+  "instructions": "CRITICAL: Only modify the 'passes' field. Do NOT remove or edit feature definitions. The 'model' field determines which Claude model runs that feature (opus for complex work, sonnet for UI/testing, haiku for docs).",
+  "features": [
+    {
+      "id": 1,
+      "category": "setup",
+      "priority": "high",
+      "model": "opus",
+      "description": "Create useDashboard.ts hooks file with all required data fetching hooks",
+      "steps": [
+        "Create /UberEats-Image-Extractor/src/hooks/useDashboard.ts",
+        "Implement useRecentRestaurants(limit) hook",
+        "Implement usePendingLeadsPreview(limit) hook",
+        "Implement useRecentRegistrationBatches(limit) hook",
+        "Implement useTasksDueToday(limit) hook",
+        "Implement useOverdueTasksCount() hook",
+        "Add TypeScript types for dashboard data",
+        "Verify hooks compile without errors"
+      ],
+      "passes": true,
+      "completed_iteration": 1,
+      "notes": "Reference: INVESTIGATION_DATA_QUERIES.md - hooks should use React Query patterns"
+    },
+    {
+      "id": 2,
+      "category": "functional",
+      "priority": "high",
+      "model": "opus",
+      "description": "Add backend endpoint GET /api/restaurants/recent for recently created restaurants",
+      "steps": [
+        "Add route to server.js or restaurant routes",
+        "Query restaurants ordered by created_at desc with limit param",
+        "Return lightweight payload: id, name, city, created_at, onboarding_status, lead_stage",
+        "Test endpoint returns correct data"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Reference: INVESTIGATION_DATA_QUERIES.md - Section 3.1"
+    },
+    {
+      "id": 3,
+      "category": "ui",
+      "priority": "high",
+      "model": "sonnet",
+      "description": "Remove 4 stats cards from Dashboard",
+      "steps": [
+        "Remove the statCards array definition",
+        "Remove the stats grid JSX (grid-cols-1 md:grid-cols-2 lg:grid-cols-4)",
+        "Remove related state: activeRestaurants, totalMenus, successRate, totalExtractions",
+        "Remove analyticsAPI.getExtractionStats() query if no longer needed",
+        "Verify build passes",
+        "Verify Dashboard renders without stats cards in browser"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Reference: INVESTIGATION_DASHBOARD_STRUCTURE.md - Lines describing statCards"
+    },
+    {
+      "id": 4,
+      "category": "functional",
+      "priority": "high",
+      "model": "opus",
+      "description": "Fix Lead Scraping reports - use ReportsTabContent, remove nested Card, add feature flag",
+      "steps": [
+        "Import ReportsTabContent from '../components/reports/ReportsTabContent'",
+        "Import useAuth for feature flag",
+        "Replace Card-wrapped CityBreakdownTab with ReportsTabContent directly",
+        "Add section header with 'Lead Scraping' title and 'View Full Reports' link",
+        "Wrap entire section in isFeatureEnabled('leadScraping') conditional",
+        "Verify tabs (City Breakdown, Opportunities) work in browser",
+        "Verify section hides when feature flag disabled"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Reference: INVESTIGATION_UI_PATTERNS.md - Option C recommended approach"
+    },
+    {
+      "id": 5,
+      "category": "ui",
+      "priority": "medium",
+      "model": "sonnet",
+      "description": "Add Pending Leads preview component with feature flag",
+      "steps": [
+        "Use usePendingLeadsPreview(5) hook from useDashboard.ts",
+        "Create preview card showing 5 most recent leads at step 4, status 'passed'",
+        "Display: restaurant_name, city, created_at date",
+        "Add 'View All' link to /leads?tab=pending",
+        "Wrap in isFeatureEnabled('leadScraping') conditional",
+        "Add loading skeleton state",
+        "Verify in browser - shows data and links work"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Reference: INVESTIGATION_PREVIEW_COMPONENTS.md - Template A pattern"
+    },
+    {
+      "id": 6,
+      "category": "ui",
+      "priority": "medium",
+      "model": "sonnet",
+      "description": "Add Recent Batch Registration Jobs preview with feature flag",
+      "steps": [
+        "Use useRecentRegistrationBatches(5) hook from useDashboard.ts",
+        "Create preview card showing most recent batch jobs",
+        "Display: name, status badge, progress (completed/total), created_at",
+        "Add 'View All' link to /registration-batches",
+        "Wrap in isFeatureEnabled('registrationBatches') conditional",
+        "Add loading skeleton state",
+        "Verify in browser - shows data and links work"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Reference: INVESTIGATION_PREVIEW_COMPONENTS.md - Template A pattern"
+    },
+    {
+      "id": 7,
+      "category": "ui",
+      "priority": "medium",
+      "model": "sonnet",
+      "description": "Add Tasks Due Today paginated list with feature flag",
+      "steps": [
+        "Use useTasksDueToday(10) hook from useDashboard.ts",
+        "Create card with table of tasks due today",
+        "Display: task name, type badge, priority, restaurant name, due time",
+        "Implement simple pagination (5 per page)",
+        "Add overdue tasks count badge in header if any",
+        "Add 'View All' link to /tasks",
+        "Wrap in isFeatureEnabled('tasksAndSequences') conditional",
+        "Verify in browser - pagination works, links work"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Reference: INVESTIGATION_PREVIEW_COMPONENTS.md - Template B with pagination"
+    },
+    {
+      "id": 8,
+      "category": "ui",
+      "priority": "medium",
+      "model": "sonnet",
+      "description": "Add Recently Created Restaurants preview with city filter",
+      "steps": [
+        "Use useRecentRestaurants(10) hook from useDashboard.ts",
+        "Create card with table of recently created restaurants",
+        "Display: name, city, onboarding_status badge, created_at date",
+        "Add city filter pills (top 5 cities + 'All')",
+        "Add 'View All' link to /restaurants",
+        "No feature flag needed for this component",
+        "Verify in browser - filter works, links work"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Reference: INVESTIGATION_PREVIEW_COMPONENTS.md - Template B with filter"
+    },
+    {
+      "id": 9,
+      "category": "ui",
+      "priority": "medium",
+      "model": "sonnet",
+      "description": "Update Quick Actions - move to top, update buttons, add New Task dialog",
+      "steps": [
+        "Import CreateTaskModal from '../components/tasks/CreateTaskModal'",
+        "Add state: const [createTaskModalOpen, setCreateTaskModalOpen] = useState(false)",
+        "Move Quick Actions section to appear after page header (before main content grid)",
+        "Replace 'View Analytics' button with 'New Task' button",
+        "Wire New Task button to open CreateTaskModal",
+        "Add CreateTaskModal component at end of Dashboard JSX",
+        "Verify in browser - New Task opens dialog, can create task"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Reference: INVESTIGATION_TASK_DIALOG.md - Dashboard-level usage pattern"
+    },
+    {
+      "id": 10,
+      "category": "functional",
+      "priority": "medium",
+      "model": "sonnet",
+      "description": "Fix Recent Restaurants component to work consistently",
+      "steps": [
+        "Review current Recent Restaurants query in Dashboard",
+        "Ensure it uses useRecentRestaurants(5) hook (or existing pattern if working)",
+        "Verify data loads consistently on page load",
+        "Check for race conditions or stale data issues",
+        "Add proper error handling and retry logic",
+        "Verify in browser - always shows recent restaurants"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Investigation noted intermittent issues - diagnose and fix"
+    },
+    {
+      "id": 11,
+      "category": "functional",
+      "priority": "medium",
+      "model": "sonnet",
+      "description": "Fix Recent Extractions component to work consistently",
+      "steps": [
+        "Review current Recent Extractions query in Dashboard",
+        "Ensure extractionAPI.getAll({ limit: 5 }) works reliably",
+        "Verify data loads consistently on page load",
+        "Check for race conditions or stale data issues",
+        "Add proper error handling and retry logic",
+        "Verify in browser - always shows recent extractions"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Investigation noted intermittent issues - diagnose and fix"
+    },
+    {
+      "id": 12,
+      "category": "verification",
+      "priority": "high",
+      "model": "sonnet",
+      "description": "Final verification - all features work, build passes, no console errors",
+      "steps": [
+        "Run npm run build - must pass",
+        "Navigate to Dashboard in browser",
+        "Verify stats cards are removed",
+        "Verify Quick Actions at top with New Task working",
+        "Verify Lead Scraping reports tabbed (City Breakdown, Opportunities)",
+        "Verify all preview components display data",
+        "Verify feature flags hide components when disabled (test with organization without flags)",
+        "Check browser console for errors - must be clean",
+        "Test navigation links all work correctly"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Complete end-to-end verification before marking task complete"
+    }
+  ]
+}

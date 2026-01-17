@@ -1,0 +1,58 @@
+# Ralph Loop Progress: dashboard-update-v2
+
+## Configuration
+- Created: 2026-01-17
+- Max Iterations: 30
+- Port: 5007
+- Testing Method: Combined (Browser + Build)
+
+## Current State
+- Iteration: 1 / 30
+- Status: COMPLETED (2026-01-17)
+- Last Updated: 2026-01-17
+
+## Completion Criteria
+- [ ] Stats cards removed from Dashboard
+- [ ] Lead Scraping reports properly tabbed with feature flag
+- [ ] Pending Leads preview shows 5 most recent leads (step 4, status "passed")
+- [ ] Batch Registration Jobs preview shows most recent jobs
+- [ ] Tasks Due Today list is paginated and works
+- [ ] Recently Created Restaurants preview with city filter works
+- [ ] Quick Actions moved to top with New Task dialog working
+- [ ] Recent Restaurants preview works consistently
+- [ ] Recent Extractions preview works consistently
+- [ ] Feature flags hide components completely when disabled
+- [ ] Build passes (no TypeScript/lint errors)
+- [ ] No console errors in browser
+
+## Completed
+- Feature 1: Created useDashboard.ts hooks file with all required hooks
+
+## Remaining
+11 features pending implementation (Features 2-12)
+
+## Current Blocker
+(none)
+
+## Last Verification Result
+Feature 1: Build passes, hooks compile without errors
+
+## Next Session Instructions
+Begin implementation with Feature 2: Add backend endpoint GET /api/restaurants/recent
+
+## Key Reference Files
+- Investigation docs: planning/ralph-loops/dashboard-update-v2/INVESTIGATION_*.md
+- Dashboard component: UberEats-Image-Extractor/src/pages/Dashboard.jsx
+- Feature flags: UberEats-Image-Extractor/src/context/AuthContext.tsx
+- Task modal: UberEats-Image-Extractor/src/components/tasks/CreateTaskModal.tsx
+- Reports content: UberEats-Image-Extractor/src/components/reports/ReportsTabContent.tsx
+
+## Session History
+| Iteration | Session ID | Timestamp | Feature | Result |
+|-----------|------------|-----------|---------|--------|
+| 1 | 0edb12ec-bb99-4eab-a9c5-bebb7191fb17 | 2026-01-17 | Feature 1: Create useDashboard.ts hooks | PASSED |
+
+## Iteration History
+| # | Changes Made | Result | Blocker |
+|---|--------------|--------|---------|
+| 1 | Created /src/hooks/useDashboard.ts with 6 hooks (useRecentRestaurants, usePendingLeadsPreview, useRecentRegistrationBatches, useTasksDueToday, useOverdueTasksCount, useDashboardSummary) | PASSED | None |
