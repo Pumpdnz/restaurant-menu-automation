@@ -3403,6 +3403,37 @@ app.get('/api/restaurants/switcher', authMiddleware, async (req, res) => {
 });
 
 /**
+ * GET /api/restaurants/recent
+ * Get recently created restaurants for dashboard preview
+ * Returns lightweight payload: id, name, city, created_at, onboarding_status, lead_stage
+ */
+app.get('/api/restaurants/recent', authMiddleware, async (req, res) => {
+  try {
+    if (!db.isDatabaseAvailable()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database service unavailable'
+      });
+    }
+
+    const limit = parseInt(req.query.limit) || 5;
+    const restaurants = await db.getRecentRestaurants(limit);
+
+    return res.json({
+      success: true,
+      count: restaurants.length,
+      restaurants: restaurants
+    });
+  } catch (error) {
+    console.error('[API] Error getting recent restaurants:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get recent restaurants'
+    });
+  }
+});
+
+/**
  * GET /api/restaurants/:id/menus
  * Get all menus for a specific restaurant
  */
@@ -9599,6 +9630,7 @@ const server = app.listen(PORT, () => {
   if (dbInitialized) {
     console.log('\n  === Restaurant Management ===');
     console.log(`  GET    /api/restaurants               - List all restaurants`);
+    console.log(`  GET    /api/restaurants/recent        - Get recently created restaurants`);
     console.log(`  GET    /api/restaurants/:id           - Get restaurant details`);
     console.log(`  GET    /api/restaurants/:id/details   - Get restaurant full details`);
     console.log(`  POST   /api/restaurants               - Create new restaurant`);

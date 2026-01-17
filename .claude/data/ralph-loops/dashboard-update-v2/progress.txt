@@ -7,7 +7,7 @@
 - Testing Method: Combined (Browser + Build)
 
 ## Current State
-- Iteration: 1 / 30
+- Iteration: 2 / 30
 - Status: COMPLETED (2026-01-17)
 - Last Updated: 2026-01-17
 
@@ -27,18 +27,19 @@
 
 ## Completed
 - Feature 1: Created useDashboard.ts hooks file with all required hooks
+- Feature 2: Added backend endpoint GET /api/restaurants/recent
 
 ## Remaining
-11 features pending implementation (Features 2-12)
+10 features pending implementation (Features 3-12)
 
 ## Current Blocker
 (none)
 
 ## Last Verification Result
-Feature 1: Build passes, hooks compile without errors
+Feature 2: Build passes, endpoint responds correctly (requires auth as expected)
 
 ## Next Session Instructions
-Begin implementation with Feature 2: Add backend endpoint GET /api/restaurants/recent
+Begin implementation with Feature 3: Remove 4 stats cards from Dashboard
 
 ## Key Reference Files
 - Investigation docs: planning/ralph-loops/dashboard-update-v2/INVESTIGATION_*.md
@@ -51,8 +52,10 @@ Begin implementation with Feature 2: Add backend endpoint GET /api/restaurants/r
 | Iteration | Session ID | Timestamp | Feature | Result |
 |-----------|------------|-----------|---------|--------|
 | 1 | 0edb12ec-bb99-4eab-a9c5-bebb7191fb17 | 2026-01-17 | Feature 1: Create useDashboard.ts hooks | PASSED |
+| 2 | c88d1433-0db0-4c40-9ac2-2ce0e17e52b8 | 2026-01-17 | Feature 2: Add GET /api/restaurants/recent endpoint | PASSED |
 
 ## Iteration History
 | # | Changes Made | Result | Blocker |
 |---|--------------|--------|---------|
 | 1 | Created /src/hooks/useDashboard.ts with 6 hooks (useRecentRestaurants, usePendingLeadsPreview, useRecentRegistrationBatches, useTasksDueToday, useOverdueTasksCount, useDashboardSummary) | PASSED | None |
+| 2 | Added getRecentRestaurants() in database-service.js, added GET /api/restaurants/recent route in server.js | PASSED | None |

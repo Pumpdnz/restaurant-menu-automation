@@ -2,7 +2,7 @@
   "task_name": "dashboard-update-v2",
   "created": "2026-01-17",
   "total_features": 12,
-  "completed_features": 1,
+  "completed_features": 2,
   "default_model": "opus",
   "model_routing": {
     "setup": "opus",
@@ -46,8 +46,8 @@
         "Return lightweight payload: id, name, city, created_at, onboarding_status, lead_stage",
         "Test endpoint returns correct data"
       ],
-      "passes": false,
-      "completed_iteration": null,
+      "passes": true,
+      "completed_iteration": 2,
       "notes": "Reference: INVESTIGATION_DATA_QUERIES.md - Section 3.1"
     },
     {

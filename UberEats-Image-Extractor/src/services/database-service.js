@@ -1527,6 +1527,33 @@ async function getRestaurantSwitcherList() {
 }
 
 /**
+ * Get recently created restaurants for dashboard preview
+ * Returns lightweight payload: id, name, city, created_at, onboarding_status, lead_stage
+ * @param {number} limit - Maximum number of restaurants to return (default: 5)
+ */
+async function getRecentRestaurants(limit = 5) {
+  if (!isDatabaseAvailable()) return [];
+
+  const orgId = getCurrentOrganizationId();
+
+  try {
+    const client = getSupabaseClient();
+    const { data, error } = await client
+      .from('restaurants')
+      .select('id, name, city, created_at, onboarding_status, lead_stage')
+      .eq('organisation_id', orgId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('[Database] Error getting recent restaurants:', error);
+    return [];
+  }
+}
+
+/**
  * Get restaurant by ID
  */
 async function getRestaurantById(restaurantId, organisationId = null) {
@@ -3385,6 +3412,7 @@ module.exports = {
   getAllRestaurants,
   getAllRestaurantsList,
   getRestaurantSwitcherList,
+  getRecentRestaurants,
   getRestaurantById,
   getRestaurantDetails,
   getRestaurantMenus,
