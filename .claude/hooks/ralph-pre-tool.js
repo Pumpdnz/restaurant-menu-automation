@@ -127,7 +127,8 @@ async function main() {
         hookData = JSON.parse(input);
     } catch (e) {
         // If we can't parse input, allow the operation (fail-open for usability)
-        console.log(JSON.stringify({ decision: null }));
+        // Output empty object to pass through without blocking
+        console.log(JSON.stringify({}));
         return;
     }
 
@@ -152,12 +153,14 @@ async function main() {
 
     // ---------------------------------------------------------------------------
     // Allow all other operations (file access validation excluded per user)
+    // Output empty object to pass through without blocking
     // ---------------------------------------------------------------------------
-    console.log(JSON.stringify({ decision: null }));
+    console.log(JSON.stringify({}));
 }
 
 main().catch(err => {
     console.error(`[ralph-pre-tool] Error: ${err.message}`);
     // On error, allow the operation (fail-open for usability)
-    console.log(JSON.stringify({ decision: null }));
+    // Output empty object to pass through without blocking
+    console.log(JSON.stringify({}));
 });

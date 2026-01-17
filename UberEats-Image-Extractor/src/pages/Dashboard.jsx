@@ -9,7 +9,9 @@ import {
   CheckCircle,
   XCircle,
   ArrowRight,
-  TrendingUp
+  TrendingUp,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { restaurantAPI, extractionAPI } from '../services/api';
 import { getRelativeTime } from '../lib/utils';
@@ -20,7 +22,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { CreateLeadScrapeJob } from '../components/leads/CreateLeadScrapeJob';
 import { ReportsTabContent } from '../components/reports/ReportsTabContent';
 import { useAuth } from '../context/AuthContext';
-import { usePendingLeadsPreview, useRecentRegistrationBatches } from '../hooks/useDashboard';
+import { usePendingLeadsPreview, useRecentRegistrationBatches, useTasksDueToday, useOverdueTasksCount } from '../hooks/useDashboard';
 
 export default function Dashboard() {
   // Feature flags
@@ -71,6 +73,19 @@ export default function Dashboard() {
 
   // Recent Registration Batches Preview
   const { data: registrationBatches = [], isLoading: batchesLoading } = useRecentRegistrationBatches(5);
+
+  // Tasks Due Today with pagination
+  const [tasksPage, setTasksPage] = useState(0);
+  const tasksPageSize = 5;
+  const { data: tasksDueTodayData, isLoading: tasksLoading } = useTasksDueToday(10);
+  const allTasksDueToday = tasksDueTodayData?.tasks || [];
+  const totalTasksDueToday = tasksDueTodayData?.total || 0;
+  const paginatedTasks = allTasksDueToday.slice(tasksPage * tasksPageSize, (tasksPage + 1) * tasksPageSize);
+  const totalTasksPages = Math.ceil(allTasksDueToday.length / tasksPageSize);
+
+  // Overdue tasks count
+  const { data: overdueData } = useOverdueTasksCount();
+  const overdueCount = overdueData?.count || 0;
 
   const isLoading = restaurantsLoading || extractionsLoading;
 
@@ -358,6 +373,116 @@ export default function Dashboard() {
                   ))}
                 </TableBody>
               </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Tasks Due Today - Feature flagged */}
+      {isFeatureEnabled('tasksAndSequences') && (
+        <Card className="backdrop-blur-sm bg-background/95 border-border">
+          <CardHeader className="flex flex-row items-center justify-between py-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              Tasks Due Today
+              <Badge variant="secondary" className="text-xs">
+                {totalTasksDueToday}
+              </Badge>
+              {overdueCount > 0 && (
+                <Badge variant="destructive" className="text-xs">
+                  {overdueCount} overdue
+                </Badge>
+              )}
+            </CardTitle>
+            <Link to="/tasks">
+              <div className="text-sm text-brand-blue hover:text-brand-blue/80 font-medium flex items-center transition-colors">
+                View All
+                <ArrowRight className="ml-1 h-4 w-4" />
+              </div>
+            </Link>
+          </CardHeader>
+          <CardContent className="p-0">
+            {tasksLoading ? (
+              <div className="divide-y divide-border">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="p-4">
+                    <Skeleton className="h-4 w-full" />
+                  </div>
+                ))}
+              </div>
+            ) : allTasksDueToday.length === 0 ? (
+              <div className="p-6 text-center text-muted-foreground text-sm">
+                No tasks due today
+              </div>
+            ) : (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Task Name</TableHead>
+                      <TableHead className="w-24">Type</TableHead>
+                      <TableHead className="w-24">Priority</TableHead>
+                      <TableHead className="w-48">Restaurant</TableHead>
+                      <TableHead className="w-32">Due Time</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedTasks.map((task) => (
+                      <TableRow key={task.id} className="hover:bg-muted/50">
+                        <TableCell className="font-medium">{task.name}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs">
+                            {task.type}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={
+                              task.priority === 'high' ? 'text-red-600 border-red-600' :
+                              task.priority === 'medium' ? 'text-yellow-600 border-yellow-600' :
+                              'text-gray-600 border-gray-600'
+                            }
+                          >
+                            {task.priority}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {task.restaurants?.name || '-'}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {new Date(task.due_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {totalTasksPages > 1 && (
+                  <div className="flex items-center justify-between px-4 py-2 border-t bg-muted/30">
+                    <div className="text-sm text-muted-foreground">
+                      Showing {tasksPage * tasksPageSize + 1}-{Math.min((tasksPage + 1) * tasksPageSize, allTasksDueToday.length)} of {allTasksDueToday.length} tasks
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        className="inline-flex items-center justify-center h-8 px-3 text-sm font-medium rounded-md border border-border bg-background hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        onClick={() => setTasksPage(tasksPage - 1)}
+                        disabled={tasksPage === 0}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      <span className="text-sm text-muted-foreground min-w-[100px] text-center">
+                        Page {tasksPage + 1} of {totalTasksPages}
+                      </span>
+                      <button
+                        className="inline-flex items-center justify-center h-8 px-3 text-sm font-medium rounded-md border border-border bg-background hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        onClick={() => setTasksPage(tasksPage + 1)}
+                        disabled={tasksPage + 1 >= totalTasksPages}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>

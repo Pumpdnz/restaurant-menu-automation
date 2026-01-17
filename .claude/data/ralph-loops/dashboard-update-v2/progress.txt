@@ -7,7 +7,7 @@
 - Testing Method: Combined (Browser + Build)
 
 ## Current State
-- Iteration: 7 / 30
+- Iteration: 8 / 30
 - Status: IN_PROGRESS
 - Last Updated: 2026-01-17
 
@@ -16,7 +16,7 @@
 - [x] Lead Scraping reports properly tabbed with feature flag
 - [x] Pending Leads preview shows 5 most recent leads (step 4, status "passed")
 - [x] Batch Registration Jobs preview shows most recent jobs
-- [ ] Tasks Due Today list is paginated and works
+- [x] Tasks Due Today list is paginated and works
 - [ ] Recently Created Restaurants preview with city filter works
 - [ ] Quick Actions moved to top with New Task dialog working
 - [ ] Recent Restaurants preview works consistently
@@ -32,18 +32,19 @@
 - Feature 4: Fixed Lead Scraping reports - uses ReportsTabContent with feature flag
 - Feature 5: Added Pending Leads preview component with feature flag
 - Feature 6: Added Recent Batch Registration Jobs preview with feature flag
+- Feature 7: Added Tasks Due Today paginated list with feature flag
 
 ## Remaining
-6 features pending implementation (Features 7-12)
+5 features pending implementation (Features 8-12)
 
 ## Current Blocker
 (none)
 
 ## Last Verification Result
-Feature 6: Build passes. Added Recent Batch Registration Jobs preview component with Table showing job name, status badge (color-coded: green/blue/red), progress (completed/total), created_at. Uses useRecentRegistrationBatches(5) hook. Feature flagged with isFeatureEnabled('registrationBatches'). Loading skeleton states. View All link to /registration-batches. Count badge in header.
+Feature 7: Build passes. Added Tasks Due Today component with Table showing task name, type badge, priority badge (color-coded: red/yellow/gray), restaurant name, due time. Uses useTasksDueToday(10) and useOverdueTasksCount() hooks. Pagination implemented: 5 tasks per page with prev/next buttons. Feature flagged with isFeatureEnabled('tasksAndSequences'). Overdue count badge in header if any overdue tasks. View All link to /tasks. Loading skeleton states.
 
 ## Next Session Instructions
-Begin implementation with Feature 7: Add Tasks Due Today paginated list with feature flag
+Begin implementation with Feature 8: Add Recently Created Restaurants preview with city filter
 
 ## Key Reference Files
 - Investigation docs: planning/ralph-loops/dashboard-update-v2/INVESTIGATION_*.md
@@ -61,6 +62,7 @@ Begin implementation with Feature 7: Add Tasks Due Today paginated list with fea
 | 4 | 00353429-8052-4b89-9fe7-09d6d8dcd989 | 2026-01-17 | Feature 4: Fix Lead Scraping reports with ReportsTabContent | PASSED |
 | 5 | 7d523bd1-2aad-4de1-bb1c-4e18df7f4ef8 | 2026-01-17 | Feature 5: Add Pending Leads preview with feature flag | PASSED |
 | 6 | 5aeaa086-31ce-4e4f-a855-145d94288181 | 2026-01-17 | Feature 6: Add Recent Batch Registration Jobs preview | PASSED |
+| 7 | 504483d5-be26-4f10-90a3-256a119867d3 | 2026-01-17 | Feature 7: Add Tasks Due Today paginated list | PASSED |
 
 ## Iteration History
 | # | Changes Made | Result | Blocker |
@@ -71,3 +73,4 @@ Begin implementation with Feature 7: Add Tasks Due Today paginated list with fea
 | 4 | Replaced Card-wrapped CityBreakdownTab with ReportsTabContent, added feature flag isFeatureEnabled('leadScraping'), updated handleStartScrape for object params | PASSED | None |
 | 5 | Added Pending Leads preview with usePendingLeadsPreview(5) hook, Table component showing restaurant_name/city/created_at, feature flag isFeatureEnabled('leadScraping'), loading skeleton, View All link | PASSED | None |
 | 6 | Added Recent Batch Registration Jobs preview with useRecentRegistrationBatches(5) hook, Table with name/status badge/progress/created_at, feature flag isFeatureEnabled('registrationBatches'), loading skeleton, View All link | PASSED | None |
+| 7 | Added Tasks Due Today component with useTasksDueToday(10) and useOverdueTasksCount() hooks, Table with task name/type badge/priority badge/restaurant name/due time, pagination (5 per page), feature flag isFeatureEnabled('tasksAndSequences'), overdue badge if count > 0, View All link to /tasks | PASSED | None |
