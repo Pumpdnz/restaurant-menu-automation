@@ -20,7 +20,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { CreateLeadScrapeJob } from '../components/leads/CreateLeadScrapeJob';
 import { ReportsTabContent } from '../components/reports/ReportsTabContent';
 import { useAuth } from '../context/AuthContext';
-import { usePendingLeadsPreview } from '../hooks/useDashboard';
+import { usePendingLeadsPreview, useRecentRegistrationBatches } from '../hooks/useDashboard';
 
 export default function Dashboard() {
   // Feature flags
@@ -68,6 +68,9 @@ export default function Dashboard() {
   const { data: pendingLeadsData, isLoading: pendingLeadsLoading } = usePendingLeadsPreview(5);
   const pendingLeads = pendingLeadsData?.leads || [];
   const totalPendingLeads = pendingLeadsData?.total || 0;
+
+  // Recent Registration Batches Preview
+  const { data: registrationBatches = [], isLoading: batchesLoading } = useRecentRegistrationBatches(5);
 
   const isLoading = restaurantsLoading || extractionsLoading;
 
@@ -278,6 +281,78 @@ export default function Dashboard() {
                       <TableCell className="text-muted-foreground">{lead.city || '-'}</TableCell>
                       <TableCell className="text-muted-foreground text-sm">
                         {new Date(lead.created_at).toLocaleDateString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Recent Batch Registration Jobs - Feature flagged */}
+      {isFeatureEnabled('registrationBatches') && (
+        <Card className="backdrop-blur-sm bg-background/95 border-border">
+          <CardHeader className="flex flex-row items-center justify-between py-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              Recent Batch Jobs
+              <Badge variant="secondary" className="text-xs">
+                {registrationBatches.length}
+              </Badge>
+            </CardTitle>
+            <Link to="/registration-batches">
+              <div className="text-sm text-brand-blue hover:text-brand-blue/80 font-medium flex items-center transition-colors">
+                View All
+                <ArrowRight className="ml-1 h-4 w-4" />
+              </div>
+            </Link>
+          </CardHeader>
+          <CardContent className="p-0">
+            {batchesLoading ? (
+              <div className="divide-y divide-border">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="p-4">
+                    <Skeleton className="h-4 w-full" />
+                  </div>
+                ))}
+              </div>
+            ) : registrationBatches.length === 0 ? (
+              <div className="p-6 text-center text-muted-foreground text-sm">
+                No batch jobs to display
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Job Name</TableHead>
+                    <TableHead className="w-24">Status</TableHead>
+                    <TableHead className="w-32">Progress</TableHead>
+                    <TableHead className="w-32">Created</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {registrationBatches.map((batch) => (
+                    <TableRow key={batch.id} className="hover:bg-muted/50">
+                      <TableCell className="font-medium">{batch.name}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={
+                            batch.status === 'completed' ? 'text-green-600 border-green-600' :
+                            batch.status === 'processing' ? 'text-blue-600 border-blue-600' :
+                            batch.status === 'failed' ? 'text-red-600 border-red-600' :
+                            'text-gray-600 border-gray-600'
+                          }
+                        >
+                          {batch.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {batch.completed_restaurants}/{batch.total_restaurants}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {new Date(batch.created_at).toLocaleDateString()}
                       </TableCell>
                     </TableRow>
                   ))}
