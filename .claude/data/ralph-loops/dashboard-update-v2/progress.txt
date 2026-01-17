@@ -7,7 +7,7 @@
 - Testing Method: Combined (Browser + Build)
 
 ## Current State
-- Iteration: 9 / 30
+- Iteration: 10 / 30
 - Status: IN_PROGRESS
 - Last Updated: 2026-01-17
 
@@ -18,7 +18,7 @@
 - [x] Batch Registration Jobs preview shows most recent jobs
 - [x] Tasks Due Today list is paginated and works
 - [x] Recently Created Restaurants preview with city filter works
-- [ ] Quick Actions moved to top with New Task dialog working
+- [x] Quick Actions moved to top with New Task dialog working
 - [ ] Recent Restaurants preview works consistently
 - [ ] Recent Extractions preview works consistently
 - [ ] Feature flags hide components completely when disabled
@@ -34,18 +34,19 @@
 - Feature 6: Added Recent Batch Registration Jobs preview with feature flag
 - Feature 7: Added Tasks Due Today paginated list with feature flag
 - Feature 8: Added Recently Created Restaurants preview with city filter
+- Feature 9: Updated Quick Actions - moved to top, replaced View Analytics with New Task button
 
 ## Remaining
-4 features pending implementation (Features 9-12)
+3 features pending implementation (Features 10-12)
 
 ## Current Blocker
 (none)
 
 ## Last Verification Result
-Feature 8: Build passes. Added Recently Created Restaurants component with useRecentRestaurants(10) hook. Table displays restaurant name (clickable link to detail page), city, onboarding_status badge (color-coded: green/blue/yellow/gray), and created_at date. City filter implemented with pills showing top 5 cities plus 'All' option. Filter state managed with useMemo for cities list and filtered results. Clear filter button (X) appears when filter active. View All link to /restaurants. No feature flag - visible to all users. Loading skeleton states included.
+Feature 9: Build passes. Updated Quick Actions section - moved to top of Dashboard (after page header, before main content grid). Imported CreateTaskModal and ClipboardList icon. Added state const [createTaskModalOpen, setCreateTaskModalOpen] = useState(false). Replaced "View Analytics" button with "New Task" button that opens CreateTaskModal dialog. Modal wired with open={createTaskModalOpen}, onClose and onSuccess handlers that close the modal. Quick Actions now has 3 buttons: "New Extraction" (primary gradient), "Manage Restaurants", and "New Task" (both secondary style). CreateTaskModal placed at end of Dashboard JSX before closing div. Dialog will show restaurant dropdown selector since no restaurantId prop provided.
 
 ## Next Session Instructions
-Begin implementation with Feature 9: Update Quick Actions - move to top, add New Task dialog
+Begin implementation with Feature 10: Fix Recent Restaurants component to work consistently
 
 ## Key Reference Files
 - Investigation docs: planning/ralph-loops/dashboard-update-v2/INVESTIGATION_*.md
@@ -65,6 +66,7 @@ Begin implementation with Feature 9: Update Quick Actions - move to top, add New
 | 6 | 5aeaa086-31ce-4e4f-a855-145d94288181 | 2026-01-17 | Feature 6: Add Recent Batch Registration Jobs preview | PASSED |
 | 7 | 504483d5-be26-4f10-90a3-256a119867d3 | 2026-01-17 | Feature 7: Add Tasks Due Today paginated list | PASSED |
 | 8 | b56fa704-5b0f-4e9e-baa7-93ecfdb767ea | 2026-01-17 | Feature 8: Add Recently Created Restaurants with city filter | PASSED |
+| 9 | 5dacca2d-d421-43d9-ac58-0cec7bd052e3 | 2026-01-17 | Feature 9: Update Quick Actions - move to top, add New Task dialog | PASSED |
 
 ## Iteration History
 | # | Changes Made | Result | Blocker |
@@ -77,3 +79,4 @@ Begin implementation with Feature 9: Update Quick Actions - move to top, add New
 | 6 | Added Recent Batch Registration Jobs preview with useRecentRegistrationBatches(5) hook, Table with name/status badge/progress/created_at, feature flag isFeatureEnabled('registrationBatches'), loading skeleton, View All link | PASSED | None |
 | 7 | Added Tasks Due Today component with useTasksDueToday(10) and useOverdueTasksCount() hooks, Table with task name/type badge/priority badge/restaurant name/due time, pagination (5 per page), feature flag isFeatureEnabled('tasksAndSequences'), overdue badge if count > 0, View All link to /tasks | PASSED | None |
 | 8 | Added Recently Created Restaurants component with useRecentRestaurants(10) hook, Table with name (clickable link)/city/onboarding_status badge/created_at, city filter pills (top 5 + All), filter clear button, View All link to /restaurants, no feature flag | PASSED | None |
+| 9 | Moved Quick Actions to top of Dashboard (after page header), imported CreateTaskModal and ClipboardList icon, added createTaskModalOpen state, replaced "View Analytics" with "New Task" button, wired New Task button to open CreateTaskModal dialog with onClose and onSuccess handlers, added CreateTaskModal component at end of JSX | PASSED | None |

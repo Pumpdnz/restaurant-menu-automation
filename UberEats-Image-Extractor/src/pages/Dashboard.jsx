@@ -12,7 +12,8 @@ import {
   TrendingUp,
   ChevronLeft,
   ChevronRight,
-  X
+  X,
+  ClipboardList
 } from 'lucide-react';
 import { restaurantAPI, extractionAPI } from '../services/api';
 import { getRelativeTime, cn } from '../lib/utils';
@@ -22,6 +23,7 @@ import { Skeleton } from '../components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { CreateLeadScrapeJob } from '../components/leads/CreateLeadScrapeJob';
 import { ReportsTabContent } from '../components/reports/ReportsTabContent';
+import { CreateTaskModal } from '../components/tasks/CreateTaskModal';
 import { useAuth } from '../context/AuthContext';
 import { usePendingLeadsPreview, useRecentRegistrationBatches, useTasksDueToday, useOverdueTasksCount, useRecentRestaurants } from '../hooks/useDashboard';
 
@@ -36,6 +38,9 @@ export default function Dashboard() {
     cuisine: undefined,
     pageOffset: undefined,
   });
+
+  // Dialog state for CreateTaskModal
+  const [createTaskModalOpen, setCreateTaskModalOpen] = useState(false);
 
   // Callback for ReportsTabContent to trigger dialog with prefill data
   // ReportsTabContent passes an object with { city, cuisine, pageOffset }
@@ -148,6 +153,38 @@ export default function Dashboard() {
           Overview of your restaurant menu extraction system
         </p>
       </div>
+
+      {/* Quick Actions */}
+      <Card className="backdrop-blur-sm bg-background/95 border-border">
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Link
+              to="/extractions/new"
+              className="flex items-center justify-center px-4 py-3 text-sm font-medium rounded-lg text-white bg-gradient-to-r from-brand-blue to-brand-green hover:opacity-90 transition-all duration-200 shadow-lg"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              New Extraction
+            </Link>
+            <Link
+              to="/restaurants"
+              className="flex items-center justify-center px-4 py-3 border border-border text-sm font-medium rounded-lg text-foreground bg-background hover:bg-accent transition-all duration-200"
+            >
+              <Store className="mr-2 h-4 w-4" />
+              Manage Restaurants
+            </Link>
+            <button
+              onClick={() => setCreateTaskModalOpen(true)}
+              className="flex items-center justify-center px-4 py-3 border border-border text-sm font-medium rounded-lg text-foreground bg-background hover:bg-accent transition-all duration-200"
+            >
+              <ClipboardList className="mr-2 h-4 w-4" />
+              New Task
+            </button>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Restaurants */}
@@ -620,38 +657,6 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* Quick Actions */}
-      <Card className="backdrop-blur-sm bg-background/95 border-border">
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Link
-              to="/extractions/new"
-              className="flex items-center justify-center px-4 py-3 text-sm font-medium rounded-lg text-white bg-gradient-to-r from-brand-blue to-brand-green hover:opacity-90 transition-all duration-200 shadow-lg"
-            >
-              <Download className="mr-2 h-4 w-4" />
-              New Extraction
-            </Link>
-            <Link
-              to="/restaurants"
-              className="flex items-center justify-center px-4 py-3 border border-border text-sm font-medium rounded-lg text-foreground bg-background hover:bg-accent transition-all duration-200"
-            >
-              <Store className="mr-2 h-4 w-4" />
-              Manage Restaurants
-            </Link>
-            <Link
-              to="/analytics"
-              className="flex items-center justify-center px-4 py-3 border border-border text-sm font-medium rounded-lg text-foreground bg-background hover:bg-accent transition-all duration-200"
-            >
-              <TrendingUp className="mr-2 h-4 w-4" />
-              View Analytics
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Create Lead Scrape Job Dialog */}
       <CreateLeadScrapeJob
         open={createJobOpen}
@@ -662,6 +667,13 @@ export default function Dashboard() {
         prefillCity={prefillScrapeData.city}
         prefillCuisine={prefillScrapeData.cuisine}
         prefillPageOffset={prefillScrapeData.pageOffset}
+      />
+
+      {/* Create Task Modal */}
+      <CreateTaskModal
+        open={createTaskModalOpen}
+        onClose={() => setCreateTaskModalOpen(false)}
+        onSuccess={() => setCreateTaskModalOpen(false)}
       />
     </div>
   );

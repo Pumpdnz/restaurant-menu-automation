@@ -179,8 +179,8 @@
         "Add CreateTaskModal component at end of Dashboard JSX",
         "Verify in browser - New Task opens dialog, can create task"
       ],
-      "passes": false,
-      "completed_iteration": null,
+      "passes": true,
+      "completed_iteration": 9,
       "notes": "Reference: INVESTIGATION_TASK_DIALOG.md - Dashboard-level usage pattern"
     },
     {
