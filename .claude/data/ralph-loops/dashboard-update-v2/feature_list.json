@@ -102,8 +102,8 @@
         "Add loading skeleton state",
         "Verify in browser - shows data and links work"
       ],
-      "passes": false,
-      "completed_iteration": null,
+      "passes": true,
+      "completed_iteration": 5,
       "notes": "Reference: INVESTIGATION_PREVIEW_COMPONENTS.md - Template A pattern"
     },
     {
