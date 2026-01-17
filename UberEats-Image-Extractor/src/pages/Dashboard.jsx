@@ -16,9 +16,11 @@ import { getRelativeTime } from '../lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Skeleton } from '../components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { CreateLeadScrapeJob } from '../components/leads/CreateLeadScrapeJob';
 import { ReportsTabContent } from '../components/reports/ReportsTabContent';
 import { useAuth } from '../context/AuthContext';
+import { usePendingLeadsPreview } from '../hooks/useDashboard';
 
 export default function Dashboard() {
   // Feature flags
@@ -61,6 +63,11 @@ export default function Dashboard() {
       return Array.isArray(response.data) ? response.data : [];
     }
   });
+
+  // Pending Leads Preview
+  const { data: pendingLeadsData, isLoading: pendingLeadsLoading } = usePendingLeadsPreview(5);
+  const pendingLeads = pendingLeadsData?.leads || [];
+  const totalPendingLeads = pendingLeadsData?.total || 0;
 
   const isLoading = restaurantsLoading || extractionsLoading;
 
@@ -223,6 +230,62 @@ export default function Dashboard() {
           </div>
           <ReportsTabContent onStartScrape={handleStartScrape} />
         </div>
+      )}
+
+      {/* Pending Leads Preview - Feature flagged */}
+      {isFeatureEnabled('leadScraping') && (
+        <Card className="backdrop-blur-sm bg-background/95 border-border">
+          <CardHeader className="flex flex-row items-center justify-between py-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              Pending Leads
+              <Badge variant="secondary" className="text-xs">
+                {totalPendingLeads}
+              </Badge>
+            </CardTitle>
+            <Link to="/leads?tab=pending">
+              <div className="text-sm text-brand-blue hover:text-brand-blue/80 font-medium flex items-center transition-colors">
+                View All
+                <ArrowRight className="ml-1 h-4 w-4" />
+              </div>
+            </Link>
+          </CardHeader>
+          <CardContent className="p-0">
+            {pendingLeadsLoading ? (
+              <div className="divide-y divide-border">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="p-4">
+                    <Skeleton className="h-4 w-full" />
+                  </div>
+                ))}
+              </div>
+            ) : pendingLeads.length === 0 ? (
+              <div className="p-6 text-center text-muted-foreground text-sm">
+                No pending leads to display
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Restaurant Name</TableHead>
+                    <TableHead className="w-32">City</TableHead>
+                    <TableHead className="w-32">Created</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pendingLeads.map((lead) => (
+                    <TableRow key={lead.id} className="hover:bg-muted/50">
+                      <TableCell className="font-medium">{lead.restaurant_name}</TableCell>
+                      <TableCell className="text-muted-foreground">{lead.city || '-'}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {new Date(lead.created_at).toLocaleDateString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Quick Actions */}
