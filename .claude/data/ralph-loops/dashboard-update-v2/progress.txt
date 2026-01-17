@@ -7,13 +7,13 @@
 - Testing Method: Combined (Browser + Build)
 
 ## Current State
-- Iteration: 3 / 30
-- Status: COMPLETED (2026-01-17)
+- Iteration: 5 / 30
+- Status: IN_PROGRESS
 - Last Updated: 2026-01-17
 
 ## Completion Criteria
 - [x] Stats cards removed from Dashboard
-- [ ] Lead Scraping reports properly tabbed with feature flag
+- [x] Lead Scraping reports properly tabbed with feature flag
 - [ ] Pending Leads preview shows 5 most recent leads (step 4, status "passed")
 - [ ] Batch Registration Jobs preview shows most recent jobs
 - [ ] Tasks Due Today list is paginated and works
@@ -29,18 +29,19 @@
 - Feature 1: Created useDashboard.ts hooks file with all required hooks
 - Feature 2: Added backend endpoint GET /api/restaurants/recent
 - Feature 3: Removed 4 stats cards from Dashboard
+- Feature 4: Fixed Lead Scraping reports - uses ReportsTabContent with feature flag
 
 ## Remaining
-9 features pending implementation (Features 4-12)
+8 features pending implementation (Features 5-12)
 
 ## Current Blocker
 (none)
 
 ## Last Verification Result
-Feature 3: Build passes, stats cards successfully removed from Dashboard
+Feature 4: Build passes. Replaced Card-wrapped CityBreakdownTab with ReportsTabContent directly. Added section header with "Lead Scraping" title and "View Full Reports" link. Wrapped entire section in isFeatureEnabled('leadScraping') conditional. Updated handleStartScrape to accept object format from ReportsTabContent.
 
 ## Next Session Instructions
-Begin implementation with Feature 4: Fix Lead Scraping reports - use ReportsTabContent, remove nested Card, add feature flag
+Begin implementation with Feature 5: Add Pending Leads preview component with feature flag
 
 ## Key Reference Files
 - Investigation docs: planning/ralph-loops/dashboard-update-v2/INVESTIGATION_*.md
@@ -55,10 +56,12 @@ Begin implementation with Feature 4: Fix Lead Scraping reports - use ReportsTabC
 | 1 | 0edb12ec-bb99-4eab-a9c5-bebb7191fb17 | 2026-01-17 | Feature 1: Create useDashboard.ts hooks | PASSED |
 | 2 | c88d1433-0db0-4c40-9ac2-2ce0e17e52b8 | 2026-01-17 | Feature 2: Add GET /api/restaurants/recent endpoint | PASSED |
 | 3 | e6240f8c-44aa-4aaa-b312-e60d23c1a0df | 2026-01-17 | Feature 3: Remove 4 stats cards from Dashboard | PASSED |
+| 4 | 00353429-8052-4b89-9fe7-09d6d8dcd989 | 2026-01-17 | Feature 4: Fix Lead Scraping reports with ReportsTabContent | PASSED |
 
 ## Iteration History
 | # | Changes Made | Result | Blocker |
 |---|--------------|--------|---------|
 | 1 | Created /src/hooks/useDashboard.ts with 6 hooks (useRecentRestaurants, usePendingLeadsPreview, useRecentRegistrationBatches, useTasksDueToday, useOverdueTasksCount, useDashboardSummary) | PASSED | None |
 | 2 | Added getRecentRestaurants() in database-service.js, added GET /api/restaurants/recent route in server.js | PASSED | None |
-| 2 | 1 | 2026-01-17 18:29:45 | success |
+| 3 | Removed statCards array, stats grid, and related state from Dashboard.jsx | PASSED | None |
+| 4 | Replaced Card-wrapped CityBreakdownTab with ReportsTabContent, added feature flag isFeatureEnabled('leadScraping'), updated handleStartScrape for object params | PASSED | None |

@@ -17,9 +17,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge';
 import { Skeleton } from '../components/ui/skeleton';
 import { CreateLeadScrapeJob } from '../components/leads/CreateLeadScrapeJob';
-import { CityBreakdownTab } from '../components/reports/CityBreakdownTab';
+import { ReportsTabContent } from '../components/reports/ReportsTabContent';
+import { useAuth } from '../context/AuthContext';
 
 export default function Dashboard() {
+  // Feature flags
+  const { isFeatureEnabled } = useAuth();
+
   // Dialog state for CreateLeadScrapeJob
   const [createJobOpen, setCreateJobOpen] = useState(false);
   const [prefillScrapeData, setPrefillScrapeData] = useState({
@@ -28,10 +32,14 @@ export default function Dashboard() {
     pageOffset: undefined,
   });
 
-  // Callback for CityBreakdownTab to trigger dialog with prefill data
-  // Note: CityBreakdownTab calls this with positional arguments (city, cuisine, pageOffset)
-  const handleStartScrape = (city, cuisine, pageOffset) => {
-    setPrefillScrapeData({ city, cuisine, pageOffset });
+  // Callback for ReportsTabContent to trigger dialog with prefill data
+  // ReportsTabContent passes an object with { city, cuisine, pageOffset }
+  const handleStartScrape = (params) => {
+    setPrefillScrapeData({
+      city: params.city,
+      cuisine: params.cuisine,
+      pageOffset: params.pageOffset,
+    });
     setCreateJobOpen(true);
   };
 
@@ -200,18 +208,22 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* City Breakdown */}
-      <Card className="backdrop-blur-sm bg-background/95 border-border">
-        <CardHeader className="flex flex-row items-center justify-between py-3">
-          <CardTitle className="text-brand-purple">City Breakdown</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <CityBreakdownTab
-            filters={{}}
-            onStartScrape={handleStartScrape}
-          />
-        </CardContent>
-      </Card>
+      {/* Lead Scraping Reports - Feature flagged */}
+      {isFeatureEnabled('leadScraping') && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-brand-purple">Lead Scraping</h2>
+            <Link
+              to="/leads?tab=reports"
+              className="text-sm text-brand-blue hover:text-brand-blue/80 font-medium flex items-center transition-colors"
+            >
+              View Full Reports
+              <ArrowRight className="ml-1 h-4 w-4" />
+            </Link>
+          </div>
+          <ReportsTabContent onStartScrape={handleStartScrape} />
+        </div>
+      )}
 
       {/* Quick Actions */}
       <Card className="backdrop-blur-sm bg-background/95 border-border">
