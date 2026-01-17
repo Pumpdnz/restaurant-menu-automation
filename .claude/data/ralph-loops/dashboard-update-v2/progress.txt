@@ -9,7 +9,7 @@
 ## Current State
 - Iteration: 10 / 30
 - Status: IN_PROGRESS
-- Last Updated: 2026-01-17
+- Last Updated: 2026-01-17 (Iteration 10)
 
 ## Completion Criteria
 - [x] Stats cards removed from Dashboard
@@ -19,8 +19,8 @@
 - [x] Tasks Due Today list is paginated and works
 - [x] Recently Created Restaurants preview with city filter works
 - [x] Quick Actions moved to top with New Task dialog working
-- [ ] Recent Restaurants preview works consistently
-- [ ] Recent Extractions preview works consistently
+- [x] Recent Restaurants preview works consistently
+- [x] Recent Extractions preview works consistently
 - [ ] Feature flags hide components completely when disabled
 - [ ] Build passes (no TypeScript/lint errors)
 - [ ] No console errors in browser
@@ -35,18 +35,20 @@
 - Feature 7: Added Tasks Due Today paginated list with feature flag
 - Feature 8: Added Recently Created Restaurants preview with city filter
 - Feature 9: Updated Quick Actions - moved to top, replaced View Analytics with New Task button
+- Feature 10: Fixed Recent Restaurants component to work consistently
+- Feature 11: Fixed Recent Extractions component to work consistently
 
 ## Remaining
-3 features pending implementation (Features 10-12)
+1 feature pending implementation (Feature 12 - Final Verification)
 
 ## Current Blocker
 (none)
 
 ## Last Verification Result
-Feature 9: Build passes. Updated Quick Actions section - moved to top of Dashboard (after page header, before main content grid). Imported CreateTaskModal and ClipboardList icon. Added state const [createTaskModalOpen, setCreateTaskModalOpen] = useState(false). Replaced "View Analytics" button with "New Task" button that opens CreateTaskModal dialog. Modal wired with open={createTaskModalOpen}, onClose and onSuccess handlers that close the modal. Quick Actions now has 3 buttons: "New Extraction" (primary gradient), "Manage Restaurants", and "New Task" (both secondary style). CreateTaskModal placed at end of Dashboard JSX before closing div. Dialog will show restaurant dropdown selector since no restaurantId prop provided.
+Features 10 & 11: Build passes. Fixed intermittent loading issues in both Recent Restaurants and Recent Extractions components. Updated Recent Restaurants query to use scoped key ['dashboard-restaurants', 5], added staleTime (30s), retry logic (2 attempts with 1s delay), and client-side sorting by updated_at desc. Updated Recent Extractions query with same consistency improvements using scoped key ['dashboard-extractions', 5]. Both queries now follow consistent pattern with other dashboard hooks. Restaurants limited to 5 most recent by updated_at, extractions already limited by API.
 
 ## Next Session Instructions
-Begin implementation with Feature 10: Fix Recent Restaurants component to work consistently
+Begin implementation with Feature 12: Final verification - all features work, build passes, no console errors
 
 ## Key Reference Files
 - Investigation docs: planning/ralph-loops/dashboard-update-v2/INVESTIGATION_*.md
@@ -67,6 +69,7 @@ Begin implementation with Feature 10: Fix Recent Restaurants component to work c
 | 7 | 504483d5-be26-4f10-90a3-256a119867d3 | 2026-01-17 | Feature 7: Add Tasks Due Today paginated list | PASSED |
 | 8 | b56fa704-5b0f-4e9e-baa7-93ecfdb767ea | 2026-01-17 | Feature 8: Add Recently Created Restaurants with city filter | PASSED |
 | 9 | 5dacca2d-d421-43d9-ac58-0cec7bd052e3 | 2026-01-17 | Feature 9: Update Quick Actions - move to top, add New Task dialog | PASSED |
+| 10 | 523da1d9-0401-4595-bfee-6118e8831d4b | 2026-01-17 | Features 10 & 11: Fix Recent Restaurants and Recent Extractions consistency | PASSED |
 
 ## Iteration History
 | # | Changes Made | Result | Blocker |
@@ -80,3 +83,4 @@ Begin implementation with Feature 10: Fix Recent Restaurants component to work c
 | 7 | Added Tasks Due Today component with useTasksDueToday(10) and useOverdueTasksCount() hooks, Table with task name/type badge/priority badge/restaurant name/due time, pagination (5 per page), feature flag isFeatureEnabled('tasksAndSequences'), overdue badge if count > 0, View All link to /tasks | PASSED | None |
 | 8 | Added Recently Created Restaurants component with useRecentRestaurants(10) hook, Table with name (clickable link)/city/onboarding_status badge/created_at, city filter pills (top 5 + All), filter clear button, View All link to /restaurants, no feature flag | PASSED | None |
 | 9 | Moved Quick Actions to top of Dashboard (after page header), imported CreateTaskModal and ClipboardList icon, added createTaskModalOpen state, replaced "View Analytics" with "New Task" button, wired New Task button to open CreateTaskModal dialog with onClose and onSuccess handlers, added CreateTaskModal component at end of JSX | PASSED | None |
+| 10 | Fixed Recent Restaurants query: changed key to ['dashboard-restaurants', 5], added staleTime (30s), retry (2x with 1s delay), client-side sort by updated_at desc. Fixed Recent Extractions query: changed key to ['dashboard-extractions', 5], added staleTime (30s), retry (2x with 1s delay). Both now follow consistent pattern with other dashboard hooks for reliable loading. | PASSED | None |
