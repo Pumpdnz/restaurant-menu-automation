@@ -53,23 +53,34 @@ export default function Dashboard() {
     setCreateJobOpen(true);
   };
 
-  // Fetch dashboard data
+  // Fetch dashboard data - Recent Restaurants with consistent query pattern
   const { data: restaurants = [], isLoading: restaurantsLoading, error: restaurantsError } = useQuery({
-    queryKey: ['restaurants'],
+    queryKey: ['dashboard-restaurants', 5], // Scoped key with limit
     queryFn: async () => {
       const response = await restaurantAPI.getAll();
       // Ensure we always return an array
-      return Array.isArray(response.data) ? response.data : [];
-    }
+      const allRestaurants = Array.isArray(response.data) ? response.data : [];
+      // Return only the 5 most recent by updated_at
+      return allRestaurants
+        .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+        .slice(0, 5);
+    },
+    staleTime: 30000, // 30 seconds - consistent with other dashboard queries
+    retry: 2, // Retry failed requests twice
+    retryDelay: 1000, // 1 second between retries
   });
 
+  // Recent Extractions with consistent query pattern
   const { data: recentExtractions = [], isLoading: extractionsLoading, error: extractionsError } = useQuery({
-    queryKey: ['recent-extractions'],
+    queryKey: ['dashboard-extractions', 5], // Scoped key with limit
     queryFn: async () => {
       const response = await extractionAPI.getAll({ limit: 5 });
       // Ensure we always return an array
       return Array.isArray(response.data) ? response.data : [];
-    }
+    },
+    staleTime: 30000, // 30 seconds - consistent with other dashboard queries
+    retry: 2, // Retry failed requests twice
+    retryDelay: 1000, // 1 second between retries
   });
 
   // Pending Leads Preview

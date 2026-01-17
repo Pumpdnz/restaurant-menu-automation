@@ -197,8 +197,8 @@
         "Add proper error handling and retry logic",
         "Verify in browser - always shows recent restaurants"
       ],
-      "passes": false,
-      "completed_iteration": null,
+      "passes": true,
+      "completed_iteration": 10,
       "notes": "Investigation noted intermittent issues - diagnose and fix"
     },
     {
@@ -215,8 +215,8 @@
         "Add proper error handling and retry logic",
         "Verify in browser - always shows recent extractions"
       ],
-      "passes": false,
-      "completed_iteration": null,
+      "passes": true,
+      "completed_iteration": 10,
       "notes": "Investigation noted intermittent issues - diagnose and fix"
     },
     {
