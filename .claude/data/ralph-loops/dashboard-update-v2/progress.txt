@@ -7,7 +7,7 @@
 - Testing Method: Combined (Browser + Build)
 
 ## Current State
-- Iteration: 8 / 30
+- Iteration: 9 / 30
 - Status: IN_PROGRESS
 - Last Updated: 2026-01-17
 
@@ -17,7 +17,7 @@
 - [x] Pending Leads preview shows 5 most recent leads (step 4, status "passed")
 - [x] Batch Registration Jobs preview shows most recent jobs
 - [x] Tasks Due Today list is paginated and works
-- [ ] Recently Created Restaurants preview with city filter works
+- [x] Recently Created Restaurants preview with city filter works
 - [ ] Quick Actions moved to top with New Task dialog working
 - [ ] Recent Restaurants preview works consistently
 - [ ] Recent Extractions preview works consistently
@@ -33,18 +33,19 @@
 - Feature 5: Added Pending Leads preview component with feature flag
 - Feature 6: Added Recent Batch Registration Jobs preview with feature flag
 - Feature 7: Added Tasks Due Today paginated list with feature flag
+- Feature 8: Added Recently Created Restaurants preview with city filter
 
 ## Remaining
-5 features pending implementation (Features 8-12)
+4 features pending implementation (Features 9-12)
 
 ## Current Blocker
 (none)
 
 ## Last Verification Result
-Feature 7: Build passes. Added Tasks Due Today component with Table showing task name, type badge, priority badge (color-coded: red/yellow/gray), restaurant name, due time. Uses useTasksDueToday(10) and useOverdueTasksCount() hooks. Pagination implemented: 5 tasks per page with prev/next buttons. Feature flagged with isFeatureEnabled('tasksAndSequences'). Overdue count badge in header if any overdue tasks. View All link to /tasks. Loading skeleton states.
+Feature 8: Build passes. Added Recently Created Restaurants component with useRecentRestaurants(10) hook. Table displays restaurant name (clickable link to detail page), city, onboarding_status badge (color-coded: green/blue/yellow/gray), and created_at date. City filter implemented with pills showing top 5 cities plus 'All' option. Filter state managed with useMemo for cities list and filtered results. Clear filter button (X) appears when filter active. View All link to /restaurants. No feature flag - visible to all users. Loading skeleton states included.
 
 ## Next Session Instructions
-Begin implementation with Feature 8: Add Recently Created Restaurants preview with city filter
+Begin implementation with Feature 9: Update Quick Actions - move to top, add New Task dialog
 
 ## Key Reference Files
 - Investigation docs: planning/ralph-loops/dashboard-update-v2/INVESTIGATION_*.md
@@ -63,6 +64,7 @@ Begin implementation with Feature 8: Add Recently Created Restaurants preview wi
 | 5 | 7d523bd1-2aad-4de1-bb1c-4e18df7f4ef8 | 2026-01-17 | Feature 5: Add Pending Leads preview with feature flag | PASSED |
 | 6 | 5aeaa086-31ce-4e4f-a855-145d94288181 | 2026-01-17 | Feature 6: Add Recent Batch Registration Jobs preview | PASSED |
 | 7 | 504483d5-be26-4f10-90a3-256a119867d3 | 2026-01-17 | Feature 7: Add Tasks Due Today paginated list | PASSED |
+| 8 | b56fa704-5b0f-4e9e-baa7-93ecfdb767ea | 2026-01-17 | Feature 8: Add Recently Created Restaurants with city filter | PASSED |
 
 ## Iteration History
 | # | Changes Made | Result | Blocker |
@@ -74,3 +76,4 @@ Begin implementation with Feature 8: Add Recently Created Restaurants preview wi
 | 5 | Added Pending Leads preview with usePendingLeadsPreview(5) hook, Table component showing restaurant_name/city/created_at, feature flag isFeatureEnabled('leadScraping'), loading skeleton, View All link | PASSED | None |
 | 6 | Added Recent Batch Registration Jobs preview with useRecentRegistrationBatches(5) hook, Table with name/status badge/progress/created_at, feature flag isFeatureEnabled('registrationBatches'), loading skeleton, View All link | PASSED | None |
 | 7 | Added Tasks Due Today component with useTasksDueToday(10) and useOverdueTasksCount() hooks, Table with task name/type badge/priority badge/restaurant name/due time, pagination (5 per page), feature flag isFeatureEnabled('tasksAndSequences'), overdue badge if count > 0, View All link to /tasks | PASSED | None |
+| 8 | Added Recently Created Restaurants component with useRecentRestaurants(10) hook, Table with name (clickable link)/city/onboarding_status badge/created_at, city filter pills (top 5 + All), filter clear button, View All link to /restaurants, no feature flag | PASSED | None |

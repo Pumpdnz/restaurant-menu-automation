@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -11,10 +11,11 @@ import {
   ArrowRight,
   TrendingUp,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  X
 } from 'lucide-react';
 import { restaurantAPI, extractionAPI } from '../services/api';
-import { getRelativeTime } from '../lib/utils';
+import { getRelativeTime, cn } from '../lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Skeleton } from '../components/ui/skeleton';
@@ -22,7 +23,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { CreateLeadScrapeJob } from '../components/leads/CreateLeadScrapeJob';
 import { ReportsTabContent } from '../components/reports/ReportsTabContent';
 import { useAuth } from '../context/AuthContext';
-import { usePendingLeadsPreview, useRecentRegistrationBatches, useTasksDueToday, useOverdueTasksCount } from '../hooks/useDashboard';
+import { usePendingLeadsPreview, useRecentRegistrationBatches, useTasksDueToday, useOverdueTasksCount, useRecentRestaurants } from '../hooks/useDashboard';
 
 export default function Dashboard() {
   // Feature flags
@@ -86,6 +87,22 @@ export default function Dashboard() {
   // Overdue tasks count
   const { data: overdueData } = useOverdueTasksCount();
   const overdueCount = overdueData?.count || 0;
+
+  // Recently Created Restaurants with city filter
+  const { data: recentRestaurantsData = [], isLoading: recentRestaurantsLoading } = useRecentRestaurants(10);
+  const [selectedRestaurantCity, setSelectedRestaurantCity] = useState(null);
+
+  // Get unique cities from recent restaurants
+  const restaurantCities = useMemo(() => {
+    const citySet = new Set(recentRestaurantsData.map(r => r.city).filter(Boolean));
+    return Array.from(citySet).sort();
+  }, [recentRestaurantsData]);
+
+  // Filter recent restaurants by selected city
+  const filteredRecentRestaurants = useMemo(() => {
+    if (!selectedRestaurantCity) return recentRestaurantsData;
+    return recentRestaurantsData.filter(r => r.city === selectedRestaurantCity);
+  }, [recentRestaurantsData, selectedRestaurantCity]);
 
   const isLoading = restaurantsLoading || extractionsLoading;
 
@@ -487,6 +504,121 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       )}
+
+      {/* Recently Created Restaurants - No feature flag */}
+      <Card className="backdrop-blur-sm bg-background/95 border-border">
+        <CardHeader className="py-3 space-y-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              Recently Created Restaurants
+              <Badge variant="secondary" className="text-xs">
+                {recentRestaurantsData.length}
+              </Badge>
+            </CardTitle>
+            <Link to="/restaurants">
+              <div className="text-sm text-brand-blue hover:text-brand-blue/80 font-medium flex items-center transition-colors">
+                View All
+                <ArrowRight className="ml-1 h-4 w-4" />
+              </div>
+            </Link>
+          </div>
+
+          {/* City filter pills */}
+          {restaurantCities.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Badge
+                variant={selectedRestaurantCity === null ? "default" : "outline"}
+                className={cn(
+                  "text-xs cursor-pointer hover:bg-muted",
+                  selectedRestaurantCity === null && "cursor-pointer"
+                )}
+                onClick={() => setSelectedRestaurantCity(null)}
+              >
+                All
+              </Badge>
+              {restaurantCities.slice(0, 5).map((city) => (
+                <Badge
+                  key={city}
+                  variant={selectedRestaurantCity === city ? "default" : "outline"}
+                  className={cn(
+                    "text-xs cursor-pointer hover:bg-muted",
+                    selectedRestaurantCity === city && "cursor-pointer"
+                  )}
+                  onClick={() => setSelectedRestaurantCity(selectedRestaurantCity === city ? null : city)}
+                >
+                  {city}
+                </Badge>
+              ))}
+              {selectedRestaurantCity && (
+                <button
+                  className="inline-flex items-center justify-center h-6 w-6 rounded-md text-muted-foreground hover:bg-muted transition-colors"
+                  onClick={() => setSelectedRestaurantCity(null)}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          )}
+        </CardHeader>
+
+        <CardContent className="p-0">
+          {recentRestaurantsLoading ? (
+            <div className="divide-y divide-border">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="p-4">
+                  <Skeleton className="h-4 w-full" />
+                </div>
+              ))}
+            </div>
+          ) : filteredRecentRestaurants.length === 0 ? (
+            <div className="p-6 text-center text-muted-foreground text-sm">
+              {selectedRestaurantCity ? 'No restaurants in this city' : 'No restaurants created yet'}
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Restaurant Name</TableHead>
+                  <TableHead className="w-32">City</TableHead>
+                  <TableHead className="w-40">Status</TableHead>
+                  <TableHead className="w-32">Created</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredRecentRestaurants.map((restaurant) => (
+                  <TableRow key={restaurant.id} className="hover:bg-muted/50">
+                    <TableCell className="font-medium">
+                      <Link
+                        to={`/restaurants/${restaurant.id}`}
+                        className="hover:text-brand-blue transition-colors"
+                      >
+                        {restaurant.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{restaurant.city || '-'}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={
+                          restaurant.onboarding_status === 'completed' ? 'text-green-600 border-green-600' :
+                          restaurant.onboarding_status === 'in_progress' ? 'text-blue-600 border-blue-600' :
+                          restaurant.onboarding_status === 'pending' ? 'text-yellow-600 border-yellow-600' :
+                          'text-gray-600 border-gray-600'
+                        }
+                      >
+                        {restaurant.onboarding_status || 'unknown'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {new Date(restaurant.created_at).toLocaleDateString()}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Quick Actions */}
       <Card className="backdrop-blur-sm bg-background/95 border-border">

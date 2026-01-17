@@ -160,8 +160,8 @@
         "No feature flag needed for this component",
         "Verify in browser - filter works, links work"
       ],
-      "passes": false,
-      "completed_iteration": null,
+      "passes": true,
+      "completed_iteration": 8,
       "notes": "Reference: INVESTIGATION_PREVIEW_COMPONENTS.md - Template B with filter"
     },
     {
