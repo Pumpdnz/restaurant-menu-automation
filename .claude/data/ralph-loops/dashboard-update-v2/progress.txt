@@ -7,7 +7,7 @@
 - Testing Method: Combined (Browser + Build)
 
 ## Current State
-- Iteration: 6 / 30
+- Iteration: 7 / 30
 - Status: IN_PROGRESS
 - Last Updated: 2026-01-17
 
@@ -15,7 +15,7 @@
 - [x] Stats cards removed from Dashboard
 - [x] Lead Scraping reports properly tabbed with feature flag
 - [x] Pending Leads preview shows 5 most recent leads (step 4, status "passed")
-- [ ] Batch Registration Jobs preview shows most recent jobs
+- [x] Batch Registration Jobs preview shows most recent jobs
 - [ ] Tasks Due Today list is paginated and works
 - [ ] Recently Created Restaurants preview with city filter works
 - [ ] Quick Actions moved to top with New Task dialog working
@@ -31,18 +31,19 @@
 - Feature 3: Removed 4 stats cards from Dashboard
 - Feature 4: Fixed Lead Scraping reports - uses ReportsTabContent with feature flag
 - Feature 5: Added Pending Leads preview component with feature flag
+- Feature 6: Added Recent Batch Registration Jobs preview with feature flag
 
 ## Remaining
-7 features pending implementation (Features 6-12)
+6 features pending implementation (Features 7-12)
 
 ## Current Blocker
 (none)
 
 ## Last Verification Result
-Feature 5: Build passes. Added Pending Leads preview component with Table showing restaurant_name, city, created_at. Uses usePendingLeadsPreview(5) hook. Feature flagged with isFeatureEnabled('leadScraping'). Loading skeleton states. View All link to /leads?tab=pending. Total count badge in header.
+Feature 6: Build passes. Added Recent Batch Registration Jobs preview component with Table showing job name, status badge (color-coded: green/blue/red), progress (completed/total), created_at. Uses useRecentRegistrationBatches(5) hook. Feature flagged with isFeatureEnabled('registrationBatches'). Loading skeleton states. View All link to /registration-batches. Count badge in header.
 
 ## Next Session Instructions
-Begin implementation with Feature 6: Add Recent Batch Registration Jobs preview with feature flag
+Begin implementation with Feature 7: Add Tasks Due Today paginated list with feature flag
 
 ## Key Reference Files
 - Investigation docs: planning/ralph-loops/dashboard-update-v2/INVESTIGATION_*.md
@@ -59,6 +60,7 @@ Begin implementation with Feature 6: Add Recent Batch Registration Jobs preview 
 | 3 | e6240f8c-44aa-4aaa-b312-e60d23c1a0df | 2026-01-17 | Feature 3: Remove 4 stats cards from Dashboard | PASSED |
 | 4 | 00353429-8052-4b89-9fe7-09d6d8dcd989 | 2026-01-17 | Feature 4: Fix Lead Scraping reports with ReportsTabContent | PASSED |
 | 5 | 7d523bd1-2aad-4de1-bb1c-4e18df7f4ef8 | 2026-01-17 | Feature 5: Add Pending Leads preview with feature flag | PASSED |
+| 6 | 5aeaa086-31ce-4e4f-a855-145d94288181 | 2026-01-17 | Feature 6: Add Recent Batch Registration Jobs preview | PASSED |
 
 ## Iteration History
 | # | Changes Made | Result | Blocker |
@@ -68,3 +70,4 @@ Begin implementation with Feature 6: Add Recent Batch Registration Jobs preview 
 | 3 | Removed statCards array, stats grid, and related state from Dashboard.jsx | PASSED | None |
 | 4 | Replaced Card-wrapped CityBreakdownTab with ReportsTabContent, added feature flag isFeatureEnabled('leadScraping'), updated handleStartScrape for object params | PASSED | None |
 | 5 | Added Pending Leads preview with usePendingLeadsPreview(5) hook, Table component showing restaurant_name/city/created_at, feature flag isFeatureEnabled('leadScraping'), loading skeleton, View All link | PASSED | None |
+| 6 | Added Recent Batch Registration Jobs preview with useRecentRegistrationBatches(5) hook, Table with name/status badge/progress/created_at, feature flag isFeatureEnabled('registrationBatches'), loading skeleton, View All link | PASSED | None |
