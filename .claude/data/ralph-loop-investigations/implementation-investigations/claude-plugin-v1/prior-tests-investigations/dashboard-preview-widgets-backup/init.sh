@@ -1,6 +1,6 @@
 #!/bin/bash
-# init.sh - Environment verification for Ralph Loop: {TASK_NAME}
-# Generated: {TIMESTAMP}
+# init.sh - Environment verification for Ralph Loop: dashboard-preview-widgets
+# Generated: 2026-01-16
 #
 # This script verifies the dev server is running.
 # The server should be started BEFORE beginning the Ralph Loop.
@@ -8,12 +8,12 @@
 
 set -e
 
-FRONTEND_PORT={FRONTEND_PORT}
-BACKEND_PORT={BACKEND_PORT}
-PROJECT_PATH="{PROJECT_PATH}"
+FRONTEND_PORT=5007
+BACKEND_PORT=3007
+PROJECT_PATH="/Users/giannimunro/Desktop/cursor-projects/automation"
 
 echo "=== Ralph Loop Environment Check ==="
-echo "Task: {TASK_NAME}"
+echo "Task: dashboard-preview-widgets"
 echo "Frontend Port: $FRONTEND_PORT"
 echo "Backend Port: $BACKEND_PORT"
 

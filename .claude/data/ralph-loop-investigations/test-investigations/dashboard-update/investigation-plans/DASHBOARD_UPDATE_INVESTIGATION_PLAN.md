@@ -6,6 +6,10 @@ This investigation gathers all information required to create a Ralph Loop promp
 
 The goal is to replace the current basic dashboard components with:
 1. Lead Scraping reports (heatmap + city breakdown table in tabs)
+- This has been partially implemented but there are issues:
+   - Components are not currently tabbed (both the table and heatmap show at the same time)
+   - All currently nested within a card titled "City Breakdown" that violates design patterns across the application
+   - Not wrapped in a feature flag to prevent user's without the lead-scraping feature flag from seeing the components
 2. Recent Pending leads preview
 3. Recent Batch Registration jobs preview
 4. Paginated tasks due today list
@@ -28,7 +32,8 @@ All wrapped in appropriate feature flags.
 - Restaurants: `src/pages/Restaurants.jsx`
 - Feature Flags: `src/components/FeatureProtectedRoute.tsx`
 
-**Dev Server:** `localhost:5007`
+**Frontend Dev Server:** `localhost:3007`
+**Backend Dev Server:** `localhost:5007`
 
 **Tech Stack:** React (mix of JSX and TSX files)
 
@@ -39,7 +44,7 @@ All wrapped in appropriate feature flags.
 Execute the following investigation by spinning up **6 parallel subagents** using the Task tool. Each subagent should:
 
 1. **Only investigate** - do NOT modify any code
-2. Create a deliverable markdown file in `.claude/data/ralph-loop-investigations/`
+2. Create a deliverable markdown file in `.claude/data/ralph-loop-investigations/test-investigations/dashboard-update/investigation-findings/`
 3. Report findings back
 
 After all subagents complete, read all investigation files and compile a summary report for the user.

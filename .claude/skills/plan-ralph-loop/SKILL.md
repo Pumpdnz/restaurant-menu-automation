@@ -65,7 +65,21 @@ Use `AskUserQuestion()` to select:
 
 See [testing-methods/frontend/claude-in-chrome.md](testing-methods/frontend/claude-in-chrome.md) for browser verification details.
 
-### Step 4: Generate Ralph Loop Files
+### Step 4: Select Max Iterations
+
+Use `AskUserQuestion()` to select:
+
+Maximum number of iterations for this ralph loop 
+
+| Type of Tasks | Typical Multiplier |
+|---------------|--------------------|
+| Frontend only | 2-3x feature count |
+| Backend only | 2-4x feature count |
+| Frontend + Backend | 3-5x feature count |
+| Database only | 2-3x feature count |
+| Database + Backend + Frontend | 5-10x feature count |
+
+### Step 5: Generate Ralph Loop Files
 
 Create directory: `.claude/data/ralph-loops/{TASK_NAME}/`
 
@@ -84,25 +98,42 @@ Generate these files using templates:
 - Selected testing method
 - Extracted features (all `passes: false` initially)
 
-### Step 5: Report and Offer Start
+### Step 6: Report and Offer Start
 
 Report to user:
 - Location of generated Ralph Loop files
 - Number of features identified
 - Testing method configured
 - Port assignment
+- Model routing (which categories use which models)
 
-**To start the Ralph Loop:**
+**To start the Ralph Loop (v2.0):**
 
-The user should start a new Claude session and pass the RALPH_PROMPT.md directly as the initial prompt:
+Use the `/continue-ralph` skill or run the wrapper directly:
 
 ```bash
-cat .claude/data/ralph-loops/{TASK_NAME}/RALPH_PROMPT.md | claude
+# Using the skill
+/continue-ralph .claude/data/ralph-loops/{TASK_NAME}
+
+# Or using the wrapper directly
+.claude/scripts/ralph-loop/ralph-loop-wrapper.sh start .claude/data/ralph-loops/{TASK_NAME} 20
 ```
 
-Or copy the contents of RALPH_PROMPT.md and paste as the first message to a new Claude session.
+**Wrapper commands:**
+| Command | Description |
+|---------|-------------|
+| `start <dir> [max-iter]` | Start Ralph Loop in background tmux session |
+| `attach` | Attach to running session (Ctrl+B, D to detach) |
+| `status <dir>` | Check if running and show progress |
+| `stop` | Terminate the Ralph Loop session |
+| `logs <dir>` | Show recent log files |
 
-**Important:** Do NOT use `/prime` or `/continue-t` for Ralph Loop iterations. The RALPH_PROMPT.md contains all necessary context and instructions for each session.
+**v2.0 Features:**
+- Automatic session continuation (no manual `/continue-ralph` calls needed)
+- Per-feature model selection (opus/sonnet/haiku based on category)
+- Retry logic for MCP errors and rate limits
+- macOS notifications on completion/failure
+- tmux for detach/reattach capability
 
 ## Anthropic Pattern Compliance
 

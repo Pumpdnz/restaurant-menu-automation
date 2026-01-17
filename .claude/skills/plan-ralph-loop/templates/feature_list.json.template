@@ -3,17 +3,102 @@
   "created": "{TIMESTAMP}",
   "total_features": 0,
   "completed_features": 0,
-  "instructions": "CRITICAL: Only modify the 'passes' field. It is unacceptable to remove or edit feature definitions as this could lead to missing or buggy functionality.",
+  "default_model": "opus",
+  "model_routing": {
+    "setup": "opus",
+    "functional": "opus",
+    "ui": "sonnet",
+    "verification": "sonnet",
+    "testing": "sonnet",
+    "documentation": "haiku"
+  },
+  "instructions": "CRITICAL: Only modify the 'passes' field. Do NOT remove or edit feature definitions. The 'model' field determines which Claude model runs that feature (opus for complex work, sonnet for UI/testing, haiku for docs).",
   "features": [
     {
       "id": 1,
+      "category": "setup",
+      "priority": "high",
+      "model": "opus",
+      "description": "Example: Initial project configuration or complex setup",
+      "steps": [
+        "Step 1: Configure environment",
+        "Step 2: Set up dependencies",
+        "Step 3: Verify setup works"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": ""
+    },
+    {
+      "id": 2,
       "category": "functional",
       "priority": "high",
-      "description": "Feature description here",
+      "model": "opus",
+      "description": "Example: Core feature implementation requiring complex logic",
       "steps": [
-        "Step 1: Navigate to relevant page",
-        "Step 2: Perform action",
-        "Step 3: Verify expected result"
+        "Step 1: Implement core logic",
+        "Step 2: Add error handling",
+        "Step 3: Test functionality"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": ""
+    },
+    {
+      "id": 3,
+      "category": "ui",
+      "priority": "medium",
+      "model": "sonnet",
+      "description": "Example: Browser-based UI verification using Claude in Chrome",
+      "steps": [
+        "Step 1: Navigate to page",
+        "Step 2: Verify UI elements render correctly",
+        "Step 3: Test user interactions"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": ""
+    },
+    {
+      "id": 4,
+      "category": "verification",
+      "priority": "medium",
+      "model": "sonnet",
+      "description": "Example: Verify feature works end-to-end in browser",
+      "steps": [
+        "Step 1: Open application in browser",
+        "Step 2: Perform user workflow",
+        "Step 3: Confirm expected outcome"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": ""
+    },
+    {
+      "id": 5,
+      "category": "testing",
+      "priority": "medium",
+      "model": "sonnet",
+      "description": "Example: Run test suite and fix any failures",
+      "steps": [
+        "Step 1: Run npm test",
+        "Step 2: Review failures",
+        "Step 3: Fix and re-run until green"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": ""
+    },
+    {
+      "id": 6,
+      "category": "documentation",
+      "priority": "low",
+      "model": "haiku",
+      "description": "Example: Update README or add code comments",
+      "steps": [
+        "Step 1: Review existing docs",
+        "Step 2: Add/update documentation",
+        "Step 3: Verify formatting"
       ],
       "passes": false,
       "completed_iteration": null,

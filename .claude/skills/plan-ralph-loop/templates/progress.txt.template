@@ -24,10 +24,14 @@
 (none)
 
 ## Last Verification Result
-(not run)
+(not started)
 
 ## Next Session Instructions
-Begin implementation. Read RALPH_PROMPT.md for full context.
+Begin implementation.
+
+## Session History
+| Iteration | Session ID | Timestamp | Feature | Result |
+|-----------|------------|-----------|---------|--------|
 
 ## Iteration History
 | # | Changes Made | Result | Blocker |

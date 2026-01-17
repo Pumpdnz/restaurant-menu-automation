@@ -6,6 +6,7 @@
 |---------|-------|
 | Ralph Loop Directory | `{RALPH_LOOP_DIR}` |
 | Project Directory | `{PROJECT_DIR}` |
+| Frontend Directory | `UberEats-Image-Extractor` |
 | Frontend Port | `{FRONTEND_PORT}` |
 | Backend Port | `{BACKEND_PORT}` |
 | Max Iterations | `{MAX_ITERATIONS}` |
@@ -94,10 +95,11 @@ Before ending this iteration, ensure:
 2. Implement ONE feature
 3. Run verification (build + browser test at `http://localhost:{FRONTEND_PORT}`)
 4. Update `{RALPH_LOOP_DIR}/feature_list.json`: change `passes: false` to `passes: true`
-5. Update `{RALPH_LOOP_DIR}/progress.txt` with results
-6. Git commit with descriptive message
-7. If ALL features pass: output `<promise>{TASK_NAME} COMPLETE</promise>`
-8. If NOT complete: run `/continue-ralph {RALPH_LOOP_DIR}` to spawn next iteration
+5. Log session ID: Run `/get-session-id` and include the returned ID in progress.txt
+6. Update `{RALPH_LOOP_DIR}/progress.txt` with results (include session ID, feature worked on, outcome)
+7. Git commit with descriptive message
+8. If ALL features pass: output `<promise>{TASK_NAME} COMPLETE</promise>`
+9. Exit cleanly - the orchestrator will automatically spawn the next iteration
 
 ## Completion Signal
 
@@ -109,7 +111,7 @@ When ALL features in `{RALPH_LOOP_DIR}/feature_list.json` have `passes: true`, o
 
 ## Constraints
 - Do NOT skip verification steps
-- Do NOT mark features as passing without browser verification
+- Do NOT mark frontend features as passing without browser verification
 - Do NOT modify feature definitions in `{RALPH_LOOP_DIR}/feature_list.json` (only `passes` field)
 - Do NOT exceed {MAX_ITERATIONS} iterations
 - If stuck on same issue for 3+ iterations, document blocker clearly in `{RALPH_LOOP_DIR}/progress.txt`

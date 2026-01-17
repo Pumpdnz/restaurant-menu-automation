@@ -203,7 +203,7 @@ After creating the investigation plan, generate a prime prompt for the next sess
 1. Generate a descriptive filename: `session-{feature-name}-investigation.md`
 2. Ensure directory exists: `.claude/data/prime-prompts/`
 3. Write the prime prompt from Phase 4 to `.claude/data/prime-prompts/{filename}`
-4. Execute the split terminal script directly (skip to Step 5 of `/continue-t` since prime prompt is already generated):
+4. Execute the split terminal script:
 
 ```bash
 bash .claude/skills/continue-t/scripts/open-split-claude.sh "{filename}"
@@ -217,4 +217,4 @@ Where `{filename}` is the name of the file created (without path, e.g., `session
 - Summarize your understanding of the overview of the current project and purpose of the investigation.
 - Report the testing and validation requirements confirmed with the user.
 - Report the purpose of each subagent investigation task.
-- Confirm the prime prompt has been saved and `/continue-t` is spawning the investigation session.
+- Confirm the prime prompt has been saved and the script is spawning the investigation session.

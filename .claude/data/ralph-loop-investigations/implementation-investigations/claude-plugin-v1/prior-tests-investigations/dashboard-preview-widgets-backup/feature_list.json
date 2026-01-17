@@ -1,0 +1,137 @@
+{
+  "task_name": "dashboard-preview-widgets",
+  "created": "2026-01-16",
+  "total_features": 7,
+  "completed_features": 0,
+  "default_model": "sonnet",
+  "instructions": "CRITICAL: Only modify the 'passes' field when a feature is verified working via browser automation. Do NOT modify feature descriptions or steps.",
+  "features": [
+    {
+      "id": 1,
+      "category": "setup",
+      "priority": "high",
+      "model": "opus",
+      "description": "Quick Actions buttons updated with New Task button",
+      "steps": [
+        "Update Quick Actions card in Dashboard.jsx",
+        "Add 'New Task' button alongside existing buttons",
+        "Wire button to open CreateTaskModal (state will be added)",
+        "Wrap New Task button in isFeatureEnabled('tasksAndSequences') check",
+        "Verify build passes"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": ""
+    },
+    {
+      "id": 2,
+      "category": "functional",
+      "priority": "high",
+      "model": "sonnet",
+      "description": "CreateTaskModal integration with New Task button",
+      "steps": [
+        "Import CreateTaskModal from @/components/tasks/CreateTaskModal",
+        "Add useState for createTaskOpen: const [createTaskOpen, setCreateTaskOpen] = useState(false)",
+        "Wire New Task button onClick to setCreateTaskOpen(true)",
+        "Render <CreateTaskModal open={createTaskOpen} onOpenChange={setCreateTaskOpen} />",
+        "Browser verify: Click New Task -> modal opens"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": ""
+    },
+    {
+      "id": 3,
+      "category": "functional",
+      "priority": "medium",
+      "model": "opus",
+      "description": "Tasks Due Today list with pagination",
+      "steps": [
+        "Create src/components/dashboard/TasksDueTodayList.tsx component",
+        "Query tasks where due_date = today, limit 5",
+        "Display task title, restaurant name, due time",
+        "Add 'View All' link to /tasks page",
+        "Wrap in isFeatureEnabled('tasksAndSequences') check",
+        "Browser verify: Tasks list shows on Dashboard"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": ""
+    },
+    {
+      "id": 4,
+      "category": "functional",
+      "priority": "medium",
+      "model": "sonnet",
+      "description": "Pending Leads preview widget",
+      "steps": [
+        "Create src/components/dashboard/PendingLeadsPreview.tsx component",
+        "Query leads where status = 'pending', limit 5",
+        "Display restaurant name, city, cuisine, created date",
+        "Add 'View All' link to /leads?tab=pending",
+        "Wrap in isFeatureEnabled('leadScraping') check",
+        "Browser verify: Pending leads preview shows on Dashboard"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": ""
+    },
+    {
+      "id": 5,
+      "category": "functional",
+      "priority": "medium",
+      "model": "haiku",
+      "description": "Recent Batch Registration preview",
+      "steps": [
+        "Create src/components/dashboard/BatchRegistrationPreview.tsx component",
+        "Query registration_batches ordered by created_at desc, limit 5",
+        "Display batch name, status, restaurant count, date",
+        "Add 'View All' link to /registration-batches",
+        "Wrap in isFeatureEnabled('registrationBatches') check",
+        "Browser verify: Batch registration preview shows on Dashboard"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": ""
+    },
+    {
+      "id": 6,
+      "category": "functional",
+      "priority": "medium",
+      "model": "opus",
+      "description": "Recent Restaurants preview with city filter",
+      "steps": [
+        "Create src/components/dashboard/RecentRestaurantsPreview.tsx component",
+        "Query restaurants ordered by created_at desc, limit 5",
+        "Display restaurant name, city, created date",
+        "Add optional city filter dropdown",
+        "Add 'View All' link to /restaurants",
+        "No feature flag required",
+        "Browser verify: Recent restaurants preview shows on Dashboard"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": ""
+    },
+    {
+      "id": 7,
+      "category": "verification",
+      "priority": "low",
+      "model": "haiku",
+      "description": "Feature flag verification (limited user)",
+      "steps": [
+        "Login as support@pumpd.co.nz (limited permissions)",
+        "Verify Tasks Due Today list IS visible",
+        "Verify Recent Restaurants preview IS visible",
+        "Verify Pending Leads preview is HIDDEN",
+        "Verify Batch Registration preview is HIDDEN",
+        "Verify CityBreakdownTab is HIDDEN",
+        "Verify New Task button is HIDDEN",
+        "No console errors present"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": ""
+    }
+  ]
+}
