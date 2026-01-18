@@ -95,8 +95,8 @@
         "Step 4: Update badge display logic accordingly",
         "Step 5: Browser verify positioning and overdue logic"
       ],
-      "passes": false,
-      "completed_iteration": null,
+      "passes": true,
+      "completed_iteration": 5,
       "notes": "Most recently overdue tasks should be shown first when backfilling"
     },
     {
