@@ -8,7 +8,7 @@
 - Testing Method: Combined (Build + Browser)
 
 ## Current State
-- Iteration: 7 / 36
+- Iteration: 9 / 36
 - Status: IN_PROGRESS (2026-01-18)
 - Last Updated: 2026-01-18
 
@@ -20,7 +20,7 @@
 5. Tasks Due Today moved to top, shows overdue when <25 due today ✅
 6. Lead Scraping header styling fixed (not purple) ✅
 7. Heatmap/City Table in tabbed component (heatmap default) ✅
-8. Opportunities tab removed from reports
+8. Opportunities tab removed from reports ✅
 9. Pending Leads preview has Cuisine, Rating, UberEats link columns
 10. Batch Jobs clickable with navigation, restaurants preview, progress bar
 11. Pending Leads + Batch Jobs in two-column grid
@@ -34,9 +34,9 @@
 - Feature 5: Move Tasks Due Today to top with overdue fallback (Iteration 5)
 - Feature 6: Fix Lead Scraping header styling (Iteration 6)
 - Feature 7: Create tabbed Heatmap/City Table component (Iteration 7)
+- Feature 8: Remove Opportunities tab from reports (Iteration 8)
 
 ## Remaining
-- Feature 8: Remove Opportunities tab
 - Feature 9: Enhance Pending Leads preview columns
 - Feature 10: Enhance Batch Jobs with navigation and columns
 - Feature 11: Create two-column grid layout
@@ -46,17 +46,18 @@
 (none)
 
 ## Last Verification Result
-Feature 7 - PASSED
-- Added Tabs imports (TabsList, TabsContent, TabsTrigger) from @/components/ui/tabs
-- Added activeViewTab state defaulting to 'heatmap'
-- Restructured heatmap and table into single Card with Tabs component
-- Export CSV button conditionally rendered only when table tab active
-- Summary Stats section remains outside tabbed content as required
+Feature 8 - PASSED
+- Removed OpportunitiesTab import
+- Removed Opportunity type import
+- Removed Target icon import
+- Removed subTab state
+- Removed handleOpportunityStartScrape function
+- Removed Tabs wrapper, CityBreakdownTab now renders directly
 - Build passes with no TypeScript errors
-- Code review confirms all 6 steps completed correctly
+- OpportunitiesTab.tsx file kept for future use
 
 ## Next Session Instructions
-Begin implementation with Feature 8: Remove Opportunities tab from ReportsTabContent.tsx.
+Begin implementation with Feature 9: Enhance Pending Leads preview with Cuisine, Rating, UberEats link columns.
 
 ## Session History
 | Iteration | Session ID | Timestamp | Feature | Result |
@@ -68,6 +69,7 @@ Begin implementation with Feature 8: Remove Opportunities tab from ReportsTabCon
 | 5 | d81b00b4-586a-42b4-9d67-1d2fb96858c1 | 2026-01-18 | Feature 5: Move Tasks Due Today to top | PASSED |
 | 6 | 092922ab-39ee-4b9e-b680-3f5cbd35ce9b | 2026-01-18 | Feature 6: Fix Lead Scraping header styling | PASSED |
 | 7 | f371610f-a088-43c0-825a-ff97b1a00c8e | 2026-01-18 | Feature 7: Create tabbed Heatmap/City Table | PASSED |
+| 8 | 3c7ef77d-6d43-438e-bb85-3e885a4ef8ef | 2026-01-18 | Feature 8: Remove Opportunities tab | PASSED |
 
 ## Iteration History
 | # | Changes Made | Result | Blocker |
@@ -79,3 +81,4 @@ Begin implementation with Feature 8: Remove Opportunities tab from ReportsTabCon
 | 5 | Moved Tasks Due Today to top, added overdue fallback logic | Success | None |
 | 6 | Fixed Lead Scraping header styling (text-brand-purple to text-foreground) | Success | None |
 | 7 | Created tabbed Heatmap/City Table component in CityBreakdownTab.tsx | Success | None |
+| 8 | Removed Opportunities tab from ReportsTabContent.tsx | Success | None |
