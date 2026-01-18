@@ -184,8 +184,8 @@
         "Step 5: Add Current Step column showing step number/name",
         "Step 6: Browser verify row clicks navigate and new columns display"
       ],
-      "passes": false,
-      "completed_iteration": null,
+      "passes": true,
+      "completed_iteration": 10,
       "notes": "URL pattern: /registration-batches/:id"
     },
     {

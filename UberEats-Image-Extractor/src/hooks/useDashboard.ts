@@ -51,6 +51,15 @@ export interface DashboardBatchJob {
   completed_restaurants: number;
   current_step: number;
   created_at: string;
+  jobs?: {
+    id: string;
+    restaurant_id: string;
+    restaurant?: {
+      id: string;
+      name: string;
+      city?: string;
+    };
+  }[];
 }
 
 export interface DashboardTask {
@@ -112,7 +121,8 @@ export function useRecentRegistrationBatches(limit: number = 5) {
         params: {
           limit,
           sort_by: 'created_at',
-          sort_direction: 'desc'
+          sort_direction: 'desc',
+          include_restaurants: true
         }
       });
       return response.data.batch_jobs || [];

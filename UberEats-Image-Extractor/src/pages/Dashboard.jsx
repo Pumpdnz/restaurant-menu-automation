@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Store,
   Download,
@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge';
 import { Skeleton } from '../components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { Progress } from '../components/ui/progress';
 import { CreateLeadScrapeJob } from '../components/leads/CreateLeadScrapeJob';
 import { ReportsTabContent } from '../components/reports/ReportsTabContent';
 import { CreateTaskModal } from '../components/tasks/CreateTaskModal';
@@ -32,6 +33,7 @@ import { usePendingLeadsPreview, useRecentRegistrationBatches, useTasksDueToday,
 export default function Dashboard() {
   // Feature flags
   const { isFeatureEnabled } = useAuth();
+  const navigate = useNavigate();
 
   // Dialog state for CreateLeadScrapeJob
   const [createJobOpen, setCreateJobOpen] = useState(false);
@@ -497,35 +499,89 @@ export default function Dashboard() {
                   <TableRow>
                     <TableHead>Job Name</TableHead>
                     <TableHead className="w-24">Status</TableHead>
+                    <TableHead className="w-32">Current Step</TableHead>
+                    <TableHead className="w-40">Restaurants</TableHead>
                     <TableHead className="w-32">Progress</TableHead>
-                    <TableHead className="w-32">Created</TableHead>
+                    <TableHead className="w-28">Created</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {registrationBatches.map((batch) => (
-                    <TableRow key={batch.id} className="hover:bg-muted/50">
-                      <TableCell className="font-medium">{batch.name}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={
-                            batch.status === 'completed' ? 'text-green-600 border-green-600' :
-                            batch.status === 'processing' ? 'text-blue-600 border-blue-600' :
-                            batch.status === 'failed' ? 'text-red-600 border-red-600' :
-                            'text-gray-600 border-gray-600'
-                          }
-                        >
-                          {batch.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {batch.completed_restaurants}/{batch.total_restaurants}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {new Date(batch.created_at).toLocaleDateString()}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {registrationBatches.map((batch) => {
+                    const stepNames = [
+                      'Menu & Branding',
+                      'Contact Search',
+                      'Company Selection',
+                      'Company Details',
+                      'Yolo Config',
+                      'Account Setup'
+                    ];
+                    const currentStepName = stepNames[batch.current_step - 1] || `Step ${batch.current_step}`;
+                    const progressPercent = batch.total_restaurants > 0
+                      ? Math.round((batch.completed_restaurants / batch.total_restaurants) * 100)
+                      : 0;
+
+                    return (
+                      <TableRow
+                        key={batch.id}
+                        className="hover:bg-muted/50 cursor-pointer"
+                        onClick={() => navigate(`/registration-batches/${batch.id}`)}
+                      >
+                        <TableCell className="font-medium">{batch.name}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={
+                              batch.status === 'completed' ? 'text-green-600 border-green-600' :
+                              batch.status === 'processing' || batch.status === 'in_progress' ? 'text-blue-600 border-blue-600' :
+                              batch.status === 'failed' ? 'text-red-600 border-red-600' :
+                              'text-gray-600 border-gray-600'
+                            }
+                          >
+                            {batch.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-xs">
+                          {batch.current_step}: {currentStepName}
+                        </TableCell>
+                        <TableCell>
+                          {batch.jobs && batch.jobs.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {batch.jobs.slice(0, 2).map((job) => (
+                                <div
+                                  key={job.id}
+                                  className="flex items-center gap-1 text-[10px] bg-muted/50 px-1.5 py-0.5 rounded"
+                                  title={job.restaurant?.name}
+                                >
+                                  <Store className="h-2.5 w-2.5 text-muted-foreground" />
+                                  <span className="truncate max-w-[60px]">
+                                    {job.restaurant?.name || 'Unknown'}
+                                  </span>
+                                </div>
+                              ))}
+                              {batch.jobs.length > 2 && (
+                                <span className="text-[10px] text-muted-foreground px-1.5 py-0.5">
+                                  +{batch.jobs.length - 2}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Progress value={progressPercent} className="h-2 w-20" />
+                            <span className="text-xs text-muted-foreground">{progressPercent}%</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-xs">
+                          {formatDistanceToNow(new Date(batch.created_at), {
+                            addSuffix: true,
+                          })}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             )}

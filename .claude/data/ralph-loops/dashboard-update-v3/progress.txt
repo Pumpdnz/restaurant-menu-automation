@@ -8,7 +8,7 @@
 - Testing Method: Combined (Build + Browser)
 
 ## Current State
-- Iteration: 10 / 36
+- Iteration: 11 / 36
 - Status: IN_PROGRESS (2026-01-18)
 - Last Updated: 2026-01-18
 
@@ -21,8 +21,8 @@
 6. Lead Scraping header styling fixed (not purple) ✅
 7. Heatmap/City Table in tabbed component (heatmap default) ✅
 8. Opportunities tab removed from reports ✅
-9. Pending Leads preview has Cuisine, Rating, UberEats link columns
-10. Batch Jobs clickable with navigation, restaurants preview, progress bar
+9. Pending Leads preview has Cuisine, Rating, UberEats link columns ✅
+10. Batch Jobs clickable with navigation, restaurants preview, progress bar ✅
 11. Pending Leads + Batch Jobs in two-column grid
 12. Final E2E verification passes
 
@@ -36,9 +36,9 @@
 - Feature 7: Create tabbed Heatmap/City Table component (Iteration 7)
 - Feature 8: Remove Opportunities tab from reports (Iteration 8)
 - Feature 9: Enhance Pending Leads preview with Cuisine, Rating, UberEats link columns (Iteration 9)
+- Feature 10: Enhance Batch Jobs with navigation, restaurants preview, progress bar (Iteration 10)
 
 ## Remaining
-- Feature 10: Enhance Batch Jobs with navigation and columns
 - Feature 11: Create two-column grid layout
 - Feature 12: Final E2E verification
 
@@ -46,19 +46,19 @@
 (none)
 
 ## Last Verification Result
-Feature 9 - PASSED
-- Added Cuisine column with badges (first 2 + count)
-- Added Rating column with Star icon + average + review count
-- Made restaurant name clickable to open LeadDetailModal
-- Added UberEats platform link under restaurant name
-- Changed Created column to use formatDistanceToNow for relative time
-- Added required imports: Star, ExternalLink from lucide-react, formatDistanceToNow from date-fns
-- Enhanced DashboardPendingLead interface with store_link, platform, ubereats_cuisine fields
-- Added LeadDetailModal component and state handlers
+Feature 10 - PASSED
+- Made batch rows clickable with navigation to /registration-batches/:id
+- Added cursor-pointer class to TableRow
+- Added Current Step column showing step number and shortened step name
+- Added Restaurants Preview column showing first 2 restaurants with Store icon
+- Added Progress Bar column using Progress component with percentage display
+- Updated DashboardBatchJob interface to include jobs array with restaurant info
+- Updated useRecentRegistrationBatches to request restaurant data (include_restaurants param)
+- Added useNavigate and Progress component imports
 - Build passes with no TypeScript errors
 
 ## Next Session Instructions
-Begin implementation with Feature 10: Enhance Batch Jobs with navigation, restaurants preview, and progress bar columns.
+Begin implementation with Feature 11: Create two-column grid layout for Pending Leads and Batch Jobs sections.
 
 ## Session History
 | Iteration | Session ID | Timestamp | Feature | Result |
@@ -72,6 +72,7 @@ Begin implementation with Feature 10: Enhance Batch Jobs with navigation, restau
 | 7 | f371610f-a088-43c0-825a-ff97b1a00c8e | 2026-01-18 | Feature 7: Create tabbed Heatmap/City Table | PASSED |
 | 8 | 3c7ef77d-6d43-438e-bb85-3e885a4ef8ef | 2026-01-18 | Feature 8: Remove Opportunities tab | PASSED |
 | 9 | fb4941f9-e8c2-4bb0-b991-ce5c61e68e55 | 2026-01-18 | Feature 9: Enhance Pending Leads preview | PASSED |
+| 10 | 6aec4e65-8d7e-4c6d-a4b7-d4cd788d2c99 | 2026-01-18 | Feature 10: Enhance Batch Jobs preview | PASSED |
 
 ## Iteration History
 | # | Changes Made | Result | Blocker |
@@ -85,3 +86,4 @@ Begin implementation with Feature 10: Enhance Batch Jobs with navigation, restau
 | 7 | Created tabbed Heatmap/City Table component in CityBreakdownTab.tsx | Success | None |
 | 8 | Removed Opportunities tab from ReportsTabContent.tsx | Success | None |
 | 9 | Enhanced Pending Leads preview with Cuisine, Rating, UberEats link columns | Success | None |
+| 10 | Enhanced Batch Jobs with navigation, restaurants preview, progress bar | Success | None |
