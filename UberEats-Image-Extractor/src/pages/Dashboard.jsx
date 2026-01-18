@@ -7,7 +7,10 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  ClipboardList
+  ClipboardList,
+  User,
+  Mail,
+  Phone
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -17,6 +20,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { CreateLeadScrapeJob } from '../components/leads/CreateLeadScrapeJob';
 import { ReportsTabContent } from '../components/reports/ReportsTabContent';
 import { CreateTaskModal } from '../components/tasks/CreateTaskModal';
+import { LeadContactQuickView } from '../components/restaurants/LeadContactQuickView';
+import { TaskCell } from '../components/restaurants/TaskCell';
 import { useAuth } from '../context/AuthContext';
 import { usePendingLeadsPreview, useRecentRegistrationBatches, useTasksDueToday, useOverdueTasksCount, useRecentRestaurants } from '../hooks/useDashboard';
 
@@ -96,6 +101,29 @@ export default function Dashboard() {
   useEffect(() => {
     setRestaurantsPage(0);
   }, [selectedRestaurantCity]);
+
+  // Task handlers for Recently Created Restaurants
+  const handleCreateTask = (restaurant) => {
+    // Open create task modal - implement if needed
+    setCreateTaskModalOpen(true);
+  };
+
+  const handleStartSequence = (restaurant) => {
+    // Start sequence - implement if needed
+  };
+
+  const handleTaskCompleted = () => {
+    // Refresh recent restaurants data after task completion
+    // The hook should automatically refetch
+  };
+
+  const handleFollowUpRequested = (taskId) => {
+    // Handle follow-up request - implement if needed
+  };
+
+  const handleStartSequenceRequested = (restaurant) => {
+    // Handle start sequence request - implement if needed
+  };
 
   if (recentRestaurantsLoading) {
     return (
@@ -488,6 +516,8 @@ export default function Dashboard() {
                     <TableHead>Restaurant Name</TableHead>
                     <TableHead className="w-32">City</TableHead>
                     <TableHead className="w-40">Status</TableHead>
+                    <TableHead className="w-48">Lead Contact</TableHead>
+                    <TableHead className="w-40">Tasks</TableHead>
                     <TableHead className="w-32">Created</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -515,6 +545,45 @@ export default function Dashboard() {
                         >
                           {restaurant.onboarding_status || 'unknown'}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <LeadContactQuickView restaurant={restaurant}>
+                          <div className="space-y-1 cursor-pointer hover:bg-muted/30 p-1 -m-1 rounded transition-colors">
+                            {restaurant.contact_name && (
+                              <div className="flex items-center gap-1 text-xs">
+                                <User className="h-3 w-3 text-muted-foreground" />
+                                <span>{restaurant.contact_name}</span>
+                              </div>
+                            )}
+                            {restaurant.contact_email && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <Mail className="h-3 w-3" />
+                                {restaurant.contact_email}
+                              </div>
+                            )}
+                            {restaurant.contact_phone && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <Phone className="h-3 w-3" />
+                                {restaurant.contact_phone}
+                              </div>
+                            )}
+                            {!restaurant.contact_name && !restaurant.contact_phone && !restaurant.contact_email && (
+                              <span className="text-xs text-muted-foreground">No contact</span>
+                            )}
+                          </div>
+                        </LeadContactQuickView>
+                      </TableCell>
+                      <TableCell>
+                        <TaskCell
+                          task={restaurant.oldest_task}
+                          restaurantName={restaurant.name}
+                          restaurantId={restaurant.id}
+                          onCreateTask={() => handleCreateTask(restaurant)}
+                          onStartSequence={() => handleStartSequence(restaurant)}
+                          onTaskCompleted={handleTaskCompleted}
+                          onFollowUpRequested={handleFollowUpRequested}
+                          onStartSequenceRequested={handleStartSequenceRequested}
+                        />
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
                         {new Date(restaurant.created_at).toLocaleDateString()}

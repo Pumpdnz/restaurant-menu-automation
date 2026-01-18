@@ -8,7 +8,7 @@
 - Testing Method: Combined (Build + Browser)
 
 ## Current State
-- Iteration: 4 / 36
+- Iteration: 5 / 36
 - Status: COMPLETED (2026-01-18)
 - Last Updated: 2026-01-18
 
@@ -30,9 +30,9 @@
 - Feature 1: Remove Recent Extractions and Quick View sections (Iteration 1)
 - Feature 2: Enhance useRecentRestaurants hook (Iteration 2)
 - Feature 3: Add pagination to Recently Created Restaurants (Iteration 3)
+- Feature 4: Add Lead Contact and Tasks columns (Iteration 4)
 
 ## Remaining
-- Feature 4: Add Lead Contact and Tasks columns
 - Feature 5: Move Tasks Due Today to top with overdue fallback
 - Feature 6: Fix Lead Scraping header styling
 - Feature 7: Create tabbed Heatmap/City Table component
@@ -46,19 +46,17 @@
 (none)
 
 ## Last Verification Result
-Feature 3 - PASSED
-- Added restaurantsPage and restaurantsPageSize (5) state management
-- Calculated paginatedRestaurants slice (restaurantsPage * 5 to (restaurantsPage + 1) * 5)
-- Calculated totalRestaurantsPages using Math.ceil
-- Added pagination UI matching Tasks Due Today pattern with ChevronLeft/Right buttons
-- Shows "Showing X-Y of Z restaurants" and "Page X of Y" text
-- Pagination controls only show when totalRestaurantsPages > 1
-- Added useEffect to reset page to 0 when city filter changes
-- Updated useRecentRestaurants to fetch 25 restaurants (5 pages × 5 rows)
+Feature 4 - PASSED
+- Imported LeadContactQuickView and TaskCell components
+- Added User, Mail, Phone icons to imports
+- Added Lead Contact column header (w-48) and Tasks column header (w-40)
+- Implemented Lead Contact cell with LeadContactQuickView wrapper showing contact_name, contact_email, contact_phone
+- Implemented Tasks cell with TaskCell component using restaurant.oldest_task
+- Added handler functions: handleCreateTask, handleStartSequence, handleTaskCompleted, handleFollowUpRequested, handleStartSequenceRequested
 - Build passes with no errors
 
 ## Next Session Instructions
-Begin implementation with Feature 4: Add Lead Contact and Tasks columns to Recently Created Restaurants.
+Begin implementation with Feature 5: Move Tasks Due Today to top of dashboard with overdue fallback logic.
 
 ## Session History
 | Iteration | Session ID | Timestamp | Feature | Result |
@@ -66,6 +64,7 @@ Begin implementation with Feature 4: Add Lead Contact and Tasks columns to Recen
 | 1 | 3050fd30-f129-4f5f-9738-02f29b22f29f | 2026-01-18 | Feature 1: Remove sections | PASSED |
 | 2 | 54f513d6-d7f1-4dba-96b1-ade2d44eaad7 | 2026-01-18 | Feature 2: Enhance hook | PASSED |
 | 3 | ae983143-1f20-4854-bbdc-0a4a8dcd5afe | 2026-01-18 | Feature 3: Add pagination | PASSED |
+| 4 | 6b312aa1-7617-452f-a9e7-72bee91bfa7d | 2026-01-18 | Feature 4: Lead Contact + Tasks columns | PASSED |
 
 ## Iteration History
 | # | Changes Made | Result | Blocker |
@@ -73,3 +72,4 @@ Begin implementation with Feature 4: Add Lead Contact and Tasks columns to Recen
 | 1 | Removed Recent Extractions and Quick View Recent Restaurants | Success | None |
 | 2 | Enhanced useRecentRestaurants hook with contact info and oldest_task | Success | None |
 | 3 | Added pagination to Recently Created Restaurants (5 pages, 5 rows) | Success | None |
+| 4 | Added Lead Contact and Tasks columns to Recently Created Restaurants | Success | None |
