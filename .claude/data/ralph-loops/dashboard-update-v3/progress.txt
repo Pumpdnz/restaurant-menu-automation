@@ -8,14 +8,14 @@
 - Testing Method: Combined (Build + Browser)
 
 ## Current State
-- Iteration: 3 / 36
+- Iteration: 4 / 36
 - Status: COMPLETED (2026-01-18)
 - Last Updated: 2026-01-18
 
 ## Completion Criteria
 1. Recent Extractions and Quick View Recent Restaurants removed ✅
 2. useRecentRestaurants hook returns contact info and oldest_task ✅
-3. Recently Created Restaurants has pagination (5 pages, 5 rows)
+3. Recently Created Restaurants has pagination (5 pages, 5 rows) ✅
 4. Recently Created Restaurants has Lead Contact and Tasks columns
 5. Tasks Due Today moved to top, shows overdue when <25 due today
 6. Lead Scraping header styling fixed (not purple)
@@ -29,9 +29,9 @@
 ## Completed
 - Feature 1: Remove Recent Extractions and Quick View sections (Iteration 1)
 - Feature 2: Enhance useRecentRestaurants hook (Iteration 2)
+- Feature 3: Add pagination to Recently Created Restaurants (Iteration 3)
 
 ## Remaining
-- Feature 3: Add pagination to Recently Created Restaurants
 - Feature 4: Add Lead Contact and Tasks columns
 - Feature 5: Move Tasks Due Today to top with overdue fallback
 - Feature 6: Fix Lead Scraping header styling
@@ -46,25 +46,30 @@
 (none)
 
 ## Last Verification Result
-Feature 2 - PASSED
-- Updated DashboardRestaurant interface with contact fields (contact_name, contact_email, contact_phone, address, cuisine, weekly_sales_range, online_ordering_platform, ubereats_url, demo_store_url, website_url)
-- Added oldest_task field with type {id, name, type, status, priority, due_date}
-- Updated useRecentRestaurants hook default limit from 5 to 25
-- Updated useDashboardSummary to use 25 for restaurants
-- Updated getRecentRestaurants database function to fetch contact info and oldest tasks
+Feature 3 - PASSED
+- Added restaurantsPage and restaurantsPageSize (5) state management
+- Calculated paginatedRestaurants slice (restaurantsPage * 5 to (restaurantsPage + 1) * 5)
+- Calculated totalRestaurantsPages using Math.ceil
+- Added pagination UI matching Tasks Due Today pattern with ChevronLeft/Right buttons
+- Shows "Showing X-Y of Z restaurants" and "Page X of Y" text
+- Pagination controls only show when totalRestaurantsPages > 1
+- Added useEffect to reset page to 0 when city filter changes
+- Updated useRecentRestaurants to fetch 25 restaurants (5 pages × 5 rows)
 - Build passes with no errors
 
 ## Next Session Instructions
-Begin implementation with Feature 3: Add pagination to Recently Created Restaurants (5 pages, 5 rows).
+Begin implementation with Feature 4: Add Lead Contact and Tasks columns to Recently Created Restaurants.
 
 ## Session History
 | Iteration | Session ID | Timestamp | Feature | Result |
 |-----------|------------|-----------|---------|--------|
 | 1 | 3050fd30-f129-4f5f-9738-02f29b22f29f | 2026-01-18 | Feature 1: Remove sections | PASSED |
 | 2 | 54f513d6-d7f1-4dba-96b1-ade2d44eaad7 | 2026-01-18 | Feature 2: Enhance hook | PASSED |
+| 3 | ae983143-1f20-4854-bbdc-0a4a8dcd5afe | 2026-01-18 | Feature 3: Add pagination | PASSED |
 
 ## Iteration History
 | # | Changes Made | Result | Blocker |
 |---|--------------|--------|---------|
 | 1 | Removed Recent Extractions and Quick View Recent Restaurants | Success | None |
 | 2 | Enhanced useRecentRestaurants hook with contact info and oldest_task | Success | None |
+| 3 | Added pagination to Recently Created Restaurants (5 pages, 5 rows) | Success | None |

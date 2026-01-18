@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Store,
@@ -67,9 +67,11 @@ export default function Dashboard() {
   const { data: overdueData } = useOverdueTasksCount();
   const overdueCount = overdueData?.count || 0;
 
-  // Recently Created Restaurants with city filter
-  const { data: recentRestaurantsData = [], isLoading: recentRestaurantsLoading } = useRecentRestaurants(10);
+  // Recently Created Restaurants with city filter and pagination
+  const { data: recentRestaurantsData = [], isLoading: recentRestaurantsLoading } = useRecentRestaurants(25);
   const [selectedRestaurantCity, setSelectedRestaurantCity] = useState(null);
+  const [restaurantsPage, setRestaurantsPage] = useState(0);
+  const restaurantsPageSize = 5;
 
   // Get unique cities from recent restaurants
   const restaurantCities = useMemo(() => {
@@ -82,6 +84,18 @@ export default function Dashboard() {
     if (!selectedRestaurantCity) return recentRestaurantsData;
     return recentRestaurantsData.filter(r => r.city === selectedRestaurantCity);
   }, [recentRestaurantsData, selectedRestaurantCity]);
+
+  // Paginate filtered restaurants
+  const paginatedRestaurants = filteredRecentRestaurants.slice(
+    restaurantsPage * restaurantsPageSize,
+    (restaurantsPage + 1) * restaurantsPageSize
+  );
+  const totalRestaurantsPages = Math.ceil(filteredRecentRestaurants.length / restaurantsPageSize);
+
+  // Reset page when city filter changes
+  useEffect(() => {
+    setRestaurantsPage(0);
+  }, [selectedRestaurantCity]);
 
   if (recentRestaurantsLoading) {
     return (
@@ -467,47 +481,75 @@ export default function Dashboard() {
               {selectedRestaurantCity ? 'No restaurants in this city' : 'No restaurants created yet'}
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Restaurant Name</TableHead>
-                  <TableHead className="w-32">City</TableHead>
-                  <TableHead className="w-40">Status</TableHead>
-                  <TableHead className="w-32">Created</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredRecentRestaurants.map((restaurant) => (
-                  <TableRow key={restaurant.id} className="hover:bg-muted/50">
-                    <TableCell className="font-medium">
-                      <Link
-                        to={`/restaurants/${restaurant.id}`}
-                        className="hover:text-brand-blue transition-colors"
-                      >
-                        {restaurant.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{restaurant.city || '-'}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={
-                          restaurant.onboarding_status === 'completed' ? 'text-green-600 border-green-600' :
-                          restaurant.onboarding_status === 'in_progress' ? 'text-blue-600 border-blue-600' :
-                          restaurant.onboarding_status === 'pending' ? 'text-yellow-600 border-yellow-600' :
-                          'text-gray-600 border-gray-600'
-                        }
-                      >
-                        {restaurant.onboarding_status || 'unknown'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {new Date(restaurant.created_at).toLocaleDateString()}
-                    </TableCell>
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Restaurant Name</TableHead>
+                    <TableHead className="w-32">City</TableHead>
+                    <TableHead className="w-40">Status</TableHead>
+                    <TableHead className="w-32">Created</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {paginatedRestaurants.map((restaurant) => (
+                    <TableRow key={restaurant.id} className="hover:bg-muted/50">
+                      <TableCell className="font-medium">
+                        <Link
+                          to={`/restaurants/${restaurant.id}`}
+                          className="hover:text-brand-blue transition-colors"
+                        >
+                          {restaurant.name}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{restaurant.city || '-'}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={
+                            restaurant.onboarding_status === 'completed' ? 'text-green-600 border-green-600' :
+                            restaurant.onboarding_status === 'in_progress' ? 'text-blue-600 border-blue-600' :
+                            restaurant.onboarding_status === 'pending' ? 'text-yellow-600 border-yellow-600' :
+                            'text-gray-600 border-gray-600'
+                          }
+                        >
+                          {restaurant.onboarding_status || 'unknown'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {new Date(restaurant.created_at).toLocaleDateString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {totalRestaurantsPages > 1 && (
+                <div className="flex items-center justify-between px-4 py-2 border-t bg-muted/30">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {restaurantsPage * restaurantsPageSize + 1}-{Math.min((restaurantsPage + 1) * restaurantsPageSize, filteredRecentRestaurants.length)} of {filteredRecentRestaurants.length} restaurants
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      className="inline-flex items-center justify-center h-8 px-3 text-sm font-medium rounded-md border border-border bg-background hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      onClick={() => setRestaurantsPage(restaurantsPage - 1)}
+                      disabled={restaurantsPage === 0}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <span className="text-sm text-muted-foreground min-w-[100px] text-center">
+                      Page {restaurantsPage + 1} of {totalRestaurantsPages}
+                    </span>
+                    <button
+                      className="inline-flex items-center justify-center h-8 px-3 text-sm font-medium rounded-md border border-border bg-background hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      onClick={() => setRestaurantsPage(restaurantsPage + 1)}
+                      disabled={restaurantsPage + 1 >= totalRestaurantsPages}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
