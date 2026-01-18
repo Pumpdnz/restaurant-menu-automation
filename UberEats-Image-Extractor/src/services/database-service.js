@@ -1528,25 +1528,85 @@ async function getRestaurantSwitcherList() {
 
 /**
  * Get recently created restaurants for dashboard preview
- * Returns lightweight payload: id, name, city, created_at, onboarding_status, lead_stage
- * @param {number} limit - Maximum number of restaurants to return (default: 5)
+ * Returns extended payload with contact info and oldest task for Lead Contact and Tasks columns
+ * @param {number} limit - Maximum number of restaurants to return (default: 25 for 5 pages x 5 rows)
  */
-async function getRecentRestaurants(limit = 5) {
+async function getRecentRestaurants(limit = 25) {
   if (!isDatabaseAvailable()) return [];
 
   const orgId = getCurrentOrganizationId();
 
   try {
     const client = getSupabaseClient();
-    const { data, error } = await client
+
+    // 1. Fetch restaurants with contact and business info
+    const { data: restaurants, error } = await client
       .from('restaurants')
-      .select('id, name, city, created_at, onboarding_status, lead_stage')
+      .select(`
+        id,
+        name,
+        city,
+        created_at,
+        onboarding_status,
+        lead_stage,
+        contact_name,
+        contact_email,
+        contact_phone,
+        address,
+        cuisine,
+        weekly_sales_range,
+        online_ordering_platform,
+        ubereats_url,
+        demo_store_url,
+        website_url
+      `)
       .eq('organisation_id', orgId)
       .order('created_at', { ascending: false })
       .limit(limit);
 
     if (error) throw error;
-    return data || [];
+
+    if (!restaurants || restaurants.length === 0) {
+      return [];
+    }
+
+    // 2. Fetch oldest active task for each restaurant
+    const restaurantIds = restaurants.map(r => r.id);
+    const { data: allTasks, error: tasksError } = await client
+      .from('tasks')
+      .select(`
+        id,
+        name,
+        type,
+        status,
+        priority,
+        due_date,
+        created_at,
+        restaurant_id
+      `)
+      .in('restaurant_id', restaurantIds)
+      .eq('status', 'active')
+      .order('due_date', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: true });
+
+    // 3. Build a map of restaurant_id -> oldest task
+    const tasksMap = {};
+    if (!tasksError && allTasks) {
+      allTasks.forEach(task => {
+        // Only keep the first (oldest) task per restaurant
+        if (!tasksMap[task.restaurant_id]) {
+          tasksMap[task.restaurant_id] = task;
+        }
+      });
+    }
+
+    // 4. Attach oldest_task to each restaurant
+    const restaurantsWithTasks = restaurants.map(r => ({
+      ...r,
+      oldest_task: tasksMap[r.id] || null
+    }));
+
+    return restaurantsWithTasks;
   } catch (error) {
     console.error('[Database] Error getting recent restaurants:', error);
     return [];

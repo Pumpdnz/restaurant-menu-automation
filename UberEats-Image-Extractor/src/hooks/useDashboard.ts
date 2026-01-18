@@ -9,6 +9,26 @@ export interface DashboardRestaurant {
   created_at: string;
   onboarding_status?: string;
   lead_stage?: string;
+  // Contact info for LeadContactQuickView popup
+  contact_name?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  address?: string;
+  cuisine?: string[];
+  weekly_sales_range?: string;
+  online_ordering_platform?: string;
+  ubereats_url?: string;
+  demo_store_url?: string;
+  website_url?: string;
+  // Oldest task for TaskCell component
+  oldest_task?: {
+    id: string;
+    name: string;
+    type: string;
+    status: string;
+    priority: string;
+    due_date: string | null;
+  } | null;
 }
 
 export interface DashboardPendingLead {
@@ -43,8 +63,9 @@ export interface DashboardTask {
 
 /**
  * Fetch recently created restaurants (ordered by created_at desc)
+ * Default limit of 25 for 5 pages x 5 rows pagination
  */
-export function useRecentRestaurants(limit: number = 5) {
+export function useRecentRestaurants(limit: number = 25) {
   return useQuery<DashboardRestaurant[]>({
     queryKey: ['recent-restaurants', limit],
     queryFn: async () => {
@@ -150,7 +171,7 @@ export function useOverdueTasksCount() {
  * Combined hook for all dashboard summary data
  */
 export function useDashboardSummary() {
-  const restaurants = useRecentRestaurants(5);
+  const restaurants = useRecentRestaurants(25); // 5 pages x 5 rows
   const pendingLeads = usePendingLeadsPreview(5);
   const batches = useRecentRegistrationBatches(5);
   const tasksDueToday = useTasksDueToday(5);
