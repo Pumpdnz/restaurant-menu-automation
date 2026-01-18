@@ -1,0 +1,66 @@
+# Ralph Loop Progress: dashboard-update-v3
+
+## Configuration
+- Created: 2026-01-18
+- Max Iterations: 36
+- Frontend Port: 5007
+- Backend Port: 3007
+- Testing Method: Combined (Build + Browser)
+
+## Current State
+- Iteration: 1 / 36
+- Status: COMPLETED (2026-01-18)
+- Last Updated: 2026-01-18
+
+## Completion Criteria
+1. Recent Extractions and Quick View Recent Restaurants removed ✅
+2. useRecentRestaurants hook returns contact info and oldest_task
+3. Recently Created Restaurants has pagination (5 pages, 5 rows)
+4. Recently Created Restaurants has Lead Contact and Tasks columns
+5. Tasks Due Today moved to top, shows overdue when <25 due today
+6. Lead Scraping header styling fixed (not purple)
+7. Heatmap/City Table in tabbed component (heatmap default)
+8. Opportunities tab removed from reports
+9. Pending Leads preview has Cuisine, Rating, UberEats link columns
+10. Batch Jobs clickable with navigation, restaurants preview, progress bar
+11. Pending Leads + Batch Jobs in two-column grid
+12. Final E2E verification passes
+
+## Completed
+- Feature 1: Remove Recent Extractions and Quick View sections (Iteration 1)
+
+## Remaining
+- Feature 2: Enhance useRecentRestaurants hook
+- Feature 3: Add pagination to Recently Created Restaurants
+- Feature 4: Add Lead Contact and Tasks columns
+- Feature 5: Move Tasks Due Today to top with overdue fallback
+- Feature 6: Fix Lead Scraping header styling
+- Feature 7: Create tabbed Heatmap/City Table component
+- Feature 8: Remove Opportunities tab
+- Feature 9: Enhance Pending Leads preview columns
+- Feature 10: Enhance Batch Jobs with navigation and columns
+- Feature 11: Create two-column grid layout
+- Feature 12: Final E2E verification
+
+## Current Blocker
+(none)
+
+## Last Verification Result
+Feature 1 - PASSED
+- Removed Recent Extractions query and component
+- Removed Quick View Recent Restaurants section
+- Cleaned up unused imports (extractionAPI, getRelativeTime, useQuery, status icons)
+- Build passes with no errors
+
+## Next Session Instructions
+Begin implementation with Feature 2: Enhance useRecentRestaurants hook.
+
+## Session History
+| Iteration | Session ID | Timestamp | Feature | Result |
+|-----------|------------|-----------|---------|--------|
+| 1 | 3050fd30-f129-4f5f-9738-02f29b22f29f | 2026-01-18 | Feature 1: Remove sections | PASSED |
+
+## Iteration History
+| # | Changes Made | Result | Blocker |
+|---|--------------|--------|---------|
+| 1 | Removed Recent Extractions and Quick View Recent Restaurants | Success | None |

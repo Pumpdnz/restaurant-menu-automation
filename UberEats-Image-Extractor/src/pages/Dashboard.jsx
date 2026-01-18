@@ -1,22 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import {
   Store,
   Download,
-  Clock,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
   ArrowRight,
-  TrendingUp,
   ChevronLeft,
   ChevronRight,
   X,
   ClipboardList
 } from 'lucide-react';
-import { restaurantAPI, extractionAPI } from '../services/api';
-import { getRelativeTime, cn } from '../lib/utils';
+import { cn } from '../lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Skeleton } from '../components/ui/skeleton';
@@ -52,36 +45,6 @@ export default function Dashboard() {
     });
     setCreateJobOpen(true);
   };
-
-  // Fetch dashboard data - Recent Restaurants with consistent query pattern
-  const { data: restaurants = [], isLoading: restaurantsLoading, error: restaurantsError } = useQuery({
-    queryKey: ['dashboard-restaurants', 5], // Scoped key with limit
-    queryFn: async () => {
-      const response = await restaurantAPI.getAll();
-      // Ensure we always return an array
-      const allRestaurants = Array.isArray(response.data) ? response.data : [];
-      // Return only the 5 most recent by updated_at
-      return allRestaurants
-        .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
-        .slice(0, 5);
-    },
-    staleTime: 30000, // 30 seconds - consistent with other dashboard queries
-    retry: 2, // Retry failed requests twice
-    retryDelay: 1000, // 1 second between retries
-  });
-
-  // Recent Extractions with consistent query pattern
-  const { data: recentExtractions = [], isLoading: extractionsLoading, error: extractionsError } = useQuery({
-    queryKey: ['dashboard-extractions', 5], // Scoped key with limit
-    queryFn: async () => {
-      const response = await extractionAPI.getAll({ limit: 5 });
-      // Ensure we always return an array
-      return Array.isArray(response.data) ? response.data : [];
-    },
-    staleTime: 30000, // 30 seconds - consistent with other dashboard queries
-    retry: 2, // Retry failed requests twice
-    retryDelay: 1000, // 1 second between retries
-  });
 
   // Pending Leads Preview
   const { data: pendingLeadsData, isLoading: pendingLeadsLoading } = usePendingLeadsPreview(5);
@@ -120,25 +83,7 @@ export default function Dashboard() {
     return recentRestaurantsData.filter(r => r.city === selectedRestaurantCity);
   }, [recentRestaurantsData, selectedRestaurantCity]);
 
-  const isLoading = restaurantsLoading || extractionsLoading;
-
-  // Calculate summary stats - with safety checks
-  const safeRestaurants = Array.isArray(restaurants) ? restaurants : [];
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle className="w-5 h-5 text-brand-green" />;
-      case 'failed':
-        return <XCircle className="w-5 h-5 text-brand-red" />;
-      case 'processing':
-        return <Clock className="w-5 h-5 text-brand-yellow animate-pulse" />;
-      default:
-        return <AlertCircle className="w-5 h-5 text-muted-foreground" />;
-    }
-  };
-
-  if (isLoading) {
+  if (recentRestaurantsLoading) {
     return (
       <div className="space-y-6">
         <div>
@@ -196,107 +141,6 @@ export default function Dashboard() {
           </div>
         </CardContent>
       </Card>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Restaurants */}
-        <Card className="backdrop-blur-sm bg-background/95 border-border">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Recent Restaurants</CardTitle>
-              <Link 
-                to="/restaurants" 
-                className="text-sm text-brand-blue hover:text-brand-blue/80 font-medium flex items-center transition-colors"
-              >
-                View all
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="divide-y divide-border">
-              {safeRestaurants.slice(0, 5).map((restaurant) => (
-                <Link
-                  key={restaurant.id}
-                  to={`/restaurants/${restaurant.id}`}
-                  className="block px-6 py-4 hover:bg-accent/50 transition-all duration-200"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{restaurant.name}</p>
-                      <Badge variant="outline" className="mt-1">
-                        {restaurant.platform}
-                      </Badge>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-foreground">{restaurant.menu_count || 0} menus</p>
-                      <p className="text-xs text-muted-foreground">{getRelativeTime(restaurant.updated_at)}</p>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-              {safeRestaurants.length === 0 && (
-                <div className="px-6 py-8 text-center text-muted-foreground">
-                  No restaurants yet. Start by extracting a menu.
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Recent Extractions */}
-        <Card className="backdrop-blur-sm bg-background/95 border-border">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Recent Extractions</CardTitle>
-              <Link 
-                to="/extractions" 
-                className="text-sm text-brand-blue hover:text-brand-blue/80 font-medium flex items-center transition-colors"
-              >
-                View all
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="divide-y divide-border">
-              {Array.isArray(recentExtractions) && recentExtractions.map((extraction) => (
-                <Link
-                  key={extraction.id}
-                  to={`/extractions/${extraction.id}`}
-                  className="block px-6 py-4 hover:bg-accent/50 transition-all duration-200"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      {getStatusIcon(extraction.status)}
-                      <div className="ml-3">
-                        <p className="text-sm font-medium text-foreground">
-                          {extraction.restaurant_name || 'Unknown Restaurant'}
-                        </p>
-                        <Badge variant="outline" className="mt-1">
-                          {extraction.platform}
-                        </Badge>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-foreground">
-                        {extraction.item_count || 0} items
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {getRelativeTime(extraction.created_at)}
-                      </p>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-              {(!Array.isArray(recentExtractions) || recentExtractions.length === 0) && (
-                <div className="px-6 py-8 text-center text-muted-foreground">
-                  No recent extractions. Start a new extraction to see it here.
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Lead Scraping Reports - Feature flagged */}
       {isFeatureEnabled('leadScraping') && (

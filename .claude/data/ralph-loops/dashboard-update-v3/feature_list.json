@@ -1,0 +1,232 @@
+{
+  "task_name": "dashboard-update-v3",
+  "created": "2026-01-18",
+  "total_features": 12,
+  "completed_features": 1,
+  "default_model": "sonnet",
+  "model_routing": {
+    "setup": "opus",
+    "functional": "opus",
+    "ui": "sonnet",
+    "verification": "sonnet",
+    "testing": "sonnet",
+    "documentation": "haiku"
+  },
+  "instructions": "CRITICAL: Only modify the 'passes' field. Do NOT remove or edit feature definitions. The 'model' field determines which Claude model runs that feature (opus for complex work, sonnet for UI/testing, haiku for docs).",
+  "features": [
+    {
+      "id": 1,
+      "category": "setup",
+      "priority": "high",
+      "model": "opus",
+      "description": "Remove Recent Extractions and Quick View Recent Restaurants sections",
+      "steps": [
+        "Step 1: Remove Recent Extractions component (Dashboard.jsx lines 246-298)",
+        "Step 2: Remove Recent Extractions query (lines 74-84)",
+        "Step 3: Remove Recent Restaurants quick view (lines 201-244)",
+        "Step 4: Clean up extractionsLoading reference (line 123)",
+        "Step 5: Run build to verify no errors"
+      ],
+      "passes": true,
+      "completed_iteration": 1,
+      "notes": "Prerequisites for restructuring. Removes sections being replaced."
+    },
+    {
+      "id": 2,
+      "category": "functional",
+      "priority": "high",
+      "model": "opus",
+      "description": "Enhance useRecentRestaurants hook to return additional fields (contact info, oldest_task)",
+      "steps": [
+        "Step 1: Update DashboardRestaurant interface in useDashboard.ts",
+        "Step 2: Add fields: contact_name, contact_email, contact_phone, address, cuisine, weekly_sales_range, online_ordering_platform, ubereats_url, demo_store_url, website_url",
+        "Step 3: Add oldest_task field with type {id, name, type, status, priority, due_date}",
+        "Step 4: Update useRecentRestaurants to fetch 25 items (for 5 pages x 5 rows)",
+        "Step 5: Run build to verify type changes"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Required before Recent Restaurants UI enhancement"
+    },
+    {
+      "id": 3,
+      "category": "ui",
+      "priority": "high",
+      "model": "sonnet",
+      "description": "Add pagination to Recently Created Restaurants (5 pages, 5 rows)",
+      "steps": [
+        "Step 1: Add pagination state (restaurantsPage, setRestaurantsPage)",
+        "Step 2: Calculate paginatedRestaurants slice and totalRestaurantsPages",
+        "Step 3: Add pagination UI matching Tasks Due Today pattern (lines 524-549)",
+        "Step 4: Add ChevronLeft/ChevronRight icons import if needed",
+        "Step 5: Browser verify pagination works"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Copy pagination pattern from Tasks Due Today"
+    },
+    {
+      "id": 4,
+      "category": "ui",
+      "priority": "high",
+      "model": "sonnet",
+      "description": "Add Lead Contact and Tasks columns to Recently Created Restaurants",
+      "steps": [
+        "Step 1: Import LeadContactQuickView and TaskCell components",
+        "Step 2: Add Lead Contact column header and cell using LeadContactQuickView",
+        "Step 3: Add Tasks column header and cell using TaskCell",
+        "Step 4: Add handlers for onCreateTask, onStartSequence, onTaskCompleted, onFollowUpRequested",
+        "Step 5: Browser verify columns display correctly with popups working"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Reference Restaurants.jsx lines 995-1051 for implementation pattern"
+    },
+    {
+      "id": 5,
+      "category": "ui",
+      "priority": "high",
+      "model": "sonnet",
+      "description": "Move Tasks Due Today to top of dashboard and implement overdue fallback",
+      "steps": [
+        "Step 1: Move Tasks Due Today JSX block to after Quick Actions section",
+        "Step 2: Add conditional logic: if dueToday < 25 and overdueCount > 0, merge overdue tasks",
+        "Step 3: Update section title to 'Overdue & Due Today' when showing overdue",
+        "Step 4: Update badge display logic accordingly",
+        "Step 5: Browser verify positioning and overdue logic"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Most recently overdue tasks should be shown first when backfilling"
+    },
+    {
+      "id": 6,
+      "category": "ui",
+      "priority": "high",
+      "model": "sonnet",
+      "description": "Fix Lead Scraping Reports header styling (purple to foreground)",
+      "steps": [
+        "Step 1: Find line 305 in Dashboard.jsx",
+        "Step 2: Change text-brand-purple to text-foreground",
+        "Step 3: Browser verify header matches other section headers"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Quick styling fix"
+    },
+    {
+      "id": 7,
+      "category": "ui",
+      "priority": "high",
+      "model": "sonnet",
+      "description": "Create tabbed Heatmap/City Table component in CityBreakdownTab",
+      "steps": [
+        "Step 1: Add Tabs imports from @/components/ui/tabs",
+        "Step 2: Add activeViewTab state defaulting to 'heatmap'",
+        "Step 3: Wrap heatmap and table in single Card with Tabs component",
+        "Step 4: Show Export CSV button only when table tab is active",
+        "Step 5: Keep Summary Stats section outside tabbed content",
+        "Step 6: Browser verify tabs switch correctly with heatmap as default"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "See INVESTIGATION_TASK_2.md for detailed code structure"
+    },
+    {
+      "id": 8,
+      "category": "ui",
+      "priority": "medium",
+      "model": "sonnet",
+      "description": "Remove Opportunities tab from ReportsTabContent",
+      "steps": [
+        "Step 1: Remove OpportunitiesTab import",
+        "Step 2: Remove Opportunity type import",
+        "Step 3: Remove Target icon import",
+        "Step 4: Remove subTab state",
+        "Step 5: Remove handleOpportunityStartScrape function",
+        "Step 6: Remove Tabs wrapper, render CityBreakdownTab directly",
+        "Step 7: Build verify no errors"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Keep OpportunitiesTab.tsx file for future use"
+    },
+    {
+      "id": 9,
+      "category": "ui",
+      "priority": "high",
+      "model": "sonnet",
+      "description": "Enhance Pending Leads preview with Cuisine, Rating, UberEats link columns",
+      "steps": [
+        "Step 1: Add Cuisine column with badges (first 2 + count)",
+        "Step 2: Add Rating column with Star icon + average + review count",
+        "Step 3: Make restaurant name clickable to open LeadDetailModal",
+        "Step 4: Add UberEats platform link under restaurant name",
+        "Step 5: Change Created column to use formatDistanceToNow",
+        "Step 6: Import required icons and date-fns",
+        "Step 7: Browser verify new columns display correctly"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Reference PendingLeadsTable.tsx lines 1149-1235 for implementation"
+    },
+    {
+      "id": 10,
+      "category": "ui",
+      "priority": "high",
+      "model": "sonnet",
+      "description": "Enhance Batch Jobs preview with navigation, restaurants preview, progress bar",
+      "steps": [
+        "Step 1: Make rows clickable with onClick={() => navigate(`/registration-batches/${batch.id}`)}",
+        "Step 2: Add cursor-pointer class to TableRow",
+        "Step 3: Add Restaurants column showing first 2-3 restaurant names",
+        "Step 4: Add Progress Bar column using Progress component",
+        "Step 5: Add Current Step column showing step number/name",
+        "Step 6: Browser verify row clicks navigate and new columns display"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "URL pattern: /registration-batches/:id"
+    },
+    {
+      "id": 11,
+      "category": "ui",
+      "priority": "high",
+      "model": "sonnet",
+      "description": "Create two-column grid for Pending Leads and Batch Jobs",
+      "steps": [
+        "Step 1: Wrap both sections in div with grid grid-cols-1 lg:grid-cols-2 gap-6",
+        "Step 2: Ensure both Cards have backdrop-blur-sm bg-background/95 border-border",
+        "Step 3: Handle feature flag conditions correctly within grid",
+        "Step 4: Browser verify equal-height columns on large screens"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Copy pattern from existing Recent Restaurants + Extractions grid (lines 200-299)"
+    },
+    {
+      "id": 12,
+      "category": "verification",
+      "priority": "high",
+      "model": "sonnet",
+      "description": "Final E2E verification of all Dashboard components",
+      "steps": [
+        "Step 1: Run full build (npm run build)",
+        "Step 2: Navigate to Dashboard in browser",
+        "Step 3: Verify Tasks Due Today at top with correct position",
+        "Step 4: Verify Recent Restaurants pagination (5 pages, 5 rows)",
+        "Step 5: Verify Lead Contact and Tasks columns work with popups",
+        "Step 6: Verify Lead Scraping header is not purple",
+        "Step 7: Verify Heatmap/City Table tabs switch correctly",
+        "Step 8: Verify Opportunities tab is gone",
+        "Step 9: Verify Pending Leads new columns and LeadDetailModal",
+        "Step 10: Verify Batch Jobs navigation and new columns",
+        "Step 11: Verify two-column grid layout",
+        "Step 12: Check console for errors"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Comprehensive verification of all features"
+    }
+  ]
+}
