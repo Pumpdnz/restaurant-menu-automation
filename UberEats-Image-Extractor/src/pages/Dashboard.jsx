@@ -351,216 +351,99 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Pending Leads Preview - Feature flagged */}
-      {isFeatureEnabled('leadScraping') && (
-        <Card className="backdrop-blur-sm bg-background/95 border-border">
-          <CardHeader className="flex flex-row items-center justify-between py-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              Pending Leads
-              <Badge variant="secondary" className="text-xs">
-                {totalPendingLeads}
-              </Badge>
-            </CardTitle>
-            <Link to="/leads?tab=pending">
-              <div className="text-sm text-brand-blue hover:text-brand-blue/80 font-medium flex items-center transition-colors">
-                View All
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </div>
-            </Link>
-          </CardHeader>
-          <CardContent className="p-0">
-            {pendingLeadsLoading ? (
-              <div className="divide-y divide-border">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="p-4">
-                    <Skeleton className="h-4 w-full" />
-                  </div>
-                ))}
-              </div>
-            ) : pendingLeads.length === 0 ? (
-              <div className="p-6 text-center text-muted-foreground text-sm">
-                No pending leads to display
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Restaurant Name</TableHead>
-                    <TableHead className="w-32">City</TableHead>
-                    <TableHead className="w-36">Cuisine</TableHead>
-                    <TableHead className="w-24">Rating</TableHead>
-                    <TableHead className="w-28">Created</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pendingLeads.map((lead) => (
-                    <TableRow key={lead.id} className="hover:bg-muted/50">
-                      <TableCell>
-                        <div>
-                          <div
-                            className="font-medium cursor-pointer hover:text-brand-blue transition-colors"
-                            onClick={() => handleViewLead(lead.id)}
-                          >
-                            {lead.restaurant_name}
-                          </div>
-                          {lead.store_link && (
-                            <a
-                              href={lead.store_link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1 py-0.5"
-                              onClick={(e) => e.stopPropagation()}
+      {/* Two-column grid for Pending Leads and Batch Jobs - Both feature flagged */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Pending Leads Preview - Feature flagged */}
+        {isFeatureEnabled('leadScraping') && (
+          <Card className="backdrop-blur-sm bg-background/95 border-border">
+            <CardHeader className="flex flex-row items-center justify-between py-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                Pending Leads
+                <Badge variant="secondary" className="text-xs">
+                  {totalPendingLeads}
+                </Badge>
+              </CardTitle>
+              <Link to="/leads?tab=pending">
+                <div className="text-sm text-brand-blue hover:text-brand-blue/80 font-medium flex items-center transition-colors">
+                  View All
+                  <ArrowRight className="ml-1 h-4 w-4" />
+                </div>
+              </Link>
+            </CardHeader>
+            <CardContent className="p-0">
+              {pendingLeadsLoading ? (
+                <div className="divide-y divide-border">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="p-4">
+                      <Skeleton className="h-4 w-full" />
+                    </div>
+                  ))}
+                </div>
+              ) : pendingLeads.length === 0 ? (
+                <div className="p-6 text-center text-muted-foreground text-sm">
+                  No pending leads to display
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Restaurant Name</TableHead>
+                      <TableHead className="w-32">City</TableHead>
+                      <TableHead className="w-36">Cuisine</TableHead>
+                      <TableHead className="w-24">Rating</TableHead>
+                      <TableHead className="w-28">Created</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pendingLeads.map((lead) => (
+                      <TableRow key={lead.id} className="hover:bg-muted/50">
+                        <TableCell>
+                          <div>
+                            <div
+                              className="font-medium cursor-pointer hover:text-brand-blue transition-colors"
+                              onClick={() => handleViewLead(lead.id)}
                             >
-                              View on {getPlatformLabel(lead.platform)}
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{lead.city || '-'}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {lead.ubereats_cuisine?.slice(0, 2).map((c, i) => (
-                            <Badge key={i} variant="secondary" className="text-xs">
-                              {c}
-                            </Badge>
-                          ))}
-                          {lead.ubereats_cuisine && lead.ubereats_cuisine.length > 2 && (
-                            <Badge variant="secondary" className="text-xs">
-                              +{lead.ubereats_cuisine.length - 2}
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {lead.ubereats_average_review_rating ? (
-                          <div className="flex items-center gap-1">
-                            <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
-                            <span className="text-sm font-medium">
-                              {lead.ubereats_average_review_rating.toFixed(1)}
-                            </span>
-                            {lead.ubereats_number_of_reviews && (
-                              <span className="text-xs text-muted-foreground">
-                                ({lead.ubereats_number_of_reviews})
-                              </span>
+                              {lead.restaurant_name}
+                            </div>
+                            {lead.store_link && (
+                              <a
+                                href={lead.store_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1 py-0.5"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                View on {getPlatformLabel(lead.platform)}
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
                             )}
                           </div>
-                        ) : (
-                          <span className="text-muted-foreground text-xs">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {formatDistanceToNow(new Date(lead.created_at), {
-                          addSuffix: true,
-                        })}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Recent Batch Registration Jobs - Feature flagged */}
-      {isFeatureEnabled('registrationBatches') && (
-        <Card className="backdrop-blur-sm bg-background/95 border-border">
-          <CardHeader className="flex flex-row items-center justify-between py-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              Recent Batch Jobs
-              <Badge variant="secondary" className="text-xs">
-                {registrationBatches.length}
-              </Badge>
-            </CardTitle>
-            <Link to="/registration-batches">
-              <div className="text-sm text-brand-blue hover:text-brand-blue/80 font-medium flex items-center transition-colors">
-                View All
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </div>
-            </Link>
-          </CardHeader>
-          <CardContent className="p-0">
-            {batchesLoading ? (
-              <div className="divide-y divide-border">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="p-4">
-                    <Skeleton className="h-4 w-full" />
-                  </div>
-                ))}
-              </div>
-            ) : registrationBatches.length === 0 ? (
-              <div className="p-6 text-center text-muted-foreground text-sm">
-                No batch jobs to display
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Job Name</TableHead>
-                    <TableHead className="w-24">Status</TableHead>
-                    <TableHead className="w-32">Current Step</TableHead>
-                    <TableHead className="w-40">Restaurants</TableHead>
-                    <TableHead className="w-32">Progress</TableHead>
-                    <TableHead className="w-28">Created</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {registrationBatches.map((batch) => {
-                    const stepNames = [
-                      'Menu & Branding',
-                      'Contact Search',
-                      'Company Selection',
-                      'Company Details',
-                      'Yolo Config',
-                      'Account Setup'
-                    ];
-                    const currentStepName = stepNames[batch.current_step - 1] || `Step ${batch.current_step}`;
-                    const progressPercent = batch.total_restaurants > 0
-                      ? Math.round((batch.completed_restaurants / batch.total_restaurants) * 100)
-                      : 0;
-
-                    return (
-                      <TableRow
-                        key={batch.id}
-                        className="hover:bg-muted/50 cursor-pointer"
-                        onClick={() => navigate(`/registration-batches/${batch.id}`)}
-                      >
-                        <TableCell className="font-medium">{batch.name}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={
-                              batch.status === 'completed' ? 'text-green-600 border-green-600' :
-                              batch.status === 'processing' || batch.status === 'in_progress' ? 'text-blue-600 border-blue-600' :
-                              batch.status === 'failed' ? 'text-red-600 border-red-600' :
-                              'text-gray-600 border-gray-600'
-                            }
-                          >
-                            {batch.status}
-                          </Badge>
                         </TableCell>
-                        <TableCell className="text-muted-foreground text-xs">
-                          {batch.current_step}: {currentStepName}
+                        <TableCell className="text-muted-foreground">{lead.city || '-'}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {lead.ubereats_cuisine?.slice(0, 2).map((c, i) => (
+                              <Badge key={i} variant="secondary" className="text-xs">
+                                {c}
+                              </Badge>
+                            ))}
+                            {lead.ubereats_cuisine && lead.ubereats_cuisine.length > 2 && (
+                              <Badge variant="secondary" className="text-xs">
+                                +{lead.ubereats_cuisine.length - 2}
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
-                          {batch.jobs && batch.jobs.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {batch.jobs.slice(0, 2).map((job) => (
-                                <div
-                                  key={job.id}
-                                  className="flex items-center gap-1 text-[10px] bg-muted/50 px-1.5 py-0.5 rounded"
-                                  title={job.restaurant?.name}
-                                >
-                                  <Store className="h-2.5 w-2.5 text-muted-foreground" />
-                                  <span className="truncate max-w-[60px]">
-                                    {job.restaurant?.name || 'Unknown'}
-                                  </span>
-                                </div>
-                              ))}
-                              {batch.jobs.length > 2 && (
-                                <span className="text-[10px] text-muted-foreground px-1.5 py-0.5">
-                                  +{batch.jobs.length - 2}
+                          {lead.ubereats_average_review_rating ? (
+                            <div className="flex items-center gap-1">
+                              <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+                              <span className="text-sm font-medium">
+                                {lead.ubereats_average_review_rating.toFixed(1)}
+                              </span>
+                              {lead.ubereats_number_of_reviews && (
+                                <span className="text-xs text-muted-foreground">
+                                  ({lead.ubereats_number_of_reviews})
                                 </span>
                               )}
                             </div>
@@ -568,26 +451,146 @@ export default function Dashboard() {
                             <span className="text-muted-foreground text-xs">-</span>
                           )}
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Progress value={progressPercent} className="h-2 w-20" />
-                            <span className="text-xs text-muted-foreground">{progressPercent}%</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-xs">
-                          {formatDistanceToNow(new Date(batch.created_at), {
+                        <TableCell className="text-muted-foreground text-sm">
+                          {formatDistanceToNow(new Date(lead.created_at), {
                             addSuffix: true,
                           })}
                         </TableCell>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      )}
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Recent Batch Registration Jobs - Feature flagged */}
+        {isFeatureEnabled('registrationBatches') && (
+          <Card className="backdrop-blur-sm bg-background/95 border-border">
+            <CardHeader className="flex flex-row items-center justify-between py-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                Recent Batch Jobs
+                <Badge variant="secondary" className="text-xs">
+                  {registrationBatches.length}
+                </Badge>
+              </CardTitle>
+              <Link to="/registration-batches">
+                <div className="text-sm text-brand-blue hover:text-brand-blue/80 font-medium flex items-center transition-colors">
+                  View All
+                  <ArrowRight className="ml-1 h-4 w-4" />
+                </div>
+              </Link>
+            </CardHeader>
+            <CardContent className="p-0">
+              {batchesLoading ? (
+                <div className="divide-y divide-border">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="p-4">
+                      <Skeleton className="h-4 w-full" />
+                    </div>
+                  ))}
+                </div>
+              ) : registrationBatches.length === 0 ? (
+                <div className="p-6 text-center text-muted-foreground text-sm">
+                  No batch jobs to display
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Job Name</TableHead>
+                      <TableHead className="w-24">Status</TableHead>
+                      <TableHead className="w-32">Current Step</TableHead>
+                      <TableHead className="w-40">Restaurants</TableHead>
+                      <TableHead className="w-32">Progress</TableHead>
+                      <TableHead className="w-28">Created</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {registrationBatches.map((batch) => {
+                      const stepNames = [
+                        'Menu & Branding',
+                        'Contact Search',
+                        'Company Selection',
+                        'Company Details',
+                        'Yolo Config',
+                        'Account Setup'
+                      ];
+                      const currentStepName = stepNames[batch.current_step - 1] || `Step ${batch.current_step}`;
+                      const progressPercent = batch.total_restaurants > 0
+                        ? Math.round((batch.completed_restaurants / batch.total_restaurants) * 100)
+                        : 0;
+
+                      return (
+                        <TableRow
+                          key={batch.id}
+                          className="hover:bg-muted/50 cursor-pointer"
+                          onClick={() => navigate(`/registration-batches/${batch.id}`)}
+                        >
+                          <TableCell className="font-medium">{batch.name}</TableCell>
+                          <TableCell>
+                            <Badge
+                              variant="outline"
+                              className={
+                                batch.status === 'completed' ? 'text-green-600 border-green-600' :
+                                batch.status === 'processing' || batch.status === 'in_progress' ? 'text-blue-600 border-blue-600' :
+                                batch.status === 'failed' ? 'text-red-600 border-red-600' :
+                                'text-gray-600 border-gray-600'
+                              }
+                            >
+                              {batch.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-xs">
+                            {batch.current_step}: {currentStepName}
+                          </TableCell>
+                          <TableCell>
+                            {batch.jobs && batch.jobs.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {batch.jobs.slice(0, 2).map((job) => (
+                                  <div
+                                    key={job.id}
+                                    className="flex items-center gap-1 text-[10px] bg-muted/50 px-1.5 py-0.5 rounded"
+                                    title={job.restaurant?.name}
+                                  >
+                                    <Store className="h-2.5 w-2.5 text-muted-foreground" />
+                                    <span className="truncate max-w-[60px]">
+                                      {job.restaurant?.name || 'Unknown'}
+                                    </span>
+                                  </div>
+                                ))}
+                                {batch.jobs.length > 2 && (
+                                  <span className="text-[10px] text-muted-foreground px-1.5 py-0.5">
+                                    +{batch.jobs.length - 2}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Progress value={progressPercent} className="h-2 w-20" />
+                              <span className="text-xs text-muted-foreground">{progressPercent}%</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-xs">
+                            {formatDistanceToNow(new Date(batch.created_at), {
+                              addSuffix: true,
+                            })}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
 
       {/* Recently Created Restaurants - No feature flag */}
