@@ -8,7 +8,7 @@
 - Testing Method: Combined (Build + Browser)
 
 ## Current State
-- Iteration: 6 / 36
+- Iteration: 7 / 36
 - Status: COMPLETED (2026-01-18)
 - Last Updated: 2026-01-18
 
@@ -18,7 +18,7 @@
 3. Recently Created Restaurants has pagination (5 pages, 5 rows) ✅
 4. Recently Created Restaurants has Lead Contact and Tasks columns ✅
 5. Tasks Due Today moved to top, shows overdue when <25 due today ✅
-6. Lead Scraping header styling fixed (not purple)
+6. Lead Scraping header styling fixed (not purple) ✅
 7. Heatmap/City Table in tabbed component (heatmap default)
 8. Opportunities tab removed from reports
 9. Pending Leads preview has Cuisine, Rating, UberEats link columns
@@ -32,9 +32,9 @@
 - Feature 3: Add pagination to Recently Created Restaurants (Iteration 3)
 - Feature 4: Add Lead Contact and Tasks columns (Iteration 4)
 - Feature 5: Move Tasks Due Today to top with overdue fallback (Iteration 5)
+- Feature 6: Fix Lead Scraping header styling (Iteration 6)
 
 ## Remaining
-- Feature 6: Fix Lead Scraping header styling
 - Feature 7: Create tabbed Heatmap/City Table component
 - Feature 8: Remove Opportunities tab
 - Feature 9: Enhance Pending Leads preview columns
@@ -46,16 +46,14 @@
 (none)
 
 ## Last Verification Result
-Feature 5 - PASSED
-- Added logic to merge overdue tasks when due today < 25 (using React.useMemo)
-- Moved Tasks Due Today section to after Quick Actions (lines 200-308)
-- Updated section title to show "Overdue & Due Today" when showingOverdue is true
-- Updated badge to show count of overdue tasks when backfilling
-- Updated pagination to use combinedTasks instead of allTasksDueToday
+Feature 6 - PASSED
+- Changed text-brand-purple to text-foreground on Dashboard.jsx line 314
+- Header now matches default text color used by other sections (CardTitle)
+- Provides visual consistency across all dashboard sections
 - Build passes with no errors
 
 ## Next Session Instructions
-Begin implementation with Feature 6: Fix Lead Scraping header styling (change text-brand-purple to text-foreground).
+Begin implementation with Feature 7: Create tabbed Heatmap/City Table component in CityBreakdownTab.tsx.
 
 ## Session History
 | Iteration | Session ID | Timestamp | Feature | Result |
@@ -65,6 +63,7 @@ Begin implementation with Feature 6: Fix Lead Scraping header styling (change te
 | 3 | ae983143-1f20-4854-bbdc-0a4a8dcd5afe | 2026-01-18 | Feature 3: Add pagination | PASSED |
 | 4 | 6b312aa1-7617-452f-a9e7-72bee91bfa7d | 2026-01-18 | Feature 4: Lead Contact + Tasks columns | PASSED |
 | 5 | d81b00b4-586a-42b4-9d67-1d2fb96858c1 | 2026-01-18 | Feature 5: Move Tasks Due Today to top | PASSED |
+| 6 | 092922ab-39ee-4b9e-b680-3f5cbd35ce9b | 2026-01-18 | Feature 6: Fix Lead Scraping header styling | PASSED |
 
 ## Iteration History
 | # | Changes Made | Result | Blocker |
@@ -74,3 +73,4 @@ Begin implementation with Feature 6: Fix Lead Scraping header styling (change te
 | 3 | Added pagination to Recently Created Restaurants (5 pages, 5 rows) | Success | None |
 | 4 | Added Lead Contact and Tasks columns to Recently Created Restaurants | Success | None |
 | 5 | Moved Tasks Due Today to top, added overdue fallback logic | Success | None |
+| 6 | Fixed Lead Scraping header styling (text-brand-purple to text-foreground) | Success | None |
