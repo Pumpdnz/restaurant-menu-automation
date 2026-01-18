@@ -311,7 +311,7 @@ export default function Dashboard() {
       {isFeatureEnabled('leadScraping') && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-brand-purple">Lead Scraping</h2>
+            <h2 className="text-lg font-semibold text-foreground">Lead Scraping</h2>
             <Link
               to="/leads?tab=reports"
               className="text-sm text-brand-blue hover:text-brand-blue/80 font-medium flex items-center transition-colors"
