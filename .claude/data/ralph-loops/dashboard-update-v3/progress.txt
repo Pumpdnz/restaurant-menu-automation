@@ -9,7 +9,7 @@
 
 ## Current State
 - Iteration: 7 / 36
-- Status: COMPLETED (2026-01-18)
+- Status: IN_PROGRESS (2026-01-18)
 - Last Updated: 2026-01-18
 
 ## Completion Criteria
@@ -19,7 +19,7 @@
 4. Recently Created Restaurants has Lead Contact and Tasks columns ✅
 5. Tasks Due Today moved to top, shows overdue when <25 due today ✅
 6. Lead Scraping header styling fixed (not purple) ✅
-7. Heatmap/City Table in tabbed component (heatmap default)
+7. Heatmap/City Table in tabbed component (heatmap default) ✅
 8. Opportunities tab removed from reports
 9. Pending Leads preview has Cuisine, Rating, UberEats link columns
 10. Batch Jobs clickable with navigation, restaurants preview, progress bar
@@ -33,9 +33,9 @@
 - Feature 4: Add Lead Contact and Tasks columns (Iteration 4)
 - Feature 5: Move Tasks Due Today to top with overdue fallback (Iteration 5)
 - Feature 6: Fix Lead Scraping header styling (Iteration 6)
+- Feature 7: Create tabbed Heatmap/City Table component (Iteration 7)
 
 ## Remaining
-- Feature 7: Create tabbed Heatmap/City Table component
 - Feature 8: Remove Opportunities tab
 - Feature 9: Enhance Pending Leads preview columns
 - Feature 10: Enhance Batch Jobs with navigation and columns
@@ -46,14 +46,17 @@
 (none)
 
 ## Last Verification Result
-Feature 6 - PASSED
-- Changed text-brand-purple to text-foreground on Dashboard.jsx line 314
-- Header now matches default text color used by other sections (CardTitle)
-- Provides visual consistency across all dashboard sections
-- Build passes with no errors
+Feature 7 - PASSED
+- Added Tabs imports (TabsList, TabsContent, TabsTrigger) from @/components/ui/tabs
+- Added activeViewTab state defaulting to 'heatmap'
+- Restructured heatmap and table into single Card with Tabs component
+- Export CSV button conditionally rendered only when table tab active
+- Summary Stats section remains outside tabbed content as required
+- Build passes with no TypeScript errors
+- Code review confirms all 6 steps completed correctly
 
 ## Next Session Instructions
-Begin implementation with Feature 7: Create tabbed Heatmap/City Table component in CityBreakdownTab.tsx.
+Begin implementation with Feature 8: Remove Opportunities tab from ReportsTabContent.tsx.
 
 ## Session History
 | Iteration | Session ID | Timestamp | Feature | Result |
@@ -64,6 +67,7 @@ Begin implementation with Feature 7: Create tabbed Heatmap/City Table component 
 | 4 | 6b312aa1-7617-452f-a9e7-72bee91bfa7d | 2026-01-18 | Feature 4: Lead Contact + Tasks columns | PASSED |
 | 5 | d81b00b4-586a-42b4-9d67-1d2fb96858c1 | 2026-01-18 | Feature 5: Move Tasks Due Today to top | PASSED |
 | 6 | 092922ab-39ee-4b9e-b680-3f5cbd35ce9b | 2026-01-18 | Feature 6: Fix Lead Scraping header styling | PASSED |
+| 7 | f371610f-a088-43c0-825a-ff97b1a00c8e | 2026-01-18 | Feature 7: Create tabbed Heatmap/City Table | PASSED |
 
 ## Iteration History
 | # | Changes Made | Result | Blocker |
@@ -74,3 +78,4 @@ Begin implementation with Feature 7: Create tabbed Heatmap/City Table component 
 | 4 | Added Lead Contact and Tasks columns to Recently Created Restaurants | Success | None |
 | 5 | Moved Tasks Due Today to top, added overdue fallback logic | Success | None |
 | 6 | Fixed Lead Scraping header styling (text-brand-purple to text-foreground) | Success | None |
+| 7 | Created tabbed Heatmap/City Table component in CityBreakdownTab.tsx | Success | None |

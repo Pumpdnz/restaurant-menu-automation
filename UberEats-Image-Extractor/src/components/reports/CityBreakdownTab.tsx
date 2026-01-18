@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HeatmapGrid } from './visualizations/HeatmapGrid';
 import { StatCard } from './visualizations/StatCard';
 import {
@@ -19,7 +20,9 @@ import {
   BarChart3,
   Users,
   MapPin,
-  Utensils
+  Utensils,
+  Grid,
+  Table as TableIcon
 } from 'lucide-react';
 import {
   Table,
@@ -187,6 +190,7 @@ function CuisineCoverageIndicators({ city, cuisines, onCuisineClick }: CuisineCo
 
 export function CityBreakdownTab({ filters, onStartScrape }: CityBreakdownTabProps) {
   const [expandedCities, setExpandedCities] = useState<Set<string>>(new Set());
+  const [activeViewTab, setActiveViewTab] = useState('heatmap');
 
   const { data: summary, isLoading: summaryLoading } = useAnalyticsSummary(filters);
   const { data: coverage, isLoading: coverageLoading } = useAnalyticsCoverage(filters);
@@ -261,180 +265,192 @@ export function CityBreakdownTab({ filters, onStartScrape }: CityBreakdownTabPro
 
   return (
     <div className="space-y-6">
-      {/* Heatmap Section */}
-      {heatmap && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Coverage Heatmap (City x Cuisine)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <HeatmapGrid
-              cities={heatmap.cities}
-              cuisines={heatmap.cuisines}
-              matrix={heatmap.matrix}
-              maxValue={heatmap.maxValue}
-              onCellClick={(city, cuisine, value) => {
-                if (onStartScrape) {
-                  // Calculate next page offset from coverage data
-                  let pageOffset = 1;
-                  if (value > 0 && coverage) {
-                    const cityData = coverage.find(c => c.city === city);
-                    if (cityData) {
-                      const cuisineData = cityData.cuisines.find(c =>
-                        c.name.toLowerCase() === cuisine.toLowerCase() ||
-                        c.name.toLowerCase().replace(/[^a-z0-9]/g, '-') === cuisine.toLowerCase()
-                      );
-                      if (cuisineData && cuisineData.pages_scraped.length > 0) {
-                        const maxPage = Math.max(...cuisineData.pages_scraped);
-                        pageOffset = Math.min(maxPage + 1, 10); // Cap at page 10
-                      }
-                    }
-                  }
-                  onStartScrape(city, cuisine, pageOffset);
-                }
-              }}
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Table Section */}
+      {/* Tabbed Coverage Overview */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between py-3">
-          <CardTitle className="text-base">City Breakdown</CardTitle>
-          <Button variant="outline" size="sm" onClick={exportCSV}>
-            <Download className="h-4 w-4 mr-1" />
-            Export CSV
-          </Button>
+          <CardTitle className="text-base">Coverage Overview</CardTitle>
+          {/* Export button only shown when table tab is active */}
+          {activeViewTab === 'table' && (
+            <Button variant="outline" size="sm" onClick={exportCSV}>
+              <Download className="h-4 w-4 mr-1" />
+              Export CSV
+            </Button>
+          )}
         </CardHeader>
-        <CardContent className="p-0">
-          <Table style={{ tableLayout: 'fixed' }}>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-8 px-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0"
-                    onClick={toggleExpandAll}
-                    disabled={allCityNames.length === 0}
-                    title={isAllExpanded ? 'Collapse All' : 'Expand All'}
-                  >
-                    {isAllExpanded ? (
-                      <ChevronsDownUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronsUpDown className="h-4 w-4" />
-                    )}
-                  </Button>
-                </TableHead>
-                <TableHead className="min-w-[140px]">City</TableHead>
-                <TableHead className="w-28 text-center">Total Leads</TableHead>
-                <TableHead className="w-20 text-center">Jobs</TableHead>
-                <TableHead className="w-24 text-center">Cuisines</TableHead>
-                <TableHead className="min-w-[280px]">Top 10 Cuisine Coverage</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {coverage?.map((city) => (
-                <React.Fragment key={city.city}>
-                  <TableRow
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => toggleCity(city.city)}
-                  >
-                    <TableCell className="w-8 px-2">
-                      <div className="h-6 w-6 flex items-center justify-center">
-                        <ChevronDown
-                          className={cn(
-                            "h-4 w-4 transition-transform duration-200",
-                            !expandedCities.has(city.city) && "-rotate-90"
-                          )}
-                        />
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-medium">{city.city}</TableCell>
-                    <TableCell className="text-center">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          window.open(`/leads?tab=pending&city=${encodeURIComponent(city.city)}`, '_blank');
-                        }}
-                        className="hover:text-brand-blue cursor-pointer transition-colors"
-                        title={`View ${city.total_leads.toLocaleString()} pending leads in ${city.city}`}
+        <CardContent>
+          <Tabs value={activeViewTab} onValueChange={setActiveViewTab}>
+            <TabsList>
+              <TabsTrigger value="heatmap" className="gap-1">
+                <Grid className="h-4 w-4" />
+                Heatmap
+              </TabsTrigger>
+              <TabsTrigger value="table" className="gap-1">
+                <TableIcon className="h-4 w-4" />
+                City Table
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="heatmap" className="mt-4">
+              {heatmap && (
+                <HeatmapGrid
+                  cities={heatmap.cities}
+                  cuisines={heatmap.cuisines}
+                  matrix={heatmap.matrix}
+                  maxValue={heatmap.maxValue}
+                  onCellClick={(city, cuisine, value) => {
+                    if (onStartScrape) {
+                      // Calculate next page offset from coverage data
+                      let pageOffset = 1;
+                      if (value > 0 && coverage) {
+                        const cityData = coverage.find(c => c.city === city);
+                        if (cityData) {
+                          const cuisineData = cityData.cuisines.find(c =>
+                            c.name.toLowerCase() === cuisine.toLowerCase() ||
+                            c.name.toLowerCase().replace(/[^a-z0-9]/g, '-') === cuisine.toLowerCase()
+                          );
+                          if (cuisineData && cuisineData.pages_scraped.length > 0) {
+                            const maxPage = Math.max(...cuisineData.pages_scraped);
+                            pageOffset = Math.min(maxPage + 1, 10); // Cap at page 10
+                          }
+                        }
+                      }
+                      onStartScrape(city, cuisine, pageOffset);
+                    }
+                  }}
+                />
+              )}
+            </TabsContent>
+
+            <TabsContent value="table" className="mt-4">
+              <Table style={{ tableLayout: 'fixed' }}>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-8 px-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={toggleExpandAll}
+                        disabled={allCityNames.length === 0}
+                        title={isAllExpanded ? 'Collapse All' : 'Expand All'}
                       >
-                        {city.total_leads.toLocaleString()}
-                      </button>
-                    </TableCell>
-                    <TableCell className="text-center">{city.total_jobs}</TableCell>
-                    <TableCell className="text-center">{city.cuisines.length}</TableCell>
-                    <TableCell>
-                      <CuisineCoverageIndicators
-                        city={city.city}
-                        cuisines={city.cuisines}
-                        onCuisineClick={onStartScrape ? (cuisineSlug) => onStartScrape(city.city, cuisineSlug, 1) : undefined}
-                      />
-                    </TableCell>
+                        {isAllExpanded ? (
+                          <ChevronsDownUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronsUpDown className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="min-w-[140px]">City</TableHead>
+                    <TableHead className="w-28 text-center">Total Leads</TableHead>
+                    <TableHead className="w-20 text-center">Jobs</TableHead>
+                    <TableHead className="w-24 text-center">Cuisines</TableHead>
+                    <TableHead className="min-w-[280px]">Top 10 Cuisine Coverage</TableHead>
                   </TableRow>
-                  {/* Animated expanded cuisines */}
-                  <Collapsible open={expandedCities.has(city.city)} asChild>
-                    <TableRow className="hover:bg-transparent border-0 p-0">
-                      <TableCell colSpan={6} className="p-0 border-0">
-                        <CollapsibleContent className="data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden">
-                          <div className="bg-muted/30">
-                            {city.cuisines.map((cuisine, idx) => (
-                              <div
-                                key={`${city.city}-${cuisine.name}`}
-                                className={cn(
-                                  "grid items-center",
-                                  idx < city.cuisines.length - 1 && "border-b border-muted"
-                                )}
-                                style={{ gridTemplateColumns: '32px minmax(140px, 1fr) 112px 80px 96px minmax(280px, 1fr)' }}
-                              >
-                                <div className="py-2"></div>
-                                <div className="pl-6 py-2 text-sm text-muted-foreground">
-                                  {cuisine.name}
-                                </div>
-                                <div className="text-center py-2 text-sm">
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      window.open(`/leads?tab=pending&city=${encodeURIComponent(city.city)}&cuisine=${encodeURIComponent(cuisine.name)}`, '_blank');
-                                    }}
-                                    className="hover:text-brand-blue cursor-pointer transition-colors"
-                                    title={`View ${cuisine.leads} pending leads for ${cuisine.name} in ${city.city}`}
-                                  >
-                                    {cuisine.leads}
-                                  </button>
-                                </div>
-                                <div className="text-center py- text-sm">{cuisine.jobs}</div>
-                                <div className="py-2"></div>
-                                <div className="py-2 px-4">
-                                  <PageIndicators
-                                    pagesScraped={cuisine.pages_scraped}
-                                    pageJobs={cuisine.page_jobs}
-                                    onPageClick={onStartScrape ? (page) => onStartScrape(city.city, cuisine.name, page) : undefined}
-                                    onScrapedPageClick={() => {}}
-                                  />
-                                </div>
-                              </div>
-                            ))}
+                </TableHeader>
+                <TableBody>
+                  {coverage?.map((city) => (
+                    <React.Fragment key={city.city}>
+                      <TableRow
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => toggleCity(city.city)}
+                      >
+                        <TableCell className="w-8 px-2">
+                          <div className="h-6 w-6 flex items-center justify-center">
+                            <ChevronDown
+                              className={cn(
+                                "h-4 w-4 transition-transform duration-200",
+                                !expandedCities.has(city.city) && "-rotate-90"
+                              )}
+                            />
                           </div>
-                        </CollapsibleContent>
+                        </TableCell>
+                        <TableCell className="font-medium">{city.city}</TableCell>
+                        <TableCell className="text-center">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(`/leads?tab=pending&city=${encodeURIComponent(city.city)}`, '_blank');
+                            }}
+                            className="hover:text-brand-blue cursor-pointer transition-colors"
+                            title={`View ${city.total_leads.toLocaleString()} pending leads in ${city.city}`}
+                          >
+                            {city.total_leads.toLocaleString()}
+                          </button>
+                        </TableCell>
+                        <TableCell className="text-center">{city.total_jobs}</TableCell>
+                        <TableCell className="text-center">{city.cuisines.length}</TableCell>
+                        <TableCell>
+                          <CuisineCoverageIndicators
+                            city={city.city}
+                            cuisines={city.cuisines}
+                            onCuisineClick={onStartScrape ? (cuisineSlug) => onStartScrape(city.city, cuisineSlug, 1) : undefined}
+                          />
+                        </TableCell>
+                      </TableRow>
+                      {/* Animated expanded cuisines */}
+                      <Collapsible open={expandedCities.has(city.city)} asChild>
+                        <TableRow className="hover:bg-transparent border-0 p-0">
+                          <TableCell colSpan={6} className="p-0 border-0">
+                            <CollapsibleContent className="data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden">
+                              <div className="bg-muted/30">
+                                {city.cuisines.map((cuisine, idx) => (
+                                  <div
+                                    key={`${city.city}-${cuisine.name}`}
+                                    className={cn(
+                                      "grid items-center",
+                                      idx < city.cuisines.length - 1 && "border-b border-muted"
+                                    )}
+                                    style={{ gridTemplateColumns: '32px minmax(140px, 1fr) 112px 80px 96px minmax(280px, 1fr)' }}
+                                  >
+                                    <div className="py-2"></div>
+                                    <div className="pl-6 py-2 text-sm text-muted-foreground">
+                                      {cuisine.name}
+                                    </div>
+                                    <div className="text-center py-2 text-sm">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          window.open(`/leads?tab=pending&city=${encodeURIComponent(city.city)}&cuisine=${encodeURIComponent(cuisine.name)}`, '_blank');
+                                        }}
+                                        className="hover:text-brand-blue cursor-pointer transition-colors"
+                                        title={`View ${cuisine.leads} pending leads for ${cuisine.name} in ${city.city}`}
+                                      >
+                                        {cuisine.leads}
+                                      </button>
+                                    </div>
+                                    <div className="text-center py- text-sm">{cuisine.jobs}</div>
+                                    <div className="py-2"></div>
+                                    <div className="py-2 px-4">
+                                      <PageIndicators
+                                        pagesScraped={cuisine.pages_scraped}
+                                        pageJobs={cuisine.page_jobs}
+                                        onPageClick={onStartScrape ? (page) => onStartScrape(city.city, cuisine.name, page) : undefined}
+                                        onScrapedPageClick={() => {}}
+                                      />
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </CollapsibleContent>
+                          </TableCell>
+                        </TableRow>
+                      </Collapsible>
+                    </React.Fragment>
+                  ))}
+                  {(!coverage || coverage.length === 0) && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        No coverage data available
                       </TableCell>
                     </TableRow>
-                  </Collapsible>
-                </React.Fragment>
-              ))}
-              {(!coverage || coverage.length === 0) && (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    No coverage data available
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                  )}
+                </TableBody>
+              </Table>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 
