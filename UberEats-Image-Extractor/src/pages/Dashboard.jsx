@@ -10,8 +10,11 @@ import {
   ClipboardList,
   User,
   Mail,
-  Phone
+  Phone,
+  Star,
+  ExternalLink
 } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 import { cn } from '../lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -22,6 +25,7 @@ import { ReportsTabContent } from '../components/reports/ReportsTabContent';
 import { CreateTaskModal } from '../components/tasks/CreateTaskModal';
 import { LeadContactQuickView } from '../components/restaurants/LeadContactQuickView';
 import { TaskCell } from '../components/restaurants/TaskCell';
+import { LeadDetailModal } from '../components/leads/LeadDetailModal';
 import { useAuth } from '../context/AuthContext';
 import { usePendingLeadsPreview, useRecentRegistrationBatches, useTasksDueToday, useOverdueTasksCount, useRecentRestaurants } from '../hooks/useDashboard';
 
@@ -40,6 +44,10 @@ export default function Dashboard() {
   // Dialog state for CreateTaskModal
   const [createTaskModalOpen, setCreateTaskModalOpen] = useState(false);
 
+  // Dialog state for LeadDetailModal
+  const [selectedLeadId, setSelectedLeadId] = useState(null);
+  const [isLeadDetailModalOpen, setIsLeadDetailModalOpen] = useState(false);
+
   // Callback for ReportsTabContent to trigger dialog with prefill data
   // ReportsTabContent passes an object with { city, cuisine, pageOffset }
   const handleStartScrape = (params) => {
@@ -49,6 +57,23 @@ export default function Dashboard() {
       pageOffset: params.pageOffset,
     });
     setCreateJobOpen(true);
+  };
+
+  // Helper function for platform labels
+  const getPlatformLabel = (platform) => {
+    const labels = {
+      ubereats: 'UberEats',
+      doordash: 'DoorDash',
+      google_maps: 'Google Maps',
+      delivereasy: 'DeliverEasy',
+    };
+    return labels[platform] || platform;
+  };
+
+  // Lead detail handlers
+  const handleViewLead = (leadId) => {
+    setSelectedLeadId(leadId);
+    setIsLeadDetailModalOpen(true);
   };
 
   // Pending Leads Preview
@@ -360,16 +385,72 @@ export default function Dashboard() {
                   <TableRow>
                     <TableHead>Restaurant Name</TableHead>
                     <TableHead className="w-32">City</TableHead>
-                    <TableHead className="w-32">Created</TableHead>
+                    <TableHead className="w-36">Cuisine</TableHead>
+                    <TableHead className="w-24">Rating</TableHead>
+                    <TableHead className="w-28">Created</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {pendingLeads.map((lead) => (
                     <TableRow key={lead.id} className="hover:bg-muted/50">
-                      <TableCell className="font-medium">{lead.restaurant_name}</TableCell>
+                      <TableCell>
+                        <div>
+                          <div
+                            className="font-medium cursor-pointer hover:text-brand-blue transition-colors"
+                            onClick={() => handleViewLead(lead.id)}
+                          >
+                            {lead.restaurant_name}
+                          </div>
+                          {lead.store_link && (
+                            <a
+                              href={lead.store_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1 py-0.5"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              View on {getPlatformLabel(lead.platform)}
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{lead.city || '-'}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {lead.ubereats_cuisine?.slice(0, 2).map((c, i) => (
+                            <Badge key={i} variant="secondary" className="text-xs">
+                              {c}
+                            </Badge>
+                          ))}
+                          {lead.ubereats_cuisine && lead.ubereats_cuisine.length > 2 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{lead.ubereats_cuisine.length - 2}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {lead.ubereats_average_review_rating ? (
+                          <div className="flex items-center gap-1">
+                            <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+                            <span className="text-sm font-medium">
+                              {lead.ubereats_average_review_rating.toFixed(1)}
+                            </span>
+                            {lead.ubereats_number_of_reviews && (
+                              <span className="text-xs text-muted-foreground">
+                                ({lead.ubereats_number_of_reviews})
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">-</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
-                        {new Date(lead.created_at).toLocaleDateString()}
+                        {formatDistanceToNow(new Date(lead.created_at), {
+                          addSuffix: true,
+                        })}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -654,6 +735,16 @@ export default function Dashboard() {
         open={createTaskModalOpen}
         onClose={() => setCreateTaskModalOpen(false)}
         onSuccess={() => setCreateTaskModalOpen(false)}
+      />
+
+      {/* Lead Detail Modal */}
+      <LeadDetailModal
+        open={isLeadDetailModalOpen}
+        leadId={selectedLeadId}
+        onClose={() => {
+          setIsLeadDetailModalOpen(false);
+          setSelectedLeadId(null);
+        }}
       />
     </div>
   );

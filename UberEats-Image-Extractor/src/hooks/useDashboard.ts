@@ -36,6 +36,10 @@ export interface DashboardPendingLead {
   restaurant_name: string;
   city?: string;
   created_at: string;
+  store_link?: string;
+  platform?: string;
+  ubereats_cuisine?: string[];
+  ubereats_average_review_rating?: number;
   ubereats_number_of_reviews?: string;
 }
 

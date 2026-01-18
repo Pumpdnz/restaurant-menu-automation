@@ -8,7 +8,7 @@
 - Testing Method: Combined (Build + Browser)
 
 ## Current State
-- Iteration: 9 / 36
+- Iteration: 10 / 36
 - Status: IN_PROGRESS (2026-01-18)
 - Last Updated: 2026-01-18
 
@@ -35,9 +35,9 @@
 - Feature 6: Fix Lead Scraping header styling (Iteration 6)
 - Feature 7: Create tabbed Heatmap/City Table component (Iteration 7)
 - Feature 8: Remove Opportunities tab from reports (Iteration 8)
+- Feature 9: Enhance Pending Leads preview with Cuisine, Rating, UberEats link columns (Iteration 9)
 
 ## Remaining
-- Feature 9: Enhance Pending Leads preview columns
 - Feature 10: Enhance Batch Jobs with navigation and columns
 - Feature 11: Create two-column grid layout
 - Feature 12: Final E2E verification
@@ -46,18 +46,19 @@
 (none)
 
 ## Last Verification Result
-Feature 8 - PASSED
-- Removed OpportunitiesTab import
-- Removed Opportunity type import
-- Removed Target icon import
-- Removed subTab state
-- Removed handleOpportunityStartScrape function
-- Removed Tabs wrapper, CityBreakdownTab now renders directly
+Feature 9 - PASSED
+- Added Cuisine column with badges (first 2 + count)
+- Added Rating column with Star icon + average + review count
+- Made restaurant name clickable to open LeadDetailModal
+- Added UberEats platform link under restaurant name
+- Changed Created column to use formatDistanceToNow for relative time
+- Added required imports: Star, ExternalLink from lucide-react, formatDistanceToNow from date-fns
+- Enhanced DashboardPendingLead interface with store_link, platform, ubereats_cuisine fields
+- Added LeadDetailModal component and state handlers
 - Build passes with no TypeScript errors
-- OpportunitiesTab.tsx file kept for future use
 
 ## Next Session Instructions
-Begin implementation with Feature 9: Enhance Pending Leads preview with Cuisine, Rating, UberEats link columns.
+Begin implementation with Feature 10: Enhance Batch Jobs with navigation, restaurants preview, and progress bar columns.
 
 ## Session History
 | Iteration | Session ID | Timestamp | Feature | Result |
@@ -70,6 +71,7 @@ Begin implementation with Feature 9: Enhance Pending Leads preview with Cuisine,
 | 6 | 092922ab-39ee-4b9e-b680-3f5cbd35ce9b | 2026-01-18 | Feature 6: Fix Lead Scraping header styling | PASSED |
 | 7 | f371610f-a088-43c0-825a-ff97b1a00c8e | 2026-01-18 | Feature 7: Create tabbed Heatmap/City Table | PASSED |
 | 8 | 3c7ef77d-6d43-438e-bb85-3e885a4ef8ef | 2026-01-18 | Feature 8: Remove Opportunities tab | PASSED |
+| 9 | fb4941f9-e8c2-4bb0-b991-ce5c61e68e55 | 2026-01-18 | Feature 9: Enhance Pending Leads preview | PASSED |
 
 ## Iteration History
 | # | Changes Made | Result | Blocker |
@@ -82,3 +84,4 @@ Begin implementation with Feature 9: Enhance Pending Leads preview with Cuisine,
 | 6 | Fixed Lead Scraping header styling (text-brand-purple to text-foreground) | Success | None |
 | 7 | Created tabbed Heatmap/City Table component in CityBreakdownTab.tsx | Success | None |
 | 8 | Removed Opportunities tab from ReportsTabContent.tsx | Success | None |
+| 9 | Enhanced Pending Leads preview with Cuisine, Rating, UberEats link columns | Success | None |
