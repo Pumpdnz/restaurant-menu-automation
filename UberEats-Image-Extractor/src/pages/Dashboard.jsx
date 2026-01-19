@@ -798,9 +798,11 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* Tasks Due Today - Feature flagged, moved to top */}
-      {isFeatureEnabled('tasksAndSequences') && (
-        <Card className="backdrop-blur-sm bg-background/95 border-border">
+      {/* Two-column grid for Tasks Due Today and Recently Created Restaurants */}
+      <div className="grid grid-cols-1 min-[2150px]:grid-cols-2 gap-6">
+        {/* Tasks Due Today - Position 1 (left) - Feature flagged */}
+        {isFeatureEnabled('tasksAndSequences') && (
+          <Card className="backdrop-blur-sm bg-background/95 border-border">
           <CardHeader className="flex flex-row items-center justify-between py-3">
             <CardTitle className="text-base flex items-center gap-2">
               {showingOverdue ? 'Overdue & Due Today' : 'Tasks Due Today'}
@@ -1035,28 +1037,9 @@ export default function Dashboard() {
             )}
           </CardContent>
         </Card>
-      )}
+        )}
 
-      {/* Lead Scraping Reports - Feature flagged */}
-      {isFeatureEnabled('leadScraping') && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">Lead Scraping</h2>
-            <Link
-              to="/leads?tab=reports"
-              className="text-sm text-brand-blue hover:text-brand-blue/80 font-medium flex items-center transition-colors"
-            >
-              View Full Reports
-              <ArrowRight className="ml-1 h-4 w-4" />
-            </Link>
-          </div>
-          <ReportsTabContent onStartScrape={handleStartScrape} />
-        </div>
-      )}
-
-      {/* Two-column grid for Recent Restaurants, Pending Leads, and Batch Jobs */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recently Created Restaurants - Position 1 (left) */}
+        {/* Recently Created Restaurants - Position 2 (right) */}
         <Card className="backdrop-blur-sm bg-background/95 border-border">
           <CardHeader className="py-3 space-y-3">
             <div className="flex items-center justify-between">
@@ -1210,8 +1193,28 @@ export default function Dashboard() {
             )}
           </CardContent>
         </Card>
+      </div>
 
-        {/* Pending Leads Preview - Position 2 (right) - Feature flagged */}
+      {/* Lead Scraping Reports - Feature flagged */}
+      {isFeatureEnabled('leadScraping') && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-foreground">Lead Scraping</h2>
+            <Link
+              to="/leads?tab=reports"
+              className="text-sm text-brand-blue hover:text-brand-blue/80 font-medium flex items-center transition-colors"
+            >
+              View Full Reports
+              <ArrowRight className="ml-1 h-4 w-4" />
+            </Link>
+          </div>
+          <ReportsTabContent onStartScrape={handleStartScrape} />
+        </div>
+      )}
+
+      {/* Two-column grid for Pending Leads and Batch Jobs */}
+      <div className="grid grid-cols-1 min-[1800px]:grid-cols-2 gap-6">
+        {/* Pending Leads Preview - Feature flagged */}
         {isFeatureEnabled('leadScraping') && (
           <div className="space-y-2">
             {/* Bulk Actions Bar */}
@@ -1495,7 +1498,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Recent Batch Registration Jobs - Position 3 - Feature flagged */}
+        {/* Recent Batch Registration Jobs - Feature flagged */}
         {isFeatureEnabled('registrationBatches') && (
           <Card className="backdrop-blur-sm bg-background/95 border-border">
             <CardHeader className="flex flex-row items-center justify-between py-3">
