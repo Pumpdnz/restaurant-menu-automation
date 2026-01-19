@@ -77,3 +77,8 @@ TODO.txt
 
 # Claude Data
 .claude/data/sessions/
+.mcp.json
+
+# Parallel Worktrees
+trees/
+.ralph-config
