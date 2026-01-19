@@ -33,7 +33,7 @@ const ALLOWED_COMMANDS = new Set([
     // Build tools
     'make', 'cargo', 'go',
     // Process management
-    'pgrep', 'ps', 'sleep', 'timeout',
+    'pgrep', 'ps', 'sleep', 'timeout', 'lsof',
     // Tmux (for ralph-loop-wrapper)
     'tmux',
     // Source (for bash scripts)

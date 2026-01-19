@@ -32,11 +32,13 @@ Use `AskUserQuestion()` to gather Ralph Loop specific requirements:
 ```
 - "What testing approach is required?"
   Options:
-  - Browser verification (Claude in Chrome) - For frontend/UI changes
+  - Browser verification (Chrome DevTools MCP) - For frontend/UI changes
   - Playwright scripting - For automated UI testing
   - API testing - For backend endpoints
   - Database verification - For data layer changes
   - Combined approach - Multiple testing methods
+
+Note: Use Chrome DevTools MCP (not Claude in Chrome) - Claude in Chrome tools don't work in spawned sessions.
 ```
 
 **Question Set 2: Success Criteria**

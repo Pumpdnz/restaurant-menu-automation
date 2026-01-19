@@ -49,7 +49,7 @@
       "category": "ui",
       "priority": "medium",
       "model": "sonnet",
-      "description": "Example: Browser-based UI verification using Claude in Chrome",
+      "description": "Example: Browser-based UI verification using Chrome dev tools mcp server tools",
       "steps": [
         "Step 1: Navigate to page",
         "Step 2: Verify UI elements render correctly",

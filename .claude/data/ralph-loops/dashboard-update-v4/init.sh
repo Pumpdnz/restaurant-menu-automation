@@ -1,6 +1,6 @@
 #!/bin/bash
-# init.sh - Environment verification for Ralph Loop: {TASK_NAME}
-# Generated: {TIMESTAMP}
+# init.sh - Environment verification for Ralph Loop: dashboard-update-v4
+# Generated: 2026-01-19
 #
 # This script verifies the dev server is running.
 # The server should be started BEFORE beginning the Ralph Loop.
@@ -8,19 +8,12 @@
 
 set -e
 
-# Default values (from template generation)
-FRONTEND_PORT={FRONTEND_PORT}
-BACKEND_PORT={BACKEND_PORT}
-PROJECT_PATH="{PROJECT_PATH}"
-
-# Load worktree-specific config if exists (overrides defaults)
-if [ -f "$PROJECT_PATH/.ralph-config" ]; then
-    echo "Loading worktree config from .ralph-config"
-    source "$PROJECT_PATH/.ralph-config"
-fi
+FRONTEND_PORT=5007
+BACKEND_PORT=3007
+PROJECT_PATH="/Users/giannimunro/Desktop/cursor-projects/automation"
 
 echo "=== Ralph Loop Environment Check ==="
-echo "Task: {TASK_NAME}"
+echo "Task: dashboard-update-v4"
 echo "Frontend Port: $FRONTEND_PORT"
 echo "Backend Port: $BACKEND_PORT"
 
@@ -69,6 +62,3 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "✅ Environment ready for Ralph Loop"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Frontend URL: http://localhost:$FRONTEND_PORT"
-echo ""
-echo "Note: Browser sessions use --isolated mode."
-echo "Each session gets a fresh Chrome profile - authentication required."

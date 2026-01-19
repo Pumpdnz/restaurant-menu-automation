@@ -183,7 +183,7 @@
       ],
       "passes": true,
       "completed_iteration": 10,
-      "notes": "Moved Recently Created Restaurants section from full-width bottom position to 2-column grid position 1 (left). Updated badge helper function calls to use correct parameters (value, id). Fixed TaskCell props to use task/restaurantName/restaurantId. Removed duplicate section. Grid now shows: Recent Restaurants (left), Pending Leads (right), Recent Batch Jobs (position 3 below)"
+      "notes": "Created 2-column grid with Tasks Due Today (position 1 left) and Recently Created Restaurants (position 2 right). Lead Scraping section remains full width. Pending Leads and Batch Jobs in separate 2-column grid below. Fixed paginatedRestaurants variable name. Build passes, browser verified."
     },
     {
       "id": 11,

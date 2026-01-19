@@ -57,13 +57,62 @@ Use `AskUserQuestion()` to select:
 
 | Method | When to Use |
 |--------|-------------|
-| Claude in Chrome | Frontend/UI verification, visual checks |
+| Chrome DevTools | Frontend/UI verification, visual checks (works in spawned sessions) |
 | Playwright scripting | Automated UI testing, regression tests |
 | API testing | Backend endpoints, data operations |
 | Database verification | Data layer changes, migrations |
-| Combined | Full-stack features |
+| Combined | Full-stack features (browser + build verification) |
 
-See [testing-methods/frontend/claude-in-chrome.md](testing-methods/frontend/claude-in-chrome.md) for browser verification details.
+**Note:** Do NOT use "Claude in Chrome" - those MCP tools are not accessible in spawned/print-mode sessions. Use "Chrome DevTools" instead.
+
+**CRITICAL: Testing Method Content Generation**
+
+Based on the selected testing method, generate the `{TESTING_METHOD_INSTRUCTIONS}` content for RALPH_PROMPT.md:
+
+**If "Chrome DevTools" or "Combined" is selected, you MUST include:**
+
+```markdown
+**Browser Verification:**
+1. Use Chrome DevTools MCP tools (NOT Claude in Chrome - those don't work in spawned sessions)
+2. Navigate to http://localhost:{FRONTEND_PORT}
+3. Test each feature as described in feature_list.json
+
+To verify UI features, use these MCP tools:
+- `mcp__chrome-devtools__list_pages` - List available Chrome pages/tabs
+- `mcp__chrome-devtools__navigate_page` - Navigate to the dev server URL
+- `mcp__chrome-devtools__take_screenshot` - Capture visual state
+- `mcp__chrome-devtools__evaluate_script` - Run JavaScript to find/interact with elements
+- `mcp__chrome-devtools__list_console_messages` - Check for JavaScript errors
+```
+
+**If "Combined" is selected, also include:**
+
+```markdown
+**Build Verification:**
+```bash
+cd {PROJECT_DIR}/{FRONTEND_DIR}
+npm run build
+```
+Must pass with no TypeScript/lint errors.
+```
+
+**If "API testing" is selected:**
+
+```markdown
+**API Verification:**
+Test endpoints using curl or the application's API client.
+Verify response status codes and data structures match expectations.
+```
+
+**If "Database verification" is selected:**
+
+```markdown
+**Database Verification:**
+Use Supabase MCP tools or direct SQL queries to verify data operations.
+Check that migrations applied correctly and data integrity is maintained.
+```
+
+See [testing-methods/frontend/chrome-devtools.md](testing-methods/frontend/chrome-devtools.md) for detailed browser verification patterns.
 
 ### Step 4: Select Max Iterations
 

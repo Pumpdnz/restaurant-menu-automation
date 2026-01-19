@@ -1,11 +1,14 @@
 #!/bin/bash
 # ralph-orchestrator.sh
 # Main Ralph Loop orchestration script
+# v2.1 - Improved error handling and log preservation
 #
 # Usage: ./ralph-orchestrator.sh <ralph-loop-directory> [max-iterations]
 # Example: ./ralph-orchestrator.sh .claude/data/ralph-loops/city-breakdown 20
 
-set -euo pipefail
+# Note: NOT using set -e because we need to handle Claude CLI crashes gracefully
+# The CLI can crash with unhandled promise rejections that would otherwise kill the orchestrator
+set -uo pipefail
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIGURATION
@@ -137,17 +140,27 @@ run_iteration_with_retry() {
             fi
         fi
 
-        # Prepare log file
-        local logfile="$LOG_DIR/iteration-$iteration-attempt-$attempt.log"
+        # Prepare log file with timestamp to prevent overwrites on restart
+        local timestamp=$(date '+%Y%m%d-%H%M%S')
+        local logfile="$LOG_DIR/iteration-$iteration-attempt-$attempt-$timestamp.log"
+        local session_log="$LOG_DIR/session-output.log"
+
+        echo "" >> "$session_log"
+        echo "═══════════════════════════════════════════════════════════════" >> "$session_log"
+        echo "Iteration $iteration, Attempt $attempt - Started at $(date)" >> "$session_log"
+        echo "Log file: $logfile" >> "$session_log"
+        echo "═══════════════════════════════════════════════════════════════" >> "$session_log"
+
         echo "=== Iteration $iteration, Attempt $attempt started at $(date) ===" > "$logfile"
 
         # Run Claude session
         local exit_code=0
         claude --model "$model" \
                --dangerously-skip-permissions \
-               "$(cat "$PROMPT_FILE")" 2>&1 | tee -a "$logfile" || exit_code=$?
+               "$(cat "$PROMPT_FILE")" 2>&1 | tee -a "$logfile" "$session_log" || exit_code=$?
 
         echo "=== Completed at $(date) with exit code $exit_code ===" >> "$logfile"
+        echo "Exit code: $exit_code" >> "$session_log"
 
         # Check for success
         if [ $exit_code -eq 0 ]; then
@@ -175,6 +188,19 @@ run_iteration_with_retry() {
             if [ $attempt -lt $MAX_RETRIES ]; then
                 echo "   Waiting ${RATE_LIMIT_DELAY}s before retry..."
                 sleep $RATE_LIMIT_DELAY
+                continue
+            fi
+        fi
+
+        # CLI-specific errors (No messages returned, promise rejection, etc.)
+        if grep -qi "No messages returned\|promise.*rejected\|unhandled.*rejection" "$logfile"; then
+            echo "⚠️  CLI error detected (No messages returned / Promise rejection)"
+            log_session "$iteration" "$attempt" "cli_error"
+
+            if [ $attempt -lt $MAX_RETRIES ]; then
+                local delay=$((BASE_DELAY * (2 ** (attempt - 1)) + 5))
+                echo "   Retrying in ${delay}s..."
+                sleep $delay
                 continue
             fi
         fi

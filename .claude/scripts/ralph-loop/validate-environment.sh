@@ -92,7 +92,7 @@ validate_environment() {
     # ─────────────────────────────────────────────────────────────────────
     if ! pgrep -x "Google Chrome" > /dev/null; then
         echo "⚠️  WARNING: Chrome is not running"
-        echo "   Browser features may fail. Start Chrome and ensure Claude in Chrome extension is active."
+        echo "   Browser features may fail. Start Chrome with remote debugging enabled for Chrome DevTools MCP."
         warnings=$((warnings + 1))
     else
         echo "✓ Chrome is running"

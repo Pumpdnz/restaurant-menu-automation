@@ -10,6 +10,8 @@
 | Frontend Port | `{FRONTEND_PORT}` |
 | Backend Port | `{BACKEND_PORT}` |
 | Max Iterations | `{MAX_ITERATIONS}` |
+| Test User Email | `{TEST_USER_EMAIL}` |
+| Test User Password | `{TEST_USER_PASSWORD}` |
 
 **IMPORTANT:** The dev server must be running BEFORE starting the Ralph Loop. The init.sh script only verifies - it does NOT start the server.
 
@@ -38,8 +40,16 @@
 
 {TESTING_METHOD_INSTRUCTIONS}
 
-### Verification Steps
+### Verification Checklist
 {VERIFICATION_STEPS_FROM_SUCCESS_CRITERIA}
+
+### Important: Do NOT Skip Verification
+
+- For UI/frontend features: You MUST use Chrome DevTools MCP tools to verify the feature works
+- Simply reading the code is NOT sufficient verification for UI features
+- Use `mcp__chrome-devtools__take_screenshot` to document that features render correctly
+- Use `mcp__chrome-devtools__list_console_messages` to check for JavaScript errors
+- **Note:** Claude in Chrome tools do NOT work in spawned sessions - use Chrome DevTools MCP instead
 
 ---
 
@@ -56,8 +66,34 @@ Every iteration MUST begin with these steps:
    - Navigate to `http://localhost:{FRONTEND_PORT}` and verify app loads
    - If baseline test fails, FIX IT FIRST
    - Do NOT proceed to new features with broken baseline
-7. Choose highest-priority feature where `passes: false`
-8. Begin implementation
+7. **Authenticate if required** (see Session Authentication below)
+8. Choose highest-priority feature where `passes: false`
+9. Begin implementation
+
+---
+
+## Session Authentication
+
+Each browser session uses an isolated Chrome profile (`--isolated` flag) which means authentication state is NOT persisted between sessions. You must authenticate at the start of each session.
+
+**Authentication Steps:**
+
+1. After navigating to `http://localhost:{FRONTEND_PORT}`, check if you're on a login page
+2. If login is required:
+   - Enter test credentials:
+     - Email: `{TEST_USER_EMAIL}`
+     - Password: `{TEST_USER_PASSWORD}`
+   - Click the sign-in button
+   - Wait for the dashboard to fully load
+3. Verify authentication succeeded by confirming dashboard elements are visible
+4. Proceed with feature verification
+
+**Why this is needed:** The `--isolated` MCP flag creates a fresh Chrome profile for each session, enabling parallel browser sessions without conflicts. The trade-off is that cookies and auth tokens are not preserved.
+
+**Troubleshooting:**
+- If login fails, check that the backend server is running on port {BACKEND_PORT}
+- If credentials are rejected, verify the test user exists in the database
+- Check browser console for authentication errors
 
 ---
 
@@ -97,9 +133,43 @@ Before ending this iteration, ensure:
 4. Update `{RALPH_LOOP_DIR}/feature_list.json`: change `passes: false` to `passes: true`
 5. Log session ID: Run `/get-session-id` and include the returned ID in progress.txt
 6. Update `{RALPH_LOOP_DIR}/progress.txt` with results (include session ID, feature worked on, outcome)
-7. Git commit with descriptive message
+7. Git commit (see Git Commit Instructions below)
 8. If ALL features pass: output `<promise>{TASK_NAME} COMPLETE</promise>`
 9. Exit cleanly - the orchestrator will automatically spawn the next iteration
+
+---
+
+## Git Commit Instructions
+
+**Important:** This project has code in a subdirectory and state files at the project root.
+
+| Type | Location |
+|------|----------|
+| App code | `{PROJECT_DIR}/UberEats-Image-Extractor/` |
+| State files | `{PROJECT_DIR}/{RALPH_LOOP_DIR}/` |
+
+**Always commit from the project root directory:**
+
+```bash
+# Ensure you're at project root
+cd {PROJECT_DIR}
+
+# Stage app code changes (use relative path from project root)
+git add UberEats-Image-Extractor/src/path/to/changed/file.tsx
+
+# Stage state file updates
+git add {RALPH_LOOP_DIR}/progress.txt
+git add {RALPH_LOOP_DIR}/feature_list.json
+
+# Commit all together
+git commit -m "feat(Dashboard): Description of feature implemented"
+```
+
+**Do NOT:**
+- Run `git add` from inside `UberEats-Image-Extractor/` when also committing state files
+- Use relative paths like `../.claude/data/...` - always use paths relative to project root
+
+---
 
 ## Completion Signal
 

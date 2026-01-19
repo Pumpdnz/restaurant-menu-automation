@@ -1,0 +1,56 @@
+# Ralph Loop Progress: dashboard-update-v2
+
+## Configuration
+- Created: 2026-01-17
+- Max Iterations: 30
+- Port: 5007
+- Testing Method: Combined (Browser + Build)
+
+## Current State
+- Iteration: 0
+- Status: not_started
+- Last Updated: 2026-01-17
+
+## Completion Criteria
+- [ ] Stats cards removed from Dashboard
+- [ ] Lead Scraping reports properly tabbed with feature flag
+- [ ] Pending Leads preview shows 5 most recent leads (step 4, status "passed")
+- [ ] Batch Registration Jobs preview shows most recent jobs
+- [ ] Tasks Due Today list is paginated and works
+- [ ] Recently Created Restaurants preview with city filter works
+- [ ] Quick Actions moved to top with New Task dialog working
+- [ ] Recent Restaurants preview works consistently
+- [ ] Recent Extractions preview works consistently
+- [ ] Feature flags hide components completely when disabled
+- [ ] Build passes (no TypeScript/lint errors)
+- [ ] No console errors in browser
+
+## Completed
+(none yet)
+
+## Remaining
+All 12 features pending implementation
+
+## Current Blocker
+(none)
+
+## Last Verification Result
+(not started)
+
+## Next Session Instructions
+Begin implementation starting with Feature 1: Create useDashboard.ts hooks file
+
+## Key Reference Files
+- Investigation docs: planning/ralph-loops/dashboard-update-v2/INVESTIGATION_*.md
+- Dashboard component: UberEats-Image-Extractor/src/pages/Dashboard.jsx
+- Feature flags: UberEats-Image-Extractor/src/context/AuthContext.tsx
+- Task modal: UberEats-Image-Extractor/src/components/tasks/CreateTaskModal.tsx
+- Reports content: UberEats-Image-Extractor/src/components/reports/ReportsTabContent.tsx
+
+## Session History
+| Iteration | Session ID | Timestamp | Feature | Result |
+|-----------|------------|-----------|---------|--------|
+
+## Iteration History
+| # | Changes Made | Result | Blocker |
+|---|--------------|--------|---------|
