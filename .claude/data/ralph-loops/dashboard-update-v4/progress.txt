@@ -7,8 +7,8 @@
 - Testing Method: Combined (Browser + Build + Console)
 
 ## Current State
-- Iteration: 4 / 36
-- Status: COMPLETED (2026-01-19)
+- Iteration: 5 / 36
+- Status: IN_PROGRESS (2026-01-19)
 - Last Updated: 2026-01-19
 
 ## Completion Criteria
@@ -16,7 +16,7 @@
 - [x] Quick Actions: Manage Restaurants → New Restaurant with gradients
 - [x] Tasks Due Today: Status toggle column
 - [x] Tasks Due Today: Clickable names with TaskDetailModal
-- [ ] Tasks Due Today: Due date editor with DateTimePicker
+- [x] Tasks Due Today: Due date editor with DateTimePicker
 - [ ] Tasks Due Today: Priority dropdown and task type popover
 - [ ] Tasks Due Today: Action button dropdown (complete/follow-up/sequence)
 - [ ] Recent Restaurants: Start Sequence fix
@@ -30,18 +30,19 @@
 - Feature 2: Quick Actions - Converted to New Restaurant with gradient styling
 - Feature 3: Tasks Due Today - Added status toggle column with interactive Select dropdown
 - Feature 4: Tasks Due Today - Added clickable task names with description and TaskDetailModal
+- Feature 5: Tasks Due Today - Added due date editor with DateTimePicker (red styling for overdue, completed/cancelled states)
 
 ## Remaining
-8 features (5-12)
+7 features (6-12)
 
 ## Current Blocker
 (none)
 
 ## Last Verification Result
-✅ Feature 4 complete - Task names are now clickable (cursor-pointer, hover:text-brand-blue). Task descriptions show below names (text-xs text-muted-foreground). Clicking task name opens TaskDetailModal with full task details. Modal closes with Escape key. Build passes.
+✅ Feature 5 complete - DateTimePicker imported and added to Due Date column. getDueDateInput helper handles three states: completed tasks show green checkmark with completion date, cancelled tasks show "Cancelled" text, active/pending tasks show interactive DateTimePicker. Overdue dates display in red (text-red-600). Calendar dialog opens on click with date/time selection and Cancel/Confirm/Clear buttons. Build passes, no console errors.
 
 ## Next Session Instructions
-Begin implementation with Feature 5: Add due date editor with DateTimePicker.
+Begin implementation with Feature 6: Add priority dropdown and task type popover.
 
 ## Session History
 | Iteration | Session ID | Timestamp | Feature | Result |
@@ -50,6 +51,7 @@ Begin implementation with Feature 5: Add due date editor with DateTimePicker.
 | 2 | 8f7c5d02-10bb-488c-86c9-6aa1f4c4608f | 2026-01-19 | Feature 2: Quick Actions gradients | ✅ Complete |
 | 3 | 3fbf6df3-49ad-4ec0-8d34-c5429d7d97fe | 2026-01-19 | Feature 3: Status toggle column | ✅ Complete |
 | 4 | a459f367-f4d8-432c-8cd1-d8c30d1af89f | 2026-01-19 | Feature 4: Clickable names with TaskDetailModal | ✅ Complete |
+| 5 | 43d97357-7eee-4ed8-8a45-b8ff9bea78fa | 2026-01-19 | Feature 5: Due date editor with DateTimePicker | ✅ Complete |
 
 ## Iteration History
 | # | Changes Made | Result | Blocker |
@@ -58,3 +60,4 @@ Begin implementation with Feature 5: Add due date editor with DateTimePicker.
 | 2 | Converted Manage Restaurants to New Restaurant with gradient styling, changed route to /restaurants/new, added gradients to all Quick Action buttons, switched to flex layout | ✅ Passes | none |
 | 3 | Added status toggle column to Tasks Due Today table with Select dropdown, imported Circle/CheckCircle2/XCircle icons, added statusOptions config, implemented handleTaskStatusChange handler with API calls and query invalidation | ✅ Passes | none |
 | 4 | Added TaskDetailModal import, detailModalTaskId state, made task names clickable with hover styling, showing task.description below name, added TaskDetailModal at bottom with onSuccess handler | ✅ Passes | none |
+| 5 | Imported DateTimePicker component, added handleTaskDueDateChange handler, created getDueDateInput helper for three states (completed/cancelled/active), replaced static due time with DateTimePicker, updated column header to "Due Date", added red styling for overdue dates | ✅ Passes | none |

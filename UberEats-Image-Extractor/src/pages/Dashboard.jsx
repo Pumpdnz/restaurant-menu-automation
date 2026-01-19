@@ -20,6 +20,7 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '../lib/utils';
 import api from '../services/api';
+import { DateTimePicker } from '../components/ui/date-time-picker';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Skeleton } from '../components/ui/skeleton';
@@ -132,6 +133,55 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Failed to update task status:', error);
     }
+  };
+
+  // Handle task due date change
+  const handleTaskDueDateChange = async (taskId, newDueDate) => {
+    try {
+      await api.patch(`/tasks/${taskId}`, { due_date: newDueDate });
+      queryClient.invalidateQueries({ queryKey: ['tasks-due-today'] });
+      queryClient.invalidateQueries({ queryKey: ['overdue-tasks'] });
+    } catch (error) {
+      console.error('Failed to update task due date:', error);
+    }
+  };
+
+  // Helper to get due date input based on task status
+  const getDueDateInput = (task) => {
+    // Show completed date for completed tasks
+    if (task.status === 'completed') {
+      return (
+        <div className="text-xs text-green-600 flex items-center gap-1">
+          <CheckCircle2 className="h-3 w-3" />
+          {task.completed_at
+            ? new Date(task.completed_at).toLocaleDateString('en-NZ', {
+              day: 'numeric',
+              month: 'short',
+              hour: '2-digit',
+              minute: '2-digit'
+            })
+            : 'Completed'}
+        </div>
+      );
+    }
+
+    // Show cancelled indicator
+    if (task.status === 'cancelled') {
+      return <span className="text-xs text-gray-500">Cancelled</span>;
+    }
+
+    // Original due date picker for active/pending tasks
+    const isOverdue = task.due_date &&
+      new Date(task.due_date) < new Date();
+
+    return (
+      <DateTimePicker
+        value={task.due_date ? new Date(task.due_date) : null}
+        onChange={(date) => handleTaskDueDateChange(task.id, date ? date.toISOString() : null)}
+        placeholder="Set due date"
+        className={cn("h-8 text-xs", isOverdue && "text-red-600")}
+      />
+    );
   };
 
   // Lead detail handlers
@@ -333,7 +383,7 @@ export default function Dashboard() {
                       <TableHead className="w-24">Type</TableHead>
                       <TableHead className="w-24">Priority</TableHead>
                       <TableHead className="w-48">Restaurant</TableHead>
-                      <TableHead className="w-32">Due Time</TableHead>
+                      <TableHead className="w-40">Due Date</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -399,8 +449,8 @@ export default function Dashboard() {
                           <TableCell className="text-muted-foreground text-sm">
                             {task.restaurants?.name || '-'}
                           </TableCell>
-                          <TableCell className="text-muted-foreground text-sm">
-                            {new Date(task.due_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          <TableCell>
+                            {getDueDateInput(task)}
                           </TableCell>
                         </TableRow>
                       );

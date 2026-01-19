@@ -95,8 +95,8 @@
         "Show 'Cancelled' text for cancelled tasks",
         "Add red styling for overdue dates"
       ],
-      "passes": false,
-      "completed_iteration": null,
+      "passes": true,
+      "completed_iteration": 5,
       "notes": "Reference: Tasks.tsx lines 794-829"
     },
     {
