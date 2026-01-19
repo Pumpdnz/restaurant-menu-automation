@@ -7,7 +7,7 @@
 - Testing Method: Combined (Browser + Build + Console)
 
 ## Current State
-- Iteration: 3 / 36
+- Iteration: 4 / 36
 - Status: COMPLETED (2026-01-19)
 - Last Updated: 2026-01-19
 
@@ -15,7 +15,7 @@
 - [x] Quick Actions: New Task wrapped in feature flag
 - [x] Quick Actions: Manage Restaurants → New Restaurant with gradients
 - [x] Tasks Due Today: Status toggle column
-- [ ] Tasks Due Today: Clickable names with TaskDetailModal
+- [x] Tasks Due Today: Clickable names with TaskDetailModal
 - [ ] Tasks Due Today: Due date editor with DateTimePicker
 - [ ] Tasks Due Today: Priority dropdown and task type popover
 - [ ] Tasks Due Today: Action button dropdown (complete/follow-up/sequence)
@@ -29,18 +29,19 @@
 - Feature 1: Quick Actions - New Task button wrapped with tasksAndSequences feature flag
 - Feature 2: Quick Actions - Converted to New Restaurant with gradient styling
 - Feature 3: Tasks Due Today - Added status toggle column with interactive Select dropdown
+- Feature 4: Tasks Due Today - Added clickable task names with description and TaskDetailModal
 
 ## Remaining
-9 features (4-12)
+8 features (5-12)
 
 ## Current Blocker
 (none)
 
 ## Last Verification Result
-✅ Feature 3 complete - Status toggle column added as first column in Tasks Due Today table. Select dropdown shows all 4 status options (Pending, Active, Completed, Cancelled) with icons and descriptions. API calls work correctly via handleTaskStatusChange. Build passes.
+✅ Feature 4 complete - Task names are now clickable (cursor-pointer, hover:text-brand-blue). Task descriptions show below names (text-xs text-muted-foreground). Clicking task name opens TaskDetailModal with full task details. Modal closes with Escape key. Build passes.
 
 ## Next Session Instructions
-Begin implementation with Feature 4: Add clickable task names with description and TaskDetailModal.
+Begin implementation with Feature 5: Add due date editor with DateTimePicker.
 
 ## Session History
 | Iteration | Session ID | Timestamp | Feature | Result |
@@ -48,6 +49,7 @@ Begin implementation with Feature 4: Add clickable task names with description a
 | 1 | ad7a5537-44aa-490b-9c11-861aeb1be56a | 2026-01-19 | Feature 1: Quick Actions feature flag | ✅ Complete |
 | 2 | 8f7c5d02-10bb-488c-86c9-6aa1f4c4608f | 2026-01-19 | Feature 2: Quick Actions gradients | ✅ Complete |
 | 3 | 3fbf6df3-49ad-4ec0-8d34-c5429d7d97fe | 2026-01-19 | Feature 3: Status toggle column | ✅ Complete |
+| 4 | a459f367-f4d8-432c-8cd1-d8c30d1af89f | 2026-01-19 | Feature 4: Clickable names with TaskDetailModal | ✅ Complete |
 
 ## Iteration History
 | # | Changes Made | Result | Blocker |
@@ -55,3 +57,4 @@ Begin implementation with Feature 4: Add clickable task names with description a
 | 1 | Wrapped New Task button with tasksAndSequences feature flag | ✅ Passes | none |
 | 2 | Converted Manage Restaurants to New Restaurant with gradient styling, changed route to /restaurants/new, added gradients to all Quick Action buttons, switched to flex layout | ✅ Passes | none |
 | 3 | Added status toggle column to Tasks Due Today table with Select dropdown, imported Circle/CheckCircle2/XCircle icons, added statusOptions config, implemented handleTaskStatusChange handler with API calls and query invalidation | ✅ Passes | none |
+| 4 | Added TaskDetailModal import, detailModalTaskId state, made task names clickable with hover styling, showing task.description below name, added TaskDetailModal at bottom with onSuccess handler | ✅ Passes | none |

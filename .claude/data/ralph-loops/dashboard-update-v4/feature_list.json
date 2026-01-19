@@ -77,8 +77,8 @@
         "Add TaskDetailModal component at bottom of Dashboard",
         "Update useTasksDueToday hook to return description field"
       ],
-      "passes": false,
-      "completed_iteration": null,
+      "passes": true,
+      "completed_iteration": 4,
       "notes": "Reference: Tasks.tsx lines 1341-1351"
     },
     {

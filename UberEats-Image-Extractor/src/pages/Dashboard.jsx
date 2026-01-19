@@ -34,6 +34,7 @@ import { Progress } from '../components/ui/progress';
 import { CreateLeadScrapeJob } from '../components/leads/CreateLeadScrapeJob';
 import { ReportsTabContent } from '../components/reports/ReportsTabContent';
 import { CreateTaskModal } from '../components/tasks/CreateTaskModal';
+import { TaskDetailModal } from '../components/tasks/TaskDetailModal';
 import { LeadContactQuickView } from '../components/restaurants/LeadContactQuickView';
 import { TaskCell } from '../components/restaurants/TaskCell';
 import { LeadDetailModal } from '../components/leads/LeadDetailModal';
@@ -61,6 +62,9 @@ export default function Dashboard() {
   // Dialog state for LeadDetailModal
   const [selectedLeadId, setSelectedLeadId] = useState(null);
   const [isLeadDetailModalOpen, setIsLeadDetailModalOpen] = useState(false);
+
+  // Dialog state for TaskDetailModal
+  const [detailModalTaskId, setDetailModalTaskId] = useState(null);
 
   // Callback for ReportsTabContent to trigger dialog with prefill data
   // ReportsTabContent passes an object with { city, cuisine, pageOffset }
@@ -362,7 +366,19 @@ export default function Dashboard() {
                               </SelectContent>
                             </Select>
                           </TableCell>
-                          <TableCell className="font-medium">{task.name}</TableCell>
+                          <TableCell>
+                            <div
+                              className="font-medium cursor-pointer hover:text-brand-blue transition-colors"
+                              onClick={() => setDetailModalTaskId(task.id)}
+                            >
+                              {task.name}
+                            </div>
+                            {task.description && (
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {task.description}
+                              </div>
+                            )}
+                          </TableCell>
                           <TableCell>
                             <Badge variant="outline" className="text-xs">
                               {task.type}
@@ -894,6 +910,20 @@ export default function Dashboard() {
           setSelectedLeadId(null);
         }}
       />
+
+      {/* Task Detail Modal */}
+      {detailModalTaskId && (
+        <TaskDetailModal
+          open={!!detailModalTaskId}
+          taskId={detailModalTaskId}
+          onClose={() => setDetailModalTaskId(null)}
+          onSuccess={() => {
+            setDetailModalTaskId(null);
+            queryClient.invalidateQueries({ queryKey: ['tasks-due-today'] });
+            queryClient.invalidateQueries({ queryKey: ['overdue-tasks'] });
+          }}
+        />
+      )}
     </div>
   );
 }
