@@ -216,8 +216,8 @@
         "Each restaurant shows Store icon, full name, and ExternalLink icon",
         "Add onClick stopPropagation to prevent row click"
       ],
-      "passes": false,
-      "completed_iteration": null,
+      "passes": true,
+      "completed_iteration": 12,
       "notes": "Reference: INVESTIGATION_BATCH_JOBS.md for complete code"
     }
   ]

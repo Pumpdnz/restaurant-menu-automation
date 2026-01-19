@@ -63,6 +63,12 @@ import {
   DialogTitle,
 } from '../components/ui/dialog';
 import { Progress } from '../components/ui/progress';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '../components/ui/popover';
+import { ScrollArea } from '../components/ui/scroll-area';
 import { CreateLeadScrapeJob } from '../components/leads/CreateLeadScrapeJob';
 import { ReportsTabContent } from '../components/reports/ReportsTabContent';
 import { CreateTaskModal } from '../components/tasks/CreateTaskModal';
@@ -1585,9 +1591,46 @@ export default function Dashboard() {
                                   </div>
                                 ))}
                                 {batch.jobs.length > 2 && (
-                                  <span className="text-[10px] text-muted-foreground px-1.5 py-0.5">
-                                    +{batch.jobs.length - 2}
-                                  </span>
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="text-[10px] text-muted-foreground hover:text-foreground px-1.5 py-0.5 hover:bg-muted/50 rounded transition-colors cursor-pointer"
+                                      >
+                                        +{batch.jobs.length - 2}
+                                      </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent
+                                      className="w-64 p-0"
+                                      align="start"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <div className="p-2 border-b bg-muted/30">
+                                        <div className="text-sm font-medium">
+                                          All Restaurants ({batch.jobs.length})
+                                        </div>
+                                      </div>
+                                      <ScrollArea className="max-h-[200px]">
+                                        <div className="p-2 space-y-1">
+                                          {batch.jobs.map((job) => (
+                                            <a
+                                              key={job.id}
+                                              href={`/restaurants/${job.restaurant_id}`}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              onClick={(e) => e.stopPropagation()}
+                                              className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50 transition-colors text-xs"
+                                            >
+                                              <Store className="h-3 w-3 text-muted-foreground shrink-0" />
+                                              <span className="truncate">{job.restaurant?.name || 'Unknown'}</span>
+                                              <ExternalLink className="h-3 w-3 text-muted-foreground ml-auto shrink-0" />
+                                            </a>
+                                          ))}
+                                        </div>
+                                      </ScrollArea>
+                                    </PopoverContent>
+                                  </Popover>
                                 )}
                               </div>
                             ) : (

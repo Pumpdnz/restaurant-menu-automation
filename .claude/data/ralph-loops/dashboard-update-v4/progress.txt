@@ -7,8 +7,8 @@
 - Testing Method: Combined (Browser + Build + Console)
 
 ## Current State
-- Iteration: 11 / 36
-- Status: IN_PROGRESS (2026-01-19)
+- Iteration: 12 / 36
+- Status: COMPLETE (2026-01-19)
 - Last Updated: 2026-01-19
 
 ## Completion Criteria
@@ -23,7 +23,7 @@
 - [x] Recent Restaurants: Lead columns and toggleable status
 - [x] Recent Restaurants: Move to 2-column grid position 1
 - [x] Pending Leads: Multi-select, collapsible drawers, action buttons
-- [ ] Recent Batch Jobs: Clickable truncated restaurant names
+- [x] Recent Batch Jobs: Clickable truncated restaurant names
 
 ## Completed
 - Feature 1: Quick Actions - New Task button wrapped with tasksAndSequences feature flag
@@ -37,18 +37,19 @@
 - Feature 9: Recent Restaurants - Added lead columns (Lead Type, Lead Category, Lead Status) and made onboarding status toggleable with Select dropdowns
 - Feature 10: Recent Restaurants - Moved to 2-column grid position 1 (left), with Pending Leads in position 2 (right) and Recent Batch Jobs as position 3
 - Feature 11: Pending Leads - Added multi-select, collapsible drawers, action buttons, bulk actions bar, and conversion dialog
+- Feature 12: Recent Batch Jobs - Made truncated restaurant names clickable with popover showing all restaurants
 
 ## Remaining
-1 feature (12)
+0 features - ALL COMPLETE
 
 ## Current Blocker
 (none)
 
 ## Last Verification Result
-✅ Feature 11 complete - Added multi-select with Checkbox component, collapsible drawers with Collapsible/CollapsibleContent and ChevronRight/ChevronDown expand toggle icons, action buttons (Eye for view detail, ArrowRightCircle for convert to restaurant), bulk actions bar appearing when items selected with "Convert Selected" button and "Create Batch" checkbox, and conversion dialog showing progress and results. Imported useConvertLeadsToRestaurants hook for conversion functionality. Added state variables for selectedLeadIds, expandedLeadIds, conversion state. Table now has 7 columns: Expand toggle, Checkbox, Restaurant Name, City, Rating, Created, Actions. Collapsible drawer shows 3-column grid with Location/Contact/Online info. Build passes with no errors. Browser verified: Pending Leads section renders correctly (shows "No pending leads" when empty).
+✅ Feature 12 complete - Added Popover and ScrollArea imports to Dashboard.jsx. Replaced static "+N" span with PopoverTrigger button that opens popover when clicked. PopoverContent displays header "All Restaurants (N)" with border-bottom and muted background. ScrollArea with 200px max-height shows all restaurants as clickable links. Each restaurant shows Store icon, full name, and ExternalLink icon. Added onClick stopPropagation to prevent row navigation. Build passes with no errors. Browser verified: Clicking "+N" badge opens popover showing all restaurant names with proper styling and icons.
 
 ## Next Session Instructions
-Begin implementation with Feature 12: Recent Batch Jobs - Make truncated restaurant names clickable with popover.
+ALL FEATURES COMPLETE - Ralph Loop can be finalized.
 
 ## Session History
 | Iteration | Session ID | Timestamp | Feature | Result |
@@ -64,6 +65,7 @@ Begin implementation with Feature 12: Recent Batch Jobs - Make truncated restaur
 | 9 | 9b37a48c-4e4b-4168-8d73-f00bdcb82c3c | 2026-01-19 | Feature 9: Lead columns and toggleable status | ✅ Complete |
 | 10 | d73e1012-36d8-4357-99e4-da75640a4a4d | 2026-01-19 | Feature 10: Move to 2-column grid | ✅ Complete |
 | 11 | 4ed11279-3b0d-43b2-9d97-adececac5de7 | 2026-01-19 | Feature 11: Pending Leads multi-select and actions | ✅ Complete |
+| 12 | 12fedb36-6c73-4efb-9ef1-698a5cdcf398 | 2026-01-19 | Feature 12: Recent Batch Jobs clickable restaurant names | ✅ Complete |
 
 ## Iteration History
 | # | Changes Made | Result | Blocker |
@@ -79,3 +81,4 @@ Begin implementation with Feature 12: Recent Batch Jobs - Make truncated restaur
 | 9 | Added SelectValue import, handleUpdateRestaurantField handler, four badge helper functions (getLeadTypeBadge, getLeadCategoryBadge, getLeadStatusBadge, getOnboardingStatusBadge), three new table columns (Lead Type, Lead Category, Lead Status), converted Status cell to toggleable badge | ✅ Passes | none |
 | 10 | Moved Recently Created Restaurants section from bottom full-width to 2-column grid position 1 (left), Pending Leads to position 2 (right), Recent Batch Jobs to position 3. Fixed badge helper calls to use (value, id) params. Fixed TaskCell props. Removed duplicate section | ✅ Passes | none |
 | 11 | Added multi-select with Checkbox, collapsible drawers with Collapsible/CollapsibleContent, expand toggle icons, action buttons (Eye/ArrowRightCircle), bulk actions bar, conversion dialog, useConvertLeadsToRestaurants hook | ✅ Passes | none |
+| 12 | Added Popover and ScrollArea imports, converted "+N" span to PopoverTrigger button with clickable popover, showing all restaurants with Store icons and ExternalLink icons, ScrollArea for long lists, stopPropagation to prevent row click | ✅ Passes | none |
