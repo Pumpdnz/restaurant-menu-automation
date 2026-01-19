@@ -113,8 +113,8 @@
         "Wrap task type cell with TaskTypeQuickView component",
         "Add getTypeIcon helper function"
       ],
-      "passes": false,
-      "completed_iteration": null,
+      "passes": true,
+      "completed_iteration": 6,
       "notes": "Reference: Tasks.tsx lines 755-792, 1363-1379"
     },
     {

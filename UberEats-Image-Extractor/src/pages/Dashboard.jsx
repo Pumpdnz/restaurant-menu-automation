@@ -15,7 +15,8 @@ import {
   ExternalLink,
   Circle,
   CheckCircle2,
-  XCircle
+  XCircle,
+  MessageSquare
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '../lib/utils';
@@ -31,11 +32,19 @@ import {
   SelectItem,
   SelectTrigger,
 } from '../components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu';
+import { Button } from '../components/ui/button';
 import { Progress } from '../components/ui/progress';
 import { CreateLeadScrapeJob } from '../components/leads/CreateLeadScrapeJob';
 import { ReportsTabContent } from '../components/reports/ReportsTabContent';
 import { CreateTaskModal } from '../components/tasks/CreateTaskModal';
 import { TaskDetailModal } from '../components/tasks/TaskDetailModal';
+import { TaskTypeQuickView } from '../components/tasks/TaskTypeQuickView';
 import { LeadContactQuickView } from '../components/restaurants/LeadContactQuickView';
 import { TaskCell } from '../components/restaurants/TaskCell';
 import { LeadDetailModal } from '../components/leads/LeadDetailModal';
@@ -143,6 +152,40 @@ export default function Dashboard() {
       queryClient.invalidateQueries({ queryKey: ['overdue-tasks'] });
     } catch (error) {
       console.error('Failed to update task due date:', error);
+    }
+  };
+
+  // Handle task priority change
+  const handleTaskPriorityChange = async (taskId, newPriority) => {
+    try {
+      await api.patch(`/tasks/${taskId}`, { priority: newPriority });
+      queryClient.invalidateQueries({ queryKey: ['tasks-due-today'] });
+      queryClient.invalidateQueries({ queryKey: ['overdue-tasks'] });
+    } catch (error) {
+      console.error('Failed to update task priority:', error);
+    }
+  };
+
+  // Priority config for dropdown styling
+  const priorityConfig = {
+    low: { label: 'Low', color: 'bg-gray-100 text-gray-800 border-gray-200' },
+    medium: { label: 'Medium', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+    high: { label: 'High', color: 'bg-red-100 text-red-800 border-red-200' },
+  };
+
+  // Get icon for task type
+  const getTypeIcon = (type) => {
+    switch (type) {
+      case 'email':
+        return <Mail className="h-4 w-4" />;
+      case 'call':
+        return <Phone className="h-4 w-4" />;
+      case 'social_message':
+        return <MessageSquare className="h-4 w-4" />;
+      case 'text':
+        return <MessageSquare className="h-4 w-4" />;
+      default:
+        return <ClipboardList className="h-4 w-4" />;
     }
   };
 
@@ -430,21 +473,54 @@ export default function Dashboard() {
                             )}
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="text-xs">
-                              {task.type}
-                            </Badge>
+                            <TaskTypeQuickView
+                              task={task}
+                              onTaskCompleted={() => {
+                                queryClient.invalidateQueries({ queryKey: ['tasks-due-today'] });
+                                queryClient.invalidateQueries({ queryKey: ['overdue-tasks'] });
+                              }}
+                              onFollowUpRequested={(taskId) => {
+                                // Handle follow-up - can be enhanced later
+                              }}
+                              onStartSequenceRequested={(restaurant) => {
+                                // Handle start sequence - can be enhanced later
+                              }}
+                            >
+                              <div className="flex items-center gap-1 cursor-pointer hover:bg-muted/50 rounded px-2 py-1 -mx-2 -my-1 transition-colors">
+                                {getTypeIcon(task.type)}
+                                <span className="text-sm capitalize">
+                                  {task.type?.replace(/_/g, ' ') || 'task'}
+                                </span>
+                              </div>
+                            </TaskTypeQuickView>
                           </TableCell>
                           <TableCell>
-                            <Badge
-                              variant="outline"
-                              className={
-                                task.priority === 'high' ? 'text-red-600 border-red-600' :
-                                task.priority === 'medium' ? 'text-yellow-600 border-yellow-600' :
-                                'text-gray-600 border-gray-600'
-                              }
-                            >
-                              {task.priority}
-                            </Badge>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 px-2 hover:bg-muted/50 rounded-md">
+                                  <Badge variant="outline" className={cn('capitalize cursor-pointer', priorityConfig[task.priority]?.color)}>
+                                    {priorityConfig[task.priority]?.label || task.priority}
+                                  </Badge>
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="start">
+                                <DropdownMenuItem onClick={() => handleTaskPriorityChange(task.id, 'low')}>
+                                  <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200 mr-2">
+                                    Low
+                                  </Badge>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleTaskPriorityChange(task.id, 'medium')}>
+                                  <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200 mr-2">
+                                    Medium
+                                  </Badge>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleTaskPriorityChange(task.id, 'high')}>
+                                  <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200 mr-2">
+                                    High
+                                  </Badge>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
                           <TableCell className="text-muted-foreground text-sm">
                             {task.restaurants?.name || '-'}
