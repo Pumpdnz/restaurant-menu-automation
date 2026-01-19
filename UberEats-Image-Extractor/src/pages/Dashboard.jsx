@@ -213,13 +213,15 @@ export default function Dashboard() {
               <Store className="mr-2 h-4 w-4" />
               Manage Restaurants
             </Link>
-            <button
-              onClick={() => setCreateTaskModalOpen(true)}
-              className="flex items-center justify-center px-4 py-3 border border-border text-sm font-medium rounded-lg text-foreground bg-background hover:bg-accent transition-all duration-200"
-            >
-              <ClipboardList className="mr-2 h-4 w-4" />
-              New Task
-            </button>
+            {isFeatureEnabled('tasksAndSequences') && (
+              <button
+                onClick={() => setCreateTaskModalOpen(true)}
+                className="flex items-center justify-center px-4 py-3 border border-border text-sm font-medium rounded-lg text-foreground bg-background hover:bg-accent transition-all duration-200"
+              >
+                <ClipboardList className="mr-2 h-4 w-4" />
+                New Task
+              </button>
+            )}
           </div>
         </CardContent>
       </Card>

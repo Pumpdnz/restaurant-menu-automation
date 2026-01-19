@@ -1,0 +1,224 @@
+{
+  "task_name": "dashboard-update-v4",
+  "created": "2026-01-19",
+  "total_features": 12,
+  "completed_features": 0,
+  "default_model": "sonnet",
+  "model_routing": {
+    "setup": "opus",
+    "functional": "opus",
+    "ui": "sonnet",
+    "verification": "sonnet",
+    "testing": "sonnet",
+    "documentation": "haiku"
+  },
+  "instructions": "CRITICAL: Only modify the 'passes' field. Do NOT remove or edit feature definitions. The 'model' field determines which Claude model runs that feature.",
+  "features": [
+    {
+      "id": 1,
+      "category": "ui",
+      "priority": "high",
+      "model": "sonnet",
+      "description": "Quick Actions: Wrap New Task button with tasksAndSequences feature flag",
+      "steps": [
+        "Wrap existing New Task button with {isFeatureEnabled('tasksAndSequences') && (...)}",
+        "Test with feature flag enabled - button should appear",
+        "Test with feature flag disabled - button should be hidden"
+      ],
+      "passes": true,
+      "completed_iteration": 1,
+      "notes": "Pattern already exists at line 228 for Tasks Due Today section"
+    },
+    {
+      "id": 2,
+      "category": "ui",
+      "priority": "high",
+      "model": "sonnet",
+      "description": "Quick Actions: Convert Manage Restaurants to New Restaurant with gradient styling",
+      "steps": [
+        "Change route from /restaurants to /restaurants/new",
+        "Change text from 'Manage Restaurants' to 'New Restaurant'",
+        "Add gradient styling: from-brand-purple to-brand-blue",
+        "Add gradient to New Task button: from-brand-orange to-brand-coral",
+        "Switch grid layout to flex for dynamic button count"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "See INVESTIGATION_QUICK_ACTIONS.md for complete code"
+    },
+    {
+      "id": 3,
+      "category": "functional",
+      "priority": "high",
+      "model": "opus",
+      "description": "Tasks Due Today: Add status toggle column with interactive Select dropdown",
+      "steps": [
+        "Import Select components from ui/select",
+        "Add status column as first column in table",
+        "Implement handleTaskStatusChange handler with API calls",
+        "Add statusConfig object with icons for pending/active/completed/cancelled",
+        "Style as circular button (h-8 w-8, border-0, bg-transparent)"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Reference: Tasks.tsx lines 831-886"
+    },
+    {
+      "id": 4,
+      "category": "functional",
+      "priority": "high",
+      "model": "opus",
+      "description": "Tasks Due Today: Add clickable task names with description and TaskDetailModal",
+      "steps": [
+        "Import TaskDetailModal component",
+        "Add detailModalTaskId state variable",
+        "Make task name clickable with cursor-pointer and hover:text-brand-blue",
+        "Show task.description below name (text-xs text-muted-foreground)",
+        "Add TaskDetailModal component at bottom of Dashboard",
+        "Update useTasksDueToday hook to return description field"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Reference: Tasks.tsx lines 1341-1351"
+    },
+    {
+      "id": 5,
+      "category": "functional",
+      "priority": "high",
+      "model": "opus",
+      "description": "Tasks Due Today: Add due date editor with DateTimePicker",
+      "steps": [
+        "Import DateTimePicker from ui/date-time-picker",
+        "Add handleTaskDueDateChange handler",
+        "Show DateTimePicker for active tasks",
+        "Show green checkmark with completion date for completed tasks",
+        "Show 'Cancelled' text for cancelled tasks",
+        "Add red styling for overdue dates"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Reference: Tasks.tsx lines 794-829"
+    },
+    {
+      "id": 6,
+      "category": "functional",
+      "priority": "high",
+      "model": "opus",
+      "description": "Tasks Due Today: Add priority dropdown and task type popover",
+      "steps": [
+        "Import DropdownMenu components and TaskTypeQuickView",
+        "Add priorityConfig object with colors (gray/yellow/red)",
+        "Implement priority dropdown with badge styling",
+        "Add handleTaskPriorityChange handler",
+        "Wrap task type cell with TaskTypeQuickView component",
+        "Add getTypeIcon helper function"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Reference: Tasks.tsx lines 755-792, 1363-1379"
+    },
+    {
+      "id": 7,
+      "category": "functional",
+      "priority": "high",
+      "model": "opus",
+      "description": "Tasks Due Today: Add action button dropdown with complete/follow-up/sequence options",
+      "steps": [
+        "Add complete dropdown for active tasks only",
+        "Include Mark Complete, Complete & Set Follow-up, Complete & Start Sequence options",
+        "Add Edit and Duplicate icon buttons",
+        "Import StartSequenceModal and CreateTaskModal (for duplicates)",
+        "Add required state variables and handlers",
+        "Change hook to fetch 25 tasks (from 10)"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Reference: Tasks.tsx lines 1392-1441"
+    },
+    {
+      "id": 8,
+      "category": "functional",
+      "priority": "high",
+      "model": "opus",
+      "description": "Recent Restaurants: Fix Start Sequence by implementing handlers and adding modal",
+      "steps": [
+        "Add state variables: startSequenceFor, sequenceRestaurant, startSequenceModalOpen",
+        "Implement handleStartSequence to set startSequenceFor state",
+        "Implement handleStartSequenceRequested to set sequenceRestaurant and open modal",
+        "Import StartSequenceModal component",
+        "Add two StartSequenceModal instances (from dropdown and from TaskTypeQuickView)"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Currently empty handlers at lines 151-166"
+    },
+    {
+      "id": 9,
+      "category": "ui",
+      "priority": "medium",
+      "model": "sonnet",
+      "description": "Recent Restaurants: Add lead columns and make status toggleable",
+      "steps": [
+        "Add Lead Type, Lead Category, Lead Status columns",
+        "Copy badge helper functions from Restaurants.jsx",
+        "Add handleUpdateRestaurantField handler for API updates",
+        "Convert onboarding_status Badge to Select-wrapped toggleable version",
+        "Import Select components"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Reference: Restaurants.jsx lines 578-696"
+    },
+    {
+      "id": 10,
+      "category": "ui",
+      "priority": "medium",
+      "model": "sonnet",
+      "description": "Recent Restaurants: Move to 2-column grid position 1",
+      "steps": [
+        "Restructure layout: Recent Restaurants in 2-col grid position 1 (left)",
+        "Move Pending Leads to position 2 (right)",
+        "Keep Recent Batch Jobs as position 3",
+        "Ensure feature flags still work correctly for conditional rendering"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Current layout has Restaurants at bottom full-width"
+    },
+    {
+      "id": 11,
+      "category": "functional",
+      "priority": "medium",
+      "model": "opus",
+      "description": "Pending Leads: Add multi-select, collapsible drawers, and action buttons",
+      "steps": [
+        "Add selectedLeadIds and expandedLeadIds state (Set<string>)",
+        "Import Checkbox and Collapsible components",
+        "Add expand toggle column and checkbox column",
+        "Create simplified LeadDetailsPanel for expanded content",
+        "Add View (Eye) and Convert (ArrowRightCircle) action buttons",
+        "Add bulk actions bar when items selected"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Reference: PendingLeadsTable.tsx for full implementation"
+    },
+    {
+      "id": 12,
+      "category": "ui",
+      "priority": "low",
+      "model": "sonnet",
+      "description": "Recent Batch Jobs: Make truncated restaurant names clickable with popover",
+      "steps": [
+        "Import Popover and ScrollArea components",
+        "Replace static '+N' span with PopoverTrigger button",
+        "Add PopoverContent with ScrollArea showing all restaurants",
+        "Each restaurant shows Store icon, full name, and ExternalLink icon",
+        "Add onClick stopPropagation to prevent row click"
+      ],
+      "passes": false,
+      "completed_iteration": null,
+      "notes": "Reference: INVESTIGATION_BATCH_JOBS.md for complete code"
+    }
+  ]
+}
