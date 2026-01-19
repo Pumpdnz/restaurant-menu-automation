@@ -35,6 +35,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
+  SelectValue,
 } from '../components/ui/select';
 import {
   DropdownMenu,
@@ -87,6 +88,9 @@ export default function Dashboard() {
 
   // Dialog state for follow-up task (reuses CreateTaskModal with prefill)
   const [followUpTaskId, setFollowUpTaskId] = useState(null);
+
+  // Dialog state for duplicate task (reuses CreateTaskModal with prefill)
+  const [duplicateTaskId, setDuplicateTaskId] = useState(null);
 
   // Dialog state for StartSequenceModal (from Recent Restaurants TaskCell dropdown)
   const [startSequenceFor, setStartSequenceFor] = useState(null);
@@ -384,6 +388,164 @@ export default function Dashboard() {
     setIsSequenceModalOpen(true);
   };
 
+  // Handle restaurant field updates
+  const handleUpdateRestaurantField = async (restaurantId, field, value) => {
+    try {
+      await api.patch(`/restaurants/${restaurantId}`, { [field]: value });
+      // Trigger data refresh
+      queryClient.invalidateQueries({ queryKey: ['recent-restaurants'] });
+    } catch (err) {
+      console.error(`Failed to update ${field}:`, err);
+    }
+  };
+
+  // Badge helper functions for Recent Restaurants
+  const getLeadTypeBadge = (type, restaurantId) => {
+    if (!type) {
+      return (
+        <Select value="none" onValueChange={(v) => handleUpdateRestaurantField(restaurantId, 'lead_type', v)}>
+          <SelectTrigger className="h-7 w-full border-dashed">
+            <SelectValue placeholder="Set type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="inbound">Inbound</SelectItem>
+            <SelectItem value="outbound">Outbound</SelectItem>
+          </SelectContent>
+        </Select>
+      );
+    }
+
+    const colors = {
+      inbound: 'bg-blue-100 text-blue-800 border-blue-200',
+      outbound: 'bg-purple-100 text-purple-800 border-purple-200'
+    };
+
+    return (
+      <Select value={type} onValueChange={(v) => handleUpdateRestaurantField(restaurantId, 'lead_type', v)}>
+        <SelectTrigger className="h-7 w-full border-0 bg-transparent p-0" hideChevron>
+          <Badge variant="outline" className={cn('capitalize cursor-pointer hover:opacity-80', colors[type])}>
+            {type}
+          </Badge>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="inbound">Inbound</SelectItem>
+          <SelectItem value="outbound">Outbound</SelectItem>
+        </SelectContent>
+      </Select>
+    );
+  };
+
+  const getLeadCategoryBadge = (category, restaurantId) => {
+    if (!category) {
+      return (
+        <Select value="none" onValueChange={(v) => handleUpdateRestaurantField(restaurantId, 'lead_category', v)}>
+          <SelectTrigger className="h-7 w-full border-dashed">
+            <SelectValue placeholder="Set category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="paid_ads">Paid Ads</SelectItem>
+            <SelectItem value="organic_content">Organic Content</SelectItem>
+            <SelectItem value="warm_outreach">Warm Outreach</SelectItem>
+            <SelectItem value="cold_outreach">Cold Outreach</SelectItem>
+          </SelectContent>
+        </Select>
+      );
+    }
+
+    const colors = {
+      paid_ads: 'bg-green-100 text-green-800 border-green-200',
+      organic_content: 'bg-blue-100 text-blue-800 border-blue-200',
+      warm_outreach: 'bg-orange-100 text-orange-800 border-orange-200',
+      cold_outreach: 'bg-gray-100 text-gray-800 border-gray-200'
+    };
+
+    return (
+      <Select value={category} onValueChange={(v) => handleUpdateRestaurantField(restaurantId, 'lead_category', v)}>
+        <SelectTrigger className="h-7 w-full border-0 bg-transparent p-0" hideChevron>
+          <Badge variant="outline" className={cn('capitalize cursor-pointer hover:opacity-80 text-xs', colors[category])}>
+            {category.replace(/_/g, ' ')}
+          </Badge>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="paid_ads">Paid Ads</SelectItem>
+          <SelectItem value="organic_content">Organic Content</SelectItem>
+          <SelectItem value="warm_outreach">Warm Outreach</SelectItem>
+          <SelectItem value="cold_outreach">Cold Outreach</SelectItem>
+        </SelectContent>
+      </Select>
+    );
+  };
+
+  const getLeadStatusBadge = (status, restaurantId) => {
+    if (!status) {
+      return (
+        <Select value="none" onValueChange={(v) => handleUpdateRestaurantField(restaurantId, 'lead_status', v)}>
+          <SelectTrigger className="h-7 w-full border-dashed">
+            <SelectValue placeholder="Set status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
+            <SelectItem value="ghosted">Ghosted</SelectItem>
+            <SelectItem value="reengaging">Reengaging</SelectItem>
+            <SelectItem value="closed">Closed</SelectItem>
+          </SelectContent>
+        </Select>
+      );
+    }
+
+    const colors = {
+      active: 'bg-green-100 text-green-800 border-green-200',
+      inactive: 'bg-gray-100 text-gray-800 border-gray-200',
+      ghosted: 'bg-red-100 text-red-800 border-red-200',
+      reengaging: 'bg-orange-100 text-orange-800 border-orange-200',
+      closed: 'bg-purple-100 text-purple-800 border-purple-200'
+    };
+
+    return (
+      <Select value={status} onValueChange={(v) => handleUpdateRestaurantField(restaurantId, 'lead_status', v)}>
+        <SelectTrigger className="h-7 w-full border-0 bg-transparent p-0" hideChevron>
+          <Badge variant="outline" className={cn('capitalize cursor-pointer hover:opacity-80', colors[status])}>
+            {status}
+          </Badge>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="active">Active</SelectItem>
+          <SelectItem value="inactive">Inactive</SelectItem>
+          <SelectItem value="ghosted">Ghosted</SelectItem>
+          <SelectItem value="reengaging">Reengaging</SelectItem>
+          <SelectItem value="closed">Closed</SelectItem>
+        </SelectContent>
+      </Select>
+    );
+  };
+
+  const getOnboardingStatusBadge = (status, restaurantId) => {
+    const colors = {
+      completed: 'text-green-600 border-green-600',
+      in_progress: 'text-blue-600 border-blue-600',
+      pending: 'text-yellow-600 border-yellow-600',
+      unknown: 'text-gray-600 border-gray-600'
+    };
+
+    const displayStatus = status || 'unknown';
+
+    return (
+      <Select value={displayStatus} onValueChange={(v) => handleUpdateRestaurantField(restaurantId, 'onboarding_status', v)}>
+        <SelectTrigger className="h-7 w-full border-0 bg-transparent p-0" hideChevron>
+          <Badge variant="outline" className={cn('cursor-pointer hover:opacity-80', colors[displayStatus])}>
+            {displayStatus}
+          </Badge>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="pending">Pending</SelectItem>
+          <SelectItem value="in_progress">In Progress</SelectItem>
+          <SelectItem value="completed">Completed</SelectItem>
+        </SelectContent>
+      </Select>
+    );
+  };
+
   if (recentRestaurantsLoading) {
     return (
       <div className="space-y-6">
@@ -633,6 +795,17 @@ export default function Dashboard() {
                                 title="Edit task"
                               >
                                 <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setDuplicateTaskId(task.id);
+                                  setCreateTaskModalOpen(true);
+                                }}
+                                title="Duplicate task"
+                              >
+                                <Copy className="h-4 w-4" />
                               </Button>
                             </div>
                           </TableCell>
@@ -1009,6 +1182,9 @@ export default function Dashboard() {
                     <TableHead>Restaurant Name</TableHead>
                     <TableHead className="w-32">City</TableHead>
                     <TableHead className="w-40">Status</TableHead>
+                    <TableHead className="min-w-[110px]">Lead Type</TableHead>
+                    <TableHead className="min-w-[150px]">Lead Category</TableHead>
+                    <TableHead className="min-w-[110px]">Lead Status</TableHead>
                     <TableHead className="w-48">Lead Contact</TableHead>
                     <TableHead className="w-40">Tasks</TableHead>
                     <TableHead className="w-32">Created</TableHead>
@@ -1027,17 +1203,16 @@ export default function Dashboard() {
                       </TableCell>
                       <TableCell className="text-muted-foreground">{restaurant.city || '-'}</TableCell>
                       <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={
-                            restaurant.onboarding_status === 'completed' ? 'text-green-600 border-green-600' :
-                            restaurant.onboarding_status === 'in_progress' ? 'text-blue-600 border-blue-600' :
-                            restaurant.onboarding_status === 'pending' ? 'text-yellow-600 border-yellow-600' :
-                            'text-gray-600 border-gray-600'
-                          }
-                        >
-                          {restaurant.onboarding_status || 'unknown'}
-                        </Badge>
+                        {getOnboardingStatusBadge(restaurant.onboarding_status, restaurant.id)}
+                      </TableCell>
+                      <TableCell>
+                        {getLeadTypeBadge(restaurant.lead_type, restaurant.id)}
+                      </TableCell>
+                      <TableCell>
+                        {getLeadCategoryBadge(restaurant.lead_category, restaurant.id)}
+                      </TableCell>
+                      <TableCell>
+                        {getLeadStatusBadge(restaurant.lead_status, restaurant.id)}
                       </TableCell>
                       <TableCell>
                         <LeadContactQuickView restaurant={restaurant}>
@@ -1131,8 +1306,20 @@ export default function Dashboard() {
       {/* Create Task Modal */}
       <CreateTaskModal
         open={createTaskModalOpen}
-        onClose={() => setCreateTaskModalOpen(false)}
-        onSuccess={() => setCreateTaskModalOpen(false)}
+        onClose={() => {
+          setCreateTaskModalOpen(false);
+          setDuplicateTaskId(null);
+          setFollowUpTaskId(null);
+        }}
+        onSuccess={() => {
+          setCreateTaskModalOpen(false);
+          setDuplicateTaskId(null);
+          setFollowUpTaskId(null);
+          queryClient.invalidateQueries({ queryKey: ['tasks-due-today'] });
+          queryClient.invalidateQueries({ queryKey: ['overdue-tasks'] });
+        }}
+        duplicateFromTaskId={duplicateTaskId}
+        followUpFromTaskId={followUpTaskId}
       />
 
       {/* Lead Detail Modal */}

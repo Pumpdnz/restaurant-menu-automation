@@ -7,7 +7,7 @@
 - Testing Method: Combined (Browser + Build + Console)
 
 ## Current State
-- Iteration: 8 / 36
+- Iteration: 9 / 36
 - Status: IN_PROGRESS (2026-01-19)
 - Last Updated: 2026-01-19
 
@@ -20,7 +20,7 @@
 - [x] Tasks Due Today: Priority dropdown and task type popover
 - [x] Tasks Due Today: Action button dropdown (complete/follow-up/sequence)
 - [x] Recent Restaurants: Start Sequence fix
-- [ ] Recent Restaurants: Lead columns and toggleable status
+- [x] Recent Restaurants: Lead columns and toggleable status
 - [ ] Recent Restaurants: Move to 2-column grid position 1
 - [ ] Pending Leads: Multi-select, collapsible drawers, action buttons
 - [ ] Recent Batch Jobs: Clickable truncated restaurant names
@@ -34,18 +34,19 @@
 - Feature 6: Tasks Due Today - Added priority dropdown with colored badges and task type popover with TaskTypeQuickView
 - Feature 7: Tasks Due Today - Added action button dropdown with complete/follow-up/sequence options for active tasks, Edit button, StartSequenceModal
 - Feature 8: Recent Restaurants - Fixed Start Sequence by implementing handlers and adding second modal
+- Feature 9: Recent Restaurants - Added lead columns (Lead Type, Lead Category, Lead Status) and made onboarding status toggleable with Select dropdowns
 
 ## Remaining
-4 features (9-12)
+3 features (10-12)
 
 ## Current Blocker
 (none)
 
 ## Last Verification Result
-✅ Feature 8 complete - Added startSequenceFor state variable. Implemented handleStartSequence handler to set startSequenceFor state (for TaskCell dropdown "Start New Sequence"). Implemented handleStartSequenceRequested handler to set sequenceRestaurant and open modal (for TaskTypeQuickView "Complete & Start Sequence"). Added second StartSequenceModal instance for the TaskCell dropdown flow. Build passes, no console errors. Browser verified: clicking "Start New Sequence" from Recent Restaurants TaskCell dropdown opens StartSequenceModal with correct restaurant name.
+✅ Feature 9 complete - Added SelectValue to imports. Added handleUpdateRestaurantField handler to update restaurant fields via API with query invalidation. Added four badge helper functions: getLeadTypeBadge, getLeadCategoryBadge, getLeadStatusBadge, getOnboardingStatusBadge (all with Select dropdowns for editing). Added three new table columns: Lead Type, Lead Category, Lead Status. Converted Status cell from static Badge to toggleable Select-wrapped badge. Build passes, no console errors. Browser verified: Recent Restaurants table shows all new columns with interactive dropdowns, onboarding status badge opens Select dropdown with Pending/In Progress/Completed options.
 
 ## Next Session Instructions
-Begin implementation with Feature 9: Recent Restaurants - Add lead columns and make status toggleable.
+Begin implementation with Feature 10: Recent Restaurants - Move to 2-column grid position 1.
 
 ## Session History
 | Iteration | Session ID | Timestamp | Feature | Result |
@@ -58,6 +59,7 @@ Begin implementation with Feature 9: Recent Restaurants - Add lead columns and m
 | 6 | fca9eff6-8827-444a-a489-a78f8fd251f4 | 2026-01-19 | Feature 6: Priority dropdown and task type popover | ✅ Complete |
 | 7 | 0fcd94db-ab41-4b49-a270-5657a47c87af | 2026-01-19 | Feature 7: Action button dropdown | ✅ Complete |
 | 8 | c3ad3dfa-6943-4708-93a2-110baa7a5702 | 2026-01-19 | Feature 8: Start Sequence fix | ✅ Complete |
+| 9 | 9b37a48c-4e4b-4168-8d73-f00bdcb82c3c | 2026-01-19 | Feature 9: Lead columns and toggleable status | ✅ Complete |
 
 ## Iteration History
 | # | Changes Made | Result | Blocker |
@@ -70,3 +72,4 @@ Begin implementation with Feature 9: Recent Restaurants - Add lead columns and m
 | 6 | Added DropdownMenu/Button/TaskTypeQuickView imports, priorityConfig object, handleTaskPriorityChange handler, getTypeIcon helper, priority dropdown with colored badges, task type cell wrapped with TaskTypeQuickView popover | ✅ Passes | none |
 | 7 | Added action button dropdown with complete/follow-up/sequence options for active tasks, Edit button for all tasks, StartSequenceModal import and state, handlers for complete/follow-up/sequence actions | ✅ Passes | none |
 | 8 | Added startSequenceFor state, implemented handleStartSequence/handleStartSequenceRequested handlers, added second StartSequenceModal for TaskCell dropdown | ✅ Passes | none |
+| 9 | Added SelectValue import, handleUpdateRestaurantField handler, four badge helper functions (getLeadTypeBadge, getLeadCategoryBadge, getLeadStatusBadge, getOnboardingStatusBadge), three new table columns (Lead Type, Lead Category, Lead Status), converted Status cell to toggleable badge | ✅ Passes | none |

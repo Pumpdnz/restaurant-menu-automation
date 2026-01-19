@@ -165,9 +165,9 @@
         "Convert onboarding_status Badge to Select-wrapped toggleable version",
         "Import Select components"
       ],
-      "passes": false,
-      "completed_iteration": null,
-      "notes": "Reference: Restaurants.jsx lines 578-696"
+      "passes": true,
+      "completed_iteration": 9,
+      "notes": "Added SelectValue import, handleUpdateRestaurantField handler, four badge helper functions (getLeadTypeBadge, getLeadCategoryBadge, getLeadStatusBadge, getOnboardingStatusBadge), three new table columns, and updated Status cell to use toggleable badge"
     },
     {
       "id": 10,
