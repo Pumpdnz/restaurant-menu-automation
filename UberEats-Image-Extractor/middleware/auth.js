@@ -1,5 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
+const { executeWithRetry, isTransientError } = require('../src/services/database-error-handler');
 
 // Create Supabase client with service role key for backend
 const supabaseUrl = process.env.SUPABASE_URL || 'https://qgabsyggzlkcstjzugdh.supabase.co';
@@ -56,32 +57,74 @@ async function authMiddleware(req, res, next) {
 
     const token = authHeader.substring(7);
 
-    // Verify token with Supabase
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-
-    if (error || !user) {
-      console.error('Token verification failed:', error);
+    // Verify token with Supabase (with retry for transient network errors)
+    let user;
+    try {
+      const authResult = await executeWithRetry(
+        () => supabase.auth.getUser(token),
+        'JWT verification'
+      );
+      // executeWithRetry returns data directly, but getUser returns { user } inside data
+      user = authResult?.user;
+    } catch (authError) {
+      // Check if this was a transient error that exhausted retries
+      if (isTransientError(authError)) {
+        console.error('[Auth] Service temporarily unavailable after retries:', authError.message);
+        return res.status(503).json({
+          error: 'Service temporarily unavailable',
+          message: 'Authentication service is temporarily unavailable. Please try again.',
+          retryable: true
+        });
+      }
+      // Non-transient auth error (invalid/expired token)
+      console.error('Token verification failed:', authError);
       return res.status(401).json({
         error: 'Invalid token',
         message: 'Token is invalid or expired'
       });
     }
 
-    // Get user profile with organization
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select(`
-        *,
-        organisation:organisations(*)
-      `)
-      .eq('id', user.id)
-      .single();
+    if (!user) {
+      return res.status(401).json({
+        error: 'Invalid token',
+        message: 'Token is invalid or expired'
+      });
+    }
 
-    if (profileError || !profile) {
+    // Get user profile with organization (with retry for transient errors)
+    let profile;
+    try {
+      profile = await executeWithRetry(
+        () => supabase
+          .from('profiles')
+          .select(`
+            *,
+            organisation:organisations(*)
+          `)
+          .eq('id', user.id)
+          .single(),
+        `Profile fetch for user ${user.id}`
+      );
+    } catch (profileError) {
+      if (isTransientError(profileError)) {
+        console.error('[Auth] Service temporarily unavailable during profile fetch:', profileError.message);
+        return res.status(503).json({
+          error: 'Service temporarily unavailable',
+          message: 'Unable to fetch user profile. Please try again.',
+          retryable: true
+        });
+      }
       console.error('Profile fetch failed:', profileError);
-      return res.status(403).json({ 
+      return res.status(403).json({
         error: 'Profile not found',
-        message: 'User profile does not exist' 
+        message: 'User profile does not exist'
+      });
+    }
+
+    if (!profile) {
+      return res.status(403).json({
+        error: 'Profile not found',
+        message: 'User profile does not exist'
       });
     }
 
@@ -100,9 +143,17 @@ async function authMiddleware(req, res, next) {
     next();
   } catch (error) {
     console.error('Auth middleware error:', error);
-    res.status(500).json({ 
+    // Final catch - check if transient
+    if (isTransientError(error)) {
+      return res.status(503).json({
+        error: 'Service temporarily unavailable',
+        message: 'An error occurred during authentication. Please try again.',
+        retryable: true
+      });
+    }
+    res.status(500).json({
       error: 'Authentication failed',
-      message: 'An error occurred during authentication' 
+      message: 'An error occurred during authentication'
     });
   }
 }

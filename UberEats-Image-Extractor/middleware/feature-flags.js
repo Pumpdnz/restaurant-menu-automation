@@ -16,6 +16,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
+const { executeWithRetry, isTransientError } = require('../src/services/database-error-handler');
 
 // Create Supabase client for feature flag lookups
 const supabaseUrl = process.env.SUPABASE_URL || 'https://qgabsyggzlkcstjzugdh.supabase.co';
@@ -101,16 +102,35 @@ const checkFeatureFlag = (featureName) => {
       let featureFlags = req.user.organisation?.feature_flags;
       let orgName = req.user.organisation?.name || 'Unknown';
 
-      // If not available, fetch from database
+      // If not available, fetch from database (with retry for transient errors)
       if (!featureFlags) {
-        const { data: org, error } = await supabase
-          .from('organisations')
-          .select('feature_flags, name')
-          .eq('id', organisationId)
-          .single();
+        let org;
+        try {
+          org = await executeWithRetry(
+            () => supabase
+              .from('organisations')
+              .select('feature_flags, name')
+              .eq('id', organisationId)
+              .single(),
+            `Feature flags fetch for org ${organisationId}`
+          );
+        } catch (fetchError) {
+          if (isTransientError(fetchError)) {
+            console.error(`[Feature Flags] Service temporarily unavailable for org ${organisationId}:`, fetchError.message);
+            return res.status(503).json({
+              error: 'Service temporarily unavailable',
+              message: 'Could not verify feature flags. Please try again.',
+              retryable: true
+            });
+          }
+          console.error(`[Feature Flags] Failed to fetch org ${organisationId}:`, fetchError);
+          return res.status(403).json({
+            error: 'Organization not found',
+            message: 'Could not verify organization settings'
+          });
+        }
 
-        if (error || !org) {
-          console.error(`[Feature Flags] Failed to fetch org ${organisationId}:`, error);
+        if (!org) {
           return res.status(403).json({
             error: 'Organization not found',
             message: 'Could not verify organization settings'
@@ -168,13 +188,20 @@ const checkFeatureFlagOptional = (featureName) => {
       let featureFlags = req.user.organisation?.feature_flags;
 
       if (!featureFlags) {
-        const { data: org } = await supabase
-          .from('organisations')
-          .select('feature_flags')
-          .eq('id', req.user.organisationId)
-          .single();
-
-        featureFlags = org?.feature_flags;
+        try {
+          const org = await executeWithRetry(
+            () => supabase
+              .from('organisations')
+              .select('feature_flags')
+              .eq('id', req.user.organisationId)
+              .single(),
+            'Optional feature flags fetch'
+          );
+          featureFlags = org?.feature_flags;
+        } catch (error) {
+          // For optional check, just continue with no flags on error
+          featureFlags = null;
+        }
       }
 
       const featureConfig = getNestedValue(featureFlags, featureName);
@@ -207,20 +234,29 @@ const getFeatureFlags = async (req, res) => {
     let featureFlags = req.user.organisation?.feature_flags;
 
     if (!featureFlags) {
-      const { data: org, error } = await supabase
-        .from('organisations')
-        .select('feature_flags')
-        .eq('id', req.user.organisationId)
-        .single();
-
-      if (error) {
+      try {
+        const org = await executeWithRetry(
+          () => supabase
+            .from('organisations')
+            .select('feature_flags')
+            .eq('id', req.user.organisationId)
+            .single(),
+          'Get feature flags for user'
+        );
+        featureFlags = org?.feature_flags || {};
+      } catch (error) {
+        if (isTransientError(error)) {
+          return res.status(503).json({
+            error: 'Service temporarily unavailable',
+            message: 'Could not fetch feature flags. Please try again.',
+            retryable: true
+          });
+        }
         return res.status(500).json({
           error: 'Failed to fetch feature flags',
           message: error.message
         });
       }
-
-      featureFlags = org?.feature_flags || {};
     }
 
     res.json({ feature_flags: featureFlags });

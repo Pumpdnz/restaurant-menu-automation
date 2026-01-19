@@ -19,6 +19,16 @@ function isTransientError(error) {
   const errorStr = typeof error === 'string' ? error :
     (error.message || error.code || JSON.stringify(error));
 
+  // Auth-specific retryable errors (Supabase marks these as retryable)
+  if (error.name === 'AuthRetryableFetchError') {
+    return true;
+  }
+
+  // Supabase auth error with status 0 (network failure)
+  if (error.__isAuthError && error.status === 0) {
+    return true;
+  }
+
   // Cloudflare 5xx errors (returned as HTML)
   if (errorStr.includes('520:') || errorStr.includes('502:') ||
       errorStr.includes('503:') || errorStr.includes('504:') ||
@@ -26,9 +36,12 @@ function isTransientError(error) {
     return true;
   }
 
-  // Network/connection errors
+  // Network/connection errors (including undici HTTP client errors)
   if (errorStr.includes('ECONNRESET') || errorStr.includes('ETIMEDOUT') ||
-      errorStr.includes('ENOTFOUND') || errorStr.includes('ECONNREFUSED')) {
+      errorStr.includes('ENOTFOUND') || errorStr.includes('ECONNREFUSED') ||
+      errorStr.includes('UND_ERR_CONNECT_TIMEOUT') ||
+      errorStr.includes('ConnectTimeoutError') ||
+      errorStr.includes('fetch failed')) {
     return true;
   }
 

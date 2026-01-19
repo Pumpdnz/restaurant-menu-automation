@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const { executeWithRetry, isTransientError } = require('../src/services/database-error-handler');
 
 // Initialize Supabase client with service role key for admin operations
 const supabase = createClient(
@@ -14,9 +15,9 @@ const superAdminMiddleware = async (req, res, next) => {
   try {
     // Get token from header
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ 
+      return res.status(401).json({
         error: 'No authorization token provided',
         code: 'NO_AUTH_TOKEN'
       });
@@ -24,34 +25,66 @@ const superAdminMiddleware = async (req, res, next) => {
 
     const token = authHeader.replace('Bearer ', '');
 
-    // Verify token and get user
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
+    // Verify token and get user (with retry for transient errors)
+    let user;
+    try {
+      const authResult = await executeWithRetry(
+        () => supabase.auth.getUser(token),
+        'Super admin JWT verification'
+      );
+      user = authResult?.user;
+    } catch (authError) {
+      if (isTransientError(authError)) {
+        console.error('[SuperAdmin] Service temporarily unavailable:', authError.message);
+        return res.status(503).json({
+          error: 'Service temporarily unavailable',
+          code: 'SERVICE_UNAVAILABLE',
+          retryable: true
+        });
+      }
       console.error('Auth verification failed:', authError);
-      return res.status(401).json({ 
+      return res.status(401).json({
         error: 'Invalid or expired token',
         code: 'INVALID_TOKEN'
       });
     }
 
-    // Check if user is super admin
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, email, name, role, organisation_id')
-      .eq('id', user.id)
-      .single();
+    if (!user) {
+      return res.status(401).json({
+        error: 'Invalid or expired token',
+        code: 'INVALID_TOKEN'
+      });
+    }
 
-    if (profileError) {
+    // Check if user is super admin (with retry for transient errors)
+    let profile;
+    try {
+      profile = await executeWithRetry(
+        () => supabase
+          .from('profiles')
+          .select('id, email, name, role, organisation_id')
+          .eq('id', user.id)
+          .single(),
+        `Super admin profile fetch for ${user.id}`
+      );
+    } catch (profileError) {
+      if (isTransientError(profileError)) {
+        console.error('[SuperAdmin] Service temporarily unavailable during profile fetch:', profileError.message);
+        return res.status(503).json({
+          error: 'Service temporarily unavailable',
+          code: 'SERVICE_UNAVAILABLE',
+          retryable: true
+        });
+      }
       console.error('Profile fetch error:', profileError);
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'Failed to fetch user profile',
         code: 'PROFILE_FETCH_ERROR'
       });
     }
 
     if (!profile || profile.role !== 'super_admin') {
-      return res.status(403).json({ 
+      return res.status(403).json({
         error: 'Super admin access required',
         code: 'INSUFFICIENT_PERMISSIONS',
         requiredRole: 'super_admin',
@@ -74,7 +107,14 @@ const superAdminMiddleware = async (req, res, next) => {
     next();
   } catch (error) {
     console.error('Super admin middleware error:', error);
-    res.status(500).json({ 
+    if (isTransientError(error)) {
+      return res.status(503).json({
+        error: 'Service temporarily unavailable',
+        code: 'SERVICE_UNAVAILABLE',
+        retryable: true
+      });
+    }
+    res.status(500).json({
       error: 'Authentication failed',
       code: 'AUTH_ERROR',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -89,25 +129,48 @@ const superAdminMiddleware = async (req, res, next) => {
 const checkSuperAdmin = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       req.isSuperAdmin = false;
       return next();
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
+
+    // Use retry for getUser (silent failure - just set flag to false)
+    let user;
+    try {
+      const authResult = await executeWithRetry(
+        () => supabase.auth.getUser(token),
+        'Check super admin JWT'
+      );
+      user = authResult?.user;
+    } catch (authError) {
+      // For optional check, just set flag to false on any error
       req.isSuperAdmin = false;
       return next();
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
+    if (!user) {
+      req.isSuperAdmin = false;
+      return next();
+    }
+
+    // Use retry for profile fetch (silent failure)
+    let profile;
+    try {
+      profile = await executeWithRetry(
+        () => supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single(),
+        'Check super admin profile'
+      );
+    } catch (profileError) {
+      req.isSuperAdmin = false;
+      return next();
+    }
 
     req.isSuperAdmin = profile?.role === 'super_admin';
     if (req.isSuperAdmin) {
