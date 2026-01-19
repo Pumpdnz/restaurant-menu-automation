@@ -12,14 +12,24 @@ import {
   Mail,
   Phone,
   Star,
-  ExternalLink
+  ExternalLink,
+  Circle,
+  CheckCircle2,
+  XCircle
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '../lib/utils';
+import api from '../services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Skeleton } from '../components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from '../components/ui/select';
 import { Progress } from '../components/ui/progress';
 import { CreateLeadScrapeJob } from '../components/leads/CreateLeadScrapeJob';
 import { ReportsTabContent } from '../components/reports/ReportsTabContent';
@@ -29,11 +39,13 @@ import { TaskCell } from '../components/restaurants/TaskCell';
 import { LeadDetailModal } from '../components/leads/LeadDetailModal';
 import { useAuth } from '../context/AuthContext';
 import { usePendingLeadsPreview, useRecentRegistrationBatches, useTasksDueToday, useOverdueTasksCount, useRecentRestaurants } from '../hooks/useDashboard';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function Dashboard() {
   // Feature flags
   const { isFeatureEnabled } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Dialog state for CreateLeadScrapeJob
   const [createJobOpen, setCreateJobOpen] = useState(false);
@@ -70,6 +82,52 @@ export default function Dashboard() {
       delivereasy: 'DeliverEasy',
     };
     return labels[platform] || platform;
+  };
+
+  // Task status configuration
+  const statusOptions = [
+    {
+      value: 'pending',
+      label: 'Pending',
+      icon: <Circle className="h-4 w-4 stroke-gray-700" />,
+      description: 'Waiting on dependencies'
+    },
+    {
+      value: 'active',
+      label: 'Active',
+      icon: <Circle className="h-4 w-4 stroke-brand-blue" />,
+      description: 'Currently working on'
+    },
+    {
+      value: 'completed',
+      label: 'Completed',
+      icon: <CheckCircle2 className="h-4 w-4 stroke-brand-green" />,
+      description: 'Task finished'
+    },
+    {
+      value: 'cancelled',
+      label: 'Cancelled',
+      icon: <XCircle className="h-4 w-4 stroke-brand-red" />,
+      description: 'Task cancelled'
+    }
+  ];
+
+  // Handle task status change
+  const handleTaskStatusChange = async (taskId, newStatus) => {
+    try {
+      if (newStatus === 'completed') {
+        await api.patch(`/tasks/${taskId}/complete`);
+      } else if (newStatus === 'cancelled') {
+        await api.patch(`/tasks/${taskId}/cancel`);
+      } else {
+        await api.patch(`/tasks/${taskId}`, { status: newStatus });
+      }
+      // Refetch tasks due today and overdue tasks
+      queryClient.invalidateQueries({ queryKey: ['tasks-due-today'] });
+      queryClient.invalidateQueries({ queryKey: ['overdue-tasks'] });
+    } catch (error) {
+      console.error('Failed to update task status:', error);
+    }
   };
 
   // Lead detail handlers
@@ -266,6 +324,7 @@ export default function Dashboard() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12"></TableHead>
                       <TableHead>Task Name</TableHead>
                       <TableHead className="w-24">Type</TableHead>
                       <TableHead className="w-24">Priority</TableHead>
@@ -274,34 +333,62 @@ export default function Dashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedTasks.map((task) => (
-                      <TableRow key={task.id} className="hover:bg-muted/50">
-                        <TableCell className="font-medium">{task.name}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="text-xs">
-                            {task.type}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={
-                              task.priority === 'high' ? 'text-red-600 border-red-600' :
-                              task.priority === 'medium' ? 'text-yellow-600 border-yellow-600' :
-                              'text-gray-600 border-gray-600'
-                            }
-                          >
-                            {task.priority}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-sm">
-                          {task.restaurants?.name || '-'}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-sm">
-                          {new Date(task.due_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {paginatedTasks.map((task) => {
+                      const currentStatus = statusOptions.find(s => s.value === task.status);
+                      return (
+                        <TableRow key={task.id} className="hover:bg-muted/50">
+                          <TableCell className="w-12 p-2">
+                            <Select
+                              value={task.status}
+                              onValueChange={(v) => handleTaskStatusChange(task.id, v)}
+                            >
+                              <SelectTrigger className="h-8 w-8 border-0 bg-transparent p-0 hover:bg-muted/50 rounded-full">
+                                {currentStatus?.icon || <Circle className="h-4 w-4 text-gray-400" />}
+                              </SelectTrigger>
+                              <SelectContent>
+                                {statusOptions.map((status) => (
+                                  <SelectItem key={status.value} value={status.value}>
+                                    <div className="flex items-center gap-2">
+                                      {status.icon}
+                                      <div>
+                                        <div className="font-medium">{status.label}</div>
+                                        <div className="text-xs text-muted-foreground">
+                                          {status.description}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell className="font-medium">{task.name}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">
+                              {task.type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant="outline"
+                              className={
+                                task.priority === 'high' ? 'text-red-600 border-red-600' :
+                                task.priority === 'medium' ? 'text-yellow-600 border-yellow-600' :
+                                'text-gray-600 border-gray-600'
+                              }
+                            >
+                              {task.priority}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm">
+                            {task.restaurants?.name || '-'}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm">
+                            {new Date(task.due_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
                 {totalTasksPages > 1 && (
