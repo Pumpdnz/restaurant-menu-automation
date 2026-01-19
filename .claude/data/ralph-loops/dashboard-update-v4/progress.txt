@@ -7,7 +7,7 @@
 - Testing Method: Combined (Browser + Build + Console)
 
 ## Current State
-- Iteration: 6 / 36
+- Iteration: 7 / 36
 - Status: IN_PROGRESS (2026-01-19)
 - Last Updated: 2026-01-19
 
@@ -18,7 +18,7 @@
 - [x] Tasks Due Today: Clickable names with TaskDetailModal
 - [x] Tasks Due Today: Due date editor with DateTimePicker
 - [x] Tasks Due Today: Priority dropdown and task type popover
-- [ ] Tasks Due Today: Action button dropdown (complete/follow-up/sequence)
+- [x] Tasks Due Today: Action button dropdown (complete/follow-up/sequence)
 - [ ] Recent Restaurants: Start Sequence fix
 - [ ] Recent Restaurants: Lead columns and toggleable status
 - [ ] Recent Restaurants: Move to 2-column grid position 1
@@ -32,18 +32,19 @@
 - Feature 4: Tasks Due Today - Added clickable task names with description and TaskDetailModal
 - Feature 5: Tasks Due Today - Added due date editor with DateTimePicker (red styling for overdue, completed/cancelled states)
 - Feature 6: Tasks Due Today - Added priority dropdown with colored badges and task type popover with TaskTypeQuickView
+- Feature 7: Tasks Due Today - Added action button dropdown with complete/follow-up/sequence options for active tasks, Edit button, StartSequenceModal
 
 ## Remaining
-6 features (7-12)
+5 features (8-12)
 
 ## Current Blocker
 (none)
 
 ## Last Verification Result
-✅ Feature 6 complete - Added DropdownMenu imports, Button import, TaskTypeQuickView import, MessageSquare icon import. Created priorityConfig object with Low/Medium/High options and colored badge styling. Added handleTaskPriorityChange handler with API call and query invalidation. Added getTypeIcon helper for task type icons. Replaced static priority Badge with interactive DropdownMenu. Wrapped task type cell with TaskTypeQuickView component showing icons and labels. Priority dropdown opens and changes persist to database. TaskTypeQuickView popover shows contact info, scheduled time, and action buttons. Build passes, no console errors.
+✅ Feature 7 complete - Added ChevronDown, Edit, Copy, Workflow icons to imports. Added StartSequenceModal import. Added sequenceRestaurant/isSequenceModalOpen/followUpTaskId state variables. Implemented handleCompleteTask, handleCompleteWithFollowUp, handleCompleteWithStartSequence handlers with API calls and query invalidation. Added Actions column header to table. Added action cell with completion dropdown (Mark Complete, Complete & Set Follow-up, Complete & Start Sequence) for active tasks only, plus Edit button for all tasks. Added StartSequenceModal at bottom of component. Build passes, no console errors. Note: Completion dropdown only appears when task.status === 'active'.
 
 ## Next Session Instructions
-Begin implementation with Feature 7: Add action button dropdown with complete/follow-up/sequence options.
+Begin implementation with Feature 8: Recent Restaurants - Fix Start Sequence by implementing handlers and adding modal.
 
 ## Session History
 | Iteration | Session ID | Timestamp | Feature | Result |
@@ -54,6 +55,7 @@ Begin implementation with Feature 7: Add action button dropdown with complete/fo
 | 4 | a459f367-f4d8-432c-8cd1-d8c30d1af89f | 2026-01-19 | Feature 4: Clickable names with TaskDetailModal | ✅ Complete |
 | 5 | 43d97357-7eee-4ed8-8a45-b8ff9bea78fa | 2026-01-19 | Feature 5: Due date editor with DateTimePicker | ✅ Complete |
 | 6 | fca9eff6-8827-444a-a489-a78f8fd251f4 | 2026-01-19 | Feature 6: Priority dropdown and task type popover | ✅ Complete |
+| 7 | 0fcd94db-ab41-4b49-a270-5657a47c87af | 2026-01-19 | Feature 7: Action button dropdown | ✅ Complete |
 
 ## Iteration History
 | # | Changes Made | Result | Blocker |
@@ -64,3 +66,4 @@ Begin implementation with Feature 7: Add action button dropdown with complete/fo
 | 4 | Added TaskDetailModal import, detailModalTaskId state, made task names clickable with hover styling, showing task.description below name, added TaskDetailModal at bottom with onSuccess handler | ✅ Passes | none |
 | 5 | Imported DateTimePicker component, added handleTaskDueDateChange handler, created getDueDateInput helper for three states (completed/cancelled/active), replaced static due time with DateTimePicker, updated column header to "Due Date", added red styling for overdue dates | ✅ Passes | none |
 | 6 | Added DropdownMenu/Button/TaskTypeQuickView imports, priorityConfig object, handleTaskPriorityChange handler, getTypeIcon helper, priority dropdown with colored badges, task type cell wrapped with TaskTypeQuickView popover | ✅ Passes | none |
+| 7 | Added action button dropdown with complete/follow-up/sequence options for active tasks, Edit button for all tasks, StartSequenceModal import and state, handlers for complete/follow-up/sequence actions | ✅ Passes | none |

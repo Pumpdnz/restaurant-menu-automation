@@ -16,7 +16,11 @@ import {
   Circle,
   CheckCircle2,
   XCircle,
-  MessageSquare
+  MessageSquare,
+  ChevronDown,
+  Edit,
+  Copy,
+  Workflow
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '../lib/utils';
@@ -45,6 +49,7 @@ import { ReportsTabContent } from '../components/reports/ReportsTabContent';
 import { CreateTaskModal } from '../components/tasks/CreateTaskModal';
 import { TaskDetailModal } from '../components/tasks/TaskDetailModal';
 import { TaskTypeQuickView } from '../components/tasks/TaskTypeQuickView';
+import { StartSequenceModal } from '../components/sequences/StartSequenceModal';
 import { LeadContactQuickView } from '../components/restaurants/LeadContactQuickView';
 import { TaskCell } from '../components/restaurants/TaskCell';
 import { LeadDetailModal } from '../components/leads/LeadDetailModal';
@@ -75,6 +80,13 @@ export default function Dashboard() {
 
   // Dialog state for TaskDetailModal
   const [detailModalTaskId, setDetailModalTaskId] = useState(null);
+
+  // Dialog state for StartSequenceModal (from action dropdown)
+  const [sequenceRestaurant, setSequenceRestaurant] = useState(null);
+  const [isSequenceModalOpen, setIsSequenceModalOpen] = useState(false);
+
+  // Dialog state for follow-up task (reuses CreateTaskModal with prefill)
+  const [followUpTaskId, setFollowUpTaskId] = useState(null);
 
   // Callback for ReportsTabContent to trigger dialog with prefill data
   // ReportsTabContent passes an object with { city, cuisine, pageOffset }
@@ -163,6 +175,52 @@ export default function Dashboard() {
       queryClient.invalidateQueries({ queryKey: ['overdue-tasks'] });
     } catch (error) {
       console.error('Failed to update task priority:', error);
+    }
+  };
+
+  // Handle mark task as complete
+  const handleCompleteTask = async (taskId) => {
+    try {
+      await api.patch(`/tasks/${taskId}/complete`);
+      queryClient.invalidateQueries({ queryKey: ['tasks-due-today'] });
+      queryClient.invalidateQueries({ queryKey: ['overdue-tasks'] });
+    } catch (error) {
+      console.error('Failed to complete task:', error);
+    }
+  };
+
+  // Handle complete with follow-up
+  const handleCompleteWithFollowUp = async (taskId) => {
+    try {
+      await api.patch(`/tasks/${taskId}/complete`);
+      // Open CreateTaskModal for follow-up
+      setFollowUpTaskId(taskId);
+      setCreateTaskModalOpen(true);
+      queryClient.invalidateQueries({ queryKey: ['tasks-due-today'] });
+      queryClient.invalidateQueries({ queryKey: ['overdue-tasks'] });
+    } catch (error) {
+      console.error('Failed to complete task:', error);
+    }
+  };
+
+  // Handle complete with start sequence
+  const handleCompleteWithStartSequence = async (task) => {
+    try {
+      if (!task?.restaurants) {
+        console.error('No restaurant data available');
+        return;
+      }
+      await api.patch(`/tasks/${task.id}/complete`);
+      // Open StartSequenceModal
+      setSequenceRestaurant({
+        id: task.restaurants.id,
+        name: task.restaurants.name
+      });
+      setIsSequenceModalOpen(true);
+      queryClient.invalidateQueries({ queryKey: ['tasks-due-today'] });
+      queryClient.invalidateQueries({ queryKey: ['overdue-tasks'] });
+    } catch (error) {
+      console.error('Failed to complete task:', error);
     }
   };
 
@@ -427,6 +485,7 @@ export default function Dashboard() {
                       <TableHead className="w-24">Priority</TableHead>
                       <TableHead className="w-48">Restaurant</TableHead>
                       <TableHead className="w-40">Due Date</TableHead>
+                      <TableHead className="w-28 text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -527,6 +586,49 @@ export default function Dashboard() {
                           </TableCell>
                           <TableCell>
                             {getDueDateInput(task)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              {task.status === 'active' && (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="text-green-600 hover:text-green-700 flex items-center gap-0.5 px-2"
+                                    >
+                                      <CheckCircle2 className="h-4 w-4" />
+                                      <ChevronDown className="h-3 w-3" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => handleCompleteTask(task.id)}>
+                                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                                      Mark as Complete
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleCompleteWithFollowUp(task.id)}>
+                                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                                      Complete & Set Follow-up
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => handleCompleteWithStartSequence(task)}
+                                      disabled={!task?.restaurants}
+                                    >
+                                      <Workflow className="h-4 w-4 mr-2" />
+                                      Complete & Start Sequence
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setDetailModalTaskId(task.id)}
+                                title="Edit task"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
@@ -1048,6 +1150,20 @@ export default function Dashboard() {
             queryClient.invalidateQueries({ queryKey: ['tasks-due-today'] });
             queryClient.invalidateQueries({ queryKey: ['overdue-tasks'] });
           }}
+        />
+      )}
+
+      {/* Start Sequence Modal (from action dropdown) */}
+      {isSequenceModalOpen && sequenceRestaurant && (
+        <StartSequenceModal
+          open={isSequenceModalOpen}
+          onClose={() => {
+            setIsSequenceModalOpen(false);
+            setSequenceRestaurant(null);
+            queryClient.invalidateQueries({ queryKey: ['tasks-due-today'] });
+            queryClient.invalidateQueries({ queryKey: ['overdue-tasks'] });
+          }}
+          restaurant={sequenceRestaurant}
         />
       )}
     </div>
