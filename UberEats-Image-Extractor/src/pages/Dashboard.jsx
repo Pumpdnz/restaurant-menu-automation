@@ -198,25 +198,25 @@ export default function Dashboard() {
           <CardTitle>Quick Actions</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="flex flex-wrap gap-4">
             <Link
               to="/extractions/new"
-              className="flex items-center justify-center px-4 py-3 text-sm font-medium rounded-lg text-white bg-gradient-to-r from-brand-blue to-brand-green hover:opacity-90 transition-all duration-200 shadow-lg"
+              className="flex-1 min-w-[200px] flex items-center justify-center px-4 py-3 text-sm font-medium rounded-lg text-white bg-gradient-to-r from-brand-blue to-brand-green hover:opacity-90 transition-all duration-200 shadow-lg"
             >
               <Download className="mr-2 h-4 w-4" />
               New Extraction
             </Link>
             <Link
-              to="/restaurants"
-              className="flex items-center justify-center px-4 py-3 border border-border text-sm font-medium rounded-lg text-foreground bg-background hover:bg-accent transition-all duration-200"
+              to="/restaurants/new"
+              className="flex-1 min-w-[200px] flex items-center justify-center px-4 py-3 text-sm font-medium rounded-lg text-white bg-gradient-to-r from-brand-purple to-brand-blue hover:opacity-90 transition-all duration-200 shadow-lg"
             >
               <Store className="mr-2 h-4 w-4" />
-              Manage Restaurants
+              New Restaurant
             </Link>
             {isFeatureEnabled('tasksAndSequences') && (
               <button
                 onClick={() => setCreateTaskModalOpen(true)}
-                className="flex items-center justify-center px-4 py-3 border border-border text-sm font-medium rounded-lg text-foreground bg-background hover:bg-accent transition-all duration-200"
+                className="flex-1 min-w-[200px] flex items-center justify-center px-4 py-3 text-sm font-medium rounded-lg text-white bg-gradient-to-r from-brand-orange to-brand-coral hover:opacity-90 transition-all duration-200 shadow-lg"
               >
                 <ClipboardList className="mr-2 h-4 w-4" />
                 New Task
