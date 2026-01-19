@@ -148,9 +148,9 @@
         "Import StartSequenceModal component",
         "Add two StartSequenceModal instances (from dropdown and from TaskTypeQuickView)"
       ],
-      "passes": false,
-      "completed_iteration": null,
-      "notes": "Currently empty handlers at lines 151-166"
+      "passes": true,
+      "completed_iteration": 8,
+      "notes": "Added startSequenceFor state, implemented handleStartSequence and handleStartSequenceRequested handlers, added second StartSequenceModal for TaskCell dropdown"
     },
     {
       "id": 9,

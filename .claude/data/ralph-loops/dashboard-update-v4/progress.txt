@@ -7,7 +7,7 @@
 - Testing Method: Combined (Browser + Build + Console)
 
 ## Current State
-- Iteration: 7 / 36
+- Iteration: 8 / 36
 - Status: IN_PROGRESS (2026-01-19)
 - Last Updated: 2026-01-19
 
@@ -19,7 +19,7 @@
 - [x] Tasks Due Today: Due date editor with DateTimePicker
 - [x] Tasks Due Today: Priority dropdown and task type popover
 - [x] Tasks Due Today: Action button dropdown (complete/follow-up/sequence)
-- [ ] Recent Restaurants: Start Sequence fix
+- [x] Recent Restaurants: Start Sequence fix
 - [ ] Recent Restaurants: Lead columns and toggleable status
 - [ ] Recent Restaurants: Move to 2-column grid position 1
 - [ ] Pending Leads: Multi-select, collapsible drawers, action buttons
@@ -33,18 +33,19 @@
 - Feature 5: Tasks Due Today - Added due date editor with DateTimePicker (red styling for overdue, completed/cancelled states)
 - Feature 6: Tasks Due Today - Added priority dropdown with colored badges and task type popover with TaskTypeQuickView
 - Feature 7: Tasks Due Today - Added action button dropdown with complete/follow-up/sequence options for active tasks, Edit button, StartSequenceModal
+- Feature 8: Recent Restaurants - Fixed Start Sequence by implementing handlers and adding second modal
 
 ## Remaining
-5 features (8-12)
+4 features (9-12)
 
 ## Current Blocker
 (none)
 
 ## Last Verification Result
-✅ Feature 7 complete - Added ChevronDown, Edit, Copy, Workflow icons to imports. Added StartSequenceModal import. Added sequenceRestaurant/isSequenceModalOpen/followUpTaskId state variables. Implemented handleCompleteTask, handleCompleteWithFollowUp, handleCompleteWithStartSequence handlers with API calls and query invalidation. Added Actions column header to table. Added action cell with completion dropdown (Mark Complete, Complete & Set Follow-up, Complete & Start Sequence) for active tasks only, plus Edit button for all tasks. Added StartSequenceModal at bottom of component. Build passes, no console errors. Note: Completion dropdown only appears when task.status === 'active'.
+✅ Feature 8 complete - Added startSequenceFor state variable. Implemented handleStartSequence handler to set startSequenceFor state (for TaskCell dropdown "Start New Sequence"). Implemented handleStartSequenceRequested handler to set sequenceRestaurant and open modal (for TaskTypeQuickView "Complete & Start Sequence"). Added second StartSequenceModal instance for the TaskCell dropdown flow. Build passes, no console errors. Browser verified: clicking "Start New Sequence" from Recent Restaurants TaskCell dropdown opens StartSequenceModal with correct restaurant name.
 
 ## Next Session Instructions
-Begin implementation with Feature 8: Recent Restaurants - Fix Start Sequence by implementing handlers and adding modal.
+Begin implementation with Feature 9: Recent Restaurants - Add lead columns and make status toggleable.
 
 ## Session History
 | Iteration | Session ID | Timestamp | Feature | Result |
@@ -56,6 +57,7 @@ Begin implementation with Feature 8: Recent Restaurants - Fix Start Sequence by 
 | 5 | 43d97357-7eee-4ed8-8a45-b8ff9bea78fa | 2026-01-19 | Feature 5: Due date editor with DateTimePicker | ✅ Complete |
 | 6 | fca9eff6-8827-444a-a489-a78f8fd251f4 | 2026-01-19 | Feature 6: Priority dropdown and task type popover | ✅ Complete |
 | 7 | 0fcd94db-ab41-4b49-a270-5657a47c87af | 2026-01-19 | Feature 7: Action button dropdown | ✅ Complete |
+| 8 | c3ad3dfa-6943-4708-93a2-110baa7a5702 | 2026-01-19 | Feature 8: Start Sequence fix | ✅ Complete |
 
 ## Iteration History
 | # | Changes Made | Result | Blocker |
@@ -67,3 +69,4 @@ Begin implementation with Feature 8: Recent Restaurants - Fix Start Sequence by 
 | 5 | Imported DateTimePicker component, added handleTaskDueDateChange handler, created getDueDateInput helper for three states (completed/cancelled/active), replaced static due time with DateTimePicker, updated column header to "Due Date", added red styling for overdue dates | ✅ Passes | none |
 | 6 | Added DropdownMenu/Button/TaskTypeQuickView imports, priorityConfig object, handleTaskPriorityChange handler, getTypeIcon helper, priority dropdown with colored badges, task type cell wrapped with TaskTypeQuickView popover | ✅ Passes | none |
 | 7 | Added action button dropdown with complete/follow-up/sequence options for active tasks, Edit button for all tasks, StartSequenceModal import and state, handlers for complete/follow-up/sequence actions | ✅ Passes | none |
+| 8 | Added startSequenceFor state, implemented handleStartSequence/handleStartSequenceRequested handlers, added second StartSequenceModal for TaskCell dropdown | ✅ Passes | none |

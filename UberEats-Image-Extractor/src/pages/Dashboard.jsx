@@ -88,6 +88,9 @@ export default function Dashboard() {
   // Dialog state for follow-up task (reuses CreateTaskModal with prefill)
   const [followUpTaskId, setFollowUpTaskId] = useState(null);
 
+  // Dialog state for StartSequenceModal (from Recent Restaurants TaskCell dropdown)
+  const [startSequenceFor, setStartSequenceFor] = useState(null);
+
   // Callback for ReportsTabContent to trigger dialog with prefill data
   // ReportsTabContent passes an object with { city, cuisine, pageOffset }
   const handleStartScrape = (params) => {
@@ -362,7 +365,8 @@ export default function Dashboard() {
   };
 
   const handleStartSequence = (restaurant) => {
-    // Start sequence - implement if needed
+    // Open StartSequenceModal for TaskCell dropdown "Start New Sequence"
+    setStartSequenceFor(restaurant);
   };
 
   const handleTaskCompleted = () => {
@@ -375,7 +379,9 @@ export default function Dashboard() {
   };
 
   const handleStartSequenceRequested = (restaurant) => {
-    // Handle start sequence request - implement if needed
+    // Open StartSequenceModal from TaskTypeQuickView "Complete & Start Sequence"
+    setSequenceRestaurant(restaurant);
+    setIsSequenceModalOpen(true);
   };
 
   if (recentRestaurantsLoading) {
@@ -1153,7 +1159,7 @@ export default function Dashboard() {
         />
       )}
 
-      {/* Start Sequence Modal (from action dropdown) */}
+      {/* Start Sequence Modal (from Tasks Due Today action dropdown) */}
       {isSequenceModalOpen && sequenceRestaurant && (
         <StartSequenceModal
           open={isSequenceModalOpen}
@@ -1164,6 +1170,21 @@ export default function Dashboard() {
             queryClient.invalidateQueries({ queryKey: ['overdue-tasks'] });
           }}
           restaurant={sequenceRestaurant}
+        />
+      )}
+
+      {/* Start Sequence Modal (from Recent Restaurants TaskCell dropdown) */}
+      {startSequenceFor && (
+        <StartSequenceModal
+          open={!!startSequenceFor}
+          onClose={() => {
+            setStartSequenceFor(null);
+            queryClient.invalidateQueries({ queryKey: ['recent-restaurants'] });
+          }}
+          restaurant={{
+            id: startSequenceFor.id,
+            name: startSequenceFor.name
+          }}
         />
       )}
     </div>
