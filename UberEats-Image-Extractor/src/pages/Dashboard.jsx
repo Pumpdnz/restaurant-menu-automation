@@ -863,9 +863,164 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Two-column grid for Pending Leads and Batch Jobs - Both feature flagged */}
+      {/* Two-column grid for Recent Restaurants, Pending Leads, and Batch Jobs */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Pending Leads Preview - Feature flagged */}
+        {/* Recently Created Restaurants - Position 1 (left) */}
+        <Card className="backdrop-blur-sm bg-background/95 border-border">
+          <CardHeader className="py-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                Recently Created Restaurants
+                <Badge variant="secondary" className="text-xs">
+                  {recentRestaurantsData.length}
+                </Badge>
+              </CardTitle>
+              <Link to="/restaurants">
+                <div className="text-sm text-brand-blue hover:text-brand-blue/80 font-medium flex items-center transition-colors">
+                  View All
+                  <ArrowRight className="ml-1 h-4 w-4" />
+                </div>
+              </Link>
+            </div>
+            {/* City filter buttons */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setSelectedRestaurantCity(null)}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  selectedRestaurantCity === null
+                    ? 'bg-brand-blue text-white'
+                    : 'bg-muted hover:bg-muted/80'
+                }`}
+              >
+                All
+              </button>
+              {restaurantCities.map((city) => (
+                <button
+                  key={city}
+                  onClick={() => setSelectedRestaurantCity(city)}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                    selectedRestaurantCity === city
+                      ? 'bg-brand-blue text-white'
+                      : 'bg-muted hover:bg-muted/80'
+                  }`}
+                >
+                  {city}
+                </button>
+              ))}
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {recentRestaurantsLoading ? (
+              <div className="divide-y divide-border">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="p-4">
+                    <Skeleton className="h-4 w-full" />
+                  </div>
+                ))}
+              </div>
+            ) : filteredRecentRestaurants.length === 0 ? (
+              <div className="p-6 text-center text-muted-foreground text-sm">
+                No restaurants to display
+              </div>
+            ) : (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Restaurant Name</TableHead>
+                      <TableHead className="w-32">City</TableHead>
+                      <TableHead className="w-24">Status</TableHead>
+                      <TableHead className="w-24">Lead Type</TableHead>
+                      <TableHead className="w-32">Lead Category</TableHead>
+                      <TableHead className="w-32">Lead Status</TableHead>
+                      <TableHead className="w-32">Lead Contact</TableHead>
+                      <TableHead className="w-48">Tasks</TableHead>
+                      <TableHead className="w-28">Created</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedRecentRestaurants.map((restaurant) => (
+                      <TableRow
+                        key={restaurant.id}
+                        className="hover:bg-muted/50 cursor-pointer"
+                        onClick={() => navigate(`/restaurants/${restaurant.id}`)}
+                      >
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{restaurant.name}</div>
+                            {restaurant.organisation_name && (
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {restaurant.organisation_name}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{restaurant.city || '-'}</TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          {getOnboardingStatusBadge(restaurant.onboarding_status, restaurant.id)}
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          {getLeadTypeBadge(restaurant.lead_type, restaurant.id)}
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          {getLeadCategoryBadge(restaurant.lead_category, restaurant.id)}
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          {getLeadStatusBadge(restaurant.lead_status, restaurant.id)}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-xs">
+                          {restaurant.lead_contact || 'No contact'}
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <TaskCell
+                            task={restaurant.oldest_task}
+                            restaurantName={restaurant.name}
+                            restaurantId={restaurant.id}
+                            onStartSequence={() => handleStartSequence(restaurant)}
+                            onTaskCompleted={handleTaskCompleted}
+                            onFollowUpRequested={handleFollowUpRequested}
+                            onStartSequenceRequested={handleStartSequenceRequested}
+                          />
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {new Date(restaurant.created_at).toLocaleDateString()}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {totalRestaurantsPages > 1 && (
+                  <div className="flex items-center justify-between px-4 py-2 border-t bg-muted/30">
+                    <div className="text-sm text-muted-foreground">
+                      Showing {restaurantsPage * restaurantsPageSize + 1}-{Math.min((restaurantsPage + 1) * restaurantsPageSize, filteredRecentRestaurants.length)} of {filteredRecentRestaurants.length} restaurants
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        className="inline-flex items-center justify-center h-8 px-3 text-sm font-medium rounded-md border border-border bg-background hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        onClick={() => setRestaurantsPage(restaurantsPage - 1)}
+                        disabled={restaurantsPage === 0}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      <span className="text-sm text-muted-foreground min-w-[100px] text-center">
+                        Page {restaurantsPage + 1} of {totalRestaurantsPages}
+                      </span>
+                      <button
+                        className="inline-flex items-center justify-center h-8 px-3 text-sm font-medium rounded-md border border-border bg-background hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        onClick={() => setRestaurantsPage(restaurantsPage + 1)}
+                        disabled={restaurantsPage + 1 >= totalRestaurantsPages}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Pending Leads Preview - Position 2 (right) - Feature flagged */}
         {isFeatureEnabled('leadScraping') && (
           <Card className="backdrop-blur-sm bg-background/95 border-border">
             <CardHeader className="flex flex-row items-center justify-between py-3">
@@ -977,7 +1132,7 @@ export default function Dashboard() {
           </Card>
         )}
 
-        {/* Recent Batch Registration Jobs - Feature flagged */}
+        {/* Recent Batch Registration Jobs - Position 3 - Feature flagged */}
         {isFeatureEnabled('registrationBatches') && (
           <Card className="backdrop-blur-sm bg-background/95 border-border">
             <CardHeader className="flex flex-row items-center justify-between py-3">
@@ -1103,193 +1258,6 @@ export default function Dashboard() {
           </Card>
         )}
       </div>
-
-
-      {/* Recently Created Restaurants - No feature flag */}
-      <Card className="backdrop-blur-sm bg-background/95 border-border">
-        <CardHeader className="py-3 space-y-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              Recently Created Restaurants
-              <Badge variant="secondary" className="text-xs">
-                {recentRestaurantsData.length}
-              </Badge>
-            </CardTitle>
-            <Link to="/restaurants">
-              <div className="text-sm text-brand-blue hover:text-brand-blue/80 font-medium flex items-center transition-colors">
-                View All
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </div>
-            </Link>
-          </div>
-
-          {/* City filter pills */}
-          {restaurantCities.length > 0 && (
-            <div className="flex items-center gap-2">
-              <Badge
-                variant={selectedRestaurantCity === null ? "default" : "outline"}
-                className={cn(
-                  "text-xs cursor-pointer hover:bg-muted",
-                  selectedRestaurantCity === null && "cursor-pointer"
-                )}
-                onClick={() => setSelectedRestaurantCity(null)}
-              >
-                All
-              </Badge>
-              {restaurantCities.slice(0, 5).map((city) => (
-                <Badge
-                  key={city}
-                  variant={selectedRestaurantCity === city ? "default" : "outline"}
-                  className={cn(
-                    "text-xs cursor-pointer hover:bg-muted",
-                    selectedRestaurantCity === city && "cursor-pointer"
-                  )}
-                  onClick={() => setSelectedRestaurantCity(selectedRestaurantCity === city ? null : city)}
-                >
-                  {city}
-                </Badge>
-              ))}
-              {selectedRestaurantCity && (
-                <button
-                  className="inline-flex items-center justify-center h-6 w-6 rounded-md text-muted-foreground hover:bg-muted transition-colors"
-                  onClick={() => setSelectedRestaurantCity(null)}
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </div>
-          )}
-        </CardHeader>
-
-        <CardContent className="p-0">
-          {recentRestaurantsLoading ? (
-            <div className="divide-y divide-border">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="p-4">
-                  <Skeleton className="h-4 w-full" />
-                </div>
-              ))}
-            </div>
-          ) : filteredRecentRestaurants.length === 0 ? (
-            <div className="p-6 text-center text-muted-foreground text-sm">
-              {selectedRestaurantCity ? 'No restaurants in this city' : 'No restaurants created yet'}
-            </div>
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Restaurant Name</TableHead>
-                    <TableHead className="w-32">City</TableHead>
-                    <TableHead className="w-40">Status</TableHead>
-                    <TableHead className="min-w-[110px]">Lead Type</TableHead>
-                    <TableHead className="min-w-[150px]">Lead Category</TableHead>
-                    <TableHead className="min-w-[110px]">Lead Status</TableHead>
-                    <TableHead className="w-48">Lead Contact</TableHead>
-                    <TableHead className="w-40">Tasks</TableHead>
-                    <TableHead className="w-32">Created</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedRestaurants.map((restaurant) => (
-                    <TableRow key={restaurant.id} className="hover:bg-muted/50">
-                      <TableCell className="font-medium">
-                        <Link
-                          to={`/restaurants/${restaurant.id}`}
-                          className="hover:text-brand-blue transition-colors"
-                        >
-                          {restaurant.name}
-                        </Link>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{restaurant.city || '-'}</TableCell>
-                      <TableCell>
-                        {getOnboardingStatusBadge(restaurant.onboarding_status, restaurant.id)}
-                      </TableCell>
-                      <TableCell>
-                        {getLeadTypeBadge(restaurant.lead_type, restaurant.id)}
-                      </TableCell>
-                      <TableCell>
-                        {getLeadCategoryBadge(restaurant.lead_category, restaurant.id)}
-                      </TableCell>
-                      <TableCell>
-                        {getLeadStatusBadge(restaurant.lead_status, restaurant.id)}
-                      </TableCell>
-                      <TableCell>
-                        <LeadContactQuickView restaurant={restaurant}>
-                          <div className="space-y-1 cursor-pointer hover:bg-muted/30 p-1 -m-1 rounded transition-colors">
-                            {restaurant.contact_name && (
-                              <div className="flex items-center gap-1 text-xs">
-                                <User className="h-3 w-3 text-muted-foreground" />
-                                <span>{restaurant.contact_name}</span>
-                              </div>
-                            )}
-                            {restaurant.contact_email && (
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <Mail className="h-3 w-3" />
-                                {restaurant.contact_email}
-                              </div>
-                            )}
-                            {restaurant.contact_phone && (
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <Phone className="h-3 w-3" />
-                                {restaurant.contact_phone}
-                              </div>
-                            )}
-                            {!restaurant.contact_name && !restaurant.contact_phone && !restaurant.contact_email && (
-                              <span className="text-xs text-muted-foreground">No contact</span>
-                            )}
-                          </div>
-                        </LeadContactQuickView>
-                      </TableCell>
-                      <TableCell>
-                        <TaskCell
-                          task={restaurant.oldest_task}
-                          restaurantName={restaurant.name}
-                          restaurantId={restaurant.id}
-                          onCreateTask={() => handleCreateTask(restaurant)}
-                          onStartSequence={() => handleStartSequence(restaurant)}
-                          onTaskCompleted={handleTaskCompleted}
-                          onFollowUpRequested={handleFollowUpRequested}
-                          onStartSequenceRequested={handleStartSequenceRequested}
-                        />
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {new Date(restaurant.created_at).toLocaleDateString()}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              {totalRestaurantsPages > 1 && (
-                <div className="flex items-center justify-between px-4 py-2 border-t bg-muted/30">
-                  <div className="text-sm text-muted-foreground">
-                    Showing {restaurantsPage * restaurantsPageSize + 1}-{Math.min((restaurantsPage + 1) * restaurantsPageSize, filteredRecentRestaurants.length)} of {filteredRecentRestaurants.length} restaurants
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      className="inline-flex items-center justify-center h-8 px-3 text-sm font-medium rounded-md border border-border bg-background hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      onClick={() => setRestaurantsPage(restaurantsPage - 1)}
-                      disabled={restaurantsPage === 0}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-                    <span className="text-sm text-muted-foreground min-w-[100px] text-center">
-                      Page {restaurantsPage + 1} of {totalRestaurantsPages}
-                    </span>
-                    <button
-                      className="inline-flex items-center justify-center h-8 px-3 text-sm font-medium rounded-md border border-border bg-background hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      onClick={() => setRestaurantsPage(restaurantsPage + 1)}
-                      disabled={restaurantsPage + 1 >= totalRestaurantsPages}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
 
       {/* Create Lead Scrape Job Dialog */}
       <CreateLeadScrapeJob
