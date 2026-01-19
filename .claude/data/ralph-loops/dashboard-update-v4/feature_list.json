@@ -199,9 +199,9 @@
         "Add View (Eye) and Convert (ArrowRightCircle) action buttons",
         "Add bulk actions bar when items selected"
       ],
-      "passes": false,
-      "completed_iteration": null,
-      "notes": "Reference: PendingLeadsTable.tsx for full implementation"
+      "passes": true,
+      "completed_iteration": 11,
+      "notes": "Added multi-select with Checkbox, collapsible drawers with Collapsible/CollapsibleContent, expand toggle with ChevronRight/ChevronDown icons, action buttons (Eye for view, ArrowRightCircle for convert), bulk actions bar with Convert Selected button, and conversion dialog. Imported useConvertLeadsToRestaurants hook for conversion functionality. Build passes, component renders correctly."
     },
     {
       "id": 12,

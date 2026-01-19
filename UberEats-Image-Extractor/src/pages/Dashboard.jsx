@@ -20,7 +20,12 @@ import {
   ChevronDown,
   Edit,
   Copy,
-  Workflow
+  Workflow,
+  Eye,
+  ArrowRightCircle,
+  Loader2,
+  MapPin,
+  Globe
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '../lib/utils';
@@ -44,6 +49,19 @@ import {
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
 import { Button } from '../components/ui/button';
+import { Checkbox } from '../components/ui/checkbox';
+import {
+  Collapsible,
+  CollapsibleContent,
+} from '../components/ui/collapsible';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog';
 import { Progress } from '../components/ui/progress';
 import { CreateLeadScrapeJob } from '../components/leads/CreateLeadScrapeJob';
 import { ReportsTabContent } from '../components/reports/ReportsTabContent';
@@ -56,6 +74,7 @@ import { TaskCell } from '../components/restaurants/TaskCell';
 import { LeadDetailModal } from '../components/leads/LeadDetailModal';
 import { useAuth } from '../context/AuthContext';
 import { usePendingLeadsPreview, useRecentRegistrationBatches, useTasksDueToday, useOverdueTasksCount, useRecentRestaurants } from '../hooks/useDashboard';
+import { useConvertLeadsToRestaurants } from '../hooks/useLeadScrape';
 import { useQueryClient } from '@tanstack/react-query';
 
 export default function Dashboard() {
@@ -94,6 +113,17 @@ export default function Dashboard() {
 
   // Dialog state for StartSequenceModal (from Recent Restaurants TaskCell dropdown)
   const [startSequenceFor, setStartSequenceFor] = useState(null);
+
+  // Pending Leads multi-select and expansion state
+  const [selectedLeadIds, setSelectedLeadIds] = useState(new Set());
+  const [expandedLeadIds, setExpandedLeadIds] = useState(new Set());
+  const [isConversionDialogOpen, setIsConversionDialogOpen] = useState(false);
+  const [conversionResults, setConversionResults] = useState([]);
+  const [isConverting, setIsConverting] = useState(false);
+  const [createRegistrationBatch, setCreateRegistrationBatch] = useState(true);
+
+  // Lead conversion mutation
+  const convertMutation = useConvertLeadsToRestaurants();
 
   // Callback for ReportsTabContent to trigger dialog with prefill data
   // ReportsTabContent passes an object with { city, cuisine, pageOffset }
@@ -292,16 +322,171 @@ export default function Dashboard() {
     );
   };
 
+  // Pending Leads Preview (moved up for use in multi-select functions)
+  const { data: pendingLeadsData, isLoading: pendingLeadsLoading, refetch: refetchPendingLeads } = usePendingLeadsPreview(5);
+  const pendingLeads = pendingLeadsData?.leads || [];
+  const totalPendingLeads = pendingLeadsData?.total || 0;
+
   // Lead detail handlers
   const handleViewLead = (leadId) => {
     setSelectedLeadId(leadId);
     setIsLeadDetailModalOpen(true);
   };
 
-  // Pending Leads Preview
-  const { data: pendingLeadsData, isLoading: pendingLeadsLoading } = usePendingLeadsPreview(5);
-  const pendingLeads = pendingLeadsData?.leads || [];
-  const totalPendingLeads = pendingLeadsData?.total || 0;
+  // Pending Leads multi-select functions
+  const allLeadsSelected =
+    pendingLeads.length > 0 &&
+    pendingLeads.every((l) => selectedLeadIds.has(l.id));
+
+  const toggleLeadSelection = (leadId) => {
+    setSelectedLeadIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(leadId)) {
+        next.delete(leadId);
+      } else {
+        next.add(leadId);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAllLeads = () => {
+    if (allLeadsSelected) {
+      setSelectedLeadIds(new Set());
+    } else {
+      setSelectedLeadIds(new Set(pendingLeads.map((l) => l.id)));
+    }
+  };
+
+  const clearLeadSelection = () => {
+    setSelectedLeadIds(new Set());
+  };
+
+  // Pending Leads expand/collapse functions
+  const allLeadsExpanded =
+    pendingLeads.length > 0 &&
+    pendingLeads.every((lead) => expandedLeadIds.has(lead.id));
+
+  const toggleLeadExpanded = (leadId) => {
+    setExpandedLeadIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(leadId)) {
+        next.delete(leadId);
+      } else {
+        next.add(leadId);
+      }
+      return next;
+    });
+  };
+
+  const toggleExpandAllLeads = () => {
+    if (allLeadsExpanded) {
+      setExpandedLeadIds(new Set());
+    } else {
+      setExpandedLeadIds(new Set(pendingLeads.map((l) => l.id)));
+    }
+  };
+
+  // Lead conversion handlers
+  const handleConvertSingleLead = async (leadId) => {
+    const lead = pendingLeads.find((l) => l.id === leadId);
+    if (!lead) return;
+
+    setIsConverting(true);
+    setConversionResults([]);
+    setIsConversionDialogOpen(true);
+
+    const batchName = `${lead.restaurant_name} - ${new Date().toISOString().split('T')[0]}`;
+
+    try {
+      const response = await convertMutation.mutateAsync({
+        leadIds: [leadId],
+        createRegistrationBatch,
+        batchName,
+      });
+
+      const convertedItem = response.converted?.[0];
+      setConversionResults([
+        {
+          leadId: lead.id,
+          restaurantName: convertedItem?.restaurant_name || lead.restaurant_name,
+          success: !!convertedItem,
+          error: response.failed?.[0]?.error,
+          restaurantId: convertedItem?.restaurant_id,
+        },
+      ]);
+
+      queryClient.invalidateQueries({ queryKey: ['pending-leads-preview'] });
+    } catch (error) {
+      setConversionResults([
+        {
+          leadId: lead.id,
+          restaurantName: lead.restaurant_name,
+          success: false,
+          error: error.message || 'Conversion failed',
+        },
+      ]);
+    } finally {
+      setIsConverting(false);
+    }
+  };
+
+  const handleConvertSelectedLeads = async () => {
+    if (selectedLeadIds.size === 0) return;
+
+    setIsConverting(true);
+    setConversionResults([]);
+    setIsConversionDialogOpen(true);
+
+    const leadIds = Array.from(selectedLeadIds);
+    const leadsToConvert = pendingLeads.filter((l) => leadIds.includes(l.id));
+    const batchName = `Batch ${new Date().toISOString().split('T')[0]} (${leadIds.length} restaurants)`;
+
+    try {
+      const response = await convertMutation.mutateAsync({
+        leadIds,
+        createRegistrationBatch,
+        batchName,
+      });
+
+      const results = [];
+      if (response.converted) {
+        response.converted.forEach((item) => {
+          results.push({
+            leadId: item.lead_id,
+            restaurantName: item.restaurant_name,
+            success: true,
+            restaurantId: item.restaurant_id,
+          });
+        });
+      }
+      if (response.failed) {
+        response.failed.forEach((item) => {
+          const lead = leadsToConvert.find((l) => l.id === item.lead_id);
+          results.push({
+            leadId: item.lead_id,
+            restaurantName: lead?.restaurant_name || 'Unknown',
+            success: false,
+            error: item.error,
+          });
+        });
+      }
+
+      setConversionResults(results);
+      clearLeadSelection();
+      queryClient.invalidateQueries({ queryKey: ['pending-leads-preview'] });
+    } catch (error) {
+      const results = leadsToConvert.map((lead) => ({
+        leadId: lead.id,
+        restaurantName: lead.restaurant_name,
+        success: false,
+        error: error.message || 'Conversion failed',
+      }));
+      setConversionResults(results);
+    } finally {
+      setIsConverting(false);
+    }
+  };
 
   // Recent Registration Batches Preview
   const { data: registrationBatches = [], isLoading: batchesLoading } = useRecentRegistrationBatches(5);
@@ -939,7 +1124,7 @@ export default function Dashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedRecentRestaurants.map((restaurant) => (
+                    {paginatedRestaurants.map((restaurant) => (
                       <TableRow
                         key={restaurant.id}
                         className="hover:bg-muted/50 cursor-pointer"
@@ -1022,114 +1207,286 @@ export default function Dashboard() {
 
         {/* Pending Leads Preview - Position 2 (right) - Feature flagged */}
         {isFeatureEnabled('leadScraping') && (
-          <Card className="backdrop-blur-sm bg-background/95 border-border">
-            <CardHeader className="flex flex-row items-center justify-between py-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                Pending Leads
-                <Badge variant="secondary" className="text-xs">
-                  {totalPendingLeads}
-                </Badge>
-              </CardTitle>
-              <Link to="/leads?tab=pending">
-                <div className="text-sm text-brand-blue hover:text-brand-blue/80 font-medium flex items-center transition-colors">
-                  View All
-                  <ArrowRight className="ml-1 h-4 w-4" />
+          <div className="space-y-2">
+            {/* Bulk Actions Bar */}
+            {selectedLeadIds.size > 0 && (
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border">
+                <span className="text-sm font-medium">{selectedLeadIds.size} leads selected</span>
+                <div className="flex items-center gap-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <Checkbox
+                      checked={createRegistrationBatch}
+                      onCheckedChange={(checked) => setCreateRegistrationBatch(!!checked)}
+                    />
+                    <span className="text-xs text-muted-foreground">Create Batch</span>
+                  </label>
+                  <Button size="sm" onClick={handleConvertSelectedLeads} disabled={convertMutation.isPending}>
+                    {convertMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <ArrowRightCircle className="h-4 w-4 mr-2" />
+                    )}
+                    Convert Selected
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={clearLeadSelection}>
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
-              </Link>
-            </CardHeader>
-            <CardContent className="p-0">
-              {pendingLeadsLoading ? (
-                <div className="divide-y divide-border">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="p-4">
-                      <Skeleton className="h-4 w-full" />
-                    </div>
-                  ))}
-                </div>
-              ) : pendingLeads.length === 0 ? (
-                <div className="p-6 text-center text-muted-foreground text-sm">
-                  No pending leads to display
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Restaurant Name</TableHead>
-                      <TableHead className="w-32">City</TableHead>
-                      <TableHead className="w-36">Cuisine</TableHead>
-                      <TableHead className="w-24">Rating</TableHead>
-                      <TableHead className="w-28">Created</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {pendingLeads.map((lead) => (
-                      <TableRow key={lead.id} className="hover:bg-muted/50">
-                        <TableCell>
-                          <div>
-                            <div
-                              className="font-medium cursor-pointer hover:text-brand-blue transition-colors"
-                              onClick={() => handleViewLead(lead.id)}
-                            >
-                              {lead.restaurant_name}
-                            </div>
-                            {lead.store_link && (
-                              <a
-                                href={lead.store_link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1 py-0.5"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                View on {getPlatformLabel(lead.platform)}
-                                <ExternalLink className="h-3 w-3" />
-                              </a>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{lead.city || '-'}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {lead.ubereats_cuisine?.slice(0, 2).map((c, i) => (
-                              <Badge key={i} variant="secondary" className="text-xs">
-                                {c}
-                              </Badge>
-                            ))}
-                            {lead.ubereats_cuisine && lead.ubereats_cuisine.length > 2 && (
-                              <Badge variant="secondary" className="text-xs">
-                                +{lead.ubereats_cuisine.length - 2}
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {lead.ubereats_average_review_rating ? (
-                            <div className="flex items-center gap-1">
-                              <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
-                              <span className="text-sm font-medium">
-                                {lead.ubereats_average_review_rating.toFixed(1)}
-                              </span>
-                              {lead.ubereats_number_of_reviews && (
-                                <span className="text-xs text-muted-foreground">
-                                  ({lead.ubereats_number_of_reviews})
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-sm">
-                          {formatDistanceToNow(new Date(lead.created_at), {
-                            addSuffix: true,
-                          })}
-                        </TableCell>
-                      </TableRow>
+              </div>
+            )}
+            <Card className="backdrop-blur-sm bg-background/95 border-border">
+              <CardHeader className="flex flex-row items-center justify-between py-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  Pending Leads
+                  <Badge variant="secondary" className="text-xs">
+                    {totalPendingLeads}
+                  </Badge>
+                </CardTitle>
+                <Link to="/leads?tab=pending">
+                  <div className="text-sm text-brand-blue hover:text-brand-blue/80 font-medium flex items-center transition-colors">
+                    View All
+                    <ArrowRight className="ml-1 h-4 w-4" />
+                  </div>
+                </Link>
+              </CardHeader>
+              <CardContent className="p-0">
+                {pendingLeadsLoading ? (
+                  <div className="divide-y divide-border">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="p-4">
+                        <Skeleton className="h-4 w-full" />
+                      </div>
                     ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
+                  </div>
+                ) : pendingLeads.length === 0 ? (
+                  <div className="p-6 text-center text-muted-foreground text-sm">
+                    No pending leads to display
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-8">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={toggleExpandAllLeads}
+                            title={allLeadsExpanded ? 'Collapse All' : 'Expand All'}
+                          >
+                            {allLeadsExpanded ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </TableHead>
+                        <TableHead className="w-10">
+                          <Checkbox
+                            checked={allLeadsSelected}
+                            onCheckedChange={toggleSelectAllLeads}
+                          />
+                        </TableHead>
+                        <TableHead>Restaurant Name</TableHead>
+                        <TableHead className="w-28">City</TableHead>
+                        <TableHead className="w-24">Rating</TableHead>
+                        <TableHead className="w-28">Created</TableHead>
+                        <TableHead className="w-20 text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pendingLeads.map((lead) => (
+                        <React.Fragment key={lead.id}>
+                          <TableRow className="hover:bg-muted/50">
+                            <TableCell className="w-8 p-2" onClick={(e) => e.stopPropagation()}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                onClick={() => toggleLeadExpanded(lead.id)}
+                              >
+                                {expandedLeadIds.has(lead.id) ? (
+                                  <ChevronDown className="h-4 w-4" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </TableCell>
+                            <TableCell onClick={(e) => e.stopPropagation()}>
+                              <Checkbox
+                                checked={selectedLeadIds.has(lead.id)}
+                                onCheckedChange={() => toggleLeadSelection(lead.id)}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <div>
+                                <div
+                                  className="font-medium cursor-pointer hover:text-brand-blue transition-colors"
+                                  onClick={() => handleViewLead(lead.id)}
+                                >
+                                  {lead.restaurant_name}
+                                </div>
+                                {lead.store_link && (
+                                  <a
+                                    href={lead.store_link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1 py-0.5"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    View on {getPlatformLabel(lead.platform)}
+                                    <ExternalLink className="h-3 w-3" />
+                                  </a>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">{lead.city || '-'}</TableCell>
+                            <TableCell>
+                              {lead.ubereats_average_review_rating ? (
+                                <div className="flex items-center gap-1">
+                                  <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+                                  <span className="text-sm font-medium">
+                                    {lead.ubereats_average_review_rating.toFixed(1)}
+                                  </span>
+                                  {lead.ubereats_number_of_reviews && (
+                                    <span className="text-xs text-muted-foreground">
+                                      ({lead.ubereats_number_of_reviews})
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground text-xs">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground text-sm">
+                              {formatDistanceToNow(new Date(lead.created_at), {
+                                addSuffix: true,
+                              })}
+                            </TableCell>
+                            <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => handleViewLead(lead.id)}
+                                  title="View Details"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => handleConvertSingleLead(lead.id)}
+                                  disabled={convertMutation.isPending}
+                                  title="Convert to Restaurant"
+                                >
+                                  <ArrowRightCircle className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                          {/* Collapsible details row */}
+                          <Collapsible open={expandedLeadIds.has(lead.id)} asChild>
+                            <TableRow className="hover:bg-transparent border-0">
+                              <TableCell colSpan={7} className="p-0">
+                                <CollapsibleContent className="data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden">
+                                  <div className="grid grid-cols-3 gap-4 p-4 bg-muted/30 border-t">
+                                    {/* Column 1: Location */}
+                                    <div className="space-y-1">
+                                      <div className="text-xs font-medium text-muted-foreground mb-2">Location</div>
+                                      {lead.ubereats_address && (
+                                        <div className="flex items-start gap-2 py-0.5">
+                                          <MapPin className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
+                                          <span className="text-xs">{lead.ubereats_address}</span>
+                                        </div>
+                                      )}
+                                      {lead.city && (
+                                        <div className="text-xs text-muted-foreground pl-5">{lead.city}</div>
+                                      )}
+                                      {lead.ubereats_cuisine && lead.ubereats_cuisine.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 pt-1">
+                                          {lead.ubereats_cuisine.map((c, i) => (
+                                            <Badge key={i} variant="secondary" className="text-[10px]">
+                                              {c}
+                                            </Badge>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                    {/* Column 2: Contact */}
+                                    <div className="space-y-1">
+                                      <div className="text-xs font-medium text-muted-foreground mb-2">Contact</div>
+                                      {lead.phone && (
+                                        <div className="flex items-start gap-2 py-0.5">
+                                          <Phone className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
+                                          <span className="text-xs">{lead.phone}</span>
+                                        </div>
+                                      )}
+                                      {lead.email && (
+                                        <div className="flex items-start gap-2 py-0.5">
+                                          <Mail className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
+                                          <span className="text-xs">{lead.email}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                    {/* Column 3: Online */}
+                                    <div className="space-y-1">
+                                      <div className="text-xs font-medium text-muted-foreground mb-2">Online</div>
+                                      {lead.website_url && (
+                                        <div className="flex items-start gap-2 py-0.5">
+                                          <Globe className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
+                                          <a
+                                            href={lead.website_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-xs text-blue-600 hover:underline truncate"
+                                          >
+                                            Website
+                                          </a>
+                                        </div>
+                                      )}
+                                      {lead.instagram_url && (
+                                        <div className="flex items-start gap-2 py-0.5">
+                                          <Globe className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
+                                          <a
+                                            href={lead.instagram_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-xs text-blue-600 hover:underline truncate"
+                                          >
+                                            Instagram
+                                          </a>
+                                        </div>
+                                      )}
+                                      {lead.facebook_url && (
+                                        <div className="flex items-start gap-2 py-0.5">
+                                          <Globe className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
+                                          <a
+                                            href={lead.facebook_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-xs text-blue-600 hover:underline truncate"
+                                          >
+                                            Facebook
+                                          </a>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </CollapsibleContent>
+                              </TableCell>
+                            </TableRow>
+                          </Collapsible>
+                        </React.Fragment>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {/* Recent Batch Registration Jobs - Position 3 - Feature flagged */}
@@ -1342,6 +1699,52 @@ export default function Dashboard() {
           }}
         />
       )}
+
+      {/* Lead Conversion Dialog */}
+      <Dialog open={isConversionDialogOpen} onOpenChange={setIsConversionDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {isConverting ? 'Converting Leads...' : 'Conversion Complete'}
+            </DialogTitle>
+            <DialogDescription>
+              {isConverting
+                ? 'Please wait while leads are being converted to restaurants.'
+                : `${conversionResults.filter(r => r.success).length} of ${conversionResults.length} leads converted successfully.`}
+            </DialogDescription>
+          </DialogHeader>
+          {isConverting ? (
+            <div className="flex justify-center py-4">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {conversionResults.map((result) => (
+                <div
+                  key={result.leadId}
+                  className={cn(
+                    'flex items-center gap-2 p-2 rounded text-sm',
+                    result.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                  )}
+                >
+                  {result.success ? (
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  ) : (
+                    <XCircle className="h-4 w-4 shrink-0" />
+                  )}
+                  <span className="truncate">{result.restaurantName}</span>
+                  {result.error && (
+                    <span className="text-xs text-red-500 truncate">: {result.error}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setIsConversionDialogOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

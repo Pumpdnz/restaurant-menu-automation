@@ -7,7 +7,7 @@
 - Testing Method: Combined (Browser + Build + Console)
 
 ## Current State
-- Iteration: 10 / 36
+- Iteration: 11 / 36
 - Status: IN_PROGRESS (2026-01-19)
 - Last Updated: 2026-01-19
 
@@ -22,7 +22,7 @@
 - [x] Recent Restaurants: Start Sequence fix
 - [x] Recent Restaurants: Lead columns and toggleable status
 - [x] Recent Restaurants: Move to 2-column grid position 1
-- [ ] Pending Leads: Multi-select, collapsible drawers, action buttons
+- [x] Pending Leads: Multi-select, collapsible drawers, action buttons
 - [ ] Recent Batch Jobs: Clickable truncated restaurant names
 
 ## Completed
@@ -36,18 +36,19 @@
 - Feature 8: Recent Restaurants - Fixed Start Sequence by implementing handlers and adding second modal
 - Feature 9: Recent Restaurants - Added lead columns (Lead Type, Lead Category, Lead Status) and made onboarding status toggleable with Select dropdowns
 - Feature 10: Recent Restaurants - Moved to 2-column grid position 1 (left), with Pending Leads in position 2 (right) and Recent Batch Jobs as position 3
+- Feature 11: Pending Leads - Added multi-select, collapsible drawers, action buttons, bulk actions bar, and conversion dialog
 
 ## Remaining
-2 features (11-12)
+1 feature (12)
 
 ## Current Blocker
 (none)
 
 ## Last Verification Result
-✅ Feature 10 complete - Restructured Dashboard layout by moving Recently Created Restaurants section from full-width bottom position into a 2-column grid at position 1 (left). Pending Leads now in position 2 (right). Recent Batch Jobs in position 3. Updated badge helper function calls to pass correct parameters (value, restaurantId). Fixed TaskCell props to use task/restaurantName/restaurantId instead of restaurant object. Removed old duplicate Recently Created Restaurants section. Build passes with no errors. Browser verified: Recent Restaurants card appears on left side of 2-column grid with city filter buttons and table structure. Pending Leads on right side. Recent Batch Jobs below. Layout grid working correctly.
+✅ Feature 11 complete - Added multi-select with Checkbox component, collapsible drawers with Collapsible/CollapsibleContent and ChevronRight/ChevronDown expand toggle icons, action buttons (Eye for view detail, ArrowRightCircle for convert to restaurant), bulk actions bar appearing when items selected with "Convert Selected" button and "Create Batch" checkbox, and conversion dialog showing progress and results. Imported useConvertLeadsToRestaurants hook for conversion functionality. Added state variables for selectedLeadIds, expandedLeadIds, conversion state. Table now has 7 columns: Expand toggle, Checkbox, Restaurant Name, City, Rating, Created, Actions. Collapsible drawer shows 3-column grid with Location/Contact/Online info. Build passes with no errors. Browser verified: Pending Leads section renders correctly (shows "No pending leads" when empty).
 
 ## Next Session Instructions
-Begin implementation with Feature 11: Pending Leads - Add multi-select, collapsible drawers, and action buttons.
+Begin implementation with Feature 12: Recent Batch Jobs - Make truncated restaurant names clickable with popover.
 
 ## Session History
 | Iteration | Session ID | Timestamp | Feature | Result |
@@ -62,6 +63,7 @@ Begin implementation with Feature 11: Pending Leads - Add multi-select, collapsi
 | 8 | c3ad3dfa-6943-4708-93a2-110baa7a5702 | 2026-01-19 | Feature 8: Start Sequence fix | ✅ Complete |
 | 9 | 9b37a48c-4e4b-4168-8d73-f00bdcb82c3c | 2026-01-19 | Feature 9: Lead columns and toggleable status | ✅ Complete |
 | 10 | d73e1012-36d8-4357-99e4-da75640a4a4d | 2026-01-19 | Feature 10: Move to 2-column grid | ✅ Complete |
+| 11 | 4ed11279-3b0d-43b2-9d97-adececac5de7 | 2026-01-19 | Feature 11: Pending Leads multi-select and actions | ✅ Complete |
 
 ## Iteration History
 | # | Changes Made | Result | Blocker |
@@ -76,3 +78,4 @@ Begin implementation with Feature 11: Pending Leads - Add multi-select, collapsi
 | 8 | Added startSequenceFor state, implemented handleStartSequence/handleStartSequenceRequested handlers, added second StartSequenceModal for TaskCell dropdown | ✅ Passes | none |
 | 9 | Added SelectValue import, handleUpdateRestaurantField handler, four badge helper functions (getLeadTypeBadge, getLeadCategoryBadge, getLeadStatusBadge, getOnboardingStatusBadge), three new table columns (Lead Type, Lead Category, Lead Status), converted Status cell to toggleable badge | ✅ Passes | none |
 | 10 | Moved Recently Created Restaurants section from bottom full-width to 2-column grid position 1 (left), Pending Leads to position 2 (right), Recent Batch Jobs to position 3. Fixed badge helper calls to use (value, id) params. Fixed TaskCell props. Removed duplicate section | ✅ Passes | none |
+| 11 | Added multi-select with Checkbox, collapsible drawers with Collapsible/CollapsibleContent, expand toggle icons, action buttons (Eye/ArrowRightCircle), bulk actions bar, conversion dialog, useConvertLeadsToRestaurants hook | ✅ Passes | none |
